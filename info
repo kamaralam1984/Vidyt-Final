@@ -1,0 +1,380 @@
+# ViralBoost AI – Website Systems, Kaise Kaam Karta Hai, aur Fayde (Full Detail)
+
+Is file mein website ke saare systems, unka kaam karne ka tareeka, aur users ko kis cheez se kya fayda hota hai – sab detail mein diya gaya hai.
+
+---
+
+## 1. WEBSITE KYA HAI AUR KISKE LIYE HAI
+
+**ViralBoost AI** ek SaaS platform hai jisse content creators, YouTubers, aur agencies apne videos ka viral potential analyze kar sakte hain. Ye website:
+
+- Video analysis (YouTube, Facebook, Instagram, TikTok, direct upload) karti hai
+- Viral score, title suggestions, hashtags, best posting time deti hai
+- Trends, competitor analysis, analytics dashboard provide karti hai
+- Free, Pro ($2.5/month), aur Enterprise ($5/month) plans ke through access milta hai
+
+**Fayda:** Creators ko data-driven decisions lene mein help; time bachta hai aur content strategy improve hoti hai.
+
+---
+
+## 2. LOGIN AUR AUTHENTICATION SYSTEM
+
+### Kaise kaam karta hai
+- **Do tarah se login:** (1) **Unique ID (6 digit) + PIN** – jaldi login ke liye (2) **Email + Password** – full account access
+- Signup par email verify OTP bhejta hai; OTP verify hone ke baad user banta hai
+- Password **Forgot Password** se reset ho sakta hai (link email par aata hai)
+- JWT token se session maintain hota hai; sidebar se **Logout** kar sakte hain
+
+### APIs
+- `POST /api/auth/login` – Email + password login
+- `POST /api/auth/login-pin` – Unique ID + PIN login
+- `POST /api/auth/register` – Naya user
+- `POST /api/auth/send-otp` – OTP bhejna
+- `POST /api/auth/verify-otp` – OTP verify
+- `GET /api/auth/me` – Current user details (role, plan, expiry, account manager, etc.)
+- `POST /api/auth/password-reset` – Reset link request
+- `PUT /api/auth/password-reset` – Naya password set (token ke sath)
+
+### Fayde
+- Secure login; PIN se fast access; password reset se account recover; har user ko apna 6-digit ID milta hai.
+
+---
+
+## 3. PLAN AUR ROLE SYSTEM
+
+### Kaise kaam karta hai
+- **Free** → role: **user** | **Pro** → role: **manager** | **Enterprise** → role: **admin**
+- **Super-admin** role plan se change nahi hota (manual set)
+- Login ya payment verify hone par role plan ke hisaab se set ho jata hai
+- Sidebar aur profile mein **Plan** aur **Expires: X days left** dikhta hai
+
+### Fayde
+- Plan ke hisaab se sahi access; Pro/Enterprise ko zyada features; expiry clear dikhti hai.
+
+---
+
+## 4. VIDEO ANALYSIS SYSTEM
+
+### Kaise kaam karta hai
+- User video **URL** de sakta hai (YouTube, Facebook, Instagram, TikTok) ya **file upload** kar sakta hai
+- Har video par: **hook analysis** (shuruat attract karti hai?), **thumbnail analysis**, **title analysis**, **viral prediction**, **hashtags**, **trending score**, **best posting time** nikala jata hai
+- **Title optimization:** Free = 3 suggestions, Pro/Enterprise = 10 suggestions
+- **Hashtag generator:** 10–20 hashtags (plan ke hisaab)
+- Result **Viral Optimizer** page par dikhta hai; copy kar sakte ho
+- Analysis DB mein save hota hai; **My Videos** se list dekhi ja sakti hai
+
+### APIs
+- `POST /api/videos/youtube` – YouTube URL analyze
+- `POST /api/videos/facebook` – Facebook URL
+- `POST /api/videos/instagram` – Instagram URL
+- `POST /api/videos/tiktok` – TikTok URL
+- `POST /api/videos/upload` – File upload analyze
+- `POST /api/videos/bulk-analyze` – Ek saath multiple URLs (Pro/Enterprise, max 10)
+
+### Fayde
+- Har video ke liye viral score, better titles, hashtags, posting time – content zyada engage kare; bulk se time bachta hai.
+
+---
+
+## 5. VIRAL PREDICTION AUR AI
+
+### Kaise kaam karta hai
+- Hook, thumbnail, title, trending score, duration se **viral probability** (0–100) aur **confidence** nikalti hai
+- Rule-based + optional **TensorFlow.js ML model** (viral dataset se train)
+- Enterprise users **Custom AI model training** trigger kar sakte hain: `POST /api/ai/train` (zyada data se model improve)
+
+### Fayde
+- Creators ko pata chal jata hai video kitna viral ho sakta hai; improve kahan karna hai ye bhi suggestions se samajh aata hai.
+
+---
+
+## 6. TRENDING AUR REAL-TIME TREND ANALYSIS
+
+### Kaise kaam karta hai
+- **Trending** page: hashtag/keyword trends, growth velocity, opportunity score
+- **Discover trends** API se rising/peak/declining trends milte hain
+- Hashtag generator trending topics use karta hai taaki suggestions relevant rahein
+
+### APIs
+- `GET /api/trends/discover` – Trends list
+- `GET /api/trending` – Trending topics
+
+### Fayde
+- Trending topics use karke content zyada discover ho sakta hai; hashtags up-to-date rehte hain.
+
+---
+
+## 7. BEST POSTING TIME PREDICTIONS
+
+### Kaise kaam karta hai
+- **Posting Time** page par platform (YouTube, Facebook, Instagram, TikTok) ke hisaab se **heatmap** (day × hour) aur **best day + hour** dikhta hai
+- Category (comedy, education, music, etc.) ke hisaab se time adjust ho sakta hai
+
+### APIs
+- `GET /api/posting-time` – Heatmap + best time
+
+### Fayde
+- Sahi time post karke views aur engagement badhane mein madad.
+
+---
+
+## 8. COMPETITOR ANALYSIS
+
+### Kaise kaam karta hai
+- Competitor channel ID daalne par unke successful patterns (titles, hashtags, video length, posting times) analyze hote hain
+- **Channel Audit** / **Facebook Audit** pages par multiple videos analyze karke insights milte hain
+- Competitor limit plan ke hisaab se: Free = 3, Pro = 50, Enterprise = unlimited
+
+### APIs
+- `POST /api/competitor/analyze` – Competitor insights
+- `GET /api/channel/videos` – Channel se video list (RSS/API)
+
+### Fayde
+- Competitors se seekh kar apna content strategy improve kiya ja sakta hai.
+
+---
+
+## 9. ANALYTICS DASHBOARD
+
+### Kaise kaam karta hai
+- **Analytics** page: total videos, total analyses, average viral score, engagement rate
+- Top performing videos, growth, retention, heatmap, benchmark APIs se data aata hai
+- **Export:** CSV / Excel / PDF (white-label option: company name + logo URL se branded report)
+
+### APIs
+- `GET /api/analytics/overview`
+- `GET /api/analytics/growth`, `/api/analytics/retention`, `/api/analytics/heatmap`, `/api/analytics/benchmark`
+- `GET /api/export/analytics?format=pdf|csv|excel` – Report download
+
+### Fayde
+- Performance ek jagah; reports share karne/white-label se branding strong hoti hai.
+
+---
+
+## 10. CONTENT CALENDAR AUR SCHEDULING
+
+### Kaise kaam karta hai
+- **Content Calendar** page par din aur platform ke hisaab se posts plan kiye ja sakte hain
+- Schedule APIs se calendar data aur post schedule manage hota hai
+
+### APIs
+- `GET /api/schedule/calendar`
+- `POST /api/schedule/post`
+
+### Fayde
+- Planning se consistent posting; content calendar se discipline badhti hai.
+
+---
+
+## 11. SUBSCRIPTION AUR PAYMENT
+
+### Kaise kaam karta hai
+- **Pricing** page: Free / Pro ($2.5/month) / Enterprise ($5/month); **Subscribe** se Razorpay checkout
+- Payment verify hone par plan activate; **role** plan ke hisaab set (Pro→manager, Enterprise→admin)
+- **Subscription** page: current plan, usage (analyses, storage), **Payment History**; har entry se **PDF receipt** download
+- Receipt currency user/invoice ke hisaab (e.g. Rs-4,500 INR)
+
+### APIs
+- `POST /api/payments/create-order` – Razorpay order
+- `POST /api/payments/verify-payment` – Verify + activate plan + set role + send receipt email
+- `GET /api/subscriptions/usage` – Usage stats
+- `GET /api/subscriptions/invoices` – Invoices (plan, amount, currency, date)
+
+### Fayde
+- Safe payment; clear plan/usage/receipts; PDF se record rakhna easy.
+
+---
+
+## 12. SUPPORT SYSTEM (EMAIL / 24/7 PRIORITY)
+
+### Kaise kaam karta hai
+- **Support** page: subject + message se ticket create; list of tickets dikhti hai
+- Plan ke hisaab priority: Free = normal, Pro = high, Enterprise = priority (24/7)
+- Admin baad mein reply kar sakta hai (reply field DB mein)
+
+### APIs
+- `GET /api/support` – My tickets
+- `POST /api/support` – Create ticket
+
+### Fayde
+- Har plan user ko support milta hai; Enterprise ko priority; issues track ho jate hain.
+
+---
+
+## 13. TEAM COLLABORATION (ENTERPRISE)
+
+### Kaise kaam karta hai
+- Enterprise user **team** bana sakta hai (max 10 members)
+- Owner **invite link** generate karta hai; doosre users link se **join** karte hain
+- Team list: `GET /api/team`; create: `POST /api/team`; join: `POST /api/team/join` (token)
+
+### Fayde
+- Agencies/teams ek hi plan ke under collaborate kar sakte hain.
+
+---
+
+## 14. WHITE-LABEL REPORTS
+
+### Kaise kaam karta hai
+- User **Settings** se **Company name** aur **Logo URL** set karta hai
+- Analytics **export** (PDF/HTML report) par ye branding use hoti hai – report apne brand ke saath dikhta hai
+
+### Fayde
+- Reports client ko apne brand ke saath de sakte ho; professional look.
+
+---
+
+## 15. API ACCESS (PUBLIC API)
+
+### Kaise kaam karta hai
+- **Settings** se user **API key** create karta hai (vb_xxx…); key sirf ek baar dikhai deti hai
+- Kisi bhi request mein header: **X-API-Key: your_key**
+- **Public endpoint:** `GET /api/public/v1/usage` – usage + subscription (API key se auth)
+
+### APIs
+- `GET /api/settings/api-keys` – List keys
+- `POST /api/settings/api-keys` – Create key
+- `DELETE /api/settings/api-keys?id=...` – Delete key
+- `GET /api/public/v1/usage` – Usage (X-API-Key)
+
+### Fayde
+- Apne tools/apps se usage aur plan check kar sakte ho; automation possible.
+
+---
+
+## 16. CUSTOM INTEGRATIONS (WEBHOOKS)
+
+### Kaise kaam karta hai
+- **Settings** mein **Webhook URL** save karte ho
+- Jab bhi koi video **analysis complete** hoti hai, tumhari URL par **POST** request jati hai – event name + payload (videoId, title, viralProbability, platform, etc.)
+
+### APIs
+- `GET /api/settings/webhook` – Current webhook
+- `POST /api/settings/webhook` – Save URL
+
+### Fayde
+- External systems (CRM, Slack, custom dashboard) ko real-time event mil sakte hain; integrations easy.
+
+---
+
+## 17. PRIORITY PROCESSING
+
+### Kaise kaam karta hai
+- Pro/Enterprise users ke analyses DB mein **priority: 'high'** ke sath save hote hain
+- Future mein agar queue-based processing aayi to inko pehle process kiya ja sakta hai
+
+### Fayde
+- Pro/Enterprise ko better response time / priority milega jab queue implement ho.
+
+---
+
+## 18. DEDICATED ACCOUNT MANAGER (ENTERPRISE)
+
+### Kaise kaam karta hai
+- Super-admin kisi Enterprise user ke liye **account manager email** set karta hai (admin panel: user → Set account manager)
+- Ye email **Settings** aur **/api/auth/me** mein dikhta hai – “Contact: manager@company.com”
+
+### Fayde
+- Enterprise users ko direct contact; personalized support.
+
+---
+
+## 19. SUPER ADMIN PANEL
+
+### Kaise kaam karta hai
+- **Super-admin** role wale user `/dashboard/super` par jaate hain
+- **Users:** list, create user, modify (name, role), reset password, set/clear PIN, delete user
+- **Send plan receipts:** saare paid users (Pro/Enterprise) ko unke current plan ka receipt email
+- **Notify all users:** subject + message se sabko notification email
+- **Database Tables:** collections select karke data grid, search, pagination
+- Sidebar: Dashboard, My Videos, Viral Optimizer, Channel Audit, Facebook Audit, Trending, Hashtags, Posting Time, Analytics, Content Calendar, Pricing, Subscription, etc.
+
+### APIs
+- `GET/POST /api/admin/users`
+- `PATCH/DELETE /api/admin/users/[id]` (set-role, reset-password, set-pin, set-account-manager, update, etc.)
+- `POST /api/admin/send-plan-receipts`
+- `POST /api/admin/notifications/send`
+- `GET /api/admin/data/collections`
+- `GET /api/admin/data/collections/[name]` (pagination, search)
+
+### Fayde
+- Pura user management, notifications, receipts, aur data ek jagah se control.
+
+---
+
+## 20. USER PROFILE AUR SETTINGS
+
+### Kaise kaam karta hai
+- **Profile:** name, bio, profile picture, social links, preferences (notifications, email updates, dark mode)
+- **Settings** page: Account manager (read-only), White-label (company name, logo URL), API keys, Webhook URL
+- **Subscription** page: plan, usage, payment history, PDF download
+
+### APIs
+- `GET /api/user/profile` – Profile
+- `PUT /api/user/profile` – Update (name, bio, white-label, webhook, etc.)
+- `GET /api/user/usage` – Usage + limits
+
+### Fayde
+- Sab kuch ek jagah; branding, API, webhook control; usage clear.
+
+---
+
+## 21. PAGES LIST (USER FLOW)
+
+| Page | Purpose |
+|------|--------|
+| `/` | Landing – features, pricing preview, CTA |
+| `/auth` | Login / Signup (ID+PIN ya Email+Password), plan select, payment |
+| `/forgot-password` | Forgot password – email bhejna |
+| `/reset-password` | Token se naya password set karna |
+| `/dashboard` | Main dashboard (upload/connect videos) |
+| `/user/[uniqueId]` | User home (same dashboard style) |
+| `/videos` | My Videos list |
+| `/videos/[id]` | Single video detail + analysis |
+| `/viral-optimizer` | Analyze karke result: titles, hashtags, viral score, posting time |
+| `/channel-audit` | YouTube channel audit – multiple videos |
+| `/facebook-audit` | Facebook page audit |
+| `/trending` | Trending topics |
+| `/hashtags` | Hashtag tools |
+| `/posting-time` | Best posting time heatmap |
+| `/analytics` | Analytics dashboard |
+| `/calendar` | Content calendar |
+| `/pricing` | Plans + subscribe |
+| `/subscription` | Current plan, usage, payment history, PDF receipt |
+| `/support` | Support tickets – create + list |
+| `/settings` | White-label, API keys, webhook, account manager display |
+| `/dashboard/super` | Super Admin panel (users, DB tables, notifications, receipts) |
+
+---
+
+## 22. PLAN-WISE LIMITS (SUMMARY)
+
+| Feature | Free | Pro | Enterprise |
+|--------|------|-----|------------|
+| Role | user | manager | admin |
+| Video analyses (limit) | 5/month | 1000 | Unlimited |
+| Competitors | 3 | 50 | Unlimited |
+| Title suggestions | 3 | 10 | 10 |
+| Hashtags | 10 | 20 | 20 |
+| Support | Community | Email (high) | 24/7 (priority) |
+| Team | – | – | Up to 10 users |
+| White-label | – | – | Yes |
+| API access | – | Yes | Yes |
+| Custom AI training | – | – | Yes |
+| Bulk video analysis | – | Yes (10/request) | Yes (10/request) |
+| Account manager | – | – | Optional (set by admin) |
+
+---
+
+## 23. OVERALL FAYDE (SUMMARY)
+
+1. **Creators:** Viral score, titles, hashtags, posting time se content better banata hai; time bachta hai.
+2. **Agencies/Teams:** Enterprise se team collaboration, white-label, account manager – clients ko branded reports aur dedicated support.
+3. **Data-driven decisions:** Trends, competitor analysis, analytics se strategy clear hoti hai.
+4. **Automation:** API + webhooks se apne tools se integrate karke workflows automate ho sakte hain.
+5. **Support:** Ticket system se har plan user ko help; Enterprise ko priority.
+6. **Admin:** Super admin se users, notifications, receipts, DB sab control; plan ke hisaab role automatically set.
+
+---
+
+Last updated: full systems + benefits documentation.

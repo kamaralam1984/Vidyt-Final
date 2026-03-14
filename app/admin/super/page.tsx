@@ -1,0 +1,1172 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Navbar from '@/components/Navbar';
+import {
+  Loader2,
+  Shield,
+  RefreshCw,
+  KeyRound,
+  Hash,
+  Users,
+  UserPlus,
+  UserCog,
+  Trash2,
+  X,
+  Mail,
+  Bell,
+  Database,
+  LayoutDashboard,
+  Video,
+  Wand2,
+  MonitorPlay,
+  Facebook,
+  Flame,
+  Hash as HashIcon,
+  Clock4,
+  BarChart3,
+  CalendarDays,
+  LogOut,
+  Settings,
+  Key,
+} from 'lucide-react';
+import { removeToken } from '@/utils/auth';
+
+interface AdminUser {
+  id: string;
+  uniqueId?: string;
+  email: string;
+  name?: string;
+  role: string;
+  subscription: string;
+  lastLogin?: string;
+  createdAt: string;
+  hasPin: boolean;
+}
+
+export default function SuperAdminPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [error, setError] = useState<string>('');
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ email: '', password: '', name: '', role: 'user' as string, loginPin: '' });
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createMessage, setCreateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [modifyUser, setModifyUser] = useState<AdminUser | null>(null);
+  const [modifyForm, setModifyForm] = useState({ name: '', role: 'user' as string, newPin: '' });
+  const [modifySubmitting, setModifySubmitting] = useState(false);
+  const [roleChangingId, setRoleChangingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'users' | 'tables' | 'aiStudio' | 'apiConfig'>('users');
+  const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['manager', 'admin', 'super-admin']);
+  const [aiStudioSaving, setAiStudioSaving] = useState(false);
+  const [apiConfigStatus, setApiConfigStatus] = useState<Record<string, boolean>>({});
+  const [apiConfigForm, setApiConfigForm] = useState<Record<string, string>>({});
+  const [apiConfigLoading, setApiConfigLoading] = useState(false);
+  const [apiConfigSaving, setApiConfigSaving] = useState(false);
+  const [collections, setCollections] = useState<{ id: string; label: string }[]>([]);
+  const [selectedTable, setSelectedTable] = useState('');
+  const [tableData, setTableData] = useState<Record<string, unknown>[]>([]);
+  const [tableSearch, setTableSearch] = useState('');
+  const [tablePage, setTablePage] = useState(1);
+  const [tableTotal, setTableTotal] = useState(0);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [sendingReceipts, setSendingReceipts] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [notifySubject, setNotifySubject] = useState('');
+  const [notifyMessage, setNotifyMessage] = useState('');
+  const [notifySending, setNotifySending] = useState(false);
+  const tableLimit = 20;
+
+  const handleSendNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!notifyMessage.trim()) {
+      alert('Message is required.');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setNotifySending(true);
+    try {
+      const res = await fetch('/api/admin/notifications/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          subject: notifySubject.trim() || 'Notification from ViralBoost AI',
+          message: notifyMessage.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Notification sent to ${data.sent} user(s).${data.failed ? ` Failed: ${data.failed}` : ''}`);
+        setShowNotifyModal(false);
+        setNotifySubject('');
+        setNotifyMessage('');
+      } else {
+        alert(data.error || 'Failed to send notification');
+      }
+    } catch (_) {
+      alert('Failed to send notification');
+    } finally {
+      setNotifySending(false);
+    }
+  };
+
+  const handleSendPlanReceipts = async () => {
+    if (!confirm('Send payment receipt email to all users with Pro/Enterprise plan?')) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setSendingReceipts(true);
+    try {
+      const res = await fetch('/api/admin/send-plan-receipts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Receipts sent: ${data.sent} user(s).${data.failed ? ` Failed: ${data.failed}` : ''}`);
+      } else {
+        alert(data.error || 'Failed to send receipts');
+      }
+    } catch (_) {
+      alert('Failed to send receipts');
+    } finally {
+      setSendingReceipts(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        setRefreshing(false);
+        router.push('/auth?mode=login');
+        return;
+      }
+      setRefreshing(true);
+      setAccessDenied(false);
+      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(search)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.status === 403) {
+        setAccessDenied(true);
+        setError('');
+        setUsers([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to load users');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      setUsers(data.data || []);
+      setError('');
+    } catch (e: any) {
+      setError('Failed to load users');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchCollections = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/admin/data/collections', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const json = await res.json();
+        setCollections(json.data || []);
+        if (json.data?.length && !selectedTable) setSelectedTable(json.data[0].id);
+      }
+    } catch (_) {
+      setCollections([]);
+    }
+  };
+
+  const fetchTableData = async () => {
+    if (!selectedTable) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setTableLoading(true);
+    try {
+      const q = new URLSearchParams({ page: String(tablePage), limit: String(tableLimit) });
+      if (tableSearch.trim()) q.set('search', tableSearch.trim());
+      const res = await fetch(`/api/admin/data/collections/${selectedTable}?${q}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setTableData(json.data || []);
+        setTableTotal(json.pagination?.total ?? 0);
+      } else {
+        setTableData([]);
+        setTableTotal(0);
+      }
+    } catch (_) {
+      setTableData([]);
+      setTableTotal(0);
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === 'tables') fetchCollections();
+    if (viewMode === 'aiStudio') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        fetch('/api/admin/features/ai-studio', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((d) => d.allowedRoles && setAiStudioRoles(d.allowedRoles))
+          .catch(() => {});
+      }
+    }
+    if (viewMode === 'apiConfig') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        setApiConfigLoading(true);
+        fetch('/api/admin/config', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.status) setApiConfigStatus(d.status);
+            setApiConfigForm({});
+          })
+          .catch(() => {})
+          .finally(() => setApiConfigLoading(false));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (viewMode === 'tables' && selectedTable) fetchTableData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, selectedTable, tablePage]);
+
+  const handleResetPassword = async (userId: string) => {
+    const newPassword = prompt('Enter new password (min 6 characters). User will login with this password.');
+    if (newPassword === null) return; // User cancelled
+    const trimmed = newPassword.trim();
+    if (trimmed.length < 6) {
+      alert('Password must be at least 6 characters.');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth?mode=login');
+      return;
+    }
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action: 'reset-password', newPassword: trimmed }),
+    });
+    if (res.ok) {
+      alert('Password has been updated successfully.');
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Failed to update password.');
+    }
+  };
+
+  const handleSetPin = async (userId: string) => {
+    const newPin = prompt('Enter new PIN (4-6 digits):') || '';
+    if (!newPin) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth?mode=login');
+      return;
+    }
+    await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action: 'set-pin', newPin }),
+    });
+    fetchUsers();
+  };
+
+  const handleClearPin = async (userId: string) => {
+    if (!confirm('Clear this user PIN?')) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth?mode=login');
+      return;
+    }
+    await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action: 'clear-pin' }),
+    });
+    fetchUsers();
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateMessage(null);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth?mode=login');
+      return;
+    }
+    if (!createForm.email.trim() || !createForm.password) {
+      setCreateMessage({ type: 'error', text: 'Email and password are required.' });
+      return;
+    }
+    if (createForm.password.length < 6) {
+      setCreateMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+    setCreateSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: createForm.email.trim(),
+          password: createForm.password,
+          name: createForm.name.trim() || undefined,
+          role: createForm.role,
+          loginPin: createForm.loginPin.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateMessage({ type: 'error', text: data.error || 'Failed to create user' });
+        return;
+      }
+      setCreateMessage({ type: 'success', text: `User created: ${data.data?.email}. Unique ID: ${data.data?.uniqueId}` });
+      setCreateForm({ email: '', password: '', name: '', role: 'user', loginPin: '' });
+      fetchUsers();
+      setShowCreateModal(false);
+    } catch (_) {
+      setCreateMessage({ type: 'error', text: 'Failed to create user' });
+    } finally {
+      setCreateSubmitting(false);
+    }
+  };
+
+  const handleSetRole = async (userId: string, role: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setRoleChangingId(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'set-role', role }),
+      });
+      if (res.ok) fetchUsers();
+    } finally {
+      setRoleChangingId(null);
+    }
+  };
+
+  const handleDeleteUser = async (user: AdminUser) => {
+    if (!confirm(`Delete user ${user.email}? This cannot be undone.`)) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setDeletingId(user.id);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        fetchUsers();
+        if (modifyUser?.id === user.id) setModifyUser(null);
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const openModifyModal = (u: AdminUser) => {
+    setModifyUser(u);
+    setModifyForm({ name: u.name || '', role: u.role, newPin: '' });
+  };
+
+  const handleSaveModify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modifyUser) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setModifySubmitting(true);
+    try {
+      await fetch(`/api/admin/users/${modifyUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'update', name: modifyForm.name.trim() || undefined, role: modifyForm.role }),
+      });
+      if (modifyForm.newPin.trim()) {
+        await fetch(`/api/admin/users/${modifyUser.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action: 'set-pin', newPin: modifyForm.newPin.trim() }),
+        });
+      }
+      fetchUsers();
+      setModifyUser(null);
+    } finally {
+      setModifySubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0F0F0F] text-white">
+      <Navbar />
+      <div className="flex pt-14">
+      {/* Left sidebar */}
+      <aside className="w-64 bg-[#181818] border-r border-[#212121] hidden md:flex flex-col flex-shrink-0">
+        <div className="px-4 py-4 border-b border-[#212121] flex items-center gap-2">
+          <Shield className="w-6 h-6 text-[#FF0000]" />
+          <div>
+            <p className="text-sm font-semibold">Super Admin</p>
+            <p className="text-xs text-[#888]">SaaS Control Center</p>
+          </div>
+        </div>
+        <nav className="flex-1 px-2 py-4 space-y-1 text-sm overflow-y-auto">
+          <p className="px-3 py-1.5 text-xs font-semibold text-[#666] uppercase tracking-wider">User management</p>
+          <button
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'users' ? 'bg-[#212121] text-white' : ''}`}
+            onClick={() => {
+              setViewMode('users');
+              setLoading(true);
+              setAccessDenied(false);
+              document.getElementById('users-main')?.scrollIntoView({ behavior: 'smooth' });
+              fetchUsers();
+            }}
+          >
+            <Users className="w-4 h-4" />
+            <span>Users</span>
+          </button>
+          <button
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'tables' ? 'bg-[#212121] text-white' : ''}`}
+            onClick={() => {
+              setViewMode('tables');
+              fetchCollections();
+            }}
+          >
+            <Database className="w-4 h-4" />
+            <span>Database Tables</span>
+          </button>
+          <button
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'aiStudio' ? 'bg-[#212121] text-white' : ''}`}
+            onClick={() => setViewMode('aiStudio')}
+          >
+            <Wand2 className="w-4 h-4" />
+            <span>AI Studio Access</span>
+          </button>
+          <button
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'apiConfig' ? 'bg-[#212121] text-white' : ''}`}
+            onClick={() => setViewMode('apiConfig')}
+          >
+            <Key className="w-4 h-4" />
+            <span>API Config</span>
+          </button>
+          <p className="px-3 py-1.5 mt-4 text-xs font-semibold text-[#666] uppercase tracking-wider">AI Studio</p>
+          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/script-generator')}>
+            <span className="text-[#FF0000]">•</span>
+            <span>Script Generator</span>
+          </button>
+          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/thumbnail-generator')}>
+            <span className="text-[#FF0000]">•</span>
+            <span>Thumbnail Generator</span>
+          </button>
+          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/hook-generator')}>
+            <span className="text-[#FF0000]">•</span>
+            <span>Hook Generator</span>
+          </button>
+          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/shorts-creator')}>
+            <span className="text-[#FF0000]">•</span>
+            <span>Shorts Creator</span>
+          </button>
+          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/tools/youtube-growth')}>
+            <span className="text-[#FF0000]">•</span>
+            <span>YouTube Growth</span>
+          </button>
+          <p className="px-3 py-1.5 mt-4 text-xs font-semibold text-[#666] uppercase tracking-wider">SaaS</p>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/dashboard/super')}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>Super Admin</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/videos')}
+          >
+            <Video className="w-4 h-4" />
+            <span>My Videos</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/viral-optimizer')}
+          >
+            <Wand2 className="w-4 h-4" />
+            <span>Viral Optimizer</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/channel-audit')}
+          >
+            <MonitorPlay className="w-4 h-4" />
+            <span>Channel Audit</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/facebook-audit')}
+          >
+            <Facebook className="w-4 h-4" />
+            <span>Facebook Audit</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/trending')}
+          >
+            <Flame className="w-4 h-4" />
+            <span>Trending</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/hashtags')}
+          >
+            <HashIcon className="w-4 h-4" />
+            <span>Hashtags</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/posting-time')}
+          >
+            <Clock4 className="w-4 h-4" />
+            <span>Posting Time</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/analytics')}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Analytics</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+            onClick={() => router.push('/calendar')}
+          >
+            <CalendarDays className="w-4 h-4" />
+            <span>Content Calendar</span>
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] mt-4 border-t border-[#212121] pt-4"
+            onClick={() => {
+              removeToken();
+              if (typeof window !== 'undefined') localStorage.removeItem('uniqueId');
+              router.push('/auth?mode=login');
+            }}
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </button>
+        </nav>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 p-6">
+        {loading ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="text-center">
+              <Loader2 className="w-12 h-12 animate-spin text-[#FF0000] mx-auto mb-4" />
+              <p className="text-[#AAAAAA]">Loading Super Admin Panel...</p>
+            </div>
+          </div>
+        ) : accessDenied ? (
+          <div className="max-w-lg mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <Shield className="w-16 h-16 text-amber-500 mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Access denied</h2>
+            <p className="text-[#AAAAAA] text-sm mb-2">
+              User details tab sirf super admin users ke liye hai. Apna role <code className="bg-[#212121] px-1 rounded">super-admin</code> set karein, phir niche &quot;Refresh&quot; dabayein.
+            </p>
+            <p className="text-[#888] text-xs mb-4 text-left w-full max-w-md">
+              <strong>Option 1 (bina mongosh):</strong> Terminal me project folder me jao, phir: <code className="block mt-1 p-2 bg-[#212121] rounded text-left break-all">node scripts/set-super-admin.js your@email.com</code>
+              <strong className="block mt-2">Option 2 (mongosh):</strong> <code className="block mt-1 p-2 bg-[#212121] rounded text-left text-xs break-all">db.users.updateOne(&#123;email: &quot;your@email.com&quot;&#125;, &#123;$set: &#123;role: &quot;super-admin&quot;&#125;&#125;)</code>
+            </p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button
+                onClick={() => { setLoading(true); setAccessDenied(false); fetchUsers(); }}
+                className="px-4 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] font-medium"
+              >
+                Refresh (try again)
+              </button>
+              <button
+                onClick={() => router.push('/auth?mode=login')}
+                className="px-4 py-2 bg-[#212121] text-white rounded-lg hover:bg-[#333333] font-medium border border-[#333333]"
+              >
+                Log in again
+              </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="px-4 py-2 bg-[#212121] text-white rounded-lg hover:bg-[#333333] font-medium border border-[#333333]"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
+        ) : viewMode === 'aiStudio' ? (
+          <div id="ai-studio-main" className="max-w-2xl mx-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <Wand2 className="w-8 h-8 text-[#FF0000]" />
+              <div>
+                <h1 className="text-2xl font-bold">AI Studio Access</h1>
+                <p className="text-sm text-[#AAAAAA]">Jin roles ko AI Studio (Script Generator, Thumbnail, Hooks, Shorts, YouTube Growth) dikhana hai, unhe select karein. Save karne par sidebar me AI Studio in users ko dikhega.</p>
+              </div>
+            </div>
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
+              <p className="text-sm font-medium text-white mb-3">Allow AI Studio for these roles:</p>
+              <div className="space-y-2">
+                {['user', 'manager', 'admin', 'super-admin'].map((role) => (
+                  <label key={role} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={aiStudioRoles.includes(role)}
+                      onChange={(e) => {
+                        if (e.target.checked) setAiStudioRoles((r) => [...r, role]);
+                        else setAiStudioRoles((r) => r.filter((x) => x !== role));
+                      }}
+                      className="rounded border-[#333333] bg-[#0F0F0F] text-[#FF0000] focus:ring-[#FF0000]"
+                    />
+                    <span className="text-[#CCCCCC] capitalize">{role}</span>
+                  </label>
+                ))}
+              </div>
+              <button
+                disabled={aiStudioSaving}
+                onClick={async () => {
+                  const token = localStorage.getItem('token');
+                  if (!token) return;
+                  setAiStudioSaving(true);
+                  try {
+                    const res = await fetch('/api/admin/features/ai-studio', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ allowedRoles: aiStudioRoles }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      setAiStudioRoles(data.allowedRoles || aiStudioRoles);
+                      alert('AI Studio access saved.');
+                    } else alert(data.error || 'Failed to save');
+                  } catch (_) {
+                    alert('Failed to save');
+                  } finally {
+                    setAiStudioSaving(false);
+                  }
+                }}
+                className="mt-4 px-4 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 font-medium"
+              >
+                {aiStudioSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ) : viewMode === 'apiConfig' ? (
+          <div id="api-config-main" className="max-w-2xl mx-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <Settings className="w-8 h-8 text-[#FF0000]" />
+              <div>
+                <h1 className="text-2xl font-bold">API Config</h1>
+                <p className="text-sm text-[#AAAAAA]">API keys yahan set karein. Pehle DB use hoga, nahi to env. Sabhi themes YouTube style (dark) rahenge.</p>
+              </div>
+            </div>
+            {apiConfigLoading ? (
+              <div className="flex items-center gap-2 text-[#AAAAAA] py-8">
+                <Loader2 className="w-5 h-5 animate-spin" /> Loading...
+              </div>
+            ) : (
+              <form
+                className="space-y-6"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const token = localStorage.getItem('token');
+                  if (!token) return;
+                  setApiConfigSaving(true);
+                  try {
+                    const body: Record<string, string> = {};
+                    Object.entries(apiConfigForm).forEach(([k, v]) => { body[k] = typeof v === 'string' ? v : ''; });
+                    const res = await fetch('/api/admin/config', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify(body),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      alert('API config saved.');
+                      setApiConfigForm({});
+                      const r2 = await fetch('/api/admin/config', { headers: { Authorization: `Bearer ${token}` } });
+                      const d2 = await r2.json();
+                      if (d2.status) setApiConfigStatus(d2.status);
+                    } else alert(data.error || 'Failed to save');
+                  } catch (_) {
+                    alert('Failed to save');
+                  } finally {
+                    setApiConfigSaving(false);
+                  }
+                }}
+              >
+                {[
+                  { key: 'youtubeDataApiKey', label: 'YouTube Data API v3', hint: 'Video + growth real data. Google Cloud Console se key.', statusKey: 'youtube' },
+                  { key: 'resendApiKey', label: 'Resend API Key', hint: 'Reliable emails (OTP, receipts, broadcast).', statusKey: 'resend' },
+                  { key: 'openaiApiKey', label: 'OpenAI API Key', hint: 'AI Studio + Whisper captions.', statusKey: 'openai' },
+                  { key: 'assemblyaiApiKey', label: 'AssemblyAI API Key', hint: 'Auto captions (Shorts) – OpenAI alternative.', statusKey: 'assemblyai' },
+                  { key: 'googleGeminiApiKey', label: 'Google Gemini API Key', hint: 'AI Studio fallback when OpenAI na ho.', statusKey: 'gemini' },
+                  { key: 'sentryDsn', label: 'Sentry DSN (client)', hint: 'Frontend error tracking.', statusKey: 'sentry' },
+                  { key: 'sentryServerDsn', label: 'Sentry Server DSN', hint: 'Backend error tracking.', statusKey: 'sentry' },
+                  { key: 'stripeSecretKey', label: 'Stripe Secret Key', hint: 'International payments.', statusKey: 'stripe' },
+                  { key: 'stripeWebhookSecret', label: 'Stripe Webhook Secret', hint: 'Webhook signature verify.', statusKey: 'stripe' },
+                  { key: 'stripePublishableKey', label: 'Stripe Publishable Key', hint: 'Frontend (NEXT_PUBLIC_ optional).', statusKey: 'stripe' },
+                ].map(({ key, label, hint, statusKey }) => (
+                  <div key={key} className="bg-[#181818] border border-[#212121] rounded-xl p-4">
+                    <label className="block text-sm font-medium text-white mb-1">{label}</label>
+                    <p className="text-xs text-[#888] mb-2">{hint}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <input
+                        type="password"
+                        value={apiConfigForm[key] ?? ''}
+                        onChange={(e) => setApiConfigForm((f) => ({ ...f, [key]: e.target.value }))}
+                        placeholder={apiConfigStatus[statusKey] ? '•••• (set – enter new to change)' : 'Not set – enter key'}
+                        className="flex-1 min-w-[200px] px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-[#FF0000] focus:border-[#FF0000]"
+                        autoComplete="off"
+                      />
+                      {apiConfigStatus[statusKey] && (
+                        <button
+                          type="button"
+                          onClick={() => setApiConfigForm((f) => ({ ...f, [key]: '' }))}
+                          className="text-xs text-[#FF0000] hover:underline"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      {apiConfigStatus[statusKey] && (
+                        <span className="text-xs text-green-500 whitespace-nowrap">Set</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="submit"
+                  disabled={apiConfigSaving}
+                  className="w-full px-4 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 font-medium"
+                >
+                  {apiConfigSaving ? 'Saving...' : 'Save API Config'}
+                </button>
+              </form>
+            )}
+          </div>
+        ) : viewMode === 'tables' ? (
+          <div id="tables-main" className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <Database className="w-8 h-8 text-[#FF0000]" />
+                <div>
+                  <h1 className="text-2xl font-bold">Database Tables</h1>
+                  <p className="text-sm text-[#AAAAAA]">Sabhi tables grid view me. Partial search se data dhoondo.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedTable}
+                  onChange={(e) => { setSelectedTable(e.target.value); setTablePage(1); setTableSearch(''); }}
+                  className="px-3 py-2 bg-[#181818] border border-[#333333] rounded-lg text-sm focus:ring-2 focus:ring-[#FF0000]"
+                >
+                  {collections.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => fetchTableData()}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#181818] border border-[#333333] hover:border-[#FF0000] text-sm"
+                >
+                  <RefreshCw className={`w-4 h-4 ${tableLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
+            </div>
+            <div className="mb-4 flex items-center gap-3">
+              <input
+                type="text"
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { setTablePage(1); fetchTableData(); } }}
+                placeholder="Partial search — type then press Enter to filter"
+                className="flex-1 px-4 py-2 bg-[#181818] border border-[#333333] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+              />
+            </div>
+            <div className="bg-[#181818] border border-[#212121] rounded-xl overflow-x-auto">
+              {tableLoading ? (
+                <div className="p-8 text-center text-[#AAAAAA]">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                  Loading...
+                </div>
+              ) : tableData.length === 0 ? (
+                <div className="p-8 text-center text-[#AAAAAA]">No records found.</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs font-semibold text-[#AAAAAA] border-b border-[#212121]">
+                      {Object.keys(tableData[0]).map((key) => (
+                        <th key={key} className="px-4 py-3 whitespace-nowrap">{key}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableData.map((row, idx) => (
+                      <tr key={row._id as string || idx} className="border-b border-[#212121] hover:bg-[#202020]">
+                        {Object.entries(row).map(([k, v]) => (
+                          <td key={k} className="px-4 py-3 whitespace-nowrap max-w-xs truncate" title={String(v)}>
+                            {v != null ? String(v) : '—'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            {tableTotal > tableLimit && (
+              <div className="mt-4 flex items-center justify-between text-sm text-[#AAAAAA]">
+                <span>Total: {tableTotal} records</span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={tablePage <= 1}
+                    onClick={() => setTablePage((p) => p - 1)}
+                    className="px-3 py-1 rounded bg-[#333333] disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <span>Page {tablePage}</span>
+                  <button
+                    disabled={tablePage * tableLimit >= tableTotal}
+                    onClick={() => setTablePage((p) => p + 1)}
+                    className="px-3 py-1 rounded bg-[#333333] disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div id="users-main" className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <Users className="w-8 h-8 text-[#FF0000]" />
+                <div>
+                  <h1 className="text-2xl font-bold">Users</h1>
+                  <p className="text-sm text-[#AAAAAA]">Database me jo user hai woh yahan dikhega. Create User, Modify User, Role Set aur Delete.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setShowCreateModal(true); setCreateMessage(null); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FF0000] hover:bg-[#CC0000] text-sm font-medium"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Create User
+                </button>
+                <button
+                  onClick={fetchUsers}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#181818] border border-[#333333] hover:border-[#FF0000] text-sm"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                <button
+                  onClick={handleSendPlanReceipts}
+                  disabled={sendingReceipts}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#181818] border border-[#333333] hover:border-[#10b981] text-sm disabled:opacity-50"
+                  title="Send payment receipt email to all Pro/Enterprise users"
+                >
+                  {sendingReceipts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                  Send plan receipts
+                </button>
+                <button
+                  onClick={() => setShowNotifyModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#181818] border border-[#333333] hover:border-[#FF0000] text-sm"
+                  title="Send notification email to all users"
+                >
+                  <Bell className="w-4 h-4" />
+                  Notify all users
+                </button>
+              </div>
+            </div>
+
+            {/* Notify all users modal */}
+            {showNotifyModal && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => !notifySending && setShowNotifyModal(false)}>
+                <div className="bg-[#181818] border border-[#212121] rounded-xl max-w-lg w-full p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold flex items-center gap-2"><Bell className="w-5 h-5" /> Send notification to all users</h2>
+                    <button onClick={() => !notifySending && setShowNotifyModal(false)} className="p-1 rounded hover:bg-[#333333]"><X className="w-5 h-5" /></button>
+                  </div>
+                  <form onSubmit={handleSendNotification} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Subject</label>
+                      <input
+                        type="text"
+                        value={notifySubject}
+                        onChange={(e) => setNotifySubject(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]"
+                        placeholder="e.g. New feature announcement"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Message *</label>
+                      <textarea
+                        value={notifyMessage}
+                        onChange={(e) => setNotifyMessage(e.target.value)}
+                        rows={5}
+                        required
+                        className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000] resize-y"
+                        placeholder="Type your notification message. It will be sent by email to all users."
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button type="submit" disabled={notifySending || !notifyMessage.trim()} className="flex-1 py-2 rounded-lg bg-[#FF0000] text-white font-medium hover:bg-[#CC0000] disabled:opacity-50 flex items-center justify-center gap-2">
+                        {notifySending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                        Send to all
+                      </button>
+                      <button type="button" onClick={() => setShowNotifyModal(false)} disabled={notifySending} className="px-4 py-2 rounded-lg bg-[#333333] hover:bg-[#444444]">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            <div className="mb-4 flex items-center gap-3">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
+                  placeholder="Search by email, name or Unique ID"
+                  className="w-full px-4 py-2 bg-[#181818] border border-[#333333] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500 rounded-lg text-sm text-red-200">
+                {error}
+              </div>
+            )}
+
+            <div className="bg-[#181818] border border-[#212121] rounded-xl overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs font-semibold text-[#AAAAAA] border-b border-[#212121]">
+                    <th className="px-4 py-3">User</th>
+                    <th className="px-4 py-3">Unique ID</th>
+                    <th className="px-4 py-3">Role Set</th>
+                    <th className="px-4 py-3">Subscription</th>
+                    <th className="px-4 py-3">PIN</th>
+                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr
+                      key={u.id}
+                      className="border-b border-[#212121] hover:bg-[#202020] cursor-pointer"
+                      onClick={() => openModifyModal(u)}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-medium">{u.email}</div>
+                        <div className="text-[#888] text-xs">{u.name || '-'}</div>
+                      </td>
+                      <td className="px-4 py-3">{u.uniqueId || '-'}</td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={u.role}
+                          onChange={(e) => handleSetRole(u.id, e.target.value)}
+                          disabled={roleChangingId === u.id}
+                          className="bg-[#0F0F0F] border border-[#333333] rounded px-2 py-1 text-xs capitalize"
+                        >
+                          <option value="user">User</option>
+                          <option value="manager">Manager</option>
+                          <option value="admin">Admin</option>
+                          <option value="super-admin">Super Admin</option>
+                        </select>
+                        {roleChangingId === u.id && <Loader2 className="w-3 h-3 inline ml-1 animate-spin" />}
+                      </td>
+                      <td className="px-4 py-3 capitalize">{u.subscription}</td>
+                      <td className="px-4 py-3">{u.hasPin ? 'Set' : '—'}</td>
+                      <td className="px-4 py-3">{new Date(u.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openModifyModal(u); }}
+                            className="p-1.5 rounded bg-[#333333] hover:bg-[#444444]"
+                            title="Modify User"
+                          >
+                            <UserCog className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleResetPassword(u.id); }}
+                            className="p-1.5 rounded bg-[#333333] hover:bg-[#444444]"
+                            title="Reset password"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleSetPin(u.id); }}
+                            className="p-1.5 rounded bg-[#333333] hover:bg-[#444444]"
+                            title="Set PIN"
+                          >
+                            <Hash className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleClearPin(u.id); }}
+                            className="p-1.5 rounded bg-[#333333] hover:bg-[#444444] px-2"
+                            title="Clear PIN"
+                          >
+                            ×
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteUser(u); }}
+                            disabled={deletingId === u.id}
+                            className="p-1.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-400"
+                            title="Delete"
+                          >
+                            {deletingId === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {users.length === 0 && (
+                <div className="px-4 py-8 text-center text-sm text-[#AAAAAA]">
+                  No users found.
+                </div>
+              )}
+            </div>
+
+            {/* Create User Modal */}
+            {showCreateModal && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowCreateModal(false)}>
+                <div className="bg-[#181818] border border-[#212121] rounded-xl max-w-md w-full p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold flex items-center gap-2"><UserPlus className="w-5 h-5" /> Create User</h2>
+                    <button onClick={() => setShowCreateModal(false)} className="p-1 rounded hover:bg-[#333333]"><X className="w-5 h-5" /></button>
+                  </div>
+                  <form onSubmit={handleCreateUser} className="space-y-4">
+                    {createMessage && (
+                      <div className={`p-3 rounded-lg text-sm ${createMessage.type === 'success' ? 'bg-green-500/10 border border-green-500/50 text-green-200' : 'bg-red-500/10 border border-red-500/50 text-red-200'}`}>
+                        {createMessage.text}
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Email *</label>
+                      <input type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]" placeholder="user@example.com" required />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Password * (min 6)</label>
+                      <input type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]" placeholder="••••••••" minLength={6} required />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Name</label>
+                      <input type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]" placeholder="Display name" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Role</label>
+                      <select value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]">
+                        <option value="user">User</option><option value="manager">Manager</option><option value="admin">Admin</option><option value="super-admin">Super Admin</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Login PIN (optional)</label>
+                      <input type="text" inputMode="numeric" maxLength={6} value={createForm.loginPin} onChange={(e) => setCreateForm((f) => ({ ...f, loginPin: e.target.value.replace(/\D/g, '') }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]" placeholder="e.g. 1234" />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button type="submit" disabled={createSubmitting} className="flex-1 py-2 rounded-lg bg-[#FF0000] text-white font-medium hover:bg-[#CC0000] disabled:opacity-50 flex items-center justify-center gap-2">
+                        {createSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create User'}
+                      </button>
+                      <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 rounded-lg bg-[#333333] hover:bg-[#444444]">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Modify User Modal */}
+            {modifyUser && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setModifyUser(null)}>
+                <div className="bg-[#181818] border border-[#212121] rounded-xl max-w-md w-full p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold flex items-center gap-2"><UserCog className="w-5 h-5" /> Modify User</h2>
+                    <button onClick={() => setModifyUser(null)} className="p-1 rounded hover:bg-[#333333]"><X className="w-5 h-5" /></button>
+                  </div>
+                  <p className="text-xs text-[#888] mb-3">{modifyUser.email} · ID: {modifyUser.uniqueId || '-'}</p>
+                  <form onSubmit={handleSaveModify} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Name</label>
+                      <input type="text" value={modifyForm.name} onChange={(e) => setModifyForm((f) => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]" placeholder="Name" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Role</label>
+                      <select value={modifyForm.role} onChange={(e) => setModifyForm((f) => ({ ...f, role: e.target.value }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]">
+                        <option value="user">User</option><option value="manager">Manager</option><option value="admin">Admin</option><option value="super-admin">Super Admin</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Set / change PIN (leave blank to keep)</label>
+                      <input type="text" inputMode="numeric" maxLength={6} value={modifyForm.newPin} onChange={(e) => setModifyForm((f) => ({ ...f, newPin: e.target.value.replace(/\D/g, '') }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]" placeholder="4-6 digits" />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button type="submit" disabled={modifySubmitting} className="flex-1 py-2 rounded-lg bg-[#FF0000] text-white font-medium hover:bg-[#CC0000] disabled:opacity-50 flex items-center justify-center gap-2">
+                        {modifySubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                      </button>
+                      <button type="button" onClick={() => setModifyUser(null)} className="px-4 py-2 rounded-lg bg-[#333333] hover:bg-[#444444]">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      </div>
+    </div>
+  );
+}
+
