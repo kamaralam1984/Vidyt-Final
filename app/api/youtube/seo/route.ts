@@ -48,6 +48,20 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get('category') || '';
   const keywords = keywordsParam.split(/[,;\n]/).map(k => k.trim()).filter(Boolean);
 
+  const hasAnyInput = title.length > 0 || description.length > 0 || keywords.length > 0;
+  if (!hasAnyInput) {
+    return NextResponse.json({
+      seoScore: 0,
+      breakdown: {
+        titleLength: { score: 0, label: 'Title dalen' },
+        keywordUsage: { score: 0, label: 'Keywords dalen' },
+        description: { score: 0, label: 'Description dalen' },
+        category: { score: 0, label: 'Category optional' },
+        thumbnail: { score: 0, label: 'Thumbnail optional' },
+      },
+    });
+  }
+
   const titleScore = scoreTitleLength(title);
   const keywordScore = scoreKeywordUsage(title, description, keywords);
   const descScore = scoreDescription(description);
@@ -86,6 +100,20 @@ export async function POST(request: NextRequest) {
   const keywords: string[] = Array.isArray(body.keywords) ? body.keywords : (body.keywords || '').split(/[,;\n]/).map((k: string) => k.trim()).filter(Boolean);
   const category = (body.category || '').trim();
   const thumbnailScore = typeof body.thumbnailScore === 'number' ? body.thumbnailScore : 70;
+
+  const hasAnyInput = title.length > 0 || description.length > 0 || keywords.length > 0;
+  if (!hasAnyInput) {
+    return NextResponse.json({
+      seoScore: 0,
+      breakdown: {
+        titleLength: { score: 0, label: 'Title dalen' },
+        keywordUsage: { score: 0, label: 'Keywords dalen' },
+        description: { score: 0, label: 'Description dalen' },
+        category: { score: 0, label: 'Category optional' },
+        thumbnail: { score: 0, label: 'Thumbnail optional' },
+      },
+    });
+  }
 
   const titleScore = scoreTitleLength(title);
   const keywordScore = scoreKeywordUsage(title, description, keywords);

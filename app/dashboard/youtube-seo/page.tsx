@@ -300,7 +300,13 @@ export default function YouTubeLiveSEOPage() {
     check();
   }, []);
 
+  const hasAnyInput = Boolean(title.trim() || description.trim() || keywords.trim());
+
   const fetchSeo = useCallback(async () => {
+    if (!hasAnyInput) {
+      setSeoData(null);
+      return;
+    }
     setLoadingSeo(true);
     try {
       const thumbScore = thumbnailScore?.score ?? 70;
@@ -321,7 +327,7 @@ export default function YouTubeLiveSEOPage() {
     } finally {
       setLoadingSeo(false);
     }
-  }, [title, description, keywords, category, thumbnailScore?.score]);
+  }, [title, description, keywords, category, thumbnailScore?.score, hasAnyInput]);
 
   const fetchKeywords = useCallback(async () => {
     const kw = keywords.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean)[0] || '';
@@ -377,6 +383,10 @@ export default function YouTubeLiveSEOPage() {
   }, [keywords, title, contentType]);
 
   const fetchCtr = useCallback(async () => {
+    if (!hasAnyInput) {
+      setCtrData(null);
+      return;
+    }
     setLoadingCtr(true);
     try {
       const res = await axios.post(
@@ -397,7 +407,7 @@ export default function YouTubeLiveSEOPage() {
     } finally {
       setLoadingCtr(false);
     }
-  }, [title, keywords, thumbnailScore?.score, thumbnailScore?.colorContrast, thumbnailScore?.faceDetection, thumbnailScore?.textReadability]);
+  }, [title, keywords, thumbnailScore?.score, thumbnailScore?.colorContrast, thumbnailScore?.faceDetection, thumbnailScore?.textReadability, hasAnyInput]);
 
   const fetchTitleScore = useCallback(async () => {
     if (!title.trim()) {
@@ -421,39 +431,63 @@ export default function YouTubeLiveSEOPage() {
 
   useEffect(() => {
     if (!allowed) return;
+    if (!hasAnyInput) {
+      setSeoData(null);
+      return;
+    }
     const t = setTimeout(fetchSeo, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, title, description, keywords, category, thumbnailScore?.score, fetchSeo]);
+  }, [allowed, hasAnyInput, title, description, keywords, category, thumbnailScore?.score, fetchSeo]);
 
   useEffect(() => {
     if (!allowed) return;
+    if (!hasAnyInput) {
+      setKeywordData(null);
+      return;
+    }
     const t = setTimeout(fetchKeywords, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, keywords, title, fetchKeywords]);
+  }, [allowed, hasAnyInput, keywords, title, fetchKeywords]);
 
   useEffect(() => {
     if (!allowed) return;
+    if (!hasAnyInput) {
+      setTitleScoreData(null);
+      return;
+    }
     const t = setTimeout(fetchTitleScore, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, title, keywords, fetchTitleScore]);
+  }, [allowed, hasAnyInput, title, keywords, fetchTitleScore]);
 
   useEffect(() => {
     if (!allowed) return;
+    if (!hasAnyInput) {
+      setDescriptions([]);
+      return;
+    }
     const t = setTimeout(fetchDescriptions, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, title, keywords, category, fetchDescriptions]);
+  }, [allowed, hasAnyInput, title, keywords, category, fetchDescriptions]);
 
   useEffect(() => {
     if (!allowed) return;
+    if (!hasAnyInput) {
+      setHashtags([]);
+      return;
+    }
     const t = setTimeout(fetchHashtags, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, keywords, title, fetchHashtags]);
+  }, [allowed, hasAnyInput, keywords, title, fetchHashtags]);
 
   useEffect(() => {
     if (!allowed) return;
+    if (!hasAnyInput) {
+      setCtrData(null);
+      return;
+    }
     const t = setTimeout(fetchCtr, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, title, keywords, thumbnailScore?.score, thumbnailScore?.colorContrast, thumbnailScore?.faceDetection, thumbnailScore?.textReadability, fetchCtr]);
+  }, [allowed, hasAnyInput, title, keywords, thumbnailScore?.score, thumbnailScore?.colorContrast, thumbnailScore?.faceDetection, thumbnailScore?.textReadability, fetchCtr]);
 
   const addKeywordToField = (kw: string) => {
     const current = keywords.trim() ? keywords.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean) : [];
@@ -506,6 +540,7 @@ export default function YouTubeLiveSEOPage() {
       const res = await axios.post('/api/youtube/video-analyze', fd, { headers: getAuthHeaders() });
       const sug = res.data.suggestions;
       const fromTranscript = res.data.fromTranscript === true;
+      const transcriptText = res.data.transcript || '';
       if (sug) {
         setVideoSuggestions(sug);
         setTitle(sug.title || title);
@@ -513,12 +548,13 @@ export default function YouTubeLiveSEOPage() {
         setKeywords(sug.keywords?.length ? sug.keywords.join(', ') : keywords);
         const hashStr = sug.hashtags?.length ? sug.hashtags.join(' ') : '';
         if (hashStr) setDescription((d) => (d ? `${d}\n\n${hashStr}` : hashStr));
+        if (transcriptText) setChinkiInput(transcriptText);
         setChinkiMessages((m) => [
           ...m,
           {
             role: 'chinki' as const,
             text: fromTranscript
-              ? `Maine video ka content sun kar analyze kiya. Jo baatein video me hui hain unke hisaab se title, keywords, description aur viral hashtags suggest kiye—sab form me add kar diye. Chinki se aur viral tips pooch sakte ho!`
+              ? `Maine video ka content sun kar analyze kiya. Jo baatein video me hui hain unke hisaab se title, keywords, description aur viral hashtags suggest kiye—sab form me add kar diye. Transcript Chinki ke textbox me hai; usi text ke hisaab se sab set ho chuka hai. Chinki se aur viral tips pooch sakte ho!`
               : `Maine aapki video analyze kar li. Title, description, keywords aur hashtags suggest kiye hain—sab form me add kar diye. (OpenAI key set karein to video ki audio se bhi exact content pe title/description banege.) Koi change chahiye ho to batao!`,
           },
         ]);
@@ -589,13 +625,15 @@ export default function YouTubeLiveSEOPage() {
     ? Object.entries(seoData.breakdown).map(([name, v]) => ({ name: name.replace(/([A-Z])/g, ' $1').trim(), score: v.score }))
     : [];
 
-  const viralProbability = (() => {
-    const s = seoData?.seoScore ?? 50;
-    const t = titleScoreData?.titleScore ?? 50;
-    const k = keywordData?.analysis?.seoScore ?? 50;
-    const th = thumbnailScore?.score ?? 70;
-    return Math.min(99, Math.round((s * 0.35 + t * 0.25 + k * 0.2 + th * 0.2)));
-  })();
+  const viralProbability = !hasAnyInput
+    ? 0
+    : (() => {
+        const s = seoData?.seoScore ?? 50;
+        const t = titleScoreData?.titleScore ?? 50;
+        const k = keywordData?.analysis?.seoScore ?? 50;
+        const th = thumbnailScore?.score ?? 70;
+        return Math.min(99, Math.round((s * 0.35 + t * 0.25 + k * 0.2 + th * 0.2)));
+      })();
 
   if (allowed === null) {
     return (
@@ -1239,7 +1277,7 @@ export default function YouTubeLiveSEOPage() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Hash className="w-5 h-5" /> 100 Viral Keywords
               </h2>
-              <p className="text-xs text-[#888] mb-3">Har keyword ke saath score % dikhta hai. Click karke Keywords section me add karein.</p>
+              <p className="text-xs text-[#888] mb-3">Title, keyword ya description ke hisaab se viral keywords. Har keyword ke saath score % dikhta hai. Click karke Keywords section me add karein.</p>
 
               {/* Hints — kaun se keywords dalne se viral hoga */}
               {(keywordData?.viralKeywords?.length || 0) > 0 && (
@@ -1276,7 +1314,7 @@ export default function YouTubeLiveSEOPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-[#666] text-sm">Koi bhi keyword type karein (title ya tags), viral keywords load honge.</p>
+                <p className="text-[#666] text-sm">Title, keyword ya description bharein — 100 viral keywords isi ke hisaab se dikhenge.</p>
               )}
               {keywordData?.analysis && (
                 <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-[#333] text-sm">
@@ -1389,7 +1427,7 @@ export default function YouTubeLiveSEOPage() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <FileText className="w-5 h-5" /> 5 Automatic descriptions {contentType !== 'video' && `(${contentType === 'short' ? 'Short' : 'Live Stream'})`}
               </h2>
-              <p className="text-xs text-[#888] mb-3">Click karke description section me add ho jayega. Score SEO ke hisab se.</p>
+              <p className="text-xs text-[#888] mb-3">Title, keyword aur description ke hisaab se 5 descriptions. Click karke description section me add ho jayega. Score SEO ke hisaab se.</p>
               {loadingDescriptions ? (
                 <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
               ) : descriptions.length > 0 ? (
@@ -1408,7 +1446,7 @@ export default function YouTubeLiveSEOPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-[#666] text-sm">Title ya keywords bharein, 5 descriptions generate honge.</p>
+                <p className="text-[#666] text-sm">Title, keyword ya description bharein — 5 automatic descriptions usi ke hisaab se likhi jayengi.</p>
               )}
             </div>
 
@@ -1522,7 +1560,7 @@ export default function YouTubeLiveSEOPage() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Upload className="w-5 h-5" /> Video upload
               </h2>
-              <p className="text-xs text-[#888] mb-3">Pehle video choose karein—video play hoga. Phir &quot;Analyze&quot; dabayein: video me jo baatein hain unse title, video type se keywords, title+keyword+content se description, topic se hashtags banenge. Chinki viral tips bhi degi.</p>
+              <p className="text-xs text-[#888] mb-3">Video choose karein, phir &quot;Analyze&quot; dabayein. Video me jo voice/baatein hain, pehle Chinki ke textbox me transcript type hoga; usi text ke hisaab se title, keyword, hashtag aur description form me set ho jayenge. Chinki viral tips bhi degi.</p>
               {!videoPreviewUrl ? (
                 <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[#333] rounded-lg cursor-pointer hover:bg-[#212121] transition">
                   <input type="file" accept="video/*" className="hidden" onChange={onVideoSelect} disabled={videoAnalyzing} />
@@ -1560,7 +1598,7 @@ export default function YouTubeLiveSEOPage() {
                 </div>
               )}
               {videoSuggestions && (
-                <p className="text-sm text-emerald-400 mt-2">Suggestions form me add ho chuke hain. Chinki se viral tips pooch sakte ho.</p>
+                <p className="text-sm text-emerald-400 mt-2">Transcript Chinki ke textbox me hai; title, keyword, hashtag aur description usi ke hisaab se set ho chuke hain. Chinki se viral tips pooch sakte ho.</p>
               )}
             </div>
 

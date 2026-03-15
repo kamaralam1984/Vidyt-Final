@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         suggestions: fallback,
         message: 'Config unavailable. Using default suggestions.',
+        transcript: undefined,
       });
     }
 
@@ -146,6 +147,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
         return NextResponse.json({
           suggestions: fallback,
           message: 'AI suggestion failed. Using default suggestions. Check your OpenAI key in Super Admin.',
+          transcript: transcript || undefined,
         });
       }
     } else if (config.googleGeminiApiKey?.trim()) {
@@ -157,6 +159,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
         return NextResponse.json({
           suggestions: fallback,
           message: 'AI suggestion failed. Using default suggestions. Check your Gemini key in Super Admin.',
+          transcript: transcript || undefined,
         });
       }
     } else {
@@ -164,6 +167,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
       return NextResponse.json({
         suggestions: fallback,
         message: 'Set OpenAI or Gemini in Super Admin for AI-powered suggestions.',
+        transcript: undefined,
       });
     }
 
@@ -171,6 +175,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
     return NextResponse.json({
       suggestions,
       fromTranscript: hasContent,
+      transcript: transcript || undefined,
     });
   } catch (e) {
     console.error('Video analyze error:', e);
@@ -179,6 +184,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
     return NextResponse.json({
       suggestions: fallback,
       message: 'Something went wrong. Using default suggestions.',
+      transcript: undefined,
     });
   }
 }
