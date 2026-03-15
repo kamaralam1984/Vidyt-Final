@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import {
   Loader2,
@@ -30,6 +31,8 @@ import {
   LogOut,
   Settings,
   Key,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { removeToken } from '@/utils/auth';
 
@@ -81,6 +84,9 @@ export default function SuperAdminPage() {
   const [notifySubject, setNotifySubject] = useState('');
   const [notifyMessage, setNotifyMessage] = useState('');
   const [notifySending, setNotifySending] = useState(false);
+  const [openUserManagement, setOpenUserManagement] = useState(true);
+  const [openAiStudio, setOpenAiStudio] = useState(true);
+  const [openSaaS, setOpenSaaS] = useState(true);
   const tableLimit = 20;
 
   const handleSendNotification = async (e: React.FormEvent) => {
@@ -454,139 +460,189 @@ export default function SuperAdminPage() {
             <p className="text-xs text-[#888]">SaaS Control Center</p>
           </div>
         </div>
-        <nav className="flex-1 px-2 py-4 space-y-1 text-sm overflow-y-auto">
-          <p className="px-3 py-1.5 text-xs font-semibold text-[#666] uppercase tracking-wider">User management</p>
+        <nav className="flex-1 px-2 py-4 space-y-0 text-sm overflow-y-auto">
+          {/* User Management — sliding section */}
+          <div className="mb-1">
+            <button
+              type="button"
+              onClick={() => setOpenUserManagement((o) => !o)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] text-left"
+            >
+              <span className="text-xs font-semibold text-[#888] uppercase tracking-wider">User management</span>
+              {openUserManagement ? <ChevronDown className="w-4 h-4 text-[#666]" /> : <ChevronRight className="w-4 h-4 text-[#666]" />}
+            </button>
+            <AnimatePresence initial={false}>
+              {openUserManagement && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-0.5 pl-1 pb-2">
+                    <button
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'users' ? 'bg-[#212121] text-white' : ''}`}
+                      onClick={() => {
+                        setViewMode('users');
+                        setLoading(true);
+                        setAccessDenied(false);
+                        document.getElementById('users-main')?.scrollIntoView({ behavior: 'smooth' });
+                        fetchUsers();
+                      }}
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Users</span>
+                    </button>
+                    <button
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'tables' ? 'bg-[#212121] text-white' : ''}`}
+                      onClick={() => {
+                        setViewMode('tables');
+                        fetchCollections();
+                      }}
+                    >
+                      <Database className="w-4 h-4" />
+                      <span>Database Tables</span>
+                    </button>
+                    <button
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'aiStudio' ? 'bg-[#212121] text-white' : ''}`}
+                      onClick={() => setViewMode('aiStudio')}
+                    >
+                      <Wand2 className="w-4 h-4" />
+                      <span>AI Studio Access</span>
+                    </button>
+                    <button
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'apiConfig' ? 'bg-[#212121] text-white' : ''}`}
+                      onClick={() => setViewMode('apiConfig')}
+                    >
+                      <Key className="w-4 h-4" />
+                      <span>API Config</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* AI Studio — sliding section */}
+          <div className="mb-1">
+            <button
+              type="button"
+              onClick={() => setOpenAiStudio((o) => !o)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] text-left"
+            >
+              <span className="text-xs font-semibold text-[#888] uppercase tracking-wider">AI Studio</span>
+              {openAiStudio ? <ChevronDown className="w-4 h-4 text-[#666]" /> : <ChevronRight className="w-4 h-4 text-[#666]" />}
+            </button>
+            <AnimatePresence initial={false}>
+              {openAiStudio && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-0.5 pl-1 pb-2">
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/script-generator')}>
+                      <span className="text-[#FF0000]">•</span>
+                      <span>Script Generator</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/thumbnail-generator')}>
+                      <span className="text-[#FF0000]">•</span>
+                      <span>Thumbnail Generator</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/hook-generator')}>
+                      <span className="text-[#FF0000]">•</span>
+                      <span>Hook Generator</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/shorts-creator')}>
+                      <span className="text-[#FF0000]">•</span>
+                      <span>Shorts Creator</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/tools/youtube-growth')}>
+                      <span className="text-[#FF0000]">•</span>
+                      <span>YouTube Growth</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/dashboard/youtube-seo')}>
+                      <span className="text-[#FF0000]">•</span>
+                      <span>YouTube Live SEO Analyzer</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* SaaS — sliding section */}
+          <div className="mb-1">
+            <button
+              type="button"
+              onClick={() => setOpenSaaS((o) => !o)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] text-left"
+            >
+              <span className="text-xs font-semibold text-[#888] uppercase tracking-wider">SaaS</span>
+              {openSaaS ? <ChevronDown className="w-4 h-4 text-[#666]" /> : <ChevronRight className="w-4 h-4 text-[#666]" />}
+            </button>
+            <AnimatePresence initial={false}>
+              {openSaaS && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-0.5 pl-1 pb-2">
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/dashboard/super')}>
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span>Super Admin</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/videos')}>
+                      <Video className="w-4 h-4" />
+                      <span>My Videos</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/dashboard/viral-optimizer')}>
+                      <Wand2 className="w-4 h-4" />
+                      <span>AI Viral Optimization Engine</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/channel-audit')}>
+                      <MonitorPlay className="w-4 h-4" />
+                      <span>Channel Audit</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/facebook-audit')}>
+                      <Facebook className="w-4 h-4" />
+                      <span>Facebook Audit</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/trending')}>
+                      <Flame className="w-4 h-4" />
+                      <span>Trending</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/hashtags')}>
+                      <HashIcon className="w-4 h-4" />
+                      <span>Hashtags</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/posting-time')}>
+                      <Clock4 className="w-4 h-4" />
+                      <span>Posting Time</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/analytics')}>
+                      <BarChart3 className="w-4 h-4" />
+                      <span>Analytics</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/calendar')}>
+                      <CalendarDays className="w-4 h-4" />
+                      <span>Content Calendar</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <button
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'users' ? 'bg-[#212121] text-white' : ''}`}
-            onClick={() => {
-              setViewMode('users');
-              setLoading(true);
-              setAccessDenied(false);
-              document.getElementById('users-main')?.scrollIntoView({ behavior: 'smooth' });
-              fetchUsers();
-            }}
-          >
-            <Users className="w-4 h-4" />
-            <span>Users</span>
-          </button>
-          <button
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'tables' ? 'bg-[#212121] text-white' : ''}`}
-            onClick={() => {
-              setViewMode('tables');
-              fetchCollections();
-            }}
-          >
-            <Database className="w-4 h-4" />
-            <span>Database Tables</span>
-          </button>
-          <button
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'aiStudio' ? 'bg-[#212121] text-white' : ''}`}
-            onClick={() => setViewMode('aiStudio')}
-          >
-            <Wand2 className="w-4 h-4" />
-            <span>AI Studio Access</span>
-          </button>
-          <button
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'apiConfig' ? 'bg-[#212121] text-white' : ''}`}
-            onClick={() => setViewMode('apiConfig')}
-          >
-            <Key className="w-4 h-4" />
-            <span>API Config</span>
-          </button>
-          <p className="px-3 py-1.5 mt-4 text-xs font-semibold text-[#666] uppercase tracking-wider">AI Studio</p>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/script-generator')}>
-            <span className="text-[#FF0000]">•</span>
-            <span>Script Generator</span>
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/thumbnail-generator')}>
-            <span className="text-[#FF0000]">•</span>
-            <span>Thumbnail Generator</span>
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/hook-generator')}>
-            <span className="text-[#FF0000]">•</span>
-            <span>Hook Generator</span>
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/ai/shorts-creator')}>
-            <span className="text-[#FF0000]">•</span>
-            <span>Shorts Creator</span>
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/tools/youtube-growth')}>
-            <span className="text-[#FF0000]">•</span>
-            <span>YouTube Growth</span>
-          </button>
-          <p className="px-3 py-1.5 mt-4 text-xs font-semibold text-[#666] uppercase tracking-wider">SaaS</p>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/dashboard/super')}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Super Admin</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/videos')}
-          >
-            <Video className="w-4 h-4" />
-            <span>My Videos</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/viral-optimizer')}
-          >
-            <Wand2 className="w-4 h-4" />
-            <span>Viral Optimizer</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/channel-audit')}
-          >
-            <MonitorPlay className="w-4 h-4" />
-            <span>Channel Audit</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/facebook-audit')}
-          >
-            <Facebook className="w-4 h-4" />
-            <span>Facebook Audit</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/trending')}
-          >
-            <Flame className="w-4 h-4" />
-            <span>Trending</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/hashtags')}
-          >
-            <HashIcon className="w-4 h-4" />
-            <span>Hashtags</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/posting-time')}
-          >
-            <Clock4 className="w-4 h-4" />
-            <span>Posting Time</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/analytics')}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>Analytics</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
-            onClick={() => router.push('/calendar')}
-          >
-            <CalendarDays className="w-4 h-4" />
-            <span>Content Calendar</span>
-          </button>
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] mt-4 border-t border-[#212121] pt-4"
+            type="button"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] mt-2 border-t border-[#212121] pt-3"
             onClick={() => {
               removeToken();
               if (typeof window !== 'undefined') localStorage.removeItem('uniqueId');
@@ -702,7 +758,7 @@ export default function SuperAdminPage() {
               <Settings className="w-8 h-8 text-[#FF0000]" />
               <div>
                 <h1 className="text-2xl font-bold">API Config</h1>
-                <p className="text-sm text-[#AAAAAA]">API keys yahan set karein. Pehle DB use hoga, nahi to env. Sabhi themes YouTube style (dark) rahenge.</p>
+                <p className="text-sm text-[#AAAAAA]">API keys yahan set karein — DB me save honge aur .env se override karenge. Agar yahan set nahi kiye to .env (e.g. YOUTUBE_API_KEY, RESEND_API_KEY, GEMINI_API_KEY) use hoga.</p>
               </div>
             </div>
             {apiConfigLoading ? (
@@ -741,11 +797,11 @@ export default function SuperAdminPage() {
                 }}
               >
                 {[
-                  { key: 'youtubeDataApiKey', label: 'YouTube Data API v3', hint: 'Video + growth real data. Google Cloud Console se key.', statusKey: 'youtube' },
+                  { key: 'youtubeDataApiKey', label: 'YouTube Data API v3', hint: 'Channel summary, competitors, videos — jo user puchenge Chinki turant bata payegi. Google Cloud Console se key.', statusKey: 'youtube' },
                   { key: 'resendApiKey', label: 'Resend API Key', hint: 'Reliable emails (OTP, receipts, broadcast).', statusKey: 'resend' },
                   { key: 'openaiApiKey', label: 'OpenAI API Key', hint: 'AI Studio + Whisper captions.', statusKey: 'openai' },
                   { key: 'assemblyaiApiKey', label: 'AssemblyAI API Key', hint: 'Auto captions (Shorts) – OpenAI alternative.', statusKey: 'assemblyai' },
-                  { key: 'googleGeminiApiKey', label: 'Google Gemini API Key', hint: 'AI Studio fallback when OpenAI na ho.', statusKey: 'gemini' },
+                  { key: 'googleGeminiApiKey', label: 'Google Gemini API Key', hint: 'Chinki isi se baat karti hai (AI reply). OpenAI optional; Gemini set karein to Chinki turant jawab degi.', statusKey: 'gemini' },
                   { key: 'sentryDsn', label: 'Sentry DSN (client)', hint: 'Frontend error tracking.', statusKey: 'sentry' },
                   { key: 'sentryServerDsn', label: 'Sentry Server DSN', hint: 'Backend error tracking.', statusKey: 'sentry' },
                   { key: 'stripeSecretKey', label: 'Stripe Secret Key', hint: 'International payments.', statusKey: 'stripe' },

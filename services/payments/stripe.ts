@@ -10,6 +10,8 @@
 //   apiVersion: '2024-06-20',
 // });
 
+import { getPlanRoll, getSubscriptionLimitsForApi } from '@/lib/planLimits';
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -24,6 +26,7 @@ export interface SubscriptionPlan {
   };
 }
 
+/** Subscription plans: prices from pricing page; features and limits from plan roll. */
 export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   free: {
     id: 'free',
@@ -31,66 +34,35 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
     price: 0,
     currency: 'USD',
     interval: 'month',
-    features: [
-      '5 video analyses per month',
-      'Basic viral score prediction',
-      'Thumbnail analysis',
-      'Title optimization (3 suggestions)',
-      'Hashtag generator (10 hashtags)',
-      'Community support',
-    ],
-    limits: {
-      videos: 5,
-      analyses: 5,
-      competitors: 3,
-    },
+    features: getPlanRoll('free').featureList,
+    limits: (() => {
+      const L = getSubscriptionLimitsForApi('free');
+      return { videos: L.videos, analyses: L.analyses, competitors: L.competitors };
+    })(),
   },
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 29,
+    price: 5,
     currency: 'USD',
     interval: 'month',
-    features: [
-      'Unlimited video analyses',
-      'Advanced AI viral prediction',
-      'Real-time trend analysis',
-      'Title optimization (10 suggestions)',
-      'Hashtag generator (20 hashtags)',
-      'Best posting time predictions',
-      'Competitor analysis',
-      'Email support',
-      'Priority processing',
-    ],
-    limits: {
-      videos: 1000,
-      analyses: 1000,
-      competitors: 50,
-    },
+    features: getPlanRoll('pro').featureList,
+    limits: (() => {
+      const L = getSubscriptionLimitsForApi('pro');
+      return { videos: L.videos, analyses: L.analyses, competitors: L.competitors };
+    })(),
   },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 5,
+    price: 12,
     currency: 'USD',
     interval: 'month',
-    features: [
-      'Everything in Pro',
-      'Team collaboration (up to 10 users)',
-      'White-label reports',
-      'API access',
-      'Custom AI model training',
-      'Dedicated account manager',
-      '24/7 priority support',
-      'Advanced analytics dashboard',
-      'Bulk video processing',
-      'Custom integrations',
-    ],
-    limits: {
-      videos: -1,
-      analyses: -1,
-      competitors: -1,
-    },
+    features: getPlanRoll('enterprise').featureList,
+    limits: (() => {
+      const L = getSubscriptionLimitsForApi('enterprise');
+      return { videos: L.videos, analyses: L.analyses, competitors: L.competitors };
+    })(),
   },
 };
 
@@ -154,10 +126,15 @@ export async function handleStripeWebhook(event: any): Promise<void> {
 }
 
 /**
- * Get subscription limits for user
+ * Get subscription limits for user (from plan roll).
  */
 export function getSubscriptionLimits(planId: string): SubscriptionPlan['limits'] {
-  return SUBSCRIPTION_PLANS[planId]?.limits || SUBSCRIPTION_PLANS.free.limits;
+  const api = getSubscriptionLimitsForApi(planId || 'free');
+  return {
+    videos: api.videos,
+    analyses: api.analyses,
+    competitors: api.competitors,
+  };
 }
 
 /**

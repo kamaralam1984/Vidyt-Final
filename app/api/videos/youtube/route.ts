@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Video from '@/models/Video';
 import User from '@/models/User';
-import { getUserFromRequest, checkSubscriptionLimit } from '@/lib/auth';
+import { getUserFromRequest } from '@/lib/auth';
+import { checkAnalysisLimit } from '@/lib/usageCheck';
+import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { extractYouTubeMetadata } from '@/services/youtube';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
 import { analyzeThumbnailReal } from '@/services/ai/thumbnailAnalysis';
@@ -47,11 +49,26 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     const { youtubeUrl, userId } = body;
-    
+
     if (!youtubeUrl) {
       return NextResponse.json({ error: 'YouTube URL is required' }, { status: 400 });
     }
-    
+
+    const planId = authUser.subscription || 'free';
+    const limitResult = await checkAnalysisLimit(authUser.id, planId);
+    if (!limitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Usage limit reached',
+          message: limitResult.message,
+          used: limitResult.used,
+          limit: limitResult.limit,
+          period: limitResult.period,
+        },
+        { status: 403 }
+      );
+    }
+
     // Use authenticated user ID (required)
     const finalUserId = authUser.id;
     
@@ -105,7 +122,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    const titleSuggestionsLimit = (authUser.subscription === 'pro' || authUser.subscription === 'enterprise') ? 10 : 3;
+    const titleSuggestionsLimit = getTitleSuggestionsCount(planId);
     let titleAnalysis;
     try {
       titleAnalysis = analyzeTitle(metadata.title, { maxSuggestions: titleSuggestionsLimit });
@@ -153,7 +170,7 @@ export async function POST(request: NextRequest) {
     // Generate hashtags
     let hashtags: string[] = [];
     try {
-      hashtags = await generateHashtags(titleAnalysis, metadata.description, metadata.hashtags);
+      hashtags = await generateHashtags(titleAnalysis, metadata.description, metadata.hashtags, getHashtagCount(planId));
     } catch (error: any) {
       console.error('Hashtag generation error:', error);
       hashtags = metadata.hashtags.map(tag => `#${tag}`);

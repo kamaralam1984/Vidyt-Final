@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         user.name || undefined,
         {
           planName: plan.planName || plan.planId || user.subscription,
-          amount: plan.price ?? (user.subscription === 'pro' ? 2.5 : 5),
+          amount: plan.price ?? (user.subscription === 'pro' ? 5 : 12),
           currency: plan.currency || 'USD',
           billingPeriod: plan.billingPeriod || 'month',
           startDate: startDate instanceof Date ? startDate : new Date(startDate),

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
 import TrendingTopics from '@/components/TrendingTopics';
+import { getAuthHeaders } from '@/utils/auth';
 import { TrendingUp, Flame, Youtube, Facebook, Instagram } from 'lucide-react';
 
 export default function TrendingPage() {
@@ -21,10 +22,13 @@ export default function TrendingPage() {
   const fetchTrendingTopics = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`/api/trending?platform=${platform}`);
+      const response = await axios.get(`/api/trending?platform=${platform}`, {
+        headers: getAuthHeaders(),
+      });
       setTrendingTopics(response.data.trendingTopics || []);
     } catch (error) {
       console.error('Error fetching trending topics:', error);
+      setTrendingTopics([]);
     } finally {
       setLoading(false);
     }
@@ -93,8 +97,20 @@ export default function TrendingPage() {
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
               <p className="mt-4 text-[#AAAAAA]">Loading trending topics...</p>
             </div>
-          ) : (
+          ) : trendingTopics.length > 0 ? (
             <TrendingTopics topics={trendingTopics} />
+          ) : (
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-8 text-center">
+              <Flame className="w-12 h-12 text-[#666] mx-auto mb-3" />
+              <p className="text-[#AAAAAA] mb-4">No trending topics loaded. Make sure you&apos;re logged in, then try again.</p>
+              <button
+                type="button"
+                onClick={() => fetchTrendingTopics()}
+                className="px-4 py-2 bg-[#FF0000] hover:bg-[#CC0000] text-white rounded-lg font-medium"
+              >
+                Retry
+              </button>
+            </div>
           )}
         </motion.div>
       </div>

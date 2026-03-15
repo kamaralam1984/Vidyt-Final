@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAIStudioAccess } from '@/lib/aiStudioAccess';
 import { cutSegment } from '@/lib/videoShorts';
+import { downloadYouTubeToFile } from '@/services/youtube';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -15,22 +16,27 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('video') as File | null;
+    const youtubeUrl = (formData.get('youtubeUrl') as string)?.trim() || '';
     const startTime = parseFloat(String(formData.get('startTime') ?? ''));
     const endTime = parseFloat(String(formData.get('endTime') ?? ''));
 
-    if (!file || file.size === 0) {
-      return NextResponse.json({ error: 'Video file required' }, { status: 400 });
-    }
     if (isNaN(startTime) || isNaN(endTime) || endTime <= startTime) {
       return NextResponse.json({ error: 'Valid startTime and endTime required' }, { status: 400 });
     }
 
-    const ext = path.extname(file.name) || '.mp4';
-    tmpInput = path.join(os.tmpdir(), `cut-in-${Date.now()}${ext}`);
-    tmpOutput = path.join(os.tmpdir(), `cut-out-${Date.now()}.mp4`);
+    if (file && file.size > 0) {
+      const ext = path.extname(file.name) || '.mp4';
+      tmpInput = path.join(os.tmpdir(), `cut-in-${Date.now()}${ext}`);
+      const buf = await file.arrayBuffer();
+      await fs.writeFile(tmpInput, new Uint8Array(buf));
+    } else if (youtubeUrl && (youtubeUrl.includes('youtube.com') || youtubeUrl.includes('youtu.be'))) {
+      tmpInput = path.join(os.tmpdir(), `cut-yt-${Date.now()}.mp4`);
+      await downloadYouTubeToFile(youtubeUrl, tmpInput);
+    } else {
+      return NextResponse.json({ error: 'Video file ya YouTube link required' }, { status: 400 });
+    }
 
-    const buf = await file.arrayBuffer();
-    await fs.writeFile(tmpInput, new Uint8Array(buf));
+    tmpOutput = path.join(os.tmpdir(), `cut-out-${Date.now()}.mp4`);
     await cutSegment(tmpInput, startTime, endTime, tmpOutput);
 
     const clipBuffer = await fs.readFile(tmpOutput);
@@ -48,12 +54,10 @@ export async function POST(request: NextRequest) {
         'Content-Length': String(clipBuffer.length),
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (tmpInput) await fs.unlink(tmpInput).catch(() => {});
     if (tmpOutput) await fs.unlink(tmpOutput).catch(() => {});
-    return NextResponse.json(
-      { error: e.message || 'Cut failed. Is ffmpeg installed?' },
-      { status: 500 }
-    );
+    const msg = e instanceof Error ? e.message : 'Cut failed. Is ffmpeg installed?';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

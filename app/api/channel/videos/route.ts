@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { getApiConfig } from '@/lib/apiConfig';
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,8 +82,9 @@ async function fetchVideosFromRSS(channelId: string): Promise<string[]> {
   try {
     console.log('Fetching videos for channel ID:', channelId);
     
-    // Method 1: Try YouTube Data API v3 (if API key is available)
-    const apiKey = process.env.YOUTUBE_API_KEY;
+    // Method 1: Try YouTube Data API v3 (API Config DB or env)
+    const config = await getApiConfig();
+    const apiKey = config.youtubeDataApiKey?.trim();
     if (apiKey) {
       console.log('Trying YouTube Data API v3...');
       try {

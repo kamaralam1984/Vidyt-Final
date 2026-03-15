@@ -15,14 +15,15 @@ import {
   Sparkles,
   Target,
   Facebook,
+  Instagram,
   Calendar,
   Menu,
   X,
-  User,
   FileText,
   Image,
   Zap,
   Film,
+  Search,
 } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
 
@@ -35,51 +36,16 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProps) {
   const pathname = usePathname();
-  const [userRole, setUserRole] = useState<string>('');
-  const [userUniqueId, setUserUniqueId] = useState<string>('');
-  const [userName, setUserName] = useState<string>('');
-  const [planName, setPlanName] = useState<string>('Free');
-  const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [aiStudioAllowed, setAiStudioAllowed] = useState(false);
 
   useEffect(() => {
-    const fetchUserInfo = async () => {
+    const fetchAiStudioAccess = async () => {
       try {
-        const response = await axios.get('/api/auth/me', {
-          headers: getAuthHeaders(),
-        });
+        const response = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
         if (response.data.user) {
           const u = response.data.user;
-          setUserRole(u.role || 'user');
-          setUserName(u.name || '');
           const uniqueId = u.uniqueId || localStorage.getItem('uniqueId');
-          if (uniqueId) {
-            setUserUniqueId(uniqueId);
-            localStorage.setItem('uniqueId', uniqueId);
-          }
-          // Plan: subscriptionPlan.planName or subscription
-          const subPlan = u.subscriptionPlan;
-          const sub = u.subscription;
-          if (subPlan?.planName) {
-            setPlanName(subPlan.planName);
-          } else if (sub === 'pro') {
-            setPlanName('Pro');
-          } else if (sub === 'enterprise') {
-            setPlanName('Enterprise');
-          } else {
-            setPlanName('Free');
-          }
-          // Days left: subscriptionPlan.endDate or subscriptionExpiresAt
-          const endDate = subPlan?.endDate ? new Date(subPlan.endDate) : (u.subscriptionExpiresAt ? new Date(u.subscriptionExpiresAt) : null);
-          if (endDate && !isNaN(endDate.getTime())) {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            endDate.setHours(0, 0, 0, 0);
-            const diff = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-            setDaysLeft(diff);
-          } else {
-            setDaysLeft(null);
-          }
+          if (uniqueId) localStorage.setItem('uniqueId', uniqueId);
           try {
             const featRes = await axios.get('/api/features/ai-studio', { headers: getAuthHeaders() });
             setAiStudioAllowed(!!featRes.data?.allowed);
@@ -87,11 +53,11 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
             setAiStudioAllowed(false);
           }
         }
-      } catch (error) {
-        console.error('Error fetching user info:', error);
+      } catch (_) {
+        setAiStudioAllowed(false);
       }
     };
-    fetchUserInfo();
+    fetchAiStudioAccess();
   }, []);
   const aiStudioItems = [
     { icon: FileText, label: 'Script Generator', href: '/ai/script-generator' },
@@ -103,7 +69,10 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
   const menuItems = [
     { icon: Home, label: 'Dashboard', href: '/dashboard' },
     { icon: Video, label: 'My Videos', href: '/videos' },
-    { icon: Sparkles, label: 'Viral Optimizer', href: '/viral-optimizer' },
+    { icon: Search, label: 'YouTube Live SEO Analyzer', href: '/dashboard/youtube-seo' },
+    { icon: Facebook, label: 'Facebook SEO Analyzer', href: '/dashboard/facebook-seo' },
+    { icon: Instagram, label: 'Instagram SEO Analyzer', href: '/dashboard/instagram-seo' },
+    { icon: Zap, label: 'AI Viral Optimization Engine', href: '/dashboard/viral-optimizer' },
     { icon: Target, label: 'Channel Audit', href: '/channel-audit' },
     { icon: Facebook, label: 'Facebook Audit', href: '/facebook-audit' },
     { icon: TrendingUp, label: 'Trending', href: '/trending' },
@@ -135,39 +104,6 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
-            {/* User info: name, role, plan, days left */}
-            {(userRole || userName || userUniqueId) && (
-              <div className="px-4 py-3 border-b border-[#212121] flex-shrink-0 space-y-2">
-                {userName && (
-                  <p className="text-sm font-medium text-white truncate" title={userName}>{userName}</p>
-                )}
-                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-semibold ${
-                  userRole === 'admin'
-                    ? 'bg-[#FF0000]/20 text-[#FF0000]'
-                    : userRole === 'manager'
-                    ? 'bg-yellow-400/20 text-yellow-400'
-                    : 'bg-[#212121] text-[#AAAAAA]'
-                }`}>
-                  <User className="w-4 h-4 flex-shrink-0" />
-                  <span>{userRole ? userRole.toUpperCase() : 'USER'}</span>
-                </div>
-                {userUniqueId && (
-                  <p className="text-xs text-[#AAAAAA] font-mono">ID: {userUniqueId}</p>
-                )}
-                <div className="text-xs text-[#AAAAAA] space-y-0.5">
-                  <p><span className="text-[#888]">Plan:</span> <span className="text-white">{planName}</span></p>
-                  {daysLeft !== null && (
-                    <p>
-                      <span className="text-[#888]">Expires:</span>{' '}
-                      <span className={daysLeft <= 0 ? 'text-red-400' : 'text-white'}>
-                        {daysLeft <= 0 ? 'Expired' : daysLeft === 1 ? '1 day left' : `${daysLeft} days left`}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
             <nav className="p-4 flex flex-col flex-1 min-h-0">
               <ul className="space-y-2 flex-1 overflow-y-auto min-h-0">
                 {menuItems.map((item, index) => {

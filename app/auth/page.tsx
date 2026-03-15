@@ -26,7 +26,7 @@ const paidPlans: Plan[] = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 2.5,
+    price: 5,
     period: 'month',
     description: 'For serious creators',
     popular: true,
@@ -45,7 +45,7 @@ const paidPlans: Plan[] = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 5,
+    price: 12,
     period: 'month',
     description: 'For agencies and teams',
     features: [

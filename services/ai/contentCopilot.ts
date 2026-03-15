@@ -1,16 +1,20 @@
 /**
  * AI Content Copilot - Enhanced with Trend Data
- * Helps creators generate ideas, scripts, titles, and optimize content
+ * Uses API Config (DB / env) for OpenAI key so paid API works from website settings.
  */
 
 import OpenAI from 'openai';
+import { getApiConfig } from '@/lib/apiConfig';
 import { discoverTrends } from '@/services/trends/discovery';
 import ViralDataset from '@/models/ViralDataset';
 import connectDB from '@/lib/mongodb';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+async function getOpenAIClient(): Promise<OpenAI | null> {
+  const config = await getApiConfig();
+  const key = config.openaiApiKey?.trim();
+  if (!key) return null;
+  return new OpenAI({ apiKey: key });
+}
 
 export interface ContentIdea {
   title: string;
@@ -59,8 +63,8 @@ export async function generateVideoIdeas(
     console.warn('Failed to fetch trends, using basic generation:', error);
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    // Enhanced fallback with trend data
+  const openai = await getOpenAIClient();
+  if (!openai) {
     return generateEnhancedIdeas(niche, platform, count, trendingTopics);
   }
 
@@ -121,7 +125,8 @@ export async function generateScript(
   duration: number, // in seconds
   platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok'
 ): Promise<Script> {
-  if (!process.env.OPENAI_API_KEY) {
+  const openai = await getOpenAIClient();
+  if (!openai) {
     return generateBasicScript(topic, duration, platform);
   }
 
@@ -184,7 +189,8 @@ export async function optimizeTitle(
     console.warn('Failed to fetch trends for title optimization:', error);
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  const openai = await getOpenAIClient();
+  if (!openai) {
     return generateEnhancedTitles(originalTitle, platform, trendingKeywords);
   }
 
@@ -235,7 +241,8 @@ export async function generateHashtags(
   description: string,
   platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok'
 ): Promise<string[]> {
-  if (!process.env.OPENAI_API_KEY) {
+  const openai = await getOpenAIClient();
+  if (!openai) {
     return generateBasicHashtags(title, description, platform);
   }
 

@@ -21,8 +21,15 @@ import {
   X
 } from 'lucide-react';
 
+const PRICING_PLANS = [
+  { name: 'Free', priceMonth: 0, priceYear: 0, features: ['5 video analyses per month', 'Basic viral score prediction', 'Thumbnail analysis', 'Title optimization (3 suggestions)', 'Hashtag generator (10 hashtags)', 'Community support'] },
+  { name: 'Pro', priceMonth: 5, priceYear: 50, popular: true, features: ['Unlimited video analyses', 'Advanced AI viral prediction', 'Real-time trend analysis', 'Title optimization (10 suggestions)', 'Hashtag generator (20 hashtags)', 'Best posting time predictions', 'Competitor analysis', 'Email support', 'Priority processing'] },
+  { name: 'Enterprise', priceMonth: 12, priceYear: 120, features: ['Everything in Pro', 'Team collaboration (up to 10 users)', 'White-label reports', 'API access', 'Custom AI model training', 'Dedicated account manager', '24/7 priority support', 'Advanced analytics dashboard', 'Bulk video processing', 'Custom integrations'] },
+];
+
 export default function HomePage() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -90,9 +97,12 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="flex justify-center mb-8"
+              className="flex justify-center mb-0"
             >
-              <img src="/logo.png" alt="ViralBoost AI" className="h-26 md:h-30 w-30 object-contain" />
+              {/* Container 80% height = crop bottom 20% of logo */}
+              <div className="overflow-hidden flex justify-center items-start h-[3.8rem] md:h-[5.36rem]">
+                <img src="/logo.png" alt="ViralBoost AI" className="h-20 md:h-30 w-auto object-contain object-top scale-[0.7]" />
+              </div>
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, scale: 0.9 }}
@@ -221,54 +231,76 @@ export default function HomePage() {
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Simple, Transparent <span className="text-[#FF0000]">Pricing</span>
             </h2>
-            <p className="text-xl text-[#AAAAAA] max-w-2xl mx-auto">
+            <p className="text-xl text-[#AAAAAA] max-w-2xl mx-auto mb-8">
               Choose the plan that fits your needs
             </p>
+            {/* Monthly / Yearly Toggle */}
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <span className={`text-sm font-medium ${billingPeriod === 'month' ? 'text-white' : 'text-[#AAAAAA]'}`}>
+                Monthly
+              </span>
+              <button
+                type="button"
+                onClick={() => setBillingPeriod((p) => (p === 'month' ? 'year' : 'month'))}
+                className="relative w-14 h-7 bg-[#212121] rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:ring-offset-2 focus:ring-offset-[#0F0F0F]"
+                aria-label="Toggle billing period"
+              >
+                <motion.div
+                  animate={{ x: billingPeriod === 'year' ? 28 : 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  className="w-5 h-5 bg-[#FF0000] rounded-full absolute top-1 left-1"
+                />
+              </button>
+              <span className={`text-sm font-medium ${billingPeriod === 'year' ? 'text-white' : 'text-[#AAAAAA]'}`}>
+                Yearly
+              </span>
+            </div>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {[
-              { name: 'Free', price: '$0', features: ['5 video analyses per month', 'Basic viral score prediction', 'Thumbnail analysis', 'Title optimization (3 suggestions)', 'Hashtag generator (10 hashtags)', 'Community support'] },
-              { name: 'Pro', price: '$29', popular: true, features: ['Unlimited video analyses', 'Advanced AI viral prediction', 'Real-time trend analysis', 'Title optimization (10 suggestions)', 'Hashtag generator (20 hashtags)', 'Best posting time predictions', 'Competitor analysis', 'Email support', 'Priority processing'] },
-              { name: 'Enterprise', price: '$5', features: ['Everything in Pro', 'Team collaboration (up to 10 users)', 'White-label reports', 'API access', 'Custom AI model training', 'Dedicated account manager', '24/7 priority support', 'Advanced analytics dashboard', 'Bulk video processing', 'Custom integrations'] },
-            ].map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className={`bg-[#181818] border-2 rounded-xl p-8 ${
-                  plan.popular ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20' : 'border-[#212121]'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="bg-[#FF0000] text-white px-4 py-1 rounded-full text-sm font-semibold inline-block mb-4">
-                    Most Popular
-                  </div>
-                )}
-                <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                <div className="text-4xl font-bold text-white mb-6">{plan.price}<span className="text-lg text-[#AAAAAA]">/month</span></div>
-                <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-[#AAAAAA]">
-                      <Check className="w-5 h-5 text-[#10b981]" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/register"
-                  className={`block w-full py-3 px-6 rounded-lg font-semibold text-center transition-all ${
-                    plan.popular
-                      ? 'bg-[#FF0000] text-white hover:bg-[#CC0000]'
-                      : 'bg-[#212121] text-white hover:bg-[#333333]'
+            {PRICING_PLANS.map((plan, index) => {
+              const price = billingPeriod === 'year' ? plan.priceYear : plan.priceMonth;
+              const priceLabel = plan.priceMonth === 0 && plan.priceYear === 0 ? '$0' : `$${price}`;
+              const periodLabel = billingPeriod === 'year' ? '/year' : '/month';
+              return (
+                <motion.div
+                  key={plan.name}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`bg-[#181818] border-2 rounded-xl p-8 ${
+                    plan.popular ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20' : 'border-[#212121]'
                   }`}
                 >
-                  Get Started
-                </Link>
-              </motion.div>
-            ))}
+                  {plan.popular && (
+                    <div className="bg-[#FF0000] text-white px-4 py-1 rounded-full text-sm font-semibold inline-block mb-4">
+                      Most Popular
+                    </div>
+                  )}
+                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                  <div className="text-4xl font-bold text-white mb-6">{priceLabel}<span className="text-lg text-[#AAAAAA]">{periodLabel}</span></div>
+                  <ul className="space-y-3 mb-6">
+                    {plan.features.map((feature, i) => (
+                      <li key={i} className="flex items-center gap-2 text-[#AAAAAA]">
+                        <Check className="w-5 h-5 text-[#10b981]" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href="/register"
+                    className={`block w-full py-3 px-6 rounded-lg font-semibold text-center transition-all ${
+                      plan.popular
+                        ? 'bg-[#FF0000] text-white hover:bg-[#CC0000]'
+                        : 'bg-[#212121] text-white hover:bg-[#333333]'
+                    }`}
+                  >
+                    Get Started
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
 
           <motion.div

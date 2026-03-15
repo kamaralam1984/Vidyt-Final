@@ -2,6 +2,7 @@ import axios from 'axios';
 import ViralDataset from '@/models/ViralDataset';
 import TrendHistory from '@/models/TrendHistory';
 import connectDB from '@/lib/mongodb';
+import { getApiConfig } from '@/lib/apiConfig';
 
 export interface IngestionResult {
   success: boolean;
@@ -58,12 +59,13 @@ export async function ingestAllPlatforms(): Promise<IngestionResult> {
 }
 
 /**
- * Ingest YouTube trending videos
+ * Ingest YouTube trending videos (uses API Config DB or env)
  */
 async function ingestYouTubeTrending(): Promise<{ collected: number; errors: string[] }> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
+  const config = await getApiConfig();
+  const apiKey = config.youtubeDataApiKey?.trim();
   if (!apiKey) {
-    return { collected: 0, errors: ['YouTube API key not configured'] };
+    return { collected: 0, errors: ['YouTube API key not configured (set in Super Admin API Config or YOUTUBE_API_KEY)'] };
   }
 
   const errors: string[] = [];

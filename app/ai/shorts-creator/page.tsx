@@ -24,6 +24,7 @@ function ClipPreview({
   copied,
   onDownload,
   isDownloading,
+  canDownload,
 }: {
   clip: Clip;
   videoUrl: string | null;
@@ -32,6 +33,7 @@ function ClipPreview({
   copied: boolean;
   onDownload: () => void;
   isDownloading: boolean;
+  canDownload: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -124,7 +126,7 @@ function ClipPreview({
             </button>
             <button
               onClick={onDownload}
-              disabled={isDownloading || !videoUrl}
+              disabled={isDownloading || !canDownload}
               className="flex items-center gap-1 px-3 py-1.5 bg-[#FF0000] rounded text-sm text-white hover:bg-[#CC0000] disabled:opacity-50"
             >
               {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}{' '}
@@ -140,10 +142,12 @@ function ClipPreview({
 export default function ShortsCreatorPage() {
   const [title, setTitle] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [videoLink, setVideoLink] = useState('');
   const [loading, setLoading] = useState(false);
   const [clips, setClips] = useState<Clip[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const [videoObjectUrl, setVideoObjectUrl] = useState<string | null>(null);
+  const [sourceYoutubeUrl, setSourceYoutubeUrl] = useState<string | null>(null);
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -152,8 +156,9 @@ export default function ShortsCreatorPage() {
       setVideoObjectUrl(url);
       return () => URL.revokeObjectURL(url);
     }
-    setVideoObjectUrl(null);
-  }, [file, clips.length]);
+    if (!file && sourceYoutubeUrl) setVideoObjectUrl(null);
+    else if (!file) setVideoObjectUrl(null);
+  }, [file, clips.length, sourceYoutubeUrl]);
 
   const copy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -163,17 +168,24 @@ export default function ShortsCreatorPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!file && !videoLink.trim()) {
+      alert('Video file upload karein ya YouTube video link paste karein');
+      return;
+    }
     setLoading(true);
     setClips([]);
     setVideoObjectUrl(null);
+    setSourceYoutubeUrl(null);
     try {
       const formData = new FormData();
       formData.append('title', title || 'My Video');
       if (file) formData.append('video', file);
+      if (videoLink.trim()) formData.append('youtubeUrl', videoLink.trim());
       const res = await axios.post('/api/ai/shorts-creator', formData, {
         headers: getAuthHeaders(),
       });
       setClips(res.data.clips || []);
+      if (res.data.youtubeUrl) setSourceYoutubeUrl(res.data.youtubeUrl);
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to generate clips');
     } finally {
@@ -182,20 +194,21 @@ export default function ShortsCreatorPage() {
   };
 
   const handleDownload = async (clip: Clip, index: number) => {
-    if (!file) {
-      alert('Upload a video first to download clips.');
+    if (!file && !sourceYoutubeUrl) {
+      alert('Download ke liye pehle video upload karein ya link se shorts banayein.');
       return;
     }
     setDownloadingIndex(index);
     const formData = new FormData();
-    formData.append('video', file);
+    if (file) formData.append('video', file);
+    if (sourceYoutubeUrl) formData.append('youtubeUrl', sourceYoutubeUrl);
     formData.append('startTime', String(clip.startTime));
     formData.append('endTime', String(clip.endTime));
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers = getAuthHeaders() as Record<string, string>;
       const res = await fetch('/api/ai/shorts-creator/cut', {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers,
         body: formData,
       });
       if (!res.ok) {
@@ -225,7 +238,7 @@ export default function ShortsCreatorPage() {
             Auto Shorts Creator
           </h1>
           <p className="text-[#AAAAAA] mb-6">
-            Upload a long video – clips are cut from viral/key moments (scene changes). Preview and download each short.
+            Video ka link paste karein ya file upload karein – viral/key moments (scene changes) se short clips banenge. Preview aur download dono available.
           </p>
 
           <form onSubmit={handleSubmit} className="bg-[#181818] border border-[#212121] rounded-xl p-6 mb-8">
@@ -239,7 +252,18 @@ export default function ShortsCreatorPage() {
               />
             </div>
             <div className="mb-4">
-              <label className="block text-sm text-[#AAAAAA] mb-1">Upload long video</label>
+              <label className="block text-sm text-[#AAAAAA] mb-1">YouTube video link (optional)</label>
+              <input
+                type="url"
+                value={videoLink}
+                onChange={(e) => setVideoLink(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="w-full px-4 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white placeholder-[#666]"
+              />
+              <p className="text-xs text-[#666] mt-1">Link dalne par video download karke viral scenes se shorts banenge.</p>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm text-[#AAAAAA] mb-1">Ya video file upload karein</label>
               <input
                 type="file"
                 accept="video/*"
@@ -249,7 +273,7 @@ export default function ShortsCreatorPage() {
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (!file && !videoLink.trim())}
               className="flex items-center gap-2 px-6 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
@@ -270,6 +294,7 @@ export default function ShortsCreatorPage() {
                   copied={copied === `cap-${i}`}
                   onDownload={() => handleDownload(clip, i)}
                   isDownloading={downloadingIndex === i}
+                  canDownload={!!(file || sourceYoutubeUrl)}
                 />
               ))}
             </div>

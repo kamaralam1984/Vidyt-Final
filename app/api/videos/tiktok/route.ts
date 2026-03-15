@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Video from '@/models/Video';
 import User from '@/models/User';
-import { getUserFromRequest, checkSubscriptionLimit } from '@/lib/auth';
+import { getUserFromRequest } from '@/lib/auth';
+import { checkAnalysisLimit } from '@/lib/usageCheck';
+import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { extractTikTokMetadata } from '@/services/tiktok';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
 import { analyzeTitle } from '@/services/titleOptimizer';
@@ -34,15 +36,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const usage = user.usageStats || { analysesThisMonth: 0 };
-    const canAnalyze = checkSubscriptionLimit(authUser, 'analyses');
-    
-    if (!canAnalyze && (usage.analysesThisMonth || 0) >= 10) {
+    const planId = user.subscription || 'free';
+    const limitResult = await checkAnalysisLimit(authUser.id, planId);
+    if (!limitResult.allowed) {
       return NextResponse.json(
-        { 
+        {
           error: 'Usage limit reached',
-          message: 'You have reached your monthly analysis limit. Please upgrade your plan.',
-          currentUsage: usage.analysesThisMonth,
+          message: limitResult.message,
+          used: limitResult.used,
+          limit: limitResult.limit,
+          period: limitResult.period,
         },
         { status: 403 }
       );
@@ -77,13 +80,13 @@ export async function POST(request: NextRequest) {
                      tiktokUrl.match(/vm\.tiktok\.com\/(\w+)/)?.[1] ||
                      tiktokUrl.match(/tiktok\.com\/t\/(ZTd\w+)/)?.[1] || null;
 
-    const titleSuggestionsLimit = (authUser.subscription === 'pro' || authUser.subscription === 'enterprise') ? 10 : 3;
+    const titleSuggestionsLimit = getTitleSuggestionsCount(planId);
     const hookAnalysis = { facesDetected: 0, motionIntensity: 50, sceneChanges: 0, brightness: 50, score: 50 };
     const thumbnailAnalysis = await analyzeThumbnail(metadata.thumbnailUrl);
     const titleAnalysis = analyzeTitle(metadata.title, { maxSuggestions: titleSuggestionsLimit });
     const trendingScore = await getTrendingScore(titleAnalysis.keywords);
     const viralPrediction = predictViralPotential(hookAnalysis, thumbnailAnalysis, titleAnalysis, trendingScore, metadata.duration);
-    const hashtags = await generateHashtags(titleAnalysis, metadata.description, metadata.hashtags);
+    const hashtags = await generateHashtags(titleAnalysis, metadata.description, metadata.hashtags, getHashtagCount(planId));
     const trendingTopics = await getTrendingTopics(titleAnalysis.keywords, 'tiktok');
     const bestPostingTime = predictBestPostingTime(undefined, 'tiktok');
 

@@ -32,17 +32,17 @@ export async function analyzeThumbnail(thumbnailUrl: string): Promise<ThumbnailA
     
     const image = await sharp(buffer);
     const stats = await image.stats();
-    
-    // Simulate face detection (in production, use face-api.js or similar)
-    const facesDetected = Math.floor(Math.random() * 3);
-    
-    // Calculate color contrast
+
+    // Deterministic: no face detection without a real model
+    const facesDetected = 0;
+
+    // Real color contrast from image stats
     const colorContrast = calculateColorContrast(stats);
-    
-    // Simulate text readability (would use OCR in production)
-    const textReadability = 60 + Math.random() * 30; // 60-90 range
-    
-    // Determine emotion based on colors (simplified)
+
+    // Deterministic text-readability proxy from luminance variance (high variance = likely text/edges)
+    const textReadability = calculateTextReadabilityFromStats(stats);
+
+    // Emotion from color stats (deterministic)
     const emotion = detectEmotion(stats);
     
     // Generate suggestions
@@ -84,19 +84,27 @@ function calculateColorContrast(stats: any): number {
   if (!stats.channels || stats.channels.length < 3) {
     return 50;
   }
-  
-  // Calculate variance across color channels as a proxy for contrast
   const variances = stats.channels.map((ch: any) => ch.stdev || 0);
   const avgVariance = variances.reduce((a: number, b: number) => a + b, 0) / variances.length;
-  
-  return Math.min(100, (avgVariance / 50) * 100);
+  return Math.min(100, Math.round((avgVariance / 50) * 100));
+}
+
+/** Deterministic readability proxy from channel variance (same image = same value). */
+function calculateTextReadabilityFromStats(stats: any): number {
+  if (!stats.channels || stats.channels.length < 3) return 65;
+  const variances = stats.channels.map((ch: any) => ch.stdev || 0);
+  const avg = variances.reduce((a: number, b: number) => a + b, 0) / variances.length;
+  return Math.min(95, Math.max(50, Math.round(55 + (avg / 40) * 35)));
 }
 
 function detectEmotion(stats: any): string {
-  // Simplified emotion detection based on color analysis
-  // In production, use face-api.js or similar
-  const emotions = ['happy', 'excited', 'curious', 'surprised', 'neutral'];
-  return emotions[Math.floor(Math.random() * emotions.length)];
+  if (!stats.channels || stats.channels.length < 3) return 'neutral';
+  const means = stats.channels.map((ch: any) => ch.mean || 0);
+  const brightness = means.reduce((a: number, b: number) => a + b, 0) / means.length;
+  if (brightness > 180) return 'excited';
+  if (brightness > 140) return 'happy';
+  if (brightness < 80) return 'curious';
+  return 'neutral';
 }
 
 function generateSuggestions(analysis: Partial<ThumbnailAnalysis>): string[] {
@@ -123,15 +131,48 @@ function generateSuggestions(analysis: Partial<ThumbnailAnalysis>): string[] {
 
 function calculateThumbnailScore(analysis: Omit<ThumbnailAnalysis, 'score' | 'emotion' | 'suggestions'>): number {
   let score = 0;
-  
-  // Faces boost score (up to 40 points)
   score += Math.min(40, analysis.facesDetected * 20);
-  
-  // Color contrast (up to 30 points)
   score += (analysis.colorContrast / 100) * 30;
-  
-  // Text readability (up to 30 points)
   score += (analysis.textReadability / 100) * 30;
-  
   return Math.min(100, Math.round(score));
+}
+
+/** Analyze thumbnail from a buffer (e.g. uploaded file). Same image = same result. */
+export async function analyzeThumbnailFromBuffer(buffer: Buffer): Promise<ThumbnailAnalysis> {
+  try {
+    const image = await sharp(buffer);
+    const stats = await image.stats();
+    const facesDetected = 0;
+    const colorContrast = calculateColorContrast(stats);
+    const textReadability = calculateTextReadabilityFromStats(stats);
+    const emotion = detectEmotion(stats);
+    const suggestions = generateSuggestions({
+      facesDetected,
+      colorContrast,
+      textReadability,
+      emotion,
+    });
+    const score = calculateThumbnailScore({
+      facesDetected,
+      colorContrast,
+      textReadability,
+    });
+    return {
+      facesDetected,
+      emotion,
+      colorContrast,
+      textReadability,
+      suggestions,
+      score,
+    };
+  } catch (error) {
+    console.error('Error analyzing thumbnail from buffer:', error);
+    return {
+      facesDetected: 0,
+      colorContrast: 50,
+      textReadability: 50,
+      suggestions: ['Unable to analyze image.'],
+      score: 50,
+    };
+  }
 }

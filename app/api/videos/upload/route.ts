@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Video from '@/models/Video';
 import User from '@/models/User';
+import { getUserFromRequest } from '@/lib/auth';
+import { checkAnalysisLimit } from '@/lib/usageCheck';
+import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { analyzeVideoHook } from '@/services/hookAnalyzer';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
 import { analyzeTitle } from '@/services/titleOptimizer';
@@ -14,21 +17,35 @@ import Analysis from '@/models/Analysis';
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    
+
+    const authUser = await getUserFromRequest(request);
     const formData = await request.formData();
     const file = formData.get('video') as File;
     const title = formData.get('title') as string;
     const description = formData.get('description') as string || '';
-    const userId = formData.get('userId') as string || 'default-user';
-    let titleSuggestionsLimit = 3;
-    try {
-      const user = await User.findById(userId).select('subscription').lean();
-      if (user?.subscription === 'pro' || user?.subscription === 'enterprise') titleSuggestionsLimit = 10;
-    } catch (_) {}
-    
+    const userId = authUser?.id ?? (formData.get('userId') as string) ?? 'default-user';
+
     if (!file) {
       return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
     }
+
+    const user = await User.findById(userId).select('subscription').lean();
+    const planId = (user as { subscription?: string } | null)?.subscription || 'free';
+    const limitResult = await checkAnalysisLimit(userId, planId);
+    if (!limitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Usage limit reached',
+          message: limitResult.message,
+          used: limitResult.used,
+          limit: limitResult.limit,
+          period: limitResult.period,
+        },
+        { status: 403 }
+      );
+    }
+
+    const titleSuggestionsLimit = getTitleSuggestionsCount(planId);
     
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
@@ -57,7 +74,7 @@ export async function POST(request: NextRequest) {
     );
     
     // Generate hashtags
-    const hashtags = await generateHashtags(titleAnalysis, description);
+    const hashtags = await generateHashtags(titleAnalysis, description, [], getHashtagCount(planId));
     
     // Get trending topics
     const { getTrendingTopics } = await import('@/services/trendingEngine');
@@ -81,7 +98,7 @@ export async function POST(request: NextRequest) {
     await video.save();
     
     // Save analysis
-    const analysisPriority = (titleSuggestionsLimit === 10) ? 'high' : 'normal';
+    const analysisPriority = (planId === 'pro' || planId === 'enterprise') ? 'high' : 'normal';
     const analysis = new Analysis({
       videoId: video._id,
       hookScore: hookAnalysis.score,

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import User from '@/models/User';
-import { getSubscriptionLimits } from '@/services/payments/stripe';
+import { getPlanRoll } from '@/lib/planLimits';
+import { getAnalysisUsageCount } from '@/lib/usageCheck';
 import connectDB from '@/lib/mongodb';
 
 /**
- * Get user usage stats and limits
+ * Get user usage stats and limits (plan-based: Pro/Enterprise = per day, Free = per month).
  */
 export async function GET(request: NextRequest) {
   try {
     const authUser = await getUserFromRequest(request);
-    
+
     if (!authUser) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -28,34 +29,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const limits = getSubscriptionLimits(user.subscription);
-    const usage = user.usageStats || {
-      videosAnalyzed: 0,
-      analysesThisMonth: 0,
-      competitorsTracked: 0,
-    };
+    const planId = user.subscription || 'free';
+    const plan = getPlanRoll(planId);
+    const { analysesLimit, analysesPeriod } = plan.limits;
+    const used = await getAnalysisUsageCount(authUser.id, analysesPeriod);
+    const remaining = analysesLimit === -1 ? -1 : Math.max(0, analysesLimit - used);
+    const usageStats = user.usageStats || { competitorsTracked: 0 };
+    const competitorsLimit = plan.limits.competitorsTracked === -1 ? -1 : plan.limits.competitorsTracked;
+    const competitorsUsed = usageStats.competitorsTracked || 0;
+    const competitorsRemaining = competitorsLimit === -1 ? -1 : Math.max(0, competitorsLimit - competitorsUsed);
 
     return NextResponse.json({
       success: true,
       usage: {
         videos: {
-          used: usage.videosAnalyzed || 0,
-          limit: limits.videos,
-          remaining: limits.videos === -1 ? -1 : Math.max(0, limits.videos - (usage.videosAnalyzed || 0)),
+          used,
+          limit: analysesLimit,
+          remaining,
+          period: analysesPeriod,
         },
         analyses: {
-          used: usage.analysesThisMonth || 0,
-          limit: limits.analyses,
-          remaining: limits.analyses === -1 ? -1 : Math.max(0, limits.analyses - (usage.analysesThisMonth || 0)),
+          used,
+          limit: analysesLimit,
+          remaining,
+          period: analysesPeriod,
         },
         competitors: {
-          used: usage.competitorsTracked || 0,
-          limit: limits.competitors,
-          remaining: limits.competitors === -1 ? -1 : Math.max(0, limits.competitors - (usage.competitorsTracked || 0)),
+          used: competitorsUsed,
+          limit: competitorsLimit,
+          remaining: competitorsRemaining,
         },
       },
       subscription: {
-        plan: user.subscription,
+        plan: planId,
+        planName: plan.name,
+        limitsDisplay: plan.limitsDisplay,
         expiresAt: user.subscriptionExpiresAt,
       },
     });

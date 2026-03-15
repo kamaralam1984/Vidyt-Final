@@ -23,14 +23,30 @@ function getFfmpegPath(): string {
   }
 }
 
+/**
+ * Get video duration in seconds using ffmpeg -i (output is on stderr; parse Duration: HH:MM:SS.ms).
+ * ffmpeg -i exits with 1 when no output file is given, so we parse stderr from result or error.
+ */
 export async function getVideoDuration(inputPath: string): Promise<number> {
   const ff = getFfmpegPath();
-  const { stdout } = await execAsync(
-    `"${ff}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${inputPath}"`,
-    { maxBuffer: 10 * 1024 }
-  );
-  const d = parseFloat(stdout.trim());
-  return isNaN(d) ? 0 : d;
+  const parseDuration = (str: string): number => {
+    const m = /Duration:\s*(\d{1,2}):(\d{2}):(\d{2}\.\d+)/.exec(str);
+    if (!m) return 0;
+    const hours = parseFloat(m[1]) || 0;
+    const minutes = parseFloat(m[2]) || 0;
+    const seconds = parseFloat(m[3]) || 0;
+    return hours * 3600 + minutes * 60 + seconds;
+  };
+  try {
+    const { stderr } = await execAsync(
+      `"${ff}" -i "${inputPath}" 2>&1`,
+      { maxBuffer: 2 * 1024 * 1024 }
+    );
+    return parseDuration(stderr || '') || 0;
+  } catch (err: unknown) {
+    const msg = err && typeof err === 'object' && 'stderr' in err ? String((err as { stderr?: string }).stderr) : '';
+    return parseDuration(msg) || 0;
+  }
 }
 
 /**

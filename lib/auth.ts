@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import User from '@/models/User';
 import connectDB from '@/lib/mongodb';
 import { generateToken, type AuthUser } from './auth-jwt';
+import { getPlanLimits } from '@/lib/planLimits';
 
 /**
  * Generate a unique 6-digit numeric ID for user login
@@ -247,20 +248,17 @@ export function hasPermission(user: AuthUser | null, requiredRole: 'user' | 'adm
 }
 
 /**
- * Check subscription limits
+ * Check subscription limits (plan allows feature; actual usage check is in usageCheck.checkAnalysisLimit).
  */
 export function checkSubscriptionLimit(
   user: AuthUser | null,
   feature: 'videos' | 'analyses' | 'competitors'
 ): boolean {
   if (!user) return false;
-
-  const limits: Record<string, Record<string, number>> = {
-    free: { videos: 10, analyses: 10, competitors: 3 },
-    pro: { videos: 1000, analyses: 1000, competitors: 50 },
-    enterprise: { videos: -1, analyses: -1, competitors: -1 }, // Unlimited
-  };
-
-  const limit = limits[user.subscription]?.[feature] || 0;
-  return limit === -1 || limit > 0; // -1 means unlimited
+  const limits = getPlanLimits(user.subscription);
+  const limit =
+    feature === 'analyses' || feature === 'videos'
+      ? limits.analysesLimit
+      : limits.competitorsTracked;
+  return limit === -1 || limit > 0;
 }

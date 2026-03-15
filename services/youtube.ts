@@ -1,6 +1,13 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - ytdl-core typings declare file is not a module
 import ytdl from 'ytdl-core';
 import axios from 'axios';
+import { createWriteStream } from 'fs';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { getApiConfig } from '@/lib/apiConfig';
+
+const execFileAsync = promisify(execFile);
 
 // YouTube Data API v3 (when key set in Super Admin API Config or env)
 async function fetchViaYouTubeDataAPI(videoId: string, apiKey: string): Promise<YouTubeMetadata> {
@@ -358,4 +365,70 @@ export async function downloadThumbnail(url: string, videoId: string): Promise<s
     console.error('Error downloading thumbnail:', error);
     return url;
   }
+}
+
+/**
+ * Try download via yt-dlp (CLI). Works when ytdl-core fails (decipher/player changes).
+ * Requires yt-dlp installed: https://github.com/yt-dlp/yt-dlp
+ */
+async function downloadWithYtDlp(url: string, outputPath: string): Promise<boolean> {
+  try {
+    await execFileAsync(
+      'yt-dlp',
+      [
+        '-f', 'worst[ext=mp4]/worst[ext=webm]/worst',
+        '-o', outputPath,
+        '--no-warnings',
+        '--no-check-certificate',
+        url,
+      ],
+      { timeout: 120000, maxBuffer: 1024 * 1024 }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Download YouTube video to a local file (for Shorts Creator etc.).
+ * Tries yt-dlp first (reliable), then @distube/ytdl-core. If both fail, suggests file upload.
+ */
+export async function downloadYouTubeToFile(youtubeUrl: string, outputPath: string): Promise<void> {
+  const videoId = extractVideoId(youtubeUrl);
+  if (!videoId) throw new Error('Invalid YouTube URL');
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+
+  const ok = await downloadWithYtDlp(url, outputPath);
+  if (ok) return;
+
+  const requestOptions = {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  };
+  const playerClients = ['WEB', 'ANDROID', 'IOS', 'WEB_EMBEDDED', 'TV'];
+
+  const tryDownload = (opts: Record<string, unknown>): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const stream = ytdl(url, { requestOptions, playerClients, ...opts });
+      const writeStream = createWriteStream(outputPath);
+      stream.pipe(writeStream);
+      stream.on('error', reject);
+      writeStream.on('error', reject);
+      writeStream.on('finish', () => resolve());
+    });
+
+  for (const opts of [{ quality: 'lowest' }, { quality: 'highest' }, {}]) {
+    try {
+      await tryDownload(opts);
+      return;
+    } catch {
+      // try next
+    }
+  }
+  throw new Error(
+    'Is video ko download nahi kar sakte. Option 1: Server pe yt-dlp install karein (sudo apt install yt-dlp). Option 2: Video file upload karke try karein.'
+  );
 }

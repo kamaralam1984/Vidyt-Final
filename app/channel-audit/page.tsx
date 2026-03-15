@@ -5,8 +5,8 @@ import { motion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import AuthGuard from '@/components/AuthGuard';
 import axios from 'axios';
-import { Youtube, TrendingUp, AlertTriangle, CheckCircle, Copy, Loader2, BarChart3, Target } from 'lucide-react';
-import { getToken, isAuthenticated } from '@/utils/auth';
+import { Youtube, TrendingUp, AlertTriangle, CheckCircle, Copy, Loader2, BarChart3, Target, MessageCircle, Send } from 'lucide-react';
+import { getToken, isAuthenticated, getAuthHeaders } from '@/utils/auth';
 
 interface ChannelAnalysis {
   channelName: string;
@@ -38,6 +38,9 @@ export default function ChannelAuditPage() {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<ChannelAnalysis | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiMessages, setAiMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const handleAudit = async () => {
     if (!useManualUrls && !channelUrl.trim()) {
@@ -383,6 +386,43 @@ export default function ChannelAuditPage() {
     navigator.clipboard.writeText(text);
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const askAi = async () => {
+    if (!aiQuestion.trim() || !analysis) return;
+    const question = aiQuestion.trim();
+    setAiQuestion('');
+    setAiMessages((prev) => [...prev, { role: 'user', content: question }]);
+    setAiLoading(true);
+    try {
+      const context = {
+        channelName: analysis.channelName,
+        channelScore: analysis.channelScore,
+        totalVideos: analysis.totalVideos,
+        analyzedVideos: analysis.analyzedVideos,
+        averageViralScore: analysis.averageViralScore,
+        channelIssues: analysis.channelIssues,
+        channelRecommendations: analysis.channelRecommendations,
+        trendingKeywords: analysis.trendingKeywords.slice(0, 15),
+        videoSummaries: analysis.videoAnalyses.slice(0, 10).map((v) => ({
+          title: v.title,
+          score: v.currentScore,
+          issues: v.issues,
+        })),
+      };
+      const res = await axios.post(
+        '/api/channel-audit/ask',
+        { question, context },
+        { headers: getAuthHeaders() }
+      );
+      const answer = res.data?.answer || 'No answer received.';
+      setAiMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err) ? (err.response?.data?.error || err.message) : 'Failed to get answer';
+      setAiMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${msg}` }]);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -753,6 +793,67 @@ https://www.youtube.com/watch?v=VIDEO_ID_1, https://www.youtube.com/watch?v=VIDE
                   </div>
                 </motion.div>
               )}
+
+              {/* Ask AI about your channel */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="bg-[#181818] border border-[#212121] rounded-lg p-6"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <MessageCircle className="w-6 h-6 text-[#FF0000]" />
+                  <h2 className="text-xl font-bold text-white">
+                    Channel ke bare mein AI se sawal poochein
+                  </h2>
+                </div>
+                <p className="text-sm text-[#AAAAAA] mb-4">
+                  Apne channel audit report ke hisaab se koi bhi sawal poochhen – AI aapke data ke basis par jawab dega.
+                </p>
+                {aiMessages.length > 0 && (
+                  <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                    {aiMessages.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`p-3 rounded-lg text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-[#FF0000]/20 text-white ml-4'
+                            : 'bg-[#212121] text-[#AAAAAA] border border-[#333333]'
+                        }`}
+                      >
+                        <span className="font-medium text-[#888] block mb-1">
+                          {msg.role === 'user' ? 'Aap' : 'AI'}
+                        </span>
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={aiQuestion}
+                    onChange={(e) => setAiQuestion(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && askAi()}
+                    placeholder="e.g. Mera channel score kaise improve ho? Sabse weak video kaun si hai?"
+                    className="flex-1 px-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#666] focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
+                    disabled={aiLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={askAi}
+                    disabled={aiLoading || !aiQuestion.trim()}
+                    className="px-4 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  >
+                    {aiLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
+                    {aiLoading ? '...' : 'Poochhen'}
+                  </button>
+                </div>
+              </motion.div>
             </div>
           )}
         </motion.div>

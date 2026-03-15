@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const plan = planId === 'pro' || planId === 'enterprise' ? planId : 'free';
     const subPlan = userDoc.subscriptionPlan;
 
-    const amount = subPlan?.price ?? (plan === 'pro' ? 2.5 : plan === 'enterprise' ? 5 : 0);
+    const amount = subPlan?.price ?? (plan === 'pro' ? 5 : plan === 'enterprise' ? 12 : 0);
     const date = subPlan?.startDate || userDoc.subscriptionExpiresAt || userDoc.updatedAt || new Date();
 
     const currency = (subPlan?.currency || 'INR').toUpperCase();

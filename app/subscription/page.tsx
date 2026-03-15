@@ -29,9 +29,11 @@ interface Subscription {
 
 interface Usage {
   videosAnalyzed: number;
-  videosLimit: number | string;
+  videosLimit: number;
+  videosLimitLabel?: string;
+  period?: 'day' | 'month';
   storageUsed: number;
-  storageLimit: number | string;
+  storageLimit: number | string | null;
   analysesThisMonth: number;
 }
 
@@ -349,16 +351,18 @@ export default function SubscriptionPage() {
                 </div>
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[#AAAAAA] text-sm">This Month</span>
+                    <span className="text-[#AAAAAA] text-sm">
+                      {usage.period === 'day' ? 'Today' : 'This month'}
+                    </span>
                     <span className="text-white font-semibold">
-                      {usage.analysesThisMonth} / {usage.videosLimit === 'Unlimited' ? '∞' : usage.videosLimit}
+                      {usage.analysesThisMonth} / {usage.videosLimitLabel ?? usage.videosLimit}
                     </span>
                   </div>
                   <div className="w-full bg-[#212121] rounded-full h-2">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{
-                        width: usage.videosLimit === 'Unlimited'
+                        width: usage.videosLimit === -1 || usage.videosLimit === Infinity
                           ? '100%'
                           : `${Math.min(100, (usage.analysesThisMonth / Number(usage.videosLimit)) * 100)}%`,
                       }}
@@ -379,14 +383,16 @@ export default function SubscriptionPage() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[#AAAAAA] text-sm">Used</span>
                     <span className="text-white font-semibold">
-                      {usage.storageUsed} MB / {usage.storageLimit}
+                      {usage.storageUsed} MB {usage.storageLimit != null ? `/ ${usage.storageLimit}` : '(—)'}
                     </span>
                   </div>
                   <div className="w-full bg-[#212121] rounded-full h-2">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{
-                        width: `${Math.min(100, (usage.storageUsed / 100) * 100)}%`,
+                        width: usage.storageLimit != null && typeof usage.storageLimit === 'number'
+                          ? `${Math.min(100, (usage.storageUsed / usage.storageLimit) * 100)}%`
+                          : '0%',
                       }}
                       className="bg-[#10b981] h-2 rounded-full"
                     />

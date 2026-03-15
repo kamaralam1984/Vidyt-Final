@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
+import { getAuthHeaders } from '@/utils/auth';
 import { ArrowLeft, Play, Eye, Calendar, Clock } from 'lucide-react';
 import ViralScoreMeter from '@/components/ViralScoreMeter';
 import ScoreCard from '@/components/ScoreCard';
@@ -32,13 +33,16 @@ export default function VideoDetailPage() {
   const fetchVideoData = async (videoId: string) => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/videos/${videoId}`);
+      const response = await axios.get(`/api/videos/${videoId}`, {
+        headers: getAuthHeaders(),
+      });
       setVideo(response.data.video);
       setAnalysis(response.data.analysis);
       setError(null);
     } catch (error: any) {
       console.error('Error fetching video:', error);
-      setError(error.response?.data?.error || 'Failed to load video');
+      const msg = error.response?.data?.error || 'Failed to load video';
+      setError(msg);
     } finally {
       setLoading(false);
     }
