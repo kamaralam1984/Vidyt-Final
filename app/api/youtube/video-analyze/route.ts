@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
         suggestions: fallback,
         message: 'Config unavailable. Using default suggestions.',
         transcript: undefined,
+        openAiKeyConfigured: false,
       });
     }
 
@@ -124,14 +125,14 @@ export async function POST(request: NextRequest) {
       ? `VIDEO TRANSCRIPT (video me jo baatein hui hain - isi se title, description, keywords aur hashtags banao):\n"""\n${transcript}\n"""`
       : `(No transcript available. Use filename and topic hint only: "${topicHint}")`;
 
-    const prompt = `You are a YouTube SEO expert. Based on the VIDEO CONTENT below, suggest metadata so the title reflects what is actually said in the video, keywords match the video type and topic, description is based on title + keywords + video content, and hashtags are for the main topic for viral reach.
+    const prompt = `You are a YouTube SEO expert. Based on the VIDEO CONTENT below, suggest metadata so the title and description reflect the EXACT content spoken in the video when transcript is provided, and are SEO-friendly.
 
 ${contentBlock}
 
 RULES:
-- TITLE: Video me jo main baat/theme hai usse catchy, clear title banao. Sirf filename mat use karo—content se nikalo.
-- KEYWORDS: Video type (tutorial, vlog, tips, etc.) aur content ke hisaab se 8-12 search-friendly keywords.
-- DESCRIPTION: Title aur keywords ko include karte hue, video ke content ke hisaab se 2-3 short paragraphs. CTA (subscribe, like) rakho.
+- TITLE: When transcript is provided, use the main theme/topic actually spoken—catchy, clear, 40-70 chars. Do NOT use filename only; derive from exact content.
+- DESCRIPTION: When transcript is provided, summarize what is actually said in the video in 2-3 short paragraphs; include 1-2 keywords naturally. Add CTA (subscribe, like). When no transcript, use topic/filename.
+- KEYWORDS: Video type (tutorial, vlog, tips, etc.) and content ke hisaab se 8-12 search-friendly keywords.
 - HASHTAGS: Video ke topic ke hisaab se 15-25 viral/relevant hashtags (#shorts #viral #youtube etc.).
 
 Return ONLY valid JSON with keys: title (string), description (string), keywords (array of strings), hashtags (array of strings with #). No markdown, no code block.`;
@@ -148,6 +149,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
           suggestions: fallback,
           message: 'AI suggestion failed. Using default suggestions. Check your OpenAI key in Super Admin.',
           transcript: transcript || undefined,
+          openAiKeyConfigured: true,
         });
       }
     } else if (config.googleGeminiApiKey?.trim()) {
@@ -160,6 +162,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
           suggestions: fallback,
           message: 'AI suggestion failed. Using default suggestions. Check your Gemini key in Super Admin.',
           transcript: transcript || undefined,
+          openAiKeyConfigured: false,
         });
       }
     } else {
@@ -168,14 +171,17 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
         suggestions: fallback,
         message: 'Set OpenAI or Gemini in Super Admin for AI-powered suggestions.',
         transcript: undefined,
+        openAiKeyConfigured: false,
       });
     }
 
     const suggestions = text ? parseSuggestions(text) : getFallbackSuggestions(topicHint);
+    const openAiKeyConfigured = Boolean(config.openaiApiKey?.trim());
     return NextResponse.json({
       suggestions,
       fromTranscript: hasContent,
       transcript: transcript || undefined,
+      openAiKeyConfigured,
     });
   } catch (e) {
     console.error('Video analyze error:', e);
@@ -185,6 +191,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
       suggestions: fallback,
       message: 'Something went wrong. Using default suggestions.',
       transcript: undefined,
+      openAiKeyConfigured: false,
     });
   }
 }

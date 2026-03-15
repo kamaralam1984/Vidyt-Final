@@ -540,6 +540,7 @@ export default function YouTubeLiveSEOPage() {
       const res = await axios.post('/api/youtube/video-analyze', fd, { headers: getAuthHeaders() });
       const sug = res.data.suggestions;
       const fromTranscript = res.data.fromTranscript === true;
+      const openAiKeyConfigured = res.data.openAiKeyConfigured === true;
       const transcriptText = res.data.transcript || '';
       if (sug) {
         setVideoSuggestions(sug);
@@ -549,15 +550,12 @@ export default function YouTubeLiveSEOPage() {
         const hashStr = sug.hashtags?.length ? sug.hashtags.join(' ') : '';
         if (hashStr) setDescription((d) => (d ? `${d}\n\n${hashStr}` : hashStr));
         if (transcriptText) setChinkiInput(transcriptText);
-        setChinkiMessages((m) => [
-          ...m,
-          {
-            role: 'chinki' as const,
-            text: fromTranscript
-              ? `Maine video ka content sun kar analyze kiya. Jo baatein video me hui hain unke hisaab se title, keywords, description aur viral hashtags suggest kiye—sab form me add kar diye. Transcript Chinki ke textbox me hai; usi text ke hisaab se sab set ho chuka hai. Chinki se aur viral tips pooch sakte ho!`
-              : `Maine aapki video analyze kar li. Title, description, keywords aur hashtags suggest kiye hain—sab form me add kar diye. (OpenAI key set karein to video ki audio se bhi exact content pe title/description banege.) Koi change chahiye ho to batao!`,
-          },
-        ]);
+        const chinkiReply = fromTranscript
+          ? `Maine video ki audio sun kar exact content pe title, description, keywords aur hashtags bana diye—sab form me add kar diye. Transcript Chinki ke textbox me hai; usi text ke hisaab se sab set ho chuka hai. Chinki se aur viral tips pooch sakte ho!`
+          : !openAiKeyConfigured
+            ? `Maine filename/topic se suggest kiye hain—sab form me add kar diye. Video ki audio se exact title/description ke liye Super Admin → API keys me OpenAI API key set karein, phir "Analyze" dubara chalayein.`
+            : `Video ki audio transcribe nahi ho payi (format/quality check karein). Maine filename/topic se suggest kiye—sab form me add kar diye. Koi change chahiye ho to batao!`;
+        setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: chinkiReply }]);
       }
     } catch {
       setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: 'Video analyze karte waqt error aaya. Phir se try karein ya topic likh kar bhejein.' }]);
@@ -1560,7 +1558,7 @@ export default function YouTubeLiveSEOPage() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Upload className="w-5 h-5" /> Video upload
               </h2>
-              <p className="text-xs text-[#888] mb-3">Video choose karein, phir &quot;Analyze&quot; dabayein. Video me jo voice/baatein hain, pehle Chinki ke textbox me transcript type hoga; usi text ke hisaab se title, keyword, hashtag aur description form me set ho jayenge. Chinki viral tips bhi degi.</p>
+              <p className="text-xs text-[#888] mb-3">Video choose karein, phir &quot;Analyze&quot; dabayein. <strong className="text-[#AAA]">OpenAI API key set hone par</strong> video ki audio transcribe hogi aur usi exact content se title, description, keywords aur hashtags banenge (Super Admin → API keys). Transcript Chinki ke textbox me aayega; form usi ke hisaab se set ho jayega. Chinki viral tips bhi degi.</p>
               {!videoPreviewUrl ? (
                 <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[#333] rounded-lg cursor-pointer hover:bg-[#212121] transition">
                   <input type="file" accept="video/*" className="hidden" onChange={onVideoSelect} disabled={videoAnalyzing} />
