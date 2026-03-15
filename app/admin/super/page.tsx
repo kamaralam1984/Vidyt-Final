@@ -152,7 +152,7 @@ export default function SuperAdminPage() {
       if (!token) {
         setLoading(false);
         setRefreshing(false);
-        router.push('/auth?mode=login');
+        router.push('/login');
         return;
       }
       setRefreshing(true);
@@ -277,7 +277,7 @@ export default function SuperAdminPage() {
     }
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push('/auth?mode=login');
+      router.push('/login');
       return;
     }
     const res = await fetch(`/api/admin/users/${userId}`, {
@@ -301,7 +301,7 @@ export default function SuperAdminPage() {
     if (!newPin) return;
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push('/auth?mode=login');
+      router.push('/login');
       return;
     }
     await fetch(`/api/admin/users/${userId}`, {
@@ -319,7 +319,7 @@ export default function SuperAdminPage() {
     if (!confirm('Clear this user PIN?')) return;
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push('/auth?mode=login');
+      router.push('/login');
       return;
     }
     await fetch(`/api/admin/users/${userId}`, {
@@ -338,7 +338,7 @@ export default function SuperAdminPage() {
     setCreateMessage(null);
     const token = localStorage.getItem('token');
     if (!token) {
-      router.push('/auth?mode=login');
+      router.push('/login');
       return;
     }
     if (!createForm.email.trim() || !createForm.password) {
@@ -646,7 +646,7 @@ export default function SuperAdminPage() {
             onClick={() => {
               removeToken();
               if (typeof window !== 'undefined') localStorage.removeItem('uniqueId');
-              router.push('/auth?mode=login');
+              router.push('/login');
             }}
           >
             <LogOut className="w-4 h-4" />
@@ -683,7 +683,7 @@ export default function SuperAdminPage() {
                 Refresh (try again)
               </button>
               <button
-                onClick={() => router.push('/auth?mode=login')}
+                onClick={() => router.push('/login')}
                 className="px-4 py-2 bg-[#212121] text-white rounded-lg hover:bg-[#333333] font-medium border border-[#333333]"
               >
                 Log in again

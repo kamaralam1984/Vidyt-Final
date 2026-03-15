@@ -168,11 +168,11 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              { icon: Zap, title: 'AI-Powered Predictions', description: 'Advanced ML models for accurate viral potential', href: '/auth?mode=login', color: '#FF0000' },
-              { icon: TrendingUp, title: 'Real-Time Trends', description: 'Stay ahead with trending topics and hashtags', href: '/auth?mode=login', color: '#f59e0b' },
-              { icon: BarChart3, title: 'Advanced Analytics', description: 'Deep insights into your content performance', href: '/auth?mode=login', color: '#8b5cf6' },
-              { icon: Clock, title: 'Smart Scheduling', description: 'Optimal posting times for maximum engagement', href: '/auth?mode=login', color: '#10b981' },
-              { icon: Users, title: 'Competitor Analysis', description: 'Learn from top-performing creators', href: '/auth?mode=login', color: '#06b6d4' },
+              { icon: Zap, title: 'AI-Powered Predictions', description: 'Advanced ML models for accurate viral potential', href: '/login', color: '#FF0000' },
+              { icon: TrendingUp, title: 'Real-Time Trends', description: 'Stay ahead with trending topics and hashtags', href: '/login', color: '#f59e0b' },
+              { icon: BarChart3, title: 'Advanced Analytics', description: 'Deep insights into your content performance', href: '/login', color: '#8b5cf6' },
+              { icon: Clock, title: 'Smart Scheduling', description: 'Optimal posting times for maximum engagement', href: '/login', color: '#10b981' },
+              { icon: Users, title: 'Competitor Analysis', description: 'Learn from top-performing creators', href: '/login', color: '#06b6d4' },
               { icon: Shield, title: 'Secure & Private', description: 'Your data is always protected', href: '#', color: '#64748b' },
             ].map((feature, index) => {
               const Icon = feature.icon;

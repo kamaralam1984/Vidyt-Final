@@ -35,7 +35,7 @@ export default function VideosPage() {
       console.error('Error fetching videos:', error);
       if (error?.response?.status === 401) {
         localStorage.removeItem('token');
-        window.location.href = '/auth?mode=login';
+        window.location.href = '/login';
       }
     } finally {
       setLoading(false);
@@ -50,7 +50,7 @@ export default function VideosPage() {
     try {
       if (!isAuthenticated()) {
         alert('Please login to delete videos.');
-        window.location.href = '/auth?mode=login';
+        window.location.href = '/login';
         return;
       }
 
@@ -68,7 +68,7 @@ export default function VideosPage() {
       if (error?.response?.status === 401) {
         alert('Your session has expired. Please login again.');
         localStorage.removeItem('token');
-        window.location.href = '/auth?mode=login';
+        window.location.href = '/login';
       } else {
         alert(error.response?.data?.error || 'Failed to delete video');
       }

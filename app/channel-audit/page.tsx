@@ -57,7 +57,7 @@ export default function ChannelAuditPage() {
     if (!isAuthenticated()) {
       alert('Please login to analyze videos. Redirecting to login...');
       setTimeout(() => {
-        window.location.href = '/auth?mode=login';
+        window.location.href = '/login';
       }, 1500);
       return;
     }
@@ -178,7 +178,7 @@ export default function ChannelAuditPage() {
             alert('Your session has expired. Please login again.');
             localStorage.removeItem('token');
             setTimeout(() => {
-              window.location.href = '/auth?mode=login';
+              window.location.href = '/login';
             }, 2000);
             setLoading(false);
             return;
@@ -217,7 +217,7 @@ export default function ChannelAuditPage() {
         alert('Your session has expired. Please login again.');
         localStorage.removeItem('token');
         setTimeout(() => {
-          window.location.href = '/auth?mode=login';
+          window.location.href = '/login';
         }, 2000);
       } else {
         alert(error.response?.data?.error || 'Failed to audit channel');

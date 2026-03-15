@@ -36,7 +36,7 @@ export default function ViralOptimizerPage() {
     if (!isAuthenticated()) {
       alert('Please login to analyze videos. Redirecting to login...');
       setTimeout(() => {
-        window.location.href = '/auth?mode=login';
+        window.location.href = '/login';
       }, 1500);
       return;
     }
@@ -93,7 +93,7 @@ export default function ViralOptimizerPage() {
         }
         localStorage.removeItem('token');
         setTimeout(() => {
-          window.location.href = '/auth?mode=login';
+          window.location.href = '/login';
         }, 2000);
       } else {
         alert(error.response?.data?.error || 'Failed to analyze video');

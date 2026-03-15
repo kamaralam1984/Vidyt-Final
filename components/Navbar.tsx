@@ -55,7 +55,7 @@ export default function Navbar() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('uniqueId');
     }
-    router.push('/auth?mode=login');
+    router.push('/login');
   };
 
   const navItems = [

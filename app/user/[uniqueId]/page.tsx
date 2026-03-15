@@ -89,7 +89,7 @@ export default function UserHomePage() {
           <h2 className="text-2xl font-bold text-white text-center mb-2">Error</h2>
           <p className="text-[#AAAAAA] text-center">{error || 'User not found'}</p>
           <button
-            onClick={() => router.push('/auth?mode=login')}
+            onClick={() => router.push('/login')}
             className="mt-6 w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold"
           >
             Go to Login
@@ -115,7 +115,7 @@ export default function UserHomePage() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('uniqueId');
     }
-    router.push('/auth?mode=login');
+    router.push('/login');
   };
 
   const planEndText = (() => {

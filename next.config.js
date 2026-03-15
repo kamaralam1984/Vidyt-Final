@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async rewrites() {
+    return [{ source: '/login', destination: '/auth' }];
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',

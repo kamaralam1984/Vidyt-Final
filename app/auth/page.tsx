@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Script from 'next/script';
@@ -68,19 +68,32 @@ type LoginMethod = 'uniqueIdPin' | 'emailPassword';
 
 export default function AuthPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isLogin, setIsLogin] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('uniqueIdPin');
 
+  // Redirect /auth?mode=login to clean URL /login
   useEffect(() => {
-    // Check URL params for mode
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
+    if (pathname === '/auth' && searchParams.get('mode') === 'login') {
+      router.replace('/login');
+      return;
+    }
+  }, [pathname, searchParams, router]);
+
+  useEffect(() => {
+    // /login route shows login; /auth uses ?mode= param or defaults to signup
+    if (pathname === '/login') {
+      setIsLogin(true);
+      return;
+    }
+    const mode = searchParams.get('mode');
     if (mode === 'login') {
       setIsLogin(true);
     } else if (mode === 'signup') {
       setIsLogin(false);
     }
-  }, []);
+  }, [pathname, searchParams]);
   const [subscriptionType, setSubscriptionType] = useState<SubscriptionType>('trial');
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -113,13 +126,13 @@ export default function AuthPage() {
       router.push('/dashboard');
     }
 
-    // Check URL params for mode
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
-    if (mode === 'login') {
+    // /login route shows login; /auth uses ?mode= param
+    if (pathname === '/login') {
       setIsLogin(true);
-    } else if (mode === 'signup') {
-      setIsLogin(false);
+    } else {
+      const mode = searchParams.get('mode');
+      if (mode === 'login') setIsLogin(true);
+      else if (mode === 'signup') setIsLogin(false);
     }
 
     const checkDbStatus = async () => {
@@ -138,7 +151,7 @@ export default function AuthPage() {
     checkDbStatus();
     const interval = setInterval(checkDbStatus, 5000);
     return () => clearInterval(interval);
-  }, [router]);
+  }, [router, pathname]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
@@ -618,12 +631,18 @@ export default function AuthPage() {
             <div className="mt-6 text-center">
               <p className="text-[#AAAAAA] text-sm">
                 Don&apos;t have an account?{' '}
-                <button
-                  onClick={() => setIsLogin(false)}
-                  className="text-white font-semibold hover:underline"
-                >
-                  Sign Up
-                </button>
+                {pathname === '/login' ? (
+                  <Link href="/auth" className="text-white font-semibold hover:underline">
+                    Sign Up
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => setIsLogin(false)}
+                    className="text-white font-semibold hover:underline"
+                  >
+                    Sign Up
+                  </button>
+                )}
               </p>
             </div>
           </motion.div>
@@ -948,12 +967,9 @@ export default function AuthPage() {
             <div className="mt-6 text-center">
               <p className="text-[#AAAAAA] text-sm">
                 Already have an account?{' '}
-                <button
-                  onClick={() => setIsLogin(true)}
-                  className="text-white font-semibold hover:underline"
-                >
+                <Link href="/login" className="text-white font-semibold hover:underline">
                   Sign In
-                </button>
+                </Link>
               </p>
             </div>
           </motion.div>
