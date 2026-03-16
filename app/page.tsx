@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import MarketingNavbar from '@/components/MarketingNavbar';
-import { 
-  Zap, 
-  TrendingUp, 
-  Target, 
+import {
+  Zap,
+  TrendingUp,
+  Target,
   BarChart3,
   Sparkles,
   ArrowRight,
@@ -19,18 +19,147 @@ import {
   Globe,
   Crown,
   Menu,
-  X
+  X,
 } from 'lucide-react';
+import axios from 'axios';
+import { getAuthHeaders } from '@/utils/auth';
+import { getPlanFeatures, type PlanId, type PlanFeatures } from '@/lib/planLimits';
+import { useLocale } from '@/context/LocaleContext';
+import { useTranslations } from '@/context/translations';
 
 const PRICING_PLANS = [
-  { name: 'Free', priceMonth: 0, priceYear: 0, features: ['5 video analyses per month', 'Basic viral score prediction', 'Thumbnail analysis', 'Title optimization (3 suggestions)', 'Hashtag generator (10 hashtags)', 'Community support'] },
-  { name: 'Pro', priceMonth: 5, priceYear: 50, popular: true, features: ['Unlimited video analyses', 'Advanced AI viral prediction', 'Real-time trend analysis', 'Title optimization (10 suggestions)', 'Hashtag generator (20 hashtags)', 'Best posting time predictions', 'Competitor analysis', 'Email support', 'Priority processing'] },
-  { name: 'Enterprise', priceMonth: 12, priceYear: 120, features: ['Everything in Pro', 'Team collaboration (up to 10 users)', 'White-label reports', 'API access', 'Custom AI model training', 'Dedicated account manager', '24/7 priority support', 'Advanced analytics dashboard', 'Bulk video processing', 'Custom integrations'] },
+  {
+    name: 'Free',
+    labelKey: 'pricing.plan.free.name',
+    priceMonth: 0,
+    priceYear: 0,
+    features: [
+      'pricing.plan.free.f1',
+      'pricing.plan.free.f2',
+      'pricing.plan.free.f3',
+      'pricing.plan.free.f4',
+      'pricing.plan.free.f5',
+      'pricing.plan.free.f6',
+    ],
+  },
+  {
+    name: 'Pro',
+    labelKey: 'pricing.plan.pro.name',
+    priceMonth: 5,
+    priceYear: 50,
+    popular: true,
+    features: [
+      'pricing.plan.pro.f1',
+      'pricing.plan.pro.f2',
+      'pricing.plan.pro.f3',
+      'pricing.plan.pro.f4',
+      'pricing.plan.pro.f5',
+      'pricing.plan.pro.f6',
+      'pricing.plan.pro.f7',
+      'pricing.plan.pro.f8',
+      'pricing.plan.pro.f9',
+    ],
+  },
+  {
+    name: 'Enterprise',
+    labelKey: 'pricing.plan.enterprise.name',
+    priceMonth: 12,
+    priceYear: 120,
+    features: [
+      'pricing.plan.enterprise.f1',
+      'pricing.plan.enterprise.f2',
+      'pricing.plan.enterprise.f3',
+      'pricing.plan.enterprise.f4',
+      'pricing.plan.enterprise.f5',
+      'pricing.plan.enterprise.f6',
+      'pricing.plan.enterprise.f7',
+      'pricing.plan.enterprise.f8',
+      'pricing.plan.enterprise.f9',
+      'pricing.plan.enterprise.f10',
+    ],
+  },
+] as const;
+
+type HomeFeatureKey = keyof PlanFeatures;
+
+type MarketingPlan = (typeof PRICING_PLANS)[number] & {
+  popular?: boolean;
+  originalPriceMonth?: number;
+  originalPriceYear?: number;
+  discount?: {
+    percentage: number;
+    label?: string;
+    endsAt: string;
+  };
+};
+
+const HOME_FEATURES: {
+  icon: any;
+  titleKey: string;
+  descKey: string;
+  href: string;
+  color: string;
+  requiresFeature?: HomeFeatureKey;
+}[] = [
+  {
+    icon: Zap,
+    titleKey: 'home.feature.ai.title',
+    descKey: 'home.feature.ai.desc',
+    href: '/login',
+    color: '#FF0000',
+    requiresFeature: 'advancedAiViralPrediction',
+  },
+  {
+    icon: TrendingUp,
+    titleKey: 'home.feature.trends.title',
+    descKey: 'home.feature.trends.desc',
+    href: '/login',
+    color: '#f59e0b',
+    requiresFeature: 'realTimeTrendAnalysis',
+  },
+  {
+    icon: BarChart3,
+    titleKey: 'home.feature.analytics.title',
+    descKey: 'home.feature.analytics.desc',
+    href: '/login',
+    color: '#8b5cf6',
+    requiresFeature: 'advancedAnalyticsDashboard',
+  },
+  {
+    icon: Clock,
+    titleKey: 'home.feature.scheduling.title',
+    descKey: 'home.feature.scheduling.desc',
+    href: '/login',
+    color: '#10b981',
+    requiresFeature: 'bestPostingTimePredictions',
+  },
+  {
+    icon: Users,
+    titleKey: 'home.feature.competitors.title',
+    descKey: 'home.feature.competitors.desc',
+    href: '/login',
+    color: '#06b6d4',
+    requiresFeature: 'competitorAnalysis',
+  },
+  {
+    icon: Shield,
+    titleKey: 'home.feature.security.title',
+    descKey: 'home.feature.security.desc',
+    href: '#',
+    color: '#64748b',
+  },
 ];
 
 export default function HomePage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
+  const [planId, setPlanId] = useState<PlanId | null>(null);
+  const [planLoaded, setPlanLoaded] = useState(false);
+  const [marketingPlans, setMarketingPlans] = useState<MarketingPlan[]>(
+    () => PRICING_PLANS.map((p) => ({ ...p }))
+  );
+  const { locale } = useLocale();
+  const { t } = useTranslations();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,6 +168,66 @@ export default function HomePage() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    // Try to detect logged-in user and their plan; ignore errors for anonymous visitors
+    axios
+      .get('/api/user/usage', { headers: getAuthHeaders() })
+      .then((res) => {
+        const p = res.data?.subscription?.plan as PlanId | undefined;
+        if (p) setPlanId(p);
+      })
+      .catch(() => {
+        // not logged in or API error – keep marketing defaults
+      })
+      .finally(() => setPlanLoaded(true));
+
+    // Fetch active discounts for marketing pricing preview
+    axios
+      .get('/api/subscriptions/plans?withDiscounts=1')
+      .then((res) => {
+        const apiPlans = res.data?.plans || [];
+        setMarketingPlans(
+          PRICING_PLANS.map((p) => {
+            const id = p.name.toLowerCase(); // free/pro/enterprise
+            const api = apiPlans.find((ap: any) => ap.id === id);
+            if (!api || !api.discount) return p as any;
+            const d = api.discount;
+            const factor = Math.max(0, 1 - d.percentage / 100);
+            const discountedMonthRaw =
+              p.priceMonth === 0 ? 0 : p.priceMonth * factor;
+            const discountedYearRaw =
+              p.priceYear === 0 ? 0 : p.priceYear * factor;
+            const discountedMonth =
+              Math.round(discountedMonthRaw * 100) / 100;
+            const discountedYear =
+              Math.round(discountedYearRaw * 100) / 100;
+            return {
+              ...p,
+              priceMonth: discountedMonth,
+              priceYear: discountedYear,
+              // keep original prices for strike-through display
+              originalPriceMonth: p.priceMonth,
+              originalPriceYear: p.priceYear,
+              discount: {
+                percentage: d.percentage,
+                label: d.label,
+                endsAt: d.endsAt,
+              },
+            } as any;
+          })
+        );
+      })
+      .catch(() => {
+        // ignore failure – keep default prices
+      });
+  }, []);
+
+  const planFeatures = planId ? getPlanFeatures(planId) : null;
+  const visibleFeatures = HOME_FEATURES.filter((feature) => {
+    if (!planFeatures || !feature.requiresFeature) return true;
+    return !!planFeatures[feature.requiresFeature];
+  });
 
   return (
     <div className="min-h-screen bg-[#0F0F0F]">
@@ -73,9 +262,9 @@ export default function HomePage() {
               transition={{ delay: 0.2 }}
               className="text-6xl md:text-8xl font-bold text-white mt-0 mb-6"
             >
-              Make Your Videos{' '}
+              {t('hero.title.main')}{' '}
               <span className="text-[#FF0000] bg-gradient-to-r from-[#FF0000] to-[#CC0000] bg-clip-text text-transparent">
-                Go Viral
+                {t('hero.title.highlight')}
               </span>
             </motion.h1>
             <motion.p
@@ -84,7 +273,7 @@ export default function HomePage() {
               transition={{ delay: 0.4 }}
               className="text-xl md:text-2xl text-[#AAAAAA] mb-8 max-w-3xl mx-auto"
             >
-              AI-powered platform to analyze, optimize, and predict viral potential of your social media videos
+              {t('hero.subtitle')}
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -96,7 +285,7 @@ export default function HomePage() {
                 href="/register"
                 className="group px-8 py-4 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-all font-semibold text-lg flex items-center gap-2 shadow-lg shadow-[#FF0000]/30"
               >
-                Start Free Trial
+                {t('hero.cta.primary')}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
@@ -104,7 +293,7 @@ export default function HomePage() {
                 className="px-8 py-4 bg-[#212121] text-white rounded-lg hover:bg-[#333333] transition-all font-semibold text-lg flex items-center gap-2"
               >
                 <Play className="w-5 h-5" />
-                Watch Demo
+                {t('hero.cta.secondary')}
               </Link>
             </motion.div>
           </motion.div>
@@ -121,23 +310,21 @@ export default function HomePage() {
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Powerful Features for{' '}
-              <span className="text-[#FF0000]">Content Creators</span>
+              {t('features.heading')}{' '}
+              <span className="text-[#FF0000]">{t('features.headingHighlight')}</span>
             </h2>
             <p className="text-xl text-[#AAAAAA] max-w-2xl mx-auto">
-              Everything you need to create viral content and grow your audience
+              {t('features.subheading')}
             </p>
+            {planFeatures && (
+              <p className="mt-2 text-sm text-[#888888]">
+                Your current plan ke hisaab se sirf enabled features yahan show ho rahe hain.
+              </p>
+            )}
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { icon: Zap, title: 'AI-Powered Predictions', description: 'Advanced ML models for accurate viral potential', href: '/login', color: '#FF0000' },
-              { icon: TrendingUp, title: 'Real-Time Trends', description: 'Stay ahead with trending topics and hashtags', href: '/login', color: '#f59e0b' },
-              { icon: BarChart3, title: 'Advanced Analytics', description: 'Deep insights into your content performance', href: '/login', color: '#8b5cf6' },
-              { icon: Clock, title: 'Smart Scheduling', description: 'Optimal posting times for maximum engagement', href: '/login', color: '#10b981' },
-              { icon: Users, title: 'Competitor Analysis', description: 'Learn from top-performing creators', href: '/login', color: '#06b6d4' },
-              { icon: Shield, title: 'Secure & Private', description: 'Your data is always protected', href: '#', color: '#64748b' },
-            ].map((feature, index) => {
+            {visibleFeatures.map((feature, index) => {
               const Icon = feature.icon;
               return (
                 <motion.div
@@ -157,8 +344,10 @@ export default function HomePage() {
                       >
                         <Icon className="w-6 h-6" style={{ color: feature.color }} />
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
-                      <p className="text-[#AAAAAA]">{feature.description}</p>
+                      <h3 className="text-xl font-bold text-white mb-2">
+                        {t(feature.titleKey as any)}
+                      </h3>
+                      <p className="text-[#AAAAAA]">{t(feature.descKey as any)}</p>
                       <span className="inline-flex items-center gap-1 mt-3 text-sm text-[#FF0000] opacity-0 group-hover:opacity-100 transition-opacity">
                         Try it <ArrowRight className="w-4 h-4" />
                       </span>
@@ -171,8 +360,10 @@ export default function HomePage() {
                       >
                         <Icon className="w-6 h-6" style={{ color: feature.color }} />
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
-                      <p className="text-[#AAAAAA]">{feature.description}</p>
+                      <h3 className="text-xl font-bold text-white mb-2">
+                        {t(feature.titleKey as any)}
+                      </h3>
+                      <p className="text-[#AAAAAA]">{t(feature.descKey as any)}</p>
                     </>
                   )}
                 </motion.div>
@@ -192,15 +383,16 @@ export default function HomePage() {
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Simple, Transparent <span className="text-[#FF0000]">Pricing</span>
+              {t('pricing.heading')}{' '}
+              <span className="text-[#FF0000]">{t('pricing.headingHighlight')}</span>
             </h2>
             <p className="text-xl text-[#AAAAAA] max-w-2xl mx-auto mb-8">
-              Choose the plan that fits your needs
+              {t('pricing.subheading')}
             </p>
             {/* Monthly / Yearly Toggle */}
             <div className="flex items-center justify-center gap-4 mb-4">
               <span className={`text-sm font-medium ${billingPeriod === 'month' ? 'text-white' : 'text-[#AAAAAA]'}`}>
-                Monthly
+                {t('pricing.toggle.monthly')}
               </span>
               <button
                 type="button"
@@ -215,15 +407,34 @@ export default function HomePage() {
                 />
               </button>
               <span className={`text-sm font-medium ${billingPeriod === 'year' ? 'text-white' : 'text-[#AAAAAA]'}`}>
-                Yearly
+                {t('pricing.toggle.yearly')}
               </span>
             </div>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {PRICING_PLANS.map((plan, index) => {
-              const price = billingPeriod === 'year' ? plan.priceYear : plan.priceMonth;
-              const priceLabel = plan.priceMonth === 0 && plan.priceYear === 0 ? '$0' : `$${price}`;
+            {marketingPlans.map((plan, index) => {
+              const basePrice = billingPeriod === 'year' ? plan.priceYear : plan.priceMonth;
+              const isFree = plan.priceMonth === 0 && plan.priceYear === 0;
+              // Simple static conversion for marketing display only
+              const rateMap: Record<string, number> = {
+                USD: 1,
+                INR: 83,
+                EUR: 0.92,
+                GBP: 0.79,
+                AED: 3.67,
+                SGD: 1.34,
+                AUD: 1.52,
+                CAD: 1.36,
+                MXN: 18.0,
+                IDR: 15500,
+                PKR: 278,
+              };
+              const rate = rateMap[locale.currency] ?? 1;
+              const converted = isFree ? 0 : Math.round(basePrice * rate * 100) / 100;
+              const format = (v: number) =>
+                Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2).replace(/\.00$/, '');
+              const priceLabel = isFree ? `${locale.currencySymbol}0` : `${locale.currencySymbol}${format(converted)}`;
               const periodLabel = billingPeriod === 'year' ? '/year' : '/month';
               return (
                 <motion.div
@@ -238,16 +449,50 @@ export default function HomePage() {
                 >
                   {plan.popular && (
                     <div className="bg-[#FF0000] text-white px-4 py-1 rounded-full text-sm font-semibold inline-block mb-4">
-                      Most Popular
+                      {t('pricing.mostPopular')}
                     </div>
                   )}
-                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                  <div className="text-4xl font-bold text-white mb-6">{priceLabel}<span className="text-lg text-[#AAAAAA]">{periodLabel}</span></div>
+                  <h3 className="text-2xl font-bold text-white mb-2">
+                    {t((plan as any).labelKey || 'pricing.plan.pro.name')}
+                  </h3>
+                  <div className="mb-2 space-y-1">
+                    <div className="flex items-baseline gap-2">
+                      {plan.discount && plan.discount.percentage > 0 ? (
+                        <>
+                          <span className="text-xl line-through text-[#777777]">
+                            {billingPeriod === 'year'
+                              ? `$${(plan as any).originalPriceYear}${periodLabel}`
+                              : `$${(plan as any).originalPriceMonth}${periodLabel}`}
+                          </span>
+                          <span className="text-4xl font-bold text-white">
+                            {priceLabel}
+                            <span className="text-lg text-[#AAAAAA]">{periodLabel}</span>
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-4xl font-bold text-white">
+                          {priceLabel}
+                          <span className="text-lg text-[#AAAAAA]">{periodLabel}</span>
+                        </span>
+                      )}
+                    </div>
+                    {plan.discount && plan.discount.percentage > 0 && (
+                      <>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FF0000]/15 text-[#FF6B6B] text-xs font-semibold">
+                          {plan.discount.label || t('pricing.limitedOffer')} · {plan.discount.percentage}% OFF
+                        </span>
+                        <div className="text-[10px] text-[#888888]">
+                          {t('pricing.validTill')}{' '}
+                          {new Date(plan.discount.endsAt as any).toLocaleDateString()}
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2 text-[#AAAAAA]">
                         <Check className="w-5 h-5 text-[#10b981]" />
-                        {feature}
+                        {t(feature as any)}
                       </li>
                     ))}
                   </ul>
@@ -259,7 +504,7 @@ export default function HomePage() {
                         : 'bg-[#212121] text-white hover:bg-[#333333]'
                     }`}
                   >
-                    Get Started
+                    {t('pricing.getStarted')}
                   </Link>
                 </motion.div>
               );
@@ -272,13 +517,312 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mt-12"
           >
-            <Link
+              <Link
               href="/pricing"
               className="text-[#FF0000] hover:text-[#CC0000] font-semibold inline-flex items-center gap-2"
             >
-              View All Plans <ArrowRight className="w-4 h-4" />
+              {t('pricing.viewAllPlans')} <ArrowRight className="w-4 h-4" />
             </Link>
           </motion.div>
+        </div>
+      </section>
+
+      {/* SEO-focused Free AI Tools Section */}
+      <section
+        id="tools"
+        className="py-24 px-6 bg-[#0F0F0F]"
+      >
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Grow on YouTube with Free AI Tools
+            </h2>
+            <p className="text-lg text-[#AAAAAA] max-w-3xl mx-auto">
+              Use ViralBoost AI&apos;s free YouTube tools to get ideas, scripts, thumbnails, titles and hashtags
+              in one place — without any complicated setup.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: 'YouTube Script Writer',
+                desc: 'Turn any topic into a ready-to-record YouTube script with hooks, sections and CTAs.',
+                href: '/ai/script-generator',
+              },
+              {
+                title: 'Video Ideas & Hooks Generator',
+                desc: 'Daily viral ideas, hooks and angles optimized for your niche.',
+                href: '/ai/script-generator?mode=ideas',
+              },
+              {
+                title: 'YouTube Keyword Research',
+                desc: 'Discover high-intent YouTube keywords based on real search data.',
+                href: '/dashboard/youtube-seo?tab=keywords',
+              },
+              {
+                title: 'Title & CTR Optimization',
+                desc: 'Turn boring titles into click‑worthy headlines with AI title scoring.',
+                href: '/dashboard/youtube-seo?tab=titles',
+              },
+              {
+                title: 'AI Thumbnail Optimization',
+                desc: 'Optimize thumbnails for CTR and compare which version is stronger.',
+                href: '/dashboard/youtube-seo?tab=thumbnails',
+              },
+              {
+                title: 'Shorts & Clip Generator',
+                desc: 'Auto‑clip long videos into Shorts that hook viewers in the first 3 seconds.',
+                href: '/ai/shorts-creator',
+              },
+            ].map((tool, index) => (
+              <motion.div
+                key={tool.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.05 }}
+                className="bg-[#181818] border border-[#262626] rounded-xl p-6 hover:border-[#FF0000] transition-all"
+              >
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {tool.title}
+                </h3>
+                <p className="text-sm text-[#AAAAAA] mb-4">
+                  {tool.desc}
+                </p>
+                <Link
+                  href={tool.href}
+                  className="inline-flex items-center gap-1 text-sm text-[#FF0000] hover:text-[#CC0000]"
+                >
+                  Start using this tool
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Coaching / AI Coach Section */}
+      <section
+        id="coaching"
+        className="py-24 px-6 bg-[#181818]"
+      >
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Personal AI YouTube Coach
+            </h2>
+            <p className="text-lg text-[#AAAAAA] mb-4">
+              From channel audit to thumbnails and retention — the ViralBoost AI Coach gives you step-by-step
+              guidance to make your videos truly ready to go viral.
+            </p>
+            <ul className="space-y-3 text-sm text-[#DDDDDD]">
+                <li className="flex gap-2">
+                <Check className="w-4 h-4 text-[#10b981] mt-1" />
+                Deep channel audit with a clear, actionable improvement plan.
+              </li>
+                <li className="flex gap-2">
+                <Check className="w-4 h-4 text-[#10b981] mt-1" />
+                Niche-specific ideas, content calendar and best posting time suggestions.
+              </li>
+                <li className="flex gap-2">
+                <Check className="w-4 h-4 text-[#10b981] mt-1" />
+                Hooks, titles, thumbnails and descriptions that all follow one growth framework.
+              </li>
+            </ul>
+            <div className="mt-6 flex flex-wrap gap-4">
+              <Link
+                href="/channel-audit"
+                className="px-6 py-3 bg-[#FF0000] text-white rounded-lg text-sm font-semibold hover:bg-[#CC0000] transition"
+              >
+                Run a free channel audit
+              </Link>
+              <Link
+                href="/ai/script-generator?mode=coach"
+                className="px-6 py-3 bg-[#262626] text-white rounded-lg text-sm font-semibold hover:bg-[#333333] transition flex items-center gap-2"
+              >
+                Ask the AI Coach
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="bg-[#121212] border border-[#262626] rounded-2xl p-6 space-y-4"
+          >
+            <h3 className="text-xl font-semibold text-white">
+              YouTube Growth System, not just random tools
+            </h3>
+            <p className="text-sm text-[#AAAAAA]">
+              All tools are connected in one growth loop: research → create → optimize → analyze. This also sends
+              a strong topical authority signal to Google because every page is focused on YouTube growth.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Resources / Blog Section */}
+      <section
+        id="resources"
+        className="py-24 px-6 bg-[#0F0F0F]"
+      >
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              YouTube SEO Guides & Resources
+            </h2>
+            <p className="text-lg text-[#AAAAAA] max-w-3xl mx-auto">
+              In‑depth playbooks that teach you thumbnail, title, retention and posting strategy — so you use a
+              complete system, not just isolated tools.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: 'YouTube SEO Checklist',
+                desc: 'Step-by-step checklist to follow before every upload.',
+              },
+              {
+                title: 'Viral Shorts Formula',
+                desc: 'Breakdown of the first 3 seconds, hook structures and pacing for viral Shorts.',
+              },
+              {
+                title: 'Thumbnail Frameworks',
+                desc: 'Thumbnail patterns used by top creators to keep CTR consistently high.',
+              },
+            ].map((post) => (
+              <div
+                key={post.title}
+                className="bg-[#181818] border border-[#262626] rounded-xl p-6"
+              >
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {post.title}
+                </h3>
+                <p className="text-sm text-[#AAAAAA] mb-4">
+                  {post.desc}
+                </p>
+                <Link
+                  href="/blog"
+                  className="inline-flex items-center gap-1 text-sm text-[#FF0000] hover:text-[#CC0000]"
+                >
+                  Read this guide
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Extension / Integrations Section (SEO stub) */}
+      <section
+        id="extension"
+        className="py-24 px-6 bg-[#181818]"
+      >
+        <div className="max-w-5xl mx-auto text-center">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl md:text-5xl font-bold text-white mb-4"
+          >
+            ViralBoost AI Browser Extension
+          </motion.h2>
+          <p className="text-lg text-[#AAAAAA] mb-6 max-w-3xl mx-auto">
+            A Chrome extension is coming soon that will bring keyword research, title suggestions and thumbnail
+            feedback directly inside YouTube Studio — without switching dashboards.
+          </p>
+          <p className="text-sm text-[#777777] mb-6">
+            For now, run all your optimization inside the web app. The extension landing page and waitlist will
+            later target specific Google searches like &quot;YouTube SEO Chrome extension&quot; and similar queries.
+          </p>
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition text-sm font-semibold"
+          >
+            Get early access updates
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Social Proof / Testimonials */}
+      <section className="py-24 px-6 bg-[#0F0F0F]">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Creators growing with ViralBoost AI
+            </h2>
+            <p className="text-lg text-[#AAAAAA] max-w-3xl mx-auto">
+              Different niches, same outcome — better click-through rate, higher watch time and more predictable
+              growth instead of random viral luck.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                name: 'Gaming Creator',
+                stat: '+78% CTR',
+                quote:
+                  'Using thumbnail suggestions and title score together almost doubled CTR in just three weeks.',
+              },
+              {
+                name: 'Education Channel',
+                stat: '3x views',
+                quote:
+                  'Keyword research plus the best posting time tool tripled views on evergreen tutorials in 60 days.',
+              },
+              {
+                name: 'Vlog / Lifestyle',
+                stat: '+42% watch time',
+                quote:
+                  'AI script outlines fixed hooks and pacing, which clearly improved average view duration.',
+              },
+            ].map((t) => (
+              <div
+                key={t.name}
+                className="bg-[#181818] border border-[#262626] rounded-2xl p-6 flex flex-col justify-between"
+              >
+                <div>
+                  <p className="text-sm text-[#DDDDDD] mb-4">
+                    “{t.quote}”
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <span className="text-[#FFFFFF]/90 font-semibold">
+                    {t.name}
+                  </span>
+                  <span className="text-[#10b981] font-semibold">
+                    {t.stat}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -291,7 +835,7 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-4xl md:text-5xl font-bold text-white mb-6"
           >
-            Ready to Go Viral?
+            {t('cta.heading')}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -300,7 +844,7 @@ export default function HomePage() {
             transition={{ delay: 0.1 }}
             className="text-xl text-white/90 mb-8"
           >
-            Join thousands of creators using AI to maximize their reach
+            {t('cta.subheading')}
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -312,7 +856,7 @@ export default function HomePage() {
               href="/register"
               className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#FF0000] rounded-lg hover:bg-gray-100 transition-all font-semibold text-lg shadow-lg"
             >
-              Start Free Trial
+              {t('cta.button')}
               <ArrowRight className="w-5 h-5" />
             </Link>
           </motion.div>
@@ -345,17 +889,17 @@ export default function HomePage() {
             <div>
               <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-[#AAAAAA] text-sm">
-                <li><a href="#about" className="hover:text-white transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                <li><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
+                <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-[#AAAAAA] text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Security</a></li>
+                <li><Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">Terms</Link></li>
+                <li><Link href="/security" className="hover:text-white transition-colors">Security</Link></li>
               </ul>
             </div>
           </div>

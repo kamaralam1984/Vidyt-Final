@@ -65,7 +65,7 @@ export default function SuperAdminPage() {
   const [modifySubmitting, setModifySubmitting] = useState(false);
   const [roleChangingId, setRoleChangingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'users' | 'tables' | 'aiStudio' | 'apiConfig'>('users');
+  const [viewMode, setViewMode] = useState<'users' | 'tables' | 'aiStudio' | 'apiConfig' | 'discounts'>('users');
   const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['manager', 'admin', 'super-admin']);
   const [aiStudioSaving, setAiStudioSaving] = useState(false);
   const [aiToolsAccess, setAiToolsAccess] = useState<Record<string, string[]>>({});
@@ -92,7 +92,27 @@ export default function SuperAdminPage() {
   const [openUserManagement, setOpenUserManagement] = useState(true);
   const [openAiStudio, setOpenAiStudio] = useState(true);
   const [openSaaS, setOpenSaaS] = useState(true);
+  const [openBilling, setOpenBilling] = useState(true);
   const tableLimit = 20;
+  const [discounts, setDiscounts] = useState<
+    { id: string; planId: string; label: string; percentage: number; startsAt: string; endsAt: string }[]
+  >([]);
+  const [discountsLoading, setDiscountsLoading] = useState(false);
+  const [discountsError, setDiscountsError] = useState<string | null>(null);
+  const [discountForm, setDiscountForm] = useState<{
+    planId: string;
+    label: string;
+    percentage: string;
+    startsAt: string;
+    endsAt: string;
+  }>({
+    planId: 'pro',
+    label: '',
+    percentage: '20',
+    startsAt: '',
+    endsAt: '',
+  });
+  const [discountSaving, setDiscountSaving] = useState(false);
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,6 +259,30 @@ export default function SuperAdminPage() {
     }
   };
 
+  const fetchDiscounts = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setDiscountsLoading(true);
+    setDiscountsError(null);
+    try {
+      const res = await fetch('/api/admin/plan-discounts', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setDiscountsError(json.error || 'Failed to load discounts');
+        setDiscounts([]);
+        return;
+      }
+      setDiscounts(json.discounts || []);
+    } catch (e: any) {
+      setDiscountsError('Failed to load discounts');
+      setDiscounts([]);
+    } finally {
+      setDiscountsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (viewMode === 'tables') fetchCollections();
     if (viewMode === 'aiStudio') {
@@ -275,6 +319,9 @@ export default function SuperAdminPage() {
           })
           .catch(() => {});
       }
+    }
+    if (viewMode === 'discounts') {
+      fetchDiscounts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
@@ -650,6 +697,48 @@ export default function SuperAdminPage() {
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/calendar')}>
                       <CalendarDays className="w-4 h-4" />
                       <span>Content Calendar</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Billing / Plans — sliding section */}
+          <div className="mb-1">
+            <button
+              type="button"
+              onClick={() => setOpenBilling((o) => !o)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] text-left"
+            >
+              <span className="text-xs font-semibold text-[#888] uppercase tracking-wider">
+                Billing & Plans
+              </span>
+              {openBilling ? (
+                <ChevronDown className="w-4 h-4 text-[#666]" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-[#666]" />
+              )}
+            </button>
+            <AnimatePresence initial={false}>
+              {openBilling && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-0.5 pl-1 pb-2">
+                    <button
+                      type="button"
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${
+                        viewMode === 'discounts' ? 'bg-[#212121] text-white' : ''
+                      }`}
+                      onClick={() => setViewMode('discounts')}
+                    >
+                      <Flame className="w-4 h-4 text-[#FF0000]" />
+                      <span>Plan Discounts</span>
                     </button>
                   </div>
                 </motion.div>
@@ -1072,6 +1161,240 @@ export default function SuperAdminPage() {
                 </div>
               </div>
             )}
+          </div>
+        ) : viewMode === 'discounts' ? (
+          <div id="discounts-main" className="max-w-3xl mx-auto space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Flame className="w-8 h-8 text-[#FF0000]" />
+              <div>
+                <h1 className="text-2xl font-bold">Plan Discount Offers</h1>
+                <p className="text-sm text-[#AAAAAA]">
+                  Free / Pro / Enterprise plans ke liye **kab se kab tak kitna % off** yahan se set karein.
+                </p>
+              </div>
+            </div>
+
+            {/* Animated current offers spotlight */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+              className="relative overflow-hidden rounded-2xl border border-[#272727] bg-gradient-to-br from-[#151515] via-[#0a0a0a] to-[#1f0b0b] p-5"
+            >
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,0,0,0.24),transparent_60%)]" />
+              <div className="relative flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.2em] text-[#ff9a9a] uppercase mb-1">
+                    Live offers
+                  </p>
+                  <h2 className="text-lg font-bold text-white">
+                    {discounts.length ? 'Active plan discounts' : 'No active discounts'}
+                  </h2>
+                  <p className="text-xs text-[#bbbbbb]">
+                    Super admin yahan se time‑bound promotional offers chala sakta hai.
+                  </p>
+                </div>
+                <motion.div
+                  className="relative h-14 w-14 rounded-full border border-red-500/40 bg-black/60 flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.6)]"
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ repeat: Infinity, duration: 18, ease: 'linear' }}
+                >
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-red-500 via-amber-400 to-red-700 flex items-center justify-center">
+                    <Flame className="w-5 h-5 text-white" />
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Discount create form */}
+            <motion.form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                setDiscountSaving(true);
+                try {
+                  const res = await fetch('/api/admin/plan-discounts', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                      planId: discountForm.planId,
+                      label: discountForm.label || undefined,
+                      percentage: Number(discountForm.percentage || '0'),
+                      startsAt: discountForm.startsAt,
+                      endsAt: discountForm.endsAt,
+                    }),
+                  });
+                  const json = await res.json();
+                  if (!res.ok) {
+                    alert(json.error || 'Failed to save discount');
+                  } else {
+                    setDiscounts((prev) => [...prev, json.discount]);
+                    alert('Discount offer saved.');
+                  }
+                } catch {
+                  alert('Failed to save discount');
+                } finally {
+                  setDiscountSaving(false);
+                }
+              }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[#181818] border border-[#272727] rounded-2xl p-5 space-y-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Create / schedule offer</h3>
+                  <p className="text-xs text-[#888888]">
+                    Example: “Holi Offer – Pro plan 40% OFF 10 March se 20 March tak”.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
+                    Plan *
+                  </label>
+                  <select
+                    value={discountForm.planId}
+                    onChange={(e) =>
+                      setDiscountForm((f) => ({ ...f, planId: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-sm focus:ring-2 focus:ring-[#FF0000]"
+                  >
+                    <option value="free">Free</option>
+                    <option value="pro">Pro</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
+                    Label (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={discountForm.label}
+                    onChange={(e) =>
+                      setDiscountForm((f) => ({ ...f, label: e.target.value }))
+                    }
+                    placeholder="e.g. Holi Offer, New Year Sale"
+                    className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
+                    Discount % *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={discountForm.percentage}
+                    onChange={(e) =>
+                      setDiscountForm((f) => ({ ...f, percentage: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
+                      Start (UTC) *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={discountForm.startsAt}
+                      onChange={(e) =>
+                        setDiscountForm((f) => ({ ...f, startsAt: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
+                      End (UTC) *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={discountForm.endsAt}
+                      onChange={(e) =>
+                        setDiscountForm((f) => ({ ...f, endsAt: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={discountSaving}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FF0000] hover:bg-[#CC0000] text-sm font-medium disabled:opacity-50"
+              >
+                {discountSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Flame className="w-4 h-4" /> Save offer
+                  </>
+                )}
+              </button>
+            </motion.form>
+
+            {/* Existing / upcoming discounts list */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[#181818] border border-[#272727] rounded-2xl p-5"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-white">Scheduled & active offers</h3>
+                {discountsLoading && (
+                  <div className="flex items-center gap-1 text-xs text-[#AAAAAA]">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Loading
+                  </div>
+                )}
+              </div>
+              {discountsError && (
+                <p className="text-xs text-red-400 mb-2">{discountsError}</p>
+              )}
+              {discounts.length === 0 && !discountsLoading ? (
+                <p className="text-xs text-[#888888]">
+                  Abhi koi discount set nahi hai. Upar form se naya offer create karein.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {discounts.map((d) => (
+                    <div
+                      key={d.id}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-[#2a2a2a] bg-[#111111] px-3 py-2 text-xs"
+                    >
+                      <div>
+                        <div className="flex items-center gap-1 mb-1">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold text-red-300">
+                            {d.percentage}% OFF
+                          </span>
+                          <span className="capitalize text-[#DDDDDD]">{d.planId}</span>
+                        </div>
+                        {d.label && (
+                          <p className="text-[11px] text-[#ffffff] font-medium">
+                            {d.label}
+                          </p>
+                        )}
+                        <p className="text-[11px] text-[#aaaaaa]">
+                          {new Date(d.startsAt).toLocaleString()} &rarr;{' '}
+                          {new Date(d.endsAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
           </div>
         ) : (
           <div id="users-main" className="max-w-6xl mx-auto">

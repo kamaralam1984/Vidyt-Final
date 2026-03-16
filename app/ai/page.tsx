@@ -9,6 +9,7 @@ import { getAuthHeaders } from '@/utils/auth';
 
 const tools = [
   { icon: FileText, label: 'Script Generator', href: '/ai/script-generator', desc: 'Viral hooks, full script, titles, hashtags, CTA' },
+  { icon: Zap, label: 'AI Coach', href: '/ai/script-generator?mode=coach', desc: 'Channel growth coaching scripts and actionable tips' },
   { icon: Image, label: 'Thumbnail Generator', href: '/ai/thumbnail-generator', desc: 'Thumbnail text, layout, colors, CTR score' },
   { icon: Zap, label: 'Hook Generator', href: '/ai/hook-generator', desc: '10 viral hooks with psychology types' },
   { icon: Film, label: 'Shorts Creator', href: '/ai/shorts-creator', desc: 'Cut long video into 5 shorts with captions' },

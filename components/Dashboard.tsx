@@ -40,13 +40,31 @@ export default function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-7xl mx-auto"
       >
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Welcome to ViralBoost AI
-          </h1>
-          <p className="text-[#AAAAAA]">
-            Analyze and optimize your videos for maximum viral potential
-          </p>
+        <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,2fr),minmax(0,1.3fr)]">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Welcome to ViralBoost AI
+            </h1>
+            <p className="text-[#AAAAAA]">
+              Analyze and optimize your videos for maximum viral potential
+            </p>
+          </div>
+          {!analysis && (
+            <div className="bg-[#111111] border border-[#262626] rounded-xl p-4">
+              <h2 className="text-sm font-semibold text-white mb-2">
+                Getting started (recommended flow)
+              </h2>
+              <ol className="space-y-1 text-xs text-[#CCCCCC] list-decimal list-inside">
+                <li>Upload a video in this dashboard to get a viral score plus hook, title and thumbnail scores.</li>
+                <li>
+                  Then use the <span className="font-semibold">YouTube SEO</span> tab (keywords, titles, thumbnails) to choose search‑based topics.
+                </li>
+                <li>
+                  Use the <span className="font-semibold">Posting Time</span> and <span className="font-semibold">Analytics</span> pages to find the best time to post and track performance.
+                </li>
+              </ol>
+            </div>
+          )}
         </div>
 
         <VideoUpload onAnalysisComplete={handleAnalysisComplete} loading={loading} setLoading={setLoading} />

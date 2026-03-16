@@ -24,13 +24,33 @@ function extractBasesFromTitleAndKeyword(title: string, keyword: string): string
 
 function buildViralKeywords(title: string, keyword: string): { keyword: string; viralScore: number }[] {
   const bases = extractBasesFromTitleAndKeyword(title, keyword);
+  // Suffixes / prefixes ko zyada generic content-creator se hata kar
+  // aise terms rakhe gaye hain jo kisi bhi topic ke saath natural lagen
+  // (story, episode, shorts, viral video, etc.).
   const suffixes = [
-    ' tips', ' tutorial', ' 2025', ' for beginners', ' strategy', ' growth', ' hack',
-    ' how to', ' best', ' viral', ' algorithm', ' secrets', ' guide', ' tricks', ' ideas',
-    ' vs', ' explained', ' full', ' real', ' easy', ' fast', ' free', ' proven', ' expert',
-    ' complete', ' step by step', ' master', ' success', ' trending', ' shorts', ' youtube',
+    '',
+    ' story',
+    ' full story',
+    ' short video',
+    ' shorts',
+    ' viral video',
+    ' new video',
+    ' drama',
+    ' comedy',
+    ' scene',
+    ' episode',
+    ' full episode',
+    ' part 1',
+    ' part 2',
+    ' emotional',
+    ' funny',
+    ' vlog',
+    ' hindi',
+    ' in hindi',
+    ' trending',
+    ' 2026',
   ];
-  const prefixes = ['', 'how to ', 'best ', 'top ', 'ultimate ', 'secret ', 'viral ', 'easy ', 'full '];
+  const prefixes = ['', 'new ', 'best ', 'top ', 'viral '];
   const out: { keyword: string; viralScore: number }[] = [];
   const seen = new Set<string>();
 

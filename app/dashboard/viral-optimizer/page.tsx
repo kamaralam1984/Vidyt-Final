@@ -152,6 +152,11 @@ export default function ViralOptimizerPage() {
     return Math.min(99, Math.round((0.3 * ctr + 0.3 * retention + 0.2 * keywordScore + 0.2 * engagement) * 100));
   })();
 
+  const ctrPercentNumber = ctrData ? parseFloat(ctrData.ctrPercent) || 0 : 0;
+  const meetsCtrTarget = ctrPercentNumber >= 12;
+  const meetsRetentionTarget = (retentionData?.predictedRetention ?? 0) >= 65;
+  const meetsViralTarget = viralScore != null && viralScore >= 75;
+
   const viralColor = viralScore != null ? (viralScore >= 70 ? '#22c55e' : viralScore >= 40 ? '#eab308' : '#ef4444') : '#666';
 
   const onThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -312,8 +317,15 @@ export default function ViralOptimizerPage() {
                 </h2>
                 {ctrData ? (
                   <>
-                    <div className="flex items-baseline gap-2 mb-2">
+                    <div className="flex items-center gap-3 mb-2">
                       <span className="text-3xl font-bold text-white">CTR Prediction: {ctrData.ctrPercent}%</span>
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          meetsCtrTarget ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                        }`}
+                      >
+                        {meetsCtrTarget ? 'Meets 12%+ target' : 'Below 12% target'}
+                      </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                       {Object.entries(ctrData.factors).map(([k, v]) => (
@@ -348,7 +360,16 @@ export default function ViralOptimizerPage() {
                 </h2>
                 {retentionData ? (
                   <>
-                    <p className="text-2xl font-bold text-white mb-2">Predicted Retention: {retentionData.predictedRetention}%</p>
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="text-2xl font-bold text-white">Predicted Retention: {retentionData.predictedRetention}%</p>
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          meetsRetentionTarget ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                        }`}
+                      >
+                        {meetsRetentionTarget ? 'Meets 65%+ target' : 'Below 65% target'}
+                      </span>
+                    </div>
                     {retentionData.fromScript === false && (
                       <p className="text-xs text-amber-400 mb-2">Estimate based on title. Add a script for accurate retention & drop points.</p>
                     )}
@@ -407,7 +428,16 @@ export default function ViralOptimizerPage() {
                 </h2>
                 {viralScore != null ? (
                   <>
-                    <p className="text-2xl font-bold text-white mb-2">Viral Probability: {viralScore}%</p>
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="text-2xl font-bold text-white">Viral Probability: {viralScore}%</p>
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          meetsViralTarget ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                        }`}
+                      >
+                        {meetsViralTarget ? 'High viral setup (75%+)' : 'Below viral target (aim for 75%+)'}
+                      </span>
+                    </div>
                     <p className="text-xs text-[#AAA] mb-2">0.30×CTR + 0.30×Retention + 0.20×Keyword + 0.20×Engagement</p>
                     <div className="h-4 bg-[#212121] rounded-full overflow-hidden">
                       <motion.div

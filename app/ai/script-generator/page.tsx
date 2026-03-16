@@ -19,6 +19,7 @@ function ScriptGeneratorContent() {
   const searchParams = useSearchParams();
   const mode = (searchParams?.get('mode') || '').toLowerCase();
   const isIdeasMode = mode === 'ideas';
+  const isCoachMode = mode === 'coach';
   const [topic, setTopic] = useState(
     mode === 'ideas'
       ? 'Daily video ideas for my YouTube channel'
@@ -82,7 +83,7 @@ function ScriptGeneratorContent() {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
             <FileText className="w-8 h-8 text-[#FF0000]" />
-            AI Script Generator
+            {isCoachMode ? 'AI Coach' : 'AI Script Generator'}
           </h1>
           <p className="text-[#AAAAAA] mb-6">
             {isIdeasMode
@@ -96,7 +97,11 @@ function ScriptGeneratorContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm text-[#AAAAAA] mb-1">
-                  {isIdeasMode ? 'Channel niche / topic *' : 'Video topic *'}
+                  {isIdeasMode
+                    ? 'Channel niche / topic *'
+                    : isCoachMode
+                    ? 'Channel / content question *'
+                    : 'Video topic *'}
                 </label>
                 <input
                   value={topic}
@@ -104,7 +109,11 @@ function ScriptGeneratorContent() {
                   required
                   className="w-full px-4 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white"
                   placeholder={
-                    isIdeasMode ? 'e.g. YouTube growth tips, gaming, finance' : 'e.g. How to grow on YouTube'
+                    isIdeasMode
+                      ? 'e.g. YouTube growth tips, gaming, finance'
+                      : isCoachMode
+                      ? 'e.g. How to grow my faceless YouTube channel faster'
+                      : 'e.g. How to grow on YouTube'
                   }
                 />
               </div>
@@ -127,9 +136,13 @@ function ScriptGeneratorContent() {
                 </select>
               </div>
             </div>
-            <button type="submit" disabled={loading} className="flex items-center gap-2 px-6 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex items-center gap-2 px-6 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50"
+            >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-              {isIdeasMode ? 'Get today’s ideas' : 'Generate'}
+              {isIdeasMode ? 'Get today’s ideas' : isCoachMode ? 'Ask AI Coach' : 'Generate'}
             </button>
           </form>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Sparkles,
   Brain,
@@ -17,6 +18,8 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
+import { useTranslations } from '@/context/translations';
 
 const FEATURES = [
   // Column 1
@@ -108,17 +111,20 @@ const FEATURES = [
 type Feature = (typeof FEATURES)[number];
 
 const MAIN_LINKS = [
-  { label: 'Free AI Tools', href: '#tools' },
-  { label: 'Coaching', href: '#coaching' },
-  { label: 'Resources', href: '#resources' },
-  { label: 'Browser Extension', href: '#extension' },
-  { label: 'Pricing', href: '#pricing' },
+  { labelKey: 'navbar.freeAiTools', href: '#tools' },
+  { labelKey: 'navbar.coaching', href: '#coaching' },
+  { labelKey: 'navbar.resources', href: '#resources' },
+  { labelKey: 'navbar.extension', href: '#extension' },
+  { labelKey: 'navbar.pricing', href: '#pricing' },
 ] as const;
 
 export default function MarketingNavbar() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { locale, setLocale } = useLocale();
+  const { t } = useTranslations();
+  const [localeMenuOpen, setLocaleMenuOpen] = useState(false);
 
   const openFeatures = () => {
     if (closeTimer.current) {
@@ -149,8 +155,14 @@ export default function MarketingNavbar() {
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
         {/* Logo / brand */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-500 via-sky-500 to-emerald-400 shadow-lg shadow-purple-500/40">
-            <Sparkles className="h-5 w-5 text-white" />
+          <div className="relative h-10 w-10">
+            <Image
+              src="/logo.png"
+              alt="ViralBoost AI logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold tracking-tight text-white">
@@ -170,7 +182,7 @@ export default function MarketingNavbar() {
             className="group flex items-center gap-1 text-sm font-medium text-white/80 transition hover:text-white"
             onMouseEnter={openFeatures}
           >
-            <span>Features</span>
+            <span>{t('navbar.features')}</span>
             <ChevronDown
               className={`h-4 w-4 transition-transform duration-200 ${
                 featuresOpen ? 'rotate-180' : ''
@@ -180,25 +192,68 @@ export default function MarketingNavbar() {
 
           {MAIN_LINKS.map((link) => (
             <Link
-              key={link.label}
+              key={link.labelKey}
               href={link.href}
               className="text-sm text-white/70 transition hover:text-white"
             >
-              {link.label}
+              {t(link.labelKey)}
             </Link>
           ))}
         </div>
 
         {/* Right actions */}
         <div className="hidden items-center gap-3 lg:flex">
+          {/* Locale selector */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setLocaleMenuOpen((o) => !o)}
+              className="flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10"
+            >
+              <span className="text-base leading-none">{locale.flag}</span>
+              <span className="hidden md:inline">
+                {locale.countryName}
+              </span>
+            </button>
+            {localeMenuOpen && (
+              <div className="absolute right-0 mt-2 w-60 rounded-2xl border border-white/10 bg-[#050712] shadow-xl shadow-black/60 z-50">
+                <div className="px-3 py-2 border-b border-white/10 text-[11px] text-white/60">
+                  Select country &amp; language
+                </div>
+                <div className="max-h-64 overflow-y-auto py-1 text-sm">
+                  {SUPPORTED_LOCALES.map((opt) => (
+                    <button
+                      key={opt.countryCode}
+                      type="button"
+                      onClick={() => {
+                        setLocale(opt);
+                        setLocaleMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between px-3 py-2 hover:bg-white/10 ${
+                        opt.countryCode === locale.countryCode ? 'bg-white/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base leading-none">{opt.flag}</span>
+                        <span className="text-white text-xs md:text-sm">{opt.countryName}</span>
+                      </div>
+                      <div className="text-[10px] text-white/50 text-right">
+                        {opt.currencySymbol} · {opt.phoneCode}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <Link href="/login" className="text-sm text-white/70 transition hover:text-white">
-            Sign In
+            {t('navbar.signIn')}
           </Link>
           <Link
             href="/signup"
-            className="flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-sky-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-purple-500/40 hover:shadow-purple-500/60 transition"
+            className="flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-red-500/40 hover:bg-red-700 hover:shadow-red-500/60 transition"
           >
-            Get Started Free
+            {t('navbar.getStarted')}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -271,7 +326,7 @@ export default function MarketingNavbar() {
             className="flex w-full items-center justify-between py-2 text-sm font-medium text-white"
             onClick={() => setFeaturesOpen((v) => !v)}
           >
-            <span>Features</span>
+            <span>{t('navbar.features')}</span>
             <ChevronDown
               className={`h-4 w-4 transition-transform ${
                 featuresOpen ? 'rotate-180' : ''
@@ -301,8 +356,8 @@ export default function MarketingNavbar() {
 
           <div className="mt-3 space-y-1 text-sm text-white/70">
             {MAIN_LINKS.map((link) => (
-              <Link key={link.label} href={link.href} className="block py-1">
-                {link.label}
+              <Link key={link.labelKey} href={link.href} className="block py-1">
+                {t(link.labelKey)}
               </Link>
             ))}
             <div className="mt-3 flex gap-2">
@@ -314,7 +369,7 @@ export default function MarketingNavbar() {
               </Link>
               <Link
                 href="/signup"
-                className="flex-1 rounded-full bg-gradient-to-r from-purple-500 to-sky-500 px-3 py-2 text-center text-xs font-medium text-white"
+                className="flex-1 rounded-full bg-red-600 px-3 py-2 text-center text-xs font-medium text-white hover:bg-red-700"
               >
                 Get Started Free
               </Link>

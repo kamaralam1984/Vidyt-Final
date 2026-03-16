@@ -14,6 +14,7 @@ import {
   Wifi, WifiOff, CheckCircle, XCircle, Building, Phone, Hash,
   Eye, EyeOff
 } from 'lucide-react';
+import { useLocale } from '@/context/LocaleContext';
 
 interface Plan {
   id: string;
@@ -75,6 +76,7 @@ function AuthPageContent() {
   const searchParams = useSearchParams();
   const [isLogin, setIsLogin] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('uniqueIdPin');
+  const { locale } = useLocale();
 
   // Redirect /auth?mode=login to clean URL /login
   useEffect(() => {
@@ -823,17 +825,22 @@ function AuthPageContent() {
                 <label className="block text-sm font-medium text-white mb-2">
                   Phone (Optional)
                 </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
+                <div className="relative flex">
+                  <div className="flex items-center gap-1 pl-3 pr-2 border-r border-[#333333] text-xs text-[#AAAAAA]">
+                    <span className="text-base leading-none">{locale.flag}</span>
+                    <span>{locale.phoneCode}</span>
+                  </div>
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-                    placeholder="+91 9876543210"
+                    className="w-full pl-3 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg rounded-l-none text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    placeholder="9876543210"
                   />
                 </div>
-                <p className="text-xs text-[#AAAAAA] mt-1">Include country code, e.g. +91 9876543210.</p>
+                <p className="text-xs text-[#AAAAAA] mt-1">
+                  Country code auto: {locale.phoneCode}. Sirf local number type karein.
+                </p>
               </div>
 
               <div>

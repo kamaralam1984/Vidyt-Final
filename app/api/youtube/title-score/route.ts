@@ -14,17 +14,30 @@ function scoreTitle(title: string): number {
 }
 
 function generateImprovedTitles(title: string, keyword: string): { title: string; score: number }[] {
-  const k = (keyword || title || 'content').trim();
-  const base = k.split(/\s+/).slice(0, 3).join(' ');
+  // Topic ko mix karne ke liye dono use kar rahe hain: keyword + current title
+  const baseSource = (keyword || title || 'video').trim().replace(/\s+/g, ' ');
+  const words = baseSource.split(' ');
+  const shortBase = words.slice(0, 4).join(' ');
+  const base = shortBase || baseSource;
   const year = new Date().getFullYear();
-  const titles = [
-    `How to Go Viral with ${base} (${year})`,
-    `3 ${base} Tricks That Actually Work`,
-    `${base} Strategy That Gets Views`,
-    `The Best ${base} Guide for Beginners`,
-    `${base}: What Nobody Tells You`,
-  ];
-  return titles.map((t, i) => ({ title: t, score: 95 - i * 4 }));
+
+  const variants: string[] = [];
+
+  // 1. Direct story / topic style
+  variants.push(`${base} | Full Story`);
+  variants.push(`${base} | Real Story in Hindi`);
+
+  // 2. Viral / drama style
+  variants.push(`Full ${base} Drama | Must Watch`);
+  variants.push(`${base} | Emotional Story That Will Shock You`);
+
+  // 3. Episode / part system
+  variants.push(`${base} | Episode 1 (Hindi Story)`);
+
+  return variants.map((t, i) => ({
+    title: t,
+    score: 95 - i * 3,
+  }));
 }
 
 export async function GET(request: NextRequest) {

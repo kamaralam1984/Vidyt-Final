@@ -21,6 +21,7 @@ import {
   Shield,
   Globe
 } from 'lucide-react';
+import { useLocale } from '@/context/LocaleContext';
 
 interface Plan {
   id: string;
@@ -37,6 +38,12 @@ interface Plan {
     analyses: string;
     storage: string;
     support: string;
+  };
+  discount?: {
+    percentage: number;
+    label?: string;
+    startsAt: string;
+    endsAt: string;
   };
 }
 
@@ -123,6 +130,9 @@ export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
   const [loading, setLoading] = useState<string | null>(null);
   const [userPlan, setUserPlan] = useState<string | null>(null);
+   const [activePlans, setActivePlans] = useState<Plan[]>(plans);
+   const [plansLoading, setPlansLoading] = useState(false);
+  const { locale } = useLocale();
 
   useEffect(() => {
     // Fetch user's current plan
@@ -133,13 +143,49 @@ export default function PricingPage() {
           const response = await axios.get('/api/auth/me', {
             headers: { Authorization: `Bearer ${token}` },
           });
-          setUserPlan(response.data.user?.subscription || response.data.user?.subscriptionPlan?.planId || 'free');
+          setUserPlan(
+            response.data.user?.subscription ||
+              response.data.user?.subscriptionPlan?.planId ||
+              'free'
+          );
         }
       } catch (error) {
         console.error('Error fetching user plan:', error);
       }
     };
+
+    // Fetch plans with active discounts
+    const fetchPlans = async () => {
+      try {
+        setPlansLoading(true);
+        const res = await axios.get('/api/subscriptions/plans?withDiscounts=1');
+        const apiPlans = res.data?.plans || [];
+        // Merge discount info into local UI plans by id
+        setActivePlans((prev) =>
+          prev.map((p) => {
+            const api = apiPlans.find((ap: any) => ap.id === p.id);
+            if (!api || !api.discount) return p;
+            const d = api.discount;
+            return {
+              ...p,
+              discount: {
+                percentage: d.percentage,
+                label: d.label,
+                startsAt: d.startsAt,
+                endsAt: d.endsAt,
+              },
+            };
+          })
+        );
+      } catch (error) {
+        console.error('Error fetching plans with discounts:', error);
+      } finally {
+        setPlansLoading(false);
+      }
+    };
+
     fetchUserPlan();
+    fetchPlans();
   }, []);
 
   const handleSubscribe = async (planId: string) => {
@@ -179,8 +225,35 @@ export default function PricingPage() {
 
   const getPrice = (plan: Plan) => {
     if (plan.price === 0) return 'Free';
-    const price = billingPeriod === 'year' ? plan.price * 10 : plan.price;
-    return `$${price}${billingPeriod === 'year' ? '/year' : '/month'}`;
+    const base = billingPeriod === 'year' ? plan.price * 10 : plan.price;
+    const hasDiscount = plan.discount && plan.discount.percentage > 0;
+    const rawDiscounted = hasDiscount
+      ? base - (base * plan.discount!.percentage) / 100
+      : base;
+    const discounted = Math.max(0, Math.round(rawDiscounted * 100) / 100); // up to 2 decimals
+    const suffix = billingPeriod === 'year' ? '/year' : '/month';
+
+    const format = (value: number) =>
+      Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2).replace(/\.00$/, '');
+
+    // Currency conversion for display only
+    const rateMap: Record<string, number> = {
+      USD: 1,
+      INR: 83,
+      EUR: 0.92,
+      GBP: 0.79,
+    };
+    const rate = rateMap[locale.currency] ?? 1;
+    const baseConverted = Math.round(base * rate * 100) / 100;
+    const discConverted = Math.round(discounted * rate * 100) / 100;
+
+    if (!hasDiscount) {
+      return `${locale.currencySymbol}${format(baseConverted)}${suffix}`;
+    }
+
+    // When discount is active, we show only discounted price here;
+    // old price is rendered separately with strike-through.
+    return `${locale.currencySymbol}${format(discConverted)}${suffix}`;
   };
 
   const getSavings = (plan: Plan) => {
@@ -190,6 +263,8 @@ export default function PricingPage() {
     const savings = (monthlyPrice * 12 - yearlyPrice) / (monthlyPrice * 12);
     return Math.round(savings * 100);
   };
+
+  const billingSuffix = billingPeriod === 'year' ? '/year' : '/month';
 
   return (
     <DashboardLayout>
@@ -249,7 +324,7 @@ export default function PricingPage() {
           {/* Plans Grid */}
           <div className="max-w-7xl mx-auto px-6 pb-16">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {plans.map((plan, index) => {
+              {activePlans.map((plan, index) => {
                 const Icon = plan.icon;
                 const isCurrentPlan = userPlan === plan.id;
                 const savings = getSavings(plan);
@@ -300,9 +375,38 @@ export default function PricingPage() {
                         </motion.div>
                         <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                         <p className="text-[#AAAAAA] text-sm mb-4">{plan.description}</p>
-                        <div className="mb-2">
-                          <span className="text-4xl font-bold text-white">{getPrice(plan)}</span>
-                          {savings && (
+                        <div className="mb-2 space-y-1">
+                          <div className="flex items-baseline justify-center gap-2">
+                            {plan.discount && plan.discount.percentage > 0 ? (
+                              <>
+                                <span className="text-xl line-through text-[#777777]">
+                                  {billingPeriod === 'year'
+                                    ? `${locale.currencySymbol}${(plan.price * 10 * (locale.currency === 'USD' ? 1 : (locale.currency === 'INR' ? 83 : locale.currency === 'EUR' ? 0.92 : 0.79))).toFixed(0)}${billingSuffix}`
+                                    : `${locale.currencySymbol}${(plan.price * (locale.currency === 'USD' ? 1 : (locale.currency === 'INR' ? 83 : locale.currency === 'EUR' ? 0.92 : 0.79))).toFixed(0)}${billingSuffix}`}
+                                </span>
+                                <span className="text-4xl font-bold text-white">
+                                  {getPrice(plan)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-4xl font-bold text-white">
+                                {getPrice(plan)}
+                              </span>
+                            )}
+                          </div>
+                          {plan.discount && plan.discount.percentage > 0 && (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FF0000]/15 text-[#FF6B6B] text-xs font-semibold">
+                                {plan.discount.label || 'Limited time offer'} ·{' '}
+                                {plan.discount.percentage}% OFF
+                              </span>
+                              <span className="text-[10px] text-[#888888]">
+                                Valid till{' '}
+                                {new Date(plan.discount.endsAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+                          {savings && !plan.discount && (
                             <span className="ml-2 text-sm text-[#10b981]">
                               Save {savings}%
                             </span>
@@ -473,6 +577,6 @@ export default function PricingPage() {
             </motion.div>
           </div>
         </div>
-    </DashboardLayout>
+      </DashboardLayout>
   );
 }

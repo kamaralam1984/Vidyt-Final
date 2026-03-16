@@ -228,11 +228,11 @@ function YouTubeLiveSEOContent() {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedAllKeywords(true);
-      setChannelKeywordNotification('Keywords copy ho gaye! YouTube Studio → Channel → About me me paste karein.');
+    setChannelKeywordNotification('Keywords copied! Paste them in YouTube Studio → Channel → About.');
       setTimeout(() => setCopiedAllKeywords(false), 2000);
       setTimeout(() => setChannelKeywordNotification(null), 5000);
     } catch (_) {
-      setChannelKeywordNotification('Copy nahi ho paya. Browser permission check karein.');
+      setChannelKeywordNotification('Copy failed. Please check browser clipboard permissions.');
     }
   };
 
@@ -570,6 +570,10 @@ function YouTubeLiveSEOContent() {
     setVideoFile(file);
     setVideoSuggestions(null);
     e.target.value = '';
+    // Auto-run a quick analysis right after upload so the creator sees results within a few seconds
+    setTimeout(() => {
+      runVideoAnalyze();
+    }, 50);
   };
 
   const runVideoAnalyze = async () => {
@@ -596,13 +600,13 @@ function YouTubeLiveSEOContent() {
         if (transcriptText) setChinkiInput(transcriptText);
         let chinkiReply: string;
         if (fromTranscript) {
-          chinkiReply = `Maine video ki audio sun kar exact content pe title, description, keywords aur hashtags bana diye—sab form me add kar diye. Transcript Chinki ke textbox me hai; usi text ke hisaab se sab set ho chuka hai. Chinki se aur viral tips pooch sakte ho!`;
+          chinkiReply = `I listened to the video audio and generated the title, description, keywords and hashtags from the exact content – everything is already filled in the form. The transcript is in my textbox so you can ask for more viral tips based on it.`;
         } else if (transcriptionError) {
-          chinkiReply = `OpenAI transcription kaam nahi kiya: ${transcriptionError} Maine filename/topic se suggest kiye—sab form me add kar diye. Fix karke phir "Analyze" dubara chalayein.`;
+          chinkiReply = `OpenAI transcription failed: ${transcriptionError}. I used only the filename/topic to generate suggestions and filled the form. Fix the issue and click "Analyze" again for content‑based results.`;
         } else if (!openAiKeyConfigured) {
-          chinkiReply = `Maine filename/topic se suggest kiye hain—sab form me add kar diye. Video ki audio se exact title/description ke liye Super Admin → API keys me OpenAI API key set karein, phir "Analyze" dubara chalayein.`;
+          chinkiReply = `I used only the filename/topic to generate suggestions and filled the form. To get exact content‑based title and description, add an OpenAI API key in Super Admin → API keys and run "Analyze" again.`;
         } else {
-          chinkiReply = `Video ki audio transcribe nahi ho payi (format/quality check karein). Maine filename/topic se suggest kiye—sab form me add kar diye. Koi change chahiye ho to batao!`;
+          chinkiReply = `The video audio could not be transcribed (please check format/quality). I used only the filename/topic to generate suggestions and filled the form. Tell me what you want to change and I will help.`;
         }
         setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: chinkiReply }]);
       }
@@ -611,7 +615,10 @@ function YouTubeLiveSEOContent() {
       }
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { transcriptionError?: string; message?: string } } };
-      const msg = ax.response?.data?.transcriptionError || ax.response?.data?.message || 'Video analyze karte waqt error aaya. Phir se try karein ya topic likh kar bhejein.';
+      const msg =
+        ax.response?.data?.transcriptionError ||
+        ax.response?.data?.message ||
+        'There was an error while analyzing the video. Please try again or type your topic manually.';
       setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: msg }]);
     } finally {
       setVideoAnalyzing(false);
@@ -647,7 +654,10 @@ function YouTubeLiveSEOContent() {
       setChinkiMessages((m) => [...m, { role: 'chinki', text: res.data.reply || '' }]);
     } catch (err: unknown) {
       const reply = (err as { response?: { data?: { reply?: string } } })?.response?.data?.reply;
-      setChinkiMessages((m) => [...m, { role: 'chinki', text: reply || 'Abhi reply nahi de pa rahi. Thodi der baad try karein.' }]);
+      setChinkiMessages((m) => [
+        ...m,
+        { role: 'chinki', text: reply || 'I cannot reply right now. Please try again in a moment.' },
+      ]);
     } finally {
       setChinkiLoading(false);
     }
@@ -669,7 +679,13 @@ function YouTubeLiveSEOContent() {
   useEffect(() => {
     if (allowed && !chinkiWelcomed.current) {
       chinkiWelcomed.current = true;
-      setChinkiMessages([{ role: 'chinki', text: 'Hi! Main Chinki hoon, aapki 24 saal ki AI assistant. Main aapke channel aur video SEO me live guide karti hoon. Kuch bhi poochho—title, description, thumbnail ya kya karna chahiye. Main sabhi bhashaon me baat karti hoon.' }]);
+      setChinkiMessages([
+        {
+          role: 'chinki',
+          text:
+            'Hi! I am Chinki, your AI assistant for YouTube SEO. I can guide you live on titles, descriptions, thumbnails and keywords. Ask me anything you want to improve.',
+        },
+      ]);
     }
   }, [allowed]);
 
@@ -686,6 +702,10 @@ function YouTubeLiveSEOContent() {
         const th = thumbnailScore?.score ?? 70;
         return Math.min(99, Math.round((s * 0.35 + t * 0.25 + k * 0.2 + th * 0.2)));
       })();
+
+  const ctrPercentNumber = ctrData ? parseFloat(ctrData.ctrPercent) || 0 : 0;
+  const meetsCtrTarget = ctrPercentNumber >= 12;
+  const meetsViralTarget = viralProbability >= 75;
 
   if (allowed === null) {
     return (
@@ -828,8 +848,11 @@ function YouTubeLiveSEOContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-[#AAAAAA] mb-1">Channel link (Chinki ke liye)</label>
-                  <p className="text-xs text-[#666] mb-1">Link dalne par Chinki channel me kitne video hain, kya kami hai, setting me kya kami hai bataegi.</p>
+                  <label className="block text-sm text-[#AAAAAA] mb-1">Channel link (for Chinki)</label>
+                  <p className="text-xs text-[#666] mb-1">
+                    Once you add the link, Chinki will tell you how many videos are on the channel, what is missing and
+                    which settings need fixing.
+                  </p>
                   <div className="flex gap-2">
                     <input
                       value={channelUrl}
@@ -843,7 +866,7 @@ function YouTubeLiveSEOContent() {
                       disabled={!channelUrl.trim() || channelSummaryLoading}
                       className="px-4 py-2.5 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 text-white rounded-lg font-medium"
                     >
-                      {channelSummaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Link karein'}
+                      {channelSummaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Link channel'}
                     </button>
                   </div>
                   {channelSummary?.channelTitle && (
@@ -931,8 +954,15 @@ function YouTubeLiveSEOContent() {
                 </div>
               ) : ctrData ? (
                 <>
-                  <div className="flex items-baseline gap-2 mb-4">
+                  <div className="flex items-center gap-3 mb-4">
                     <span className="text-2xl font-bold text-white">CTR Prediction: {ctrData.ctrPercent}%</span>
+                    <span
+                      className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                        meetsCtrTarget ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                      }`}
+                    >
+                      {meetsCtrTarget ? 'Meets 12%+ target' : 'Below 12% target'}
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
                     {Object.entries(ctrData.factors).map(([key, value]) => (
@@ -960,7 +990,9 @@ function YouTubeLiveSEOContent() {
                   )}
                 </>
               ) : (
-                <p className="text-[#666] text-sm">Title, keywords ya thumbnail add karein — CTR prediction real data se aayegi.</p>
+                <p className="text-[#666] text-sm">
+                  Add a title, some keywords and a thumbnail to see a data‑driven CTR prediction.
+                </p>
               )}
             </div>
 
@@ -969,7 +1001,10 @@ function YouTubeLiveSEOContent() {
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-[#FF0000]" /> Best Posting Time
               </h2>
-              <p className="text-xs text-[#888] mb-3">Channel link dalne ke baad: kaun se din, kitne baje post karein — aapke channel ke videos ke views ke hisaab se (YouTube data).</p>
+              <p className="text-xs text-[#888] mb-3">
+                After you add a channel link, we use your own YouTube data to show which days and times get the
+                most views.
+              </p>
               {loadingBestPostingTime ? (
                 <div className="flex items-center gap-2 text-[#888]">
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -1017,13 +1052,18 @@ function YouTubeLiveSEOContent() {
                   </p>
                 </>
               ) : channelUrl.trim() && !channelSummary?.videoCount ? (
-                <p className="text-[#666] text-sm">Pehle channel link karein (Link karein dabayein).</p>
+                <p className="text-[#666] text-sm">First link the channel and click “Link channel”.</p>
               ) : channelSummary?.videoCount === 0 ? (
-                <p className="text-[#666] text-sm">Is channel par abhi koi video nahi hai. Videos upload karein, phir best time bata payenge.</p>
+                <p className="text-[#666] text-sm">
+                  This channel does not have any videos yet. Upload some videos and we will calculate the best time.
+                </p>
               ) : bestPostingTime?.summary && !bestPostingTime.bestSlots?.length ? (
                 <p className="text-[#666] text-sm">{bestPostingTime.summary}</p>
               ) : (
-                <p className="text-[#666] text-sm">Channel link dal ke &quot;Link karein&quot; dabayein — channel ke hisaab se best posting time (kaun se din, kitne baje views zyada) bata denge.</p>
+                <p className="text-[#666] text-sm">
+                  Add your channel link and click &quot;Link channel&quot; to see the best days and times to post
+                  based on your views.
+                </p>
               )}
             </div>
 
@@ -1033,7 +1073,10 @@ function YouTubeLiveSEOContent() {
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-[#FF0000]" /> Channel Audit — Growth &amp; Home
                 </h2>
-                <p className="text-xs text-[#888] mb-4">Channel link ke hisaab se: home page pe kaun se keywords hain (%), kaun sa badal karein, aur kaun sa rakhna chahiye.</p>
+                <p className="text-xs text-[#888] mb-4">
+                  Based on your channel link: which keywords appear on the home page (%), which ones to replace and
+                  which ones to keep.
+                </p>
 
                 {channelKeywordNotification && (
                   <div className="mb-4 p-3 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-sm flex items-center justify-between gap-2">
@@ -1046,7 +1089,9 @@ function YouTubeLiveSEOContent() {
 
                 {(channelSummary?.homepageKeywords?.length ?? 0) > 0 && (
                   <div className="mb-4">
-                    <p className="text-sm font-semibold text-emerald-400 mb-2">Channel home / About me kaun kaun sa keyword hai (score %)</p>
+                    <p className="text-sm font-semibold text-emerald-400 mb-2">
+                      Which keywords are on your channel home / About (score %)
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {channelSummary.homepageKeywords!.map((item, i) => (
                         <span
@@ -1064,7 +1109,9 @@ function YouTubeLiveSEOContent() {
 
                 {(channelSummary?.keywordReplaceSuggestions?.length ?? 0) > 0 && (
                   <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                    <p className="text-sm font-semibold text-amber-400 mb-2">Suggestion / Notification — kaun sa keyword badal kar kaun sa rakhna chahiye</p>
+                    <p className="text-sm font-semibold text-amber-400 mb-2">
+                      Suggestions — which keyword to replace and which one to keep
+                    </p>
                     <ul className="text-sm text-[#CCC] space-y-2">
                       {channelSummary.keywordReplaceSuggestions!.map((s, i) => (
                         <li key={i} className="flex flex-wrap items-center gap-2">
@@ -1080,7 +1127,10 @@ function YouTubeLiveSEOContent() {
 
                 {(channelSummary?.recommendedKeywords?.length ?? 0) > 0 && (
                   <div className="mb-4">
-                    <p className="text-sm font-semibold text-white mb-2">Channel page pe ye keywords rakhne chahiye (recommended, %) — click Copy se channel About me paste karein</p>
+                    <p className="text-sm font-semibold text-white mb-2">
+                      These keywords are recommended for your channel page (%) — click Copy to paste into the About
+                      section
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {channelSummary.recommendedKeywords!.map((item, i) => (
                         <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-[#212121] text-emerald-400 rounded text-sm border border-emerald-500/30">
@@ -1095,15 +1145,18 @@ function YouTubeLiveSEOContent() {
                 )}
 
                 <div className="mb-4 p-3 rounded-lg bg-[#212121]/80 border border-[#333]">
-                  <p className="text-sm font-semibold text-white mb-2">Channel home / About me keyword dalne ka system</p>
-                  <p className="text-xs text-[#888] mb-2">Jo keyword channel page pe rakhna chahte ho, yahan add karein. Neeche &quot;Channel page pe daalne ke liye&quot; se copy karke YouTube Studio me paste karein.</p>
+                  <p className="text-sm font-semibold text-white mb-2">Channel home / About keywords system</p>
+                  <p className="text-xs text-[#888] mb-2">
+                    Add any keyword you want to keep on the channel page here, then copy everything below and paste it
+                    into YouTube Studio → Channel → About.
+                  </p>
                   <div className="flex flex-wrap gap-2 mb-2">
                     <input
                       type="text"
                       value={channelPageKeywordInput}
                       onChange={(e) => setChannelPageKeywordInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && addChannelPageKeyword()}
-                      placeholder="Keyword type karein, phir Add"
+                      placeholder="Type a keyword, then click Add"
                       className="flex-1 min-w-[140px] px-3 py-2 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] text-sm focus:ring-2 focus:ring-[#FF0000]"
                     />
                     <button
@@ -1118,8 +1171,12 @@ function YouTubeLiveSEOContent() {
                   {/* Suggested keywords ko channel page me dalne ka system: copy all + copy one */}
                   {uniqueKeywordsForCopy.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-[#333]">
-                      <p className="text-sm font-semibold text-emerald-400 mb-2">Suggested keywords ko channel page me daalne ka system</p>
-                      <p className="text-xs text-[#888] mb-2">YouTube Studio → Channel → About me → Description me ye keywords paste karein.</p>
+                      <p className="text-sm font-semibold text-emerald-400 mb-2">
+                        System for adding suggested keywords to your channel page
+                      </p>
+                      <p className="text-xs text-[#888] mb-2">
+                        In YouTube Studio → Channel → About → Description, paste these keywords.
+                      </p>
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <button
                           type="button"
@@ -1127,7 +1184,7 @@ function YouTubeLiveSEOContent() {
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium"
                         >
                           {copiedAllKeywords ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                          {copiedAllKeywords ? 'Copied!' : 'Saare keywords copy karein'}
+                          {copiedAllKeywords ? 'Copied!' : 'Copy all keywords'}
                         </button>
                         <span className="text-xs text-[#888]">({uniqueKeywordsForCopy.length} keywords)</span>
                       </div>
@@ -1136,7 +1193,10 @@ function YouTubeLiveSEOContent() {
 
                   {channelPageSuggestedKeywords.length > 0 && (
                     <div className="mt-2">
-                      <p className="text-xs text-[#888] mb-1">Aapke suggested keywords — click Copy se ek keyword copy, phir channel About me paste karein:</p>
+                      <p className="text-xs text-[#888] mb-1">
+                        Your suggested keywords — click Copy to copy one keyword, then paste it into the channel About
+                        section:
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {channelPageSuggestedKeywords.map((item, i) => (
                           <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-[#333] text-[#CCC] rounded text-sm">
@@ -1156,19 +1216,21 @@ function YouTubeLiveSEOContent() {
 
                 {(channelSummary?.growthActions?.length ?? 0) > 0 && (
                   <div>
-                    <p className="text-sm font-semibold text-amber-400 mb-2">Kya badlav karne ki zarurat hai — subscriber &amp; views badhane ke liye</p>
-                    <p className="text-xs text-[#888] mb-3">Jahan kya change karein, puri jankari:</p>
+                    <p className="text-sm font-semibold text-amber-400 mb-2">
+                      What needs to change to grow subscribers &amp; views
+                    </p>
+                    <p className="text-xs text-[#888] mb-3">Exactly where to change what, with reasons:</p>
                     <div className="space-y-3">
                       {channelSummary.growthActions!.map((g, i) => (
                         <div key={i} className="p-3 rounded-lg bg-[#212121]/80 border border-[#333]">
                           <p className="text-white font-medium text-sm mb-1">
-                            <span className="text-amber-400">Jahan:</span> {g.where}
+                            <span className="text-amber-400">Where:</span> {g.where}
                           </p>
                           <p className="text-[#CCC] text-sm mb-1">
-                            <span className="text-emerald-400">Kya karein:</span> {g.action}
+                            <span className="text-emerald-400">What to do:</span> {g.action}
                           </p>
                           <p className="text-[#888] text-xs">
-                            <span className="text-[#666]">Kyun:</span> {g.reason}
+                            <span className="text-[#666]">Why:</span> {g.reason}
                           </p>
                         </div>
                       ))}
@@ -1178,7 +1240,9 @@ function YouTubeLiveSEOContent() {
 
                 {((channelSummary?.channelKami?.length ?? 0) > 0 || (channelSummary?.settingKami?.length ?? 0) > 0) && (
                   <div className="mt-4 pt-4 border-t border-[#333]">
-                    <p className="text-xs font-semibold text-[#AAA] mb-2">Channel me kami / Settings me kami (summary)</p>
+                    <p className="text-xs font-semibold text-[#AAA] mb-2">
+                      Channel gaps / Settings gaps (summary)
+                    </p>
                     <ul className="text-xs text-[#888] space-y-1 list-disc list-inside">
                       {(channelSummary.channelKami || []).map((k, i) => (
                         <li key={`c-${i}`}>{k}</li>
@@ -1197,7 +1261,10 @@ function YouTubeLiveSEOContent() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Search className="w-5 h-5 text-emerald-500" /> Home Page Keywords Search
               </h2>
-              <p className="text-xs text-[#888] mb-3">Channel home page ke keywords search/filter karein ya topic se suggest karein — sabhi keywords me % dikhega.</p>
+              <p className="text-xs text-[#888] mb-3">
+                Search or filter the keywords on your channel home page or let us suggest them from a topic — every
+                keyword shows a percentage score.
+              </p>
 
               {channelSummary?.linked && (channelSummary?.homepageKeywords?.length ?? 0) + (channelSummary?.recommendedKeywords?.length ?? 0) > 0 && (
                 <div className="mb-4">
@@ -1206,7 +1273,7 @@ function YouTubeLiveSEOContent() {
                     type="text"
                     value={homePageKeywordFilter}
                     onChange={(e) => setHomePageKeywordFilter(e.target.value)}
-                    placeholder="Keyword type karein to filter karein…"
+                    placeholder="Type to filter keywords…"
                     className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] text-sm focus:ring-2 focus:ring-emerald-500 mb-2"
                   />
                   {(() => {
@@ -1225,14 +1292,16 @@ function YouTubeLiveSEOContent() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-[#666] text-sm">Koi keyword match nahi hua. Filter change karein.</p>
+                      <p className="text-[#666] text-sm">No keyword matched your filter. Try changing the filter.</p>
                     );
                   })()}
                 </div>
               )}
 
               <div>
-                <p className="text-sm font-medium text-white mb-2">Topic se home page keywords suggest karein</p>
+                <p className="text-sm font-medium text-white mb-2">
+                  Suggest home page keywords from a topic
+                </p>
                 <div className="flex flex-wrap gap-2 mb-2">
                   <input
                     type="text"
@@ -1269,7 +1338,7 @@ function YouTubeLiveSEOContent() {
                     ))}
                   </div>
                 ) : homePageTopicResults !== null ? (
-                  <p className="text-[#666] text-sm">Topic daal kar Suggest dabayein.</p>
+                  <p className="text-[#666] text-sm">Enter a topic and click Suggest.</p>
                 ) : null}
               </div>
             </div>
@@ -1279,7 +1348,9 @@ function YouTubeLiveSEOContent() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Search className="w-5 h-5 text-[#FF0000]" /> Viral Keywords Search
               </h2>
-              <p className="text-xs text-[#888] mb-3">Keyword ya topic search karein — viral keywords milegi, har ek ke saath score %.</p>
+              <p className="text-xs text-[#888] mb-3">
+                Search by keyword or topic to get viral keyword ideas, each with a score percentage.
+              </p>
               <div className="flex flex-wrap gap-2 mb-3">
                 <input
                   type="text"
@@ -1305,19 +1376,19 @@ function YouTubeLiveSEOContent() {
                 </div>
               ) : Array.isArray(viralSearchResults) && viralSearchResults.length > 0 ? (
                 <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto">
-                  {viralSearchResults.map((v, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => addKeywordToField(v.keyword)}
-                      className={`px-2 py-1.5 rounded text-sm border transition hover:opacity-90 flex items-center gap-1.5 ${
-                        v.viralScore >= 70 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : v.viralScore >= 50 ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-[#212121] text-[#AAA] border-[#333]'
-                      }`}
-                    >
-                      <span className="truncate max-w-[160px]">{v.keyword}</span>
-                      <span className="flex-shrink-0 font-semibold opacity-90">{v.viralScore}%</span>
-                    </button>
-                  ))}
+                  {viralSearchResults
+                    .filter((v) => v.viralScore >= 70)
+                    .map((v, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => addKeywordToField(v.keyword)}
+                        className="px-2 py-1.5 rounded text-sm border transition hover:opacity-90 flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                      >
+                        <span className="truncate max-w-[160px]">{v.keyword}</span>
+                        <span className="flex-shrink-0 font-semibold opacity-90">{v.viralScore}%</span>
+                      </button>
+                    ))}
                 </div>
               ) : viralSearchResults !== null ? (
                 <p className="text-[#666] text-sm">Koi result nahi. Koi keyword ya topic type karke Search dabayein.</p>
@@ -1329,18 +1400,26 @@ function YouTubeLiveSEOContent() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Hash className="w-5 h-5" /> 100 Viral Keywords
               </h2>
-              <p className="text-xs text-[#888] mb-3">Title, keyword ya description ke hisaab se viral keywords. Har keyword ke saath score % dikhta hai. Click karke Keywords section me add karein.</p>
+              <p className="text-xs text-[#888] mb-3">
+                Viral keywords based on your title, keyword or description. Each keyword shows a score %. Click to add
+                them to the Keywords section.
+              </p>
 
               {/* Hints — kaun se keywords dalne se viral hoga */}
               {(keywordData?.viralKeywords?.length || 0) > 0 && (
                 <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                  <p className="text-xs font-semibold text-amber-400 mb-2">Viral hone ke liye hints</p>
+                  <p className="text-xs font-semibold text-amber-400 mb-2">Hints for going viral</p>
                   <ul className="text-xs text-[#CCC] space-y-1">
-                    <li>• <span className="text-emerald-400">70%+ (green)</span> wale keywords add karein — inka viral potential sabse zyada hai.</li>
-                    <li>• Kam se kam <strong className="text-white">5–8 high-score</strong> keywords (green) select karein.</li>
-                    <li>• Title me 1–2 top score wale keyword zaroor use karein.</li>
-                    <li>• Description me bhi green keywords 2–3 baar naturally likhein.</li>
-                    <li>• Jo keyword click karke add karte ho, woh Keywords/Tags box me aa jata hai.</li>
+                    <li>
+                      • <span className="text-emerald-400">70%+ (green)</span> keywords have the highest viral
+                      potential – prioritise these.
+                    </li>
+                    <li>
+                      • Select at least <strong className="text-white">5–8 high‑score</strong> (green) keywords.
+                    </li>
+                    <li>• Use 1–2 of the top‑scoring keywords in your title.</li>
+                    <li>• Mention green keywords naturally 2–3 times in the description as well.</li>
+                    <li>• Clicking a keyword adds it into the Keywords/Tags box.</li>
                   </ul>
                 </div>
               )}
@@ -1349,21 +1428,19 @@ function YouTubeLiveSEOContent() {
                 <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
               ) : (keywordData?.viralKeywords?.length || 0) > 0 ? (
                 <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-                  {(keywordData?.viralKeywords || []).map((v, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => addKeywordToField(v.keyword)}
-                      className={`px-2 py-1.5 rounded text-sm border transition hover:opacity-90 flex items-center gap-1.5 ${
-                        v.viralScore >= 70
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                          : 'bg-[#212121] text-[#AAA] border-[#333]'
-                      }`}
-                    >
-                      <span className="truncate max-w-[140px]">{v.keyword}</span>
-                      <span className="flex-shrink-0 font-semibold opacity-90">{v.viralScore}%</span>
-                    </button>
-                  ))}
+                  {(keywordData?.viralKeywords || [])
+                    .filter((v) => v.viralScore >= 70)
+                    .map((v, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => addKeywordToField(v.keyword)}
+                        className="px-2 py-1.5 rounded text-sm border transition hover:opacity-90 flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                      >
+                        <span className="truncate max-w-[140px]">{v.keyword}</span>
+                        <span className="flex-shrink-0 font-semibold opacity-90">{v.viralScore}%</span>
+                      </button>
+                    ))}
                 </div>
               ) : (
                 <p className="text-[#666] text-sm">Title, keyword ya description bharein — 100 viral keywords isi ke hisaab se dikhenge.</p>
@@ -1382,7 +1459,9 @@ function YouTubeLiveSEOContent() {
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Youtube className="w-5 h-5" /> Top competitor videos
               </h2>
-              <p className="text-xs text-[#888] mb-3">Video par click karein — pura details. Keyword par click karein — Keywords section me add ho jayega.</p>
+              <p className="text-xs text-[#888] mb-3">
+                Click a video to see full details. Click the keyword button to add it into the Keywords section.
+              </p>
               {loadingCompetitors ? (
                 <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
               ) : competitors.length > 0 ? (
@@ -1398,10 +1477,17 @@ function YouTubeLiveSEOContent() {
                         <p className="text-sm text-white truncate">{v.title}</p>
                         <p className="text-xs text-[#888]">{v.channelTitle} · {v.views.toLocaleString()} views · {v.publishedAt ? new Date(v.publishedAt).toLocaleDateString() : ''}</p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="text-xs text-amber-400 font-medium">Tumhare keyword ke liye {v.relevanceScore ?? (90 - i * 5)}% kaam ka</span>
+                          <span className="text-xs text-amber-400 font-medium">
+                            Estimated relevance for your keyword: {v.relevanceScore ?? (90 - i * 5)}%
+                          </span>
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); addKeywordToField(competitorKeyword || keywordData?.keyword || v.title.split(/\s+/).slice(0, 3).join(' ')); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addKeywordToField(
+                              competitorKeyword || keywordData?.keyword || v.title.split(/\s+/).slice(0, 3).join(' ')
+                            );
+                          }}
                             className="text-xs px-2 py-0.5 rounded bg-[#FF0000]/20 text-[#FF0000] hover:bg-[#FF0000]/30 border border-[#FF0000]/40"
                           >
                             + {competitorKeyword || 'keyword'} add karein
@@ -1445,7 +1531,9 @@ function YouTubeLiveSEOContent() {
                       {selectedCompetitor.commentCount != null && <span className="text-[#AAA]">{selectedCompetitor.commentCount.toLocaleString()} comments</span>}
                       <span className="text-[#AAA]">{selectedCompetitor.publishedAt ? new Date(selectedCompetitor.publishedAt).toLocaleDateString() : ''}</span>
                     </div>
-                    <p className="text-xs text-amber-400">Tumhare keyword ke liye <strong>{selectedCompetitor.relevanceScore ?? 85}%</strong> kaam ka</p>
+                    <p className="text-xs text-amber-400">
+                      Estimated relevance for your keyword: <strong>{selectedCompetitor.relevanceScore ?? 85}%</strong>
+                    </p>
                     {selectedCompetitor.description && (
                       <div>
                         <p className="text-xs text-[#888] mb-1">Description</p>
@@ -1467,7 +1555,7 @@ function YouTubeLiveSEOContent() {
                       onClick={() => { addKeywordToField(competitorKeyword || keywordData?.keyword || ''); setSelectedCompetitor(null); }}
                       className="w-full py-2 rounded-lg bg-[#FF0000]/20 text-[#FF0000] border border-[#FF0000]/40 hover:bg-[#FF0000]/30 text-sm font-medium"
                     >
-                      “{competitorKeyword || keywordData?.keyword || 'keyword'}” Keywords section me add karein
+                      Add “{competitorKeyword || keywordData?.keyword || 'keyword'}” to the Keywords section
                     </button>
                   </div>
                 </motion.div>
@@ -1479,7 +1567,10 @@ function YouTubeLiveSEOContent() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <FileText className="w-5 h-5" /> 5 Automatic descriptions {contentType !== 'video' && `(${contentType === 'short' ? 'Short' : 'Live Stream'})`}
               </h2>
-              <p className="text-xs text-[#888] mb-3">Title, keyword aur description ke hisaab se 5 descriptions. Click karke description section me add ho jayega. Score SEO ke hisaab se.</p>
+                <p className="text-xs text-[#888] mb-3">
+                  Five descriptions based on your title, keyword and current description. Click to replace your
+                  description field. The score reflects SEO quality.
+                </p>
               {loadingDescriptions ? (
                 <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
               ) : descriptions.length > 0 ? (
@@ -1498,7 +1589,9 @@ function YouTubeLiveSEOContent() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-[#666] text-sm">Title, keyword ya description bharein — 5 automatic descriptions usi ke hisaab se likhi jayengi.</p>
+                <p className="text-[#666] text-sm">
+                  Fill in a title, keyword or description to generate 5 automatic descriptions.
+                </p>
               )}
             </div>
 
@@ -1507,7 +1600,10 @@ function YouTubeLiveSEOContent() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Hash className="w-5 h-5" /> 25 Viral hashtags {contentType !== 'video' && `(${contentType === 'short' ? 'Short' : 'Live Stream'})`}
               </h2>
-              <p className="text-xs text-[#888] mb-3">Color se samjhein: green = zyada viral, amber = medium, gray = low. Click karke description me add.</p>
+              <p className="text-xs text-[#888] mb-3">
+                Colour legend: green = highly viral, amber = medium, gray = low. Click a hashtag to add it to the
+                description.
+              </p>
               {loadingHashtags ? (
                 <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
               ) : hashtags.length > 0 ? (
@@ -1531,7 +1627,7 @@ function YouTubeLiveSEOContent() {
                   ))}
                 </div>
               ) : (
-                <p className="text-[#666] text-sm">Keyword ya title bharein, 25 viral hashtags dikhenge.</p>
+                <p className="text-[#666] text-sm">Enter a keyword or title to see 25 viral hashtags.</p>
               )}
             </div>
 
@@ -1544,19 +1640,33 @@ function YouTubeLiveSEOContent() {
                 <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
               ) : titleScoreData ? (
                 <>
-                  <p className="text-sm text-[#AAA] mb-2">Current title score: <span className="text-white font-semibold">{titleScoreData.titleScore}%</span></p>
-                  <p className="text-xs text-[#888] mb-3">Suggested titles (score %)</p>
+                  <p className="text-sm text-[#AAA] mb-2">
+                    Current title score:{' '}
+                    <span className="text-white font-semibold">{titleScoreData.titleScore}%</span>
+                  </p>
+                  <p className="text-xs text-[#888] mb-3">Recommended titles above the target score.</p>
                   <ul className="space-y-2">
-                    {(Array.isArray(titleScoreData.improvedTitles) ? titleScoreData.improvedTitles : []).map((item, i) => {
-                      const title = typeof item === 'string' ? item : item.title;
-                      const score = typeof item === 'string' ? 90 - i * 5 : item.score;
-                      return (
-                        <li key={i} className="text-sm text-white pl-2 border-l-2 border-[#FF0000] flex items-center justify-between gap-2">
-                          <span>{title}</span>
-                          <span className="text-[#FF0000] font-semibold flex-shrink-0">{score}%</span>
+                    {(Array.isArray(titleScoreData.improvedTitles) ? titleScoreData.improvedTitles : [])
+                      .map((item, i) => {
+                        const title = typeof item === 'string' ? item : item.title;
+                        const score = typeof item === 'string' ? 90 - i * 5 : item.score;
+                        return { title, score };
+                      })
+                      .filter((t) => t.score >= 80)
+                      .map((t, i) => (
+                        <li
+                          key={i}
+                          className="text-sm text-white pl-2 border-l-2 border-emerald-500 flex items-center justify-between gap-2"
+                        >
+                          <span>{t.title}</span>
+                          <span className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-emerald-400 text-xs px-2 py-0.5 rounded-full border border-emerald-500/60">
+                              Recommended
+                            </span>
+                            <span className="text-[#FF0000] font-semibold">{t.score}%</span>
+                          </span>
                         </li>
-                      );
-                    })}
+                      ))}
                   </ul>
                 </>
               ) : (
@@ -1603,7 +1713,7 @@ function YouTubeLiveSEOContent() {
                   )}
                 </>
               ) : (
-                <p className="text-[#666] text-sm">Thumbnail upload karein, analysis aur improvements dikhenge.</p>
+                <p className="text-[#666] text-sm">Upload a thumbnail to see analysis and improvement tips.</p>
               )}
             </div>
 
@@ -1612,12 +1722,17 @@ function YouTubeLiveSEOContent() {
               <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                 <Upload className="w-5 h-5" /> Video upload
               </h2>
-              <p className="text-xs text-[#888] mb-3">Video choose karein, phir &quot;Analyze&quot; dabayein. <strong className="text-[#AAA]">OpenAI API key set hone par</strong> video ki audio transcribe hogi aur usi exact content se title, description, keywords aur hashtags banenge (Super Admin → API keys). Transcript Chinki ke textbox me aayega; form usi ke hisaab se set ho jayega. Chinki viral tips bhi degi.</p>
+              <p className="text-xs text-[#888] mb-3">
+                Choose a video and the system will start a quick analysis automatically (typically within a few seconds).
+                <strong className="text-[#AAA]"> If an OpenAI API key is set</strong>, the audio is transcribed and
+                used to generate title, description, keywords and hashtags from the exact content (Super Admin → API keys).
+                The transcript appears in Chinki&apos;s textbox and the form fields are filled from it.
+              </p>
               {!videoPreviewUrl ? (
                 <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[#333] rounded-lg cursor-pointer hover:bg-[#212121] transition">
                   <input type="file" accept="video/*" className="hidden" onChange={onVideoSelect} disabled={videoAnalyzing} />
                   <Upload className="w-8 h-8 text-[#666] mb-1" />
-                  <span className="text-sm text-[#888]">Video choose karein</span>
+                  <span className="text-sm text-[#888]">Choose a video</span>
                 </label>
               ) : (
                 <div className="space-y-3">
@@ -1632,7 +1747,7 @@ function YouTubeLiveSEOContent() {
                       className="px-4 py-2 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 text-white rounded-lg font-medium text-sm flex items-center gap-2"
                     >
                       {videoAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      {videoAnalyzing ? 'Analyzing…' : 'Analyze karein'}
+                      {videoAnalyzing ? 'Analyzing…' : 'Analyze'}
                     </button>
                     <button
                       type="button"
@@ -1644,26 +1759,40 @@ function YouTubeLiveSEOContent() {
                       }}
                       className="px-4 py-2 bg-[#333] hover:bg-[#444] text-white rounded-lg text-sm"
                     >
-                      Naya video
+                      New video
                     </button>
                   </div>
                 </div>
               )}
               {videoSuggestions && (
-                <p className="text-sm text-emerald-400 mt-2">Transcript Chinki ke textbox me hai; title, keyword, hashtag aur description usi ke hisaab se set ho chuke hain. Chinki se viral tips pooch sakte ho.</p>
+                <p className="text-sm text-emerald-400 mt-2">
+                  The transcript is in Chinki&apos;s textbox; the title, keywords, hashtags and description have been
+                  set from the video content. You can ask Chinki for more viral tips based on this video.
+                </p>
               )}
             </div>
 
             {/* Viral Probability */}
             <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" /> Viral probability
-              </h2>
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-4xl font-bold text-[#FF0000]">{viralProbability}</span>
-                <span className="text-[#AAA]">%</span>
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" /> Viral probability
+            </h2>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-[#FF0000]">{viralProbability}</span>
+                  <span className="text-[#AAA]">%</span>
+                </div>
+                <span
+                  className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                    meetsViralTarget ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                  }`}
+                >
+                  {meetsViralTarget ? 'High viral setup (75%+)' : 'Below viral target (aim for 75%+)'}
+                </span>
               </div>
-              <p className="text-sm text-[#AAA] mb-4">This video has a {viralProbability}% chance to perform well.</p>
+              <p className="text-sm text-[#AAA] mb-4">
+                This score combines SEO, title, keyword and thumbnail quality into one viral probability.
+              </p>
               <div className="h-3 bg-[#212121] rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
@@ -1694,14 +1823,14 @@ function YouTubeLiveSEOContent() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-white">Chinki</p>
-                    <p className="text-xs text-[#888]">24 • Female • Sabhi bhashaon me baat karti hoon</p>
+                    <p className="text-xs text-[#888]">24 • Multilingual AI assistant for YouTube SEO</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setChinkiPanelOpen(false)}
                   className="p-2 rounded-lg hover:bg-[#212121] text-[#888] hover:text-white transition flex-shrink-0"
-                  title="Minimize / slide band karein"
+                  title="Minimize / hide panel"
                 >
                   <ChevronDown className="w-5 h-5" />
                 </button>
@@ -1725,7 +1854,7 @@ function YouTubeLiveSEOContent() {
                 ))}
                 {chinkiLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-[#212121] rounded-lg px-3 py-2 text-sm text-[#888]">Chinki soch rahi hai...</div>
+                    <div className="bg-[#212121] rounded-lg px-3 py-2 text-sm text-[#888]">Chinki is thinking...</div>
                   </div>
                 )}
               </div>
@@ -1734,14 +1863,14 @@ function YouTubeLiveSEOContent() {
                   value={chinkiInput}
                   onChange={(e) => setChinkiInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChinkiMessage()}
-                  placeholder="Kya karna chahiye? Poochho..."
+                  placeholder="What should I improve? Ask me..."
                   className="flex-1 px-3 py-2 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] text-sm focus:ring-2 focus:ring-[#FF0000]"
                 />
                 <button
                   type="button"
                   onClick={speakChinki}
                   className="p-2 rounded-lg bg-[#212121] hover:bg-[#333] text-[#AAA]"
-                  title="Chinki ki aawaz suno"
+                  title="Listen to Chinki"
                 >
                   <Volume2 className="w-5 h-5" />
                 </button>

@@ -61,6 +61,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
   }, []);
   const aiStudioItems = [
     { icon: FileText, label: 'Script Generator', href: '/ai/script-generator' },
+    { icon: Zap, label: 'AI Coach', href: '/ai/script-generator?mode=coach' },
     { icon: Image, label: 'Thumbnail Generator', href: '/ai/thumbnail-generator' },
     { icon: Zap, label: 'Hook Generator', href: '/ai/hook-generator' },
     { icon: Film, label: 'Shorts Creator', href: '/ai/shorts-creator' },
