@@ -20,6 +20,7 @@ interface AnalysisData {
   optimizedTitles?: string[];
   hashtags?: string[];
   trendingTopics?: Array<{ keyword: string; score: number }>;
+  postingTime?: { day: string; hour: number; confidence: number };
   bestPostingTime?: { day: string; hour: number; confidence: number };
 }
 
@@ -28,7 +29,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
 
   const handleAnalysisComplete = (data: AnalysisData) => {
-    setAnalysis(data);
+    const bestPostingTime = data.bestPostingTime || data.postingTime;
+    setAnalysis(bestPostingTime ? { ...data, bestPostingTime } : data);
   };
 
   return (

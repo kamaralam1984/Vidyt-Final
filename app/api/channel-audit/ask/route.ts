@@ -4,7 +4,7 @@ import { getApiConfig } from '@/lib/apiConfig';
 
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -25,6 +25,22 @@ export async function POST(request: NextRequest) {
     const user = await getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Channel Audit feature access
+    try {
+      const { default: FeatureAccess } = await import('@/models/FeatureAccess');
+      const doc = (await FeatureAccess.findOne({ feature: 'channel_audit' }).lean()) as
+        | { allowedRoles?: string[] }
+        | null;
+      const roles = doc?.allowedRoles?.length ? doc.allowedRoles : ['manager', 'admin', 'super-admin'];
+      if (!roles.includes(user.role)) {
+        return NextResponse.json(
+          { error: 'Channel Audit tool is not enabled for your role. Contact Super Admin.' },
+          { status: 403 }
+        );
+      }
+    } catch {
+      // fall back: allow existing behavior
     }
 
     const body = await request.json().catch(() => ({}));

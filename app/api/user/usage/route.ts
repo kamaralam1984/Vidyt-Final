@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const planId = user.subscription || 'free';
+    const planId = user.role === 'super-admin' ? 'owner' : (user.subscription || 'free');
     const plan = getPlanRoll(planId);
     const { analysesLimit, analysesPeriod } = plan.limits;
     const used = await getAnalysisUsageCount(authUser.id, analysesPeriod);

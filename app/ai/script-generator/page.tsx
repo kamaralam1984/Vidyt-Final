@@ -1,6 +1,10 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
+import { Suspense } from 'react';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { FileText, Copy, Loader2, Sparkles } from 'lucide-react';
 import axios from 'axios';
@@ -10,15 +14,28 @@ const PLATFORMS = ['YouTube', 'Shorts', 'Reels', 'TikTok'];
 const DURATIONS = ['30 sec', '1 min', '3 min', '5 min', '10 min'];
 const LANGUAGES = ['English', 'Hindi', 'Spanish', 'French', 'Other'];
 
-export default function ScriptGeneratorPage() {
+function ScriptGeneratorContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [topic, setTopic] = useState('');
+  const searchParams = useSearchParams();
+  const mode = (searchParams?.get('mode') || '').toLowerCase();
+  const isIdeasMode = mode === 'ideas';
+  const [topic, setTopic] = useState(
+    mode === 'ideas'
+      ? 'Daily video ideas for my YouTube channel'
+      : mode === 'coach'
+      ? 'Channel growth coaching tips for my content'
+      : ''
+  );
   const [platform, setPlatform] = useState('YouTube');
   const [duration, setDuration] = useState('5 min');
   const [language, setLanguage] = useState('English');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ hooks: string[]; script: string; titles: string[]; hashtags: string[]; cta: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [ideas, setIdeas] = useState<
+    { title: string; score: number; day: string; hour: number; timeLabel: string }[]
+  >([]);
+  const [ideasMeta, setIdeasMeta] = useState<{ usedYouTubeTrending?: boolean; usedAI?: boolean } | null>(null);
 
   const copy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -31,11 +48,28 @@ export default function ScriptGeneratorPage() {
     if (!topic.trim()) return;
     setLoading(true);
     setResult(null);
+    if (isIdeasMode) setIdeas([]);
+    if (isIdeasMode) setIdeasMeta(null);
     try {
-      const res = await axios.post('/api/ai/script-generator', { topic: topic.trim(), platform, duration, language }, { headers: getAuthHeaders() });
-      setResult(res.data);
+      if (isIdeasMode) {
+        const res = await axios.post(
+          '/api/ai/daily-ideas',
+          { niche: topic.trim() },
+          { headers: getAuthHeaders() }
+        );
+        setIdeas(res.data?.ideas || []);
+        setIdeasMeta({ usedYouTubeTrending: res.data?.usedYouTubeTrending, usedAI: res.data?.usedAI });
+      } else {
+        const res = await axios.post(
+          '/api/ai/script-generator?mode=' + mode,
+          { topic: topic.trim(), platform, duration, language },
+          { headers: getAuthHeaders() }
+        );
+        setResult(res.data);
+      }
     } catch (err: any) {
       setResult(null);
+      setIdeas([]);
       alert(err.response?.data?.error || 'Failed to generate');
     } finally {
       setLoading(false);
@@ -50,13 +84,29 @@ export default function ScriptGeneratorPage() {
             <FileText className="w-8 h-8 text-[#FF0000]" />
             AI Script Generator
           </h1>
-          <p className="text-[#AAAAAA] mb-6">Generate viral hooks, full script, titles, hashtags and CTA.</p>
+          <p className="text-[#AAAAAA] mb-6">
+            {isIdeasMode
+              ? 'Daily Ideas mode: sirf niche / channel topic likho, AI aaj ke trending-style video ideas, viral score % aur best posting time bata dega.'
+              : mode === 'coach'
+              ? 'AI Coach mode: topic likho, AI tumhe channel growth ke liye coaching-style script aur tips dega.'
+              : 'Generate viral hooks, full script, titles, hashtags and CTA.'}
+          </p>
 
           <form onSubmit={handleSubmit} className="bg-[#181818] border border-[#212121] rounded-xl p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm text-[#AAAAAA] mb-1">Video topic *</label>
-                <input value={topic} onChange={(e) => setTopic(e.target.value)} required className="w-full px-4 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white" placeholder="e.g. How to grow on YouTube" />
+                <label className="block text-sm text-[#AAAAAA] mb-1">
+                  {isIdeasMode ? 'Channel niche / topic *' : 'Video topic *'}
+                </label>
+                <input
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white"
+                  placeholder={
+                    isIdeasMode ? 'e.g. YouTube growth tips, gaming, finance' : 'e.g. How to grow on YouTube'
+                  }
+                />
               </div>
               <div>
                 <label className="block text-sm text-[#AAAAAA] mb-1">Platform</label>
@@ -79,11 +129,48 @@ export default function ScriptGeneratorPage() {
             </div>
             <button type="submit" disabled={loading} className="flex items-center gap-2 px-6 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50">
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-              Generate
+              {isIdeasMode ? 'Get today’s ideas' : 'Generate'}
             </button>
           </form>
 
-          {result && (
+          {isIdeasMode && ideas.length > 0 && (
+            <div className="space-y-3">
+              <div>
+                <h2 className="text-lg font-semibold text-white mb-1">Aaj ke ideas (score + best time)</h2>
+                {ideasMeta && (
+                  <p className="text-xs text-[#888]">
+                    {ideasMeta.usedYouTubeTrending
+                      ? 'Source: YouTube ke recent trending videos + AI analysis.'
+                      : 'Source: Offline AI model (YouTube API / AI key set nahi mile) – general best ideas.'}
+                  </p>
+                )}
+              </div>
+              {ideas.map((idea, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setTopic(idea.title)}
+                  className="w-full text-left bg-[#181818] border border-[#212121] rounded-xl p-4 hover:border-[#FF0000]/60 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-white mb-1">{idea.title}</p>
+                      <p className="text-xs text-[#888]">
+                        Recommended: <span className="text-emerald-400">{idea.day}</span>{' '}
+                        <span className="text-emerald-400">{idea.timeLabel}</span>
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-xs text-[#AAA]">Viral score</span>
+                      <span className="text-lg font-semibold text-emerald-400">{idea.score}%</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!isIdeasMode && result && (
             <div className="space-y-6">
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-3">3 Viral Hooks</h2>
@@ -139,5 +226,13 @@ export default function ScriptGeneratorPage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ScriptGeneratorPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-white">Loading...</div>}>
+      <ScriptGeneratorContent />
+    </Suspense>
   );
 }

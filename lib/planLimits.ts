@@ -3,7 +3,7 @@
  * Pro and Enterprise users get exactly what is defined here.
  */
 
-export type PlanId = 'free' | 'pro' | 'enterprise';
+export type PlanId = 'free' | 'pro' | 'enterprise' | 'owner';
 
 export interface PlanLimits {
   /** Video analyses: per day (pro/enterprise) or per month (free) */
@@ -133,6 +133,7 @@ const PRO_ROLL: PlanRoll = {
   ],
 };
 
+/** Enterprise: paid plan with 100/day limits (distinct from Owner). */
 const ENTERPRISE_ROLL: PlanRoll = {
   id: 'enterprise',
   name: 'Enterprise',
@@ -177,15 +178,55 @@ const ENTERPRISE_ROLL: PlanRoll = {
   ],
 };
 
+/** Owner: super-admin only. No limits (not the same as Enterprise). */
+const OWNER_ROLL: PlanRoll = {
+  id: 'owner',
+  name: 'Owner',
+  limits: {
+    analysesLimit: -1,
+    analysesPeriod: 'month',
+    titleSuggestions: -1,
+    hashtagCount: -1,
+    competitorsTracked: -1,
+  },
+  limitsDisplay: {
+    videos: 'Unlimited',
+    analyses: 'Unlimited',
+    storage: '—',
+    support: 'Full',
+  },
+  features: {
+    advancedAiViralPrediction: true,
+    realTimeTrendAnalysis: true,
+    bestPostingTimePredictions: true,
+    competitorAnalysis: true,
+    emailSupport: true,
+    priorityProcessing: true,
+    teamCollaboration: true,
+    whiteLabelReports: true,
+    customAiModelTraining: true,
+    dedicatedAccountManager: true,
+    prioritySupport24x7: true,
+    advancedAnalyticsDashboard: true,
+    customIntegrations: true,
+  },
+  featureList: ['Unlimited access', 'No limits', 'All features'],
+};
+
 export const PLAN_ROLLS: Record<PlanId, PlanRoll> = {
   free: FREE_ROLL,
   pro: PRO_ROLL,
   enterprise: ENTERPRISE_ROLL,
+  owner: OWNER_ROLL,
 };
 
 export function getPlanRoll(planId: string | undefined): PlanRoll {
   const id = (planId || 'free') as PlanId;
   return PLAN_ROLLS[id] ?? FREE_ROLL;
+}
+
+export function isOwnerPlan(planId: string | undefined): boolean {
+  return (planId || '').toLowerCase() === 'owner';
 }
 
 export function getPlanLimits(planId: string | undefined): PlanLimits {
@@ -196,12 +237,16 @@ export function getPlanFeatures(planId: string | undefined): PlanFeatures {
   return getPlanRoll(planId).features;
 }
 
+const UNLIMITED_CAP = 999;
+
 export function getTitleSuggestionsCount(planId: string | undefined): number {
-  return getPlanLimits(planId).titleSuggestions;
+  const n = getPlanLimits(planId).titleSuggestions;
+  return n < 0 ? UNLIMITED_CAP : n;
 }
 
 export function getHashtagCount(planId: string | undefined): number {
-  return getPlanLimits(planId).hashtagCount;
+  const n = getPlanLimits(planId).hashtagCount;
+  return n < 0 ? UNLIMITED_CAP : n;
 }
 
 /** For backward compatibility: numeric limits used by stripe/usage APIs (videos = analyses limit, period implied) */

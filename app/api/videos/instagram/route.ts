@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Instagram URL is required' }, { status: 400 });
     }
 
-    const planId = authUser.subscription || 'free';
+    const planId = authUser.role === 'super-admin' ? 'owner' : (authUser.subscription || 'free');
     const limitResult = await checkAnalysisLimit(authUser.id, planId);
     if (!limitResult.allowed) {
       return NextResponse.json(

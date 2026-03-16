@@ -4,24 +4,57 @@ import { getApiConfig } from '@/lib/apiConfig';
 
 const WHISPER_SUPPORTED_EXT = /\.(mp3|mp4|m4a|wav|webm|mpeg|mpga|m4v)$/i;
 
-async function transcribeWithWhisper(apiKey: string, file: Blob & { name?: string; type?: string; arrayBuffer?: () => Promise<ArrayBuffer> }): Promise<string | null> {
+const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
+const WHISPER_TIMEOUT_MS = 120000; // 2 min for upload + transcription
+
+async function transcribeWithWhisper(
+  apiKey: string,
+  file: Blob & { name?: string; type?: string; arrayBuffer?: () => Promise<ArrayBuffer>; size?: number }
+): Promise<{ text: string | null; error?: string }> {
   const name = file.name || 'audio.mp4';
-  if (!WHISPER_SUPPORTED_EXT.test(name)) return null;
+  if (!WHISPER_SUPPORTED_EXT.test(name)) {
+    return { text: null, error: 'Unsupported format. Use mp3, mp4, m4a, wav, webm.' };
+  }
   try {
-    const OpenAI = (await import('openai')).default;
-    const { toFile } = await import('openai');
-    const openai = new OpenAI({ apiKey });
     const arrayBuffer = await (file.arrayBuffer?.() ?? (file as unknown as { arrayBuffer(): Promise<ArrayBuffer> }).arrayBuffer?.());
+    const size = arrayBuffer.byteLength;
+    if (size > WHISPER_MAX_BYTES) {
+      return { text: null, error: `File too large (${(size / 1024 / 1024).toFixed(1)} MB). OpenAI Whisper max is 25 MB.` };
+    }
+    const OpenAIModule = await import('openai');
+    const OpenAI = OpenAIModule.default;
+    const openai = new OpenAI({ apiKey, timeout: WHISPER_TIMEOUT_MS });
     const buffer = Buffer.from(arrayBuffer);
-    const fileForWhisper = await toFile(buffer, name, { type: file.type || 'video/mp4' });
+    const fileForWhisper = await OpenAI.toFile(buffer, name, { type: file.type || 'video/mp4' });
     const transcription = await openai.audio.transcriptions.create({
       file: fileForWhisper,
       model: 'whisper-1',
     });
-    return transcription?.text?.trim() || null;
-  } catch (err) {
+    return { text: transcription?.text?.trim() || null };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error('Whisper transcription error:', err);
-    return null;
+    if (message.includes('api_key') || message.includes('Incorrect API key') || message.includes('invalid_api_key')) {
+      return { text: null, error: 'OpenAI API key invalid or inactive. Check Super Admin → API keys.' };
+    }
+    if (message.includes('rate_limit') || message.includes('Rate limit')) {
+      return { text: null, error: 'OpenAI rate limit. Try again in a minute.' };
+    }
+    if (
+      message.includes('Connection') ||
+      message.includes('ECONNREFUSED') ||
+      message.includes('ECONNRESET') ||
+      message.includes('ETIMEDOUT') ||
+      message.includes('ENOTFOUND') ||
+      message.includes('network') ||
+      message.includes('fetch failed')
+    ) {
+      return {
+        text: null,
+        error: 'Connection to OpenAI failed. Check internet, firewall/proxy, or try a smaller video (< 10 MB). Retry in a moment.',
+      };
+    }
+    return { text: null, error: message || 'Transcription failed.' };
   }
 }
 
@@ -39,7 +72,7 @@ async function callOpenAI(apiKey: string, prompt: string): Promise<string> {
 
 async function callGemini(apiKey: string, prompt: string): Promise<string> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,13 +144,17 @@ export async function POST(request: NextRequest) {
         message: 'Config unavailable. Using default suggestions.',
         transcript: undefined,
         openAiKeyConfigured: false,
+        transcriptionError: 'API config could not be loaded. Check Super Admin → API keys.',
       });
     }
 
     // Transcribe video content when OpenAI key + file available (video me jo baatein hui hain)
     let transcript: string | null = null;
+    let transcriptionError: string | undefined;
     if (file && config.openaiApiKey?.trim()) {
-      transcript = await transcribeWithWhisper(config.openaiApiKey, file);
+      const result = await transcribeWithWhisper(config.openaiApiKey, file);
+      transcript = result.text;
+      transcriptionError = result.error;
     }
 
     const hasContent = Boolean(transcript?.length);
@@ -150,6 +187,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
           message: 'AI suggestion failed. Using default suggestions. Check your OpenAI key in Super Admin.',
           transcript: transcript || undefined,
           openAiKeyConfigured: true,
+          transcriptionError: transcriptionError || (openaiErr instanceof Error ? openaiErr.message : undefined),
         });
       }
     } else if (config.googleGeminiApiKey?.trim()) {
@@ -163,6 +201,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
           message: 'AI suggestion failed. Using default suggestions. Check your Gemini key in Super Admin.',
           transcript: transcript || undefined,
           openAiKeyConfigured: false,
+          transcriptionError: transcriptionError || (geminiErr instanceof Error ? geminiErr.message : undefined),
         });
       }
     } else {
@@ -172,6 +211,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
         message: 'Set OpenAI or Gemini in Super Admin for AI-powered suggestions.',
         transcript: undefined,
         openAiKeyConfigured: false,
+        transcriptionError: transcriptionError || 'OpenAI API key not set. Add it in Super Admin → API keys for audio transcription.',
       });
     }
 
@@ -182,6 +222,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
       fromTranscript: hasContent,
       transcript: transcript || undefined,
       openAiKeyConfigured,
+      transcriptionError: transcriptionError || undefined,
     });
   } catch (e) {
     console.error('Video analyze error:', e);
@@ -192,6 +233,7 @@ Return ONLY valid JSON with keys: title (string), description (string), keywords
       message: 'Something went wrong. Using default suggestions.',
       transcript: undefined,
       openAiKeyConfigured: false,
+      transcriptionError: e instanceof Error ? e.message : undefined,
     });
   }
 }

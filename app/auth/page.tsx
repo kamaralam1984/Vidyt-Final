@@ -1,5 +1,8 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -66,7 +69,7 @@ const paidPlans: Plan[] = [
 type SubscriptionType = 'trial' | 'paid';
 type LoginMethod = 'uniqueIdPin' | 'emailPassword';
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -442,10 +445,10 @@ export default function AuthPage() {
               </div>
             )}
           </div>
-        </motion.div>
+          </motion.div>
 
-        {/* Login Form */}
-        {isLogin ? (
+          {/* Login Form */}
+          {isLogin ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -645,10 +648,10 @@ export default function AuthPage() {
                 )}
               </p>
             </div>
-          </motion.div>
-        ) : (
-          /* Signup Form */
-          <motion.div
+            </motion.div>
+          ) : (
+            /* Signup Form */
+            <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-[#181818] border border-[#212121] rounded-2xl p-8 shadow-2xl"
@@ -962,22 +965,29 @@ export default function AuthPage() {
                   ))}
                 </div>
               )}
-            </form>
+              </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-[#AAAAAA] text-sm">
-                Already have an account?{' '}
-                <Link href="/login" className="text-white font-semibold hover:underline">
-                  Sign In
-                </Link>
-              </p>
-            </div>
-          </motion.div>
-        )}
+              <div className="mt-6 text-center">
+                <p className="text-[#AAAAAA] text-sm">
+                  Already have an account?{' '}
+                  <Link href="/login" className="text-white font-semibold hover:underline">
+                    Sign In
+                  </Link>
+                </p>
+              </div>
+            </motion.div>
+          )}
       </div>
-
       {/* Razorpay Script */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
+      <AuthPageContent />
+    </Suspense>
   );
 }

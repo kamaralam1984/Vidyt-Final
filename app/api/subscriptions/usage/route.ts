@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const planId = user.subscription || 'free';
+    const planId = user.role === 'super-admin' ? 'owner' : (user.subscription || 'free');
     const plan = getPlanRoll(planId);
     const { analysesLimit, analysesPeriod } = plan.limits;
     const videosAnalyzed = await getAnalysisUsageCount(user.id, analysesPeriod);
@@ -23,9 +23,11 @@ export async function GET(request: NextRequest) {
     const storageUsed = videos.length * 10; // Estimate 10MB per video
 
     const videosLimitLabel =
-      analysesPeriod === 'day'
-        ? `${analysesLimit}/day`
-        : `${analysesLimit}/month`;
+      analysesLimit < 0
+        ? 'Unlimited'
+        : analysesPeriod === 'day'
+          ? `${analysesLimit}/day`
+          : `${analysesLimit}/month`;
 
     return NextResponse.json({
       videosAnalyzed,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAIStudioAccess } from '@/lib/aiStudioAccess';
+import { requireAIToolAccess } from '@/lib/aiStudioAccess';
 import connectDB from '@/lib/mongodb';
 import AIShorts from '@/models/AIShorts';
 import { generateShortsMock, generateClipsFromSegments } from '@/services/ai/aiStudio';
@@ -10,7 +10,7 @@ import path from 'path';
 import os from 'os';
 
 export async function POST(request: NextRequest) {
-  const access = await requireAIStudioAccess(request);
+  const access = await requireAIToolAccess(request, 'ai_shorts_clipping');
   if (!access.allowed) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }

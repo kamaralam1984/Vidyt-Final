@@ -31,19 +31,25 @@ export default function Navbar() {
             setUserUniqueId(uniqueId);
             if (typeof window !== 'undefined') localStorage.setItem('uniqueId', uniqueId);
           }
-          const subPlan = u.subscriptionPlan;
-          const sub = u.subscription;
-          if (subPlan?.planName) setPlanName(subPlan.planName);
-          else if (sub === 'pro') setPlanName('Pro');
-          else if (sub === 'enterprise') setPlanName('Enterprise');
-          else setPlanName('Free');
-          const endDate = subPlan?.endDate ? new Date(subPlan.endDate) : (u.subscriptionExpiresAt ? new Date(u.subscriptionExpiresAt) : null);
-          if (endDate && !isNaN(endDate.getTime())) {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            endDate.setHours(0, 0, 0, 0);
-            setDaysLeft(Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-          } else setDaysLeft(null);
+          const isSuperAdmin = (u.role || '').toLowerCase() === 'super-admin';
+          if (isSuperAdmin) {
+            setPlanName('Owner');
+            setDaysLeft(null);
+          } else {
+            const subPlan = u.subscriptionPlan;
+            const sub = u.subscription;
+            if (subPlan?.planName) setPlanName(subPlan.planName);
+            else if (sub === 'pro') setPlanName('Pro');
+            else if (sub === 'enterprise') setPlanName('Enterprise');
+            else setPlanName('Free');
+            const endDate = subPlan?.endDate ? new Date(subPlan.endDate) : (u.subscriptionExpiresAt ? new Date(u.subscriptionExpiresAt) : null);
+            if (endDate && !isNaN(endDate.getTime())) {
+              const now = new Date();
+              now.setHours(0, 0, 0, 0);
+              endDate.setHours(0, 0, 0, 0);
+              setDaysLeft(Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+            } else setDaysLeft(null);
+          }
         }
       } catch (_) {}
     };

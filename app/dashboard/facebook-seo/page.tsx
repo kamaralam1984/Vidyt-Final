@@ -13,6 +13,7 @@ import {
   Facebook,
   Loader2,
   Hash,
+  Clock,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -45,6 +46,8 @@ export default function FacebookSEOPage() {
     growthActions?: { where: string; action: string; reason: string }[];
     recommendedKeywords?: { keyword: string; score: number }[];
     linked?: boolean;
+    aiProvider?: 'openai' | 'gemini';
+    aiError?: string;
   } | null>(null);
   const [pageSummaryLoading, setPageSummaryLoading] = useState(false);
 
@@ -135,6 +138,7 @@ export default function FacebookSEOPage() {
 
   const saveFacebookPageUrl = (url: string) => {
     setFacebookPageUrl(url);
+    setPageSummary(null);
     if (typeof window !== 'undefined') localStorage.setItem('facebook-seo-page-url', url);
   };
 
@@ -248,12 +252,20 @@ export default function FacebookSEOPage() {
                       </button>
                     </div>
                     {pageSummary?.pageName && (
-                      <p className="text-xs text-emerald-400 mt-1">
-                        Linked: {pageSummary.pageName}
-                        {(pageSummary.postsCount ?? 0) + (pageSummary.followersCount ?? 0) > 0 && (
-                          <> · {pageSummary.postsCount ?? 0} posts · {(pageSummary.followersCount ?? 0).toLocaleString()} followers</>
+                      <div className="mt-1 space-y-0.5">
+                        <p className="text-xs text-emerald-400">
+                          Linked: {pageSummary.pageName}
+                          {(pageSummary.postsCount ?? 0) + (pageSummary.followersCount ?? 0) > 0 && (
+                            <> · {pageSummary.postsCount ?? 0} posts · {(pageSummary.followersCount ?? 0).toLocaleString()} followers</>
+                          )}
+                          {pageSummary.aiProvider && (
+                            <span className="text-[#888] ml-1">· AI: {pageSummary.aiProvider === 'openai' ? 'OpenAI' : 'Gemini'}</span>
+                          )}
+                        </p>
+                        {pageSummary.aiError && (
+                          <p className="text-xs text-amber-400">AI nahi chal paya: {pageSummary.aiError}. Fallback result dikhaya. Super Admin → API keys check karein.</p>
                         )}
-                      </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -356,6 +368,33 @@ export default function FacebookSEOPage() {
                   )}
                 </div>
               )}
+
+              {/* Post time — kab post karein (is page ke viewers kab online/active) */}
+              <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
+                <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-500" /> Post time — kab post karein
+                </h2>
+                <p className="text-xs text-[#888] mb-4">Is page ke viewers kab online aur active rahte hain — in time pe post karke zyada reach milegi.</p>
+                {pageSummary?.linked ? (
+                  <>
+                    <div className="p-4 rounded-lg bg-[#212121]/80 border border-[#333] mb-3">
+                      <p className="text-sm font-semibold text-emerald-400 mb-2">Zyada active time (research-based)</p>
+                      <ul className="text-sm text-[#CCC] space-y-1.5">
+                        <li>• <strong className="text-white">Tuesday–Thursday</strong> — sabse zyada engagement</li>
+                        <li>• <strong className="text-white">9–11 AM</strong> — morning scroll, office break</li>
+                        <li>• <strong className="text-white">1–3 PM</strong> — lunch break, peak activity</li>
+                        <li>• <strong className="text-white">7–9 PM</strong> — evening, sabse zyada viewers online</li>
+                      </ul>
+                      <p className="text-xs text-[#888] mt-3">Apne timezone ke hisaab se post schedule karein.</p>
+                    </div>
+                    <p className="text-xs text-[#AAA]">
+                      <strong className="text-amber-400">Exact time apne page ke viewers ke liye:</strong> Facebook Business Suite → Page → Insights → &quot;When your fans are online&quot; dekhein. Wahan hour-by-hour dikhega kab aapke followers active rahte hain.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-[#666]">Pehle upar <strong className="text-[#AAA]">Facebook Page link</strong> daalein aur &quot;Link karein&quot; dabayein, phir is page ke hisaab se post time aur tips dikhenge.</p>
+                )}
+              </div>
 
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">

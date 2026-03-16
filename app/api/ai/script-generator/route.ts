@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAIStudioAccess } from '@/lib/aiStudioAccess';
+import { requireAIToolAccess } from '@/lib/aiStudioAccess';
 import connectDB from '@/lib/mongodb';
 import AIScript from '@/models/AIScript';
 import { generateScript } from '@/services/ai/aiStudio';
 
 export async function POST(request: NextRequest) {
-  const access = await requireAIStudioAccess(request);
+  const url = new URL(request.url);
+  const mode = (url.searchParams.get('mode') || '').toLowerCase();
+  const featureKey =
+    mode === 'ideas' ? 'daily_ideas' : mode === 'coach' ? 'ai_coach' : 'script_writer';
+
+  const access = await requireAIToolAccess(request, featureKey);
   if (!access.allowed) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }

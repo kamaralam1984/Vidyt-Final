@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAIStudioAccess } from '@/lib/aiStudioAccess';
+import { requireAIToolAccess } from '@/lib/aiStudioAccess';
 import connectDB from '@/lib/mongodb';
 import AIThumbnail from '@/models/AIThumbnail';
 import { generateThumbnail } from '@/services/ai/aiStudio';
 
 export async function POST(request: NextRequest) {
-  const access = await requireAIStudioAccess(request);
+  const access = await requireAIToolAccess(request, 'ai_thumbnail_maker');
   if (!access.allowed) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }

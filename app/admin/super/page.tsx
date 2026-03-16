@@ -68,10 +68,15 @@ export default function SuperAdminPage() {
   const [viewMode, setViewMode] = useState<'users' | 'tables' | 'aiStudio' | 'apiConfig'>('users');
   const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['manager', 'admin', 'super-admin']);
   const [aiStudioSaving, setAiStudioSaving] = useState(false);
+  const [aiToolsAccess, setAiToolsAccess] = useState<Record<string, string[]>>({});
+  const [aiToolsSaving, setAiToolsSaving] = useState(false);
   const [apiConfigStatus, setApiConfigStatus] = useState<Record<string, boolean>>({});
   const [apiConfigForm, setApiConfigForm] = useState<Record<string, string>>({});
   const [apiConfigLoading, setApiConfigLoading] = useState(false);
   const [apiConfigSaving, setApiConfigSaving] = useState(false);
+  const [apiStatus, setApiStatus] = useState<
+    { id: string; name: string; hasKey: boolean; status: 'no-key' | 'ok' | 'error'; message: string; limitInfo: string; usedBy?: string[] }[]
+  >([]);
   const [collections, setCollections] = useState<{ id: string; label: string }[]>([]);
   const [selectedTable, setSelectedTable] = useState('');
   const [tableData, setTableData] = useState<Record<string, unknown>[]>([]);
@@ -243,6 +248,12 @@ export default function SuperAdminPage() {
           .then((r) => r.json())
           .then((d) => d.allowedRoles && setAiStudioRoles(d.allowedRoles))
           .catch(() => {});
+        fetch('/api/admin/features/ai-tools', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.features) setAiToolsAccess(d.features);
+          })
+          .catch(() => {});
       }
     }
     if (viewMode === 'apiConfig') {
@@ -257,6 +268,12 @@ export default function SuperAdminPage() {
           })
           .catch(() => {})
           .finally(() => setApiConfigLoading(false));
+        fetch('/api/admin/api-status', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((d) => {
+            if (Array.isArray(d.apis)) setApiStatus(d.apis);
+          })
+          .catch(() => {});
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -705,7 +722,7 @@ export default function SuperAdminPage() {
                 <p className="text-sm text-[#AAAAAA]">Jin roles ko AI Studio (Script Generator, Thumbnail, Hooks, Shorts, YouTube Growth) dikhana hai, unhe select karein. Save karne par sidebar me AI Studio in users ko dikhega.</p>
               </div>
             </div>
-            <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-6 mb-6">
               <p className="text-sm font-medium text-white mb-3">Allow AI Studio for these roles:</p>
               <div className="space-y-2">
                 {['user', 'manager', 'admin', 'super-admin'].map((role) => (
@@ -751,6 +768,75 @@ export default function SuperAdminPage() {
                 {aiStudioSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
+              <p className="text-sm font-medium text-white mb-3">Individual AI tools ke liye roles select karein:</p>
+              <p className="text-xs text-[#888] mb-4">Har tool ke aage jin roles ko tick karenge, sirf wahi users us tool ko use kar sakenge. Agar kuch nahi select kiya to default: manager, admin, super-admin.</p>
+              <div className="space-y-4">
+                {[
+                  { key: 'daily_ideas', label: 'Daily Ideas' },
+                  { key: 'ai_coach', label: 'AI Coach' },
+                  { key: 'keyword_research', label: 'Keyword Research' },
+                  { key: 'script_writer', label: 'Script Writer' },
+                  { key: 'title_generator', label: 'Title Generator' },
+                  { key: 'channel_audit', label: 'Channel Audit' },
+                  { key: 'ai_shorts_clipping', label: 'AI Shorts Clipping' },
+                  { key: 'ai_thumbnail_maker', label: 'AI Thumbnail Maker' },
+                  { key: 'optimize', label: 'Optimize' },
+                ].map((tool) => (
+                  <div key={tool.key} className="border border-[#262626] rounded-lg px-3 py-2">
+                    <p className="text-sm font-medium text-white mb-2">{tool.label}</p>
+                    <div className="flex flex-wrap gap-3">
+                      {['user', 'manager', 'admin', 'super-admin'].map((role) => (
+                        <label key={role} className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="checkbox"
+                            className="rounded border-[#333333] bg-[#0F0F0F] text-[#FF0000] focus:ring-[#FF0000]"
+                            checked={aiToolsAccess[tool.key]?.includes(role) || false}
+                            onChange={(e) => {
+                              setAiToolsAccess((prev) => {
+                                const current = prev[tool.key] || [];
+                                if (e.target.checked) {
+                                  return { ...prev, [tool.key]: [...current, role] };
+                                }
+                                return { ...prev, [tool.key]: current.filter((r) => r !== role) };
+                              });
+                            }}
+                          />
+                          <span className="text-[#CCCCCC] capitalize">{role}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                disabled={aiToolsSaving}
+                onClick={async () => {
+                  const token = localStorage.getItem('token');
+                  if (!token) return;
+                  setAiToolsSaving(true);
+                  try {
+                    const res = await fetch('/api/admin/features/ai-tools', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ features: aiToolsAccess }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      if (data.features) setAiToolsAccess(data.features);
+                      alert('AI tools access saved.');
+                    } else alert(data.error || 'Failed to save');
+                  } catch (_) {
+                    alert('Failed to save');
+                  } finally {
+                    setAiToolsSaving(false);
+                  }
+                }}
+                className="mt-4 px-4 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 font-medium"
+              >
+                {aiToolsSaving ? 'Saving...' : 'Save tools access'}
+              </button>
+            </div>
           </div>
         ) : viewMode === 'apiConfig' ? (
           <div id="api-config-main" className="max-w-2xl mx-auto">
@@ -761,6 +847,55 @@ export default function SuperAdminPage() {
                 <p className="text-sm text-[#AAAAAA]">API keys yahan set karein — DB me save honge aur .env se override karenge. Agar yahan set nahi kiye to .env (e.g. YOUTUBE_API_KEY, RESEND_API_KEY, GEMINI_API_KEY) use hoga.</p>
               </div>
             </div>
+            {apiStatus.length > 0 && (
+              <div className="mb-6 bg-[#181818] border border-[#212121] rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-white">API Health &amp; Limits</p>
+                </div>
+                <div className="space-y-3 text-xs">
+                  {apiStatus.map((api) => (
+                    <div
+                      key={api.id}
+                      className="flex flex-col gap-1 rounded-lg border border-[#262626] bg-[#101010] px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-white">{api.name}</p>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            api.status === 'ok'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : api.status === 'error'
+                              ? 'bg-red-500/15 text-red-400'
+                              : 'bg-[#333]/40 text-[#AAA]'
+                          }`}
+                        >
+                          {api.status === 'ok'
+                            ? 'LIVE'
+                            : api.status === 'error'
+                            ? 'ERROR'
+                            : 'NO KEY'}
+                        </span>
+                      </div>
+                      <p className="text-[#BBBBBB]">
+                        <span className="text-[#777]">Status:</span> {api.message}
+                      </p>
+                      <p className="text-[#888]">
+                        <span className="text-[#666]">Limit:</span> {api.limitInfo}
+                      </p>
+                      {api.usedBy?.length ? (
+                        <p className="text-[#777]">
+                          <span className="text-[#555]">Used in:</span>{' '}
+                          {api.usedBy.join(', ')}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-[#666]">
+                    Note: &quot;Use hua kitna&quot; (exact quota consumption) providers ke dashboard se hi milta hai. Yahan hum live health check aur official limit info dikhate hain.
+                  </p>
+                </div>
+              </div>
+            )}
             {apiConfigLoading ? (
               <div className="flex items-center gap-2 text-[#AAAAAA] py-8">
                 <Loader2 className="w-5 h-5 animate-spin" /> Loading...

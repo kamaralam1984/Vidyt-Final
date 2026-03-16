@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const planId = user.subscription || 'free';
+    const planId = (user as { role?: string }).role === 'super-admin' ? 'owner' : (user.subscription || 'free');
     const limitResult = await checkAnalysisLimit(authUser.id, planId);
     if (!limitResult.allowed) {
       return NextResponse.json(

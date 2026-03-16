@@ -1,7 +1,10 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
+import { Suspense } from 'react';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthGuard from '@/components/AuthGuard';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -48,8 +51,9 @@ const CATEGORIES = [
 
 const DEBOUNCE_MS = 500;
 
-export default function YouTubeLiveSEOPage() {
+function YouTubeLiveSEOContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -130,11 +134,50 @@ export default function YouTubeLiveSEOPage() {
   const [homePageTopicSearch, setHomePageTopicSearch] = useState('');
   const [homePageTopicResults, setHomePageTopicResults] = useState<{ keyword: string; viralScore: number }[] | null>(null);
   const [loadingHomePageTopic, setLoadingHomePageTopic] = useState(false);
+  const [initialTabApplied, setInitialTabApplied] = useState(false);
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('youtube-seo-channel-url') : null;
     if (saved) setChannelUrl(saved);
   }, []);
+
+  // Handle initial tab from query (?tab=keywords|titles|thumbnails|optimize)
+  useEffect(() => {
+    if (initialTabApplied) return;
+    const tab = (searchParams?.get('tab') || '').toLowerCase();
+    if (!tab) {
+      setInitialTabApplied(true);
+      return;
+    }
+    if (tab === 'keywords') {
+      const kw = title.split(/\s+/).slice(0, 3).join(' ');
+      setViralSearchQuery(kw);
+      searchViralKeywords();
+    } else if (tab === 'titles') {
+      if (title) {
+        // trigger title score fetch
+        // re-use existing handler by toggling state
+        setLoadingTitle(true);
+        axios
+          .post(
+            '/api/youtube/title-score',
+            { title: title.trim() },
+            { headers: getAuthHeaders() }
+          )
+          .then((res) => setTitleScoreData(res.data))
+          .catch(() => setTitleScoreData(null))
+          .finally(() => setLoadingTitle(false));
+      }
+    } else if (tab === 'thumbnails') {
+      // focus thumbnail section: no special API, user will upload
+    } else if (tab === 'optimize') {
+      if (title || description || keywords) {
+        fetchSeo();
+      }
+    }
+    setInitialTabApplied(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, initialTabApplied]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !channelUrl.trim()) return;
@@ -542,6 +585,7 @@ export default function YouTubeLiveSEOPage() {
       const fromTranscript = res.data.fromTranscript === true;
       const openAiKeyConfigured = res.data.openAiKeyConfigured === true;
       const transcriptText = res.data.transcript || '';
+      const transcriptionError = res.data.transcriptionError as string | undefined;
       if (sug) {
         setVideoSuggestions(sug);
         setTitle(sug.title || title);
@@ -550,15 +594,25 @@ export default function YouTubeLiveSEOPage() {
         const hashStr = sug.hashtags?.length ? sug.hashtags.join(' ') : '';
         if (hashStr) setDescription((d) => (d ? `${d}\n\n${hashStr}` : hashStr));
         if (transcriptText) setChinkiInput(transcriptText);
-        const chinkiReply = fromTranscript
-          ? `Maine video ki audio sun kar exact content pe title, description, keywords aur hashtags bana diye—sab form me add kar diye. Transcript Chinki ke textbox me hai; usi text ke hisaab se sab set ho chuka hai. Chinki se aur viral tips pooch sakte ho!`
-          : !openAiKeyConfigured
-            ? `Maine filename/topic se suggest kiye hain—sab form me add kar diye. Video ki audio se exact title/description ke liye Super Admin → API keys me OpenAI API key set karein, phir "Analyze" dubara chalayein.`
-            : `Video ki audio transcribe nahi ho payi (format/quality check karein). Maine filename/topic se suggest kiye—sab form me add kar diye. Koi change chahiye ho to batao!`;
+        let chinkiReply: string;
+        if (fromTranscript) {
+          chinkiReply = `Maine video ki audio sun kar exact content pe title, description, keywords aur hashtags bana diye—sab form me add kar diye. Transcript Chinki ke textbox me hai; usi text ke hisaab se sab set ho chuka hai. Chinki se aur viral tips pooch sakte ho!`;
+        } else if (transcriptionError) {
+          chinkiReply = `OpenAI transcription kaam nahi kiya: ${transcriptionError} Maine filename/topic se suggest kiye—sab form me add kar diye. Fix karke phir "Analyze" dubara chalayein.`;
+        } else if (!openAiKeyConfigured) {
+          chinkiReply = `Maine filename/topic se suggest kiye hain—sab form me add kar diye. Video ki audio se exact title/description ke liye Super Admin → API keys me OpenAI API key set karein, phir "Analyze" dubara chalayein.`;
+        } else {
+          chinkiReply = `Video ki audio transcribe nahi ho payi (format/quality check karein). Maine filename/topic se suggest kiye—sab form me add kar diye. Koi change chahiye ho to batao!`;
+        }
         setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: chinkiReply }]);
       }
-    } catch {
-      setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: 'Video analyze karte waqt error aaya. Phir se try karein ya topic likh kar bhejein.' }]);
+      if (transcriptionError && !sug) {
+        setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: `OpenAI API: ${transcriptionError}` }]);
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { transcriptionError?: string; message?: string } } };
+      const msg = ax.response?.data?.transcriptionError || ax.response?.data?.message || 'Video analyze karte waqt error aaya. Phir se try karein ya topic likh kar bhejein.';
+      setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: msg }]);
     } finally {
       setVideoAnalyzing(false);
     }
@@ -1721,5 +1775,13 @@ export default function YouTubeLiveSEOPage() {
       </div>
     </DashboardLayout>
     </AuthGuard>
+  );
+}
+
+export default function YouTubeLiveSEOPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-white">Loading...</div>}>
+      <YouTubeLiveSEOContent />
+    </Suspense>
   );
 }

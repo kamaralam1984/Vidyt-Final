@@ -53,8 +53,17 @@ export async function checkAnalysisLimit(userId: string, planId: string): Promis
   const plan = getPlanRoll(planId);
   const { analysesLimit, analysesPeriod } = plan.limits;
 
-  const used = await getAnalysisUsageCount(userId, analysesPeriod);
+  if (analysesLimit < 0) {
+    return {
+      allowed: true,
+      used: 0,
+      limit: -1,
+      period: analysesPeriod,
+      planId: plan.id as import('@/lib/planLimits').PlanId,
+    };
+  }
 
+  const used = await getAnalysisUsageCount(userId, analysesPeriod);
   const allowed = used < analysesLimit;
 
   return {

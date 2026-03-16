@@ -29,8 +29,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
     }
 
-    const user = await User.findById(userId).select('subscription').lean();
-    const planId = (user as { subscription?: string } | null)?.subscription || 'free';
+    const user = await User.findById(userId).select('subscription role').lean();
+    const u = user as { subscription?: string; role?: string } | null;
+    const planId = authUser?.role === 'super-admin' ? 'owner' : (u?.subscription || 'free');
     const limitResult = await checkAnalysisLimit(userId, planId);
     if (!limitResult.allowed) {
       return NextResponse.json(

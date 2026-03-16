@@ -56,10 +56,12 @@ export async function PATCH(request: NextRequest) {
       'youtubeDataApiKey', 'resendApiKey', 'openaiApiKey', 'assemblyaiApiKey', 'googleGeminiApiKey',
       'sentryDsn', 'sentryServerDsn', 'stripeSecretKey', 'stripeWebhookSecret', 'stripePublishableKey',
     ];
+    const maskPlaceholder = '••••••••';
     for (const k of keys) {
-      if (body[k] !== undefined) {
-        updates[k] = typeof body[k] === 'string' ? body[k].trim() : '';
-      }
+      if (body[k] === undefined) continue;
+      const val = typeof body[k] === 'string' ? body[k].trim() : '';
+      if (val === maskPlaceholder || val === '********') continue;
+      updates[k] = val;
     }
     await connectDB();
     await ApiConfig.findOneAndUpdate(
