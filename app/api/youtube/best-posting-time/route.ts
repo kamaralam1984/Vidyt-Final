@@ -4,14 +4,61 @@ import { getApiConfig } from '@/lib/apiConfig';
 import axios from 'axios';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function extractChannelIdentifier(url: string): string | null {
   const u = url.trim();
   const m =
     u.match(/youtube\.com\/channel\/([^/?]+)/) ||
     u.match(/youtube\.com\/@([^/?]+)/) ||
-    u.match(/youtube\.com\/c\/([^/?]+)/);
+    u.match(/youtube\.com\/c\/([^/?]+)/) ||
+    u.match(/youtube\.com\/user\/([^/?]+)/);
   return m ? m[1] : null;
+}
+
+function extractVideoId(url: string): string | null {
+  const u = url.trim();
+  const m = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+async function resolveChannelIdFromVideo(videoId: string, apiKey: string): Promise<string | null> {
+  try {
+    const res = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
+      params: { part: 'snippet', id: videoId, key: apiKey },
+      timeout: 10000,
+    });
+    const channelId = res.data?.items?.[0]?.snippet?.channelId;
+    return channelId || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fallback: fetch channel page HTML and parse channel ID when API handle lookup fails */
+async function resolveChannelIdFromPage(handleOrUrl: string): Promise<string | null> {
+  try {
+    const url = handleOrUrl.startsWith('http')
+      ? handleOrUrl
+      : `https://www.youtube.com/@${handleOrUrl.replace(/^@/, '')}`;
+    const res = await axios.get(url, {
+      timeout: 10000,
+      maxRedirects: 3,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0' },
+      responseType: 'text',
+    });
+    const html = typeof res.data === 'string' ? res.data : '';
+    // YouTube embeds channel ID in canonical link or in ytInitialData / meta
+    const canonicalMatch = html.match(/youtube\.com\/channel\/(UC[\w-]{22})/);
+    if (canonicalMatch) return canonicalMatch[1];
+    const metaMatch = html.match(/"channelId"\s*:\s*"(UC[\w-]{22})"/);
+    if (metaMatch) return metaMatch[1];
+    const externalMatch = html.match(/"externalId"\s*:\s*"(UC[\w-]{22})"/);
+    if (externalMatch) return externalMatch[1];
+  } catch (_) {
+    // ignore
+  }
+  return null;
 }
 
 async function resolveChannelId(identifier: string, apiKey: string): Promise<string | null> {
@@ -25,17 +72,21 @@ async function resolveChannelId(identifier: string, apiKey: string): Promise<str
     });
     if (chRes.data?.items?.length) return chRes.data.items[0].id;
     const searchRes = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-      params: { part: 'snippet', key: apiKey, q: `@${handle}`, type: 'channel', maxResults: 1 },
+      params: { part: 'snippet', key: apiKey, q: `@${handle}`, type: 'channel', maxResults: 5 },
       timeout: 10000,
     });
-    const ch = searchRes.data?.items?.[0];
-    if (ch?.id?.channelId) return ch.id.channelId;
+    const items = searchRes.data?.items || [];
+    for (const ch of items) {
+      if (ch?.id?.channelId) return ch.id.channelId;
+    }
     const userRes = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
       params: { part: 'snippet', key: apiKey, forUsername: handle },
       timeout: 10000,
     });
     if (userRes.data?.items?.length) return userRes.data.items[0].id;
-  } catch (_) {}
+  } catch (_) {
+    // continue to page fallback
+  }
   return null;
 }
 
@@ -48,14 +99,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const channelUrl = (searchParams.get('channelUrl') || searchParams.get('url') || '').trim();
   if (!channelUrl) {
-    return NextResponse.json({ error: 'channelUrl required' }, { status: 400 });
+    return NextResponse.json({ error: 'channelUrl is required.' }, { status: 200 });
   }
 
   const identifier = extractChannelIdentifier(channelUrl);
-  if (!identifier) {
+  const videoId = extractVideoId(channelUrl);
+  if (!identifier && !videoId) {
     return NextResponse.json(
-      { error: 'Invalid channel URL', suggestion: 'Use format: https://www.youtube.com/@username or https://www.youtube.com/channel/UC...' },
-      { status: 400 }
+      {
+        error: 'Invalid channel or video URL.',
+        suggestion:
+          'Use a channel link (e.g. https://www.youtube.com/@username) or a video link (e.g. https://www.youtube.com/watch?v=...).',
+      },
+      { status: 200 }
     );
   }
 
@@ -63,18 +119,38 @@ export async function GET(request: NextRequest) {
   const apiKey = config.youtubeDataApiKey?.trim();
   if (!apiKey) {
     return NextResponse.json({
-      error: 'YouTube API key not set',
+      error: 'YouTube API key is not configured.',
       bestSlots: [],
       bestDays: [],
       bestHours: [],
-      summary: 'Super Admin → API Config me YouTube Data API key add karein. Tabhi channel ke hisaab se best posting time bata payenge.',
+      summary:
+        'Ask your Super Admin to open API Config and add a valid YouTube Data API key. Only then we can calculate channel-specific best posting time.',
     });
   }
 
   try {
-    const channelId = await resolveChannelId(identifier, apiKey);
+    let channelId: string | null = null;
+    if (videoId) {
+      channelId = await resolveChannelIdFromVideo(videoId, apiKey);
+    }
+    if (!channelId && identifier) {
+      channelId = await resolveChannelId(identifier, apiKey);
+    }
+    // Fallback: when API handle lookup fails, parse channel ID from the channel page HTML
+    if (!channelId && (identifier || channelUrl)) {
+      channelId = await resolveChannelIdFromPage(identifier ? `https://www.youtube.com/@${identifier.replace(/^@/, '')}` : channelUrl);
+    }
     if (!channelId) {
-      return NextResponse.json({ error: 'Channel not found', bestSlots: [], bestDays: [], bestHours: [], summary: '' }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: 'Channel not found. Please check that the link is correct and the channel is public.',
+          bestSlots: [],
+          bestDays: [],
+          bestHours: [],
+          summary: '',
+        },
+        { status: 200 }
+      );
     }
 
     const channelRes = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
@@ -87,7 +163,9 @@ export async function GET(request: NextRequest) {
         bestSlots: [],
         bestDays: [],
         bestHours: [],
-        summary: 'Is channel ke liye upload list nahi mili. Channel link sahi hai?',
+        summary:
+          'We could not find an uploads list for this channel. Please confirm the channel link and try again.',
+        error: 'No uploads playlist found for this channel.',
       });
     }
 
@@ -106,7 +184,9 @@ export async function GET(request: NextRequest) {
         bestSlots: [],
         bestDays: [],
         bestHours: [],
-        summary: 'Channel par abhi koi video nahi hai. Pehle kuch videos upload karein, phir best time bata payenge.',
+        summary:
+          'This channel has no uploaded videos yet. Upload a few videos first, then we can calculate best posting time.',
+        error: 'No videos found on this channel.',
       });
     }
 
@@ -164,8 +244,22 @@ export async function GET(request: NextRequest) {
     };
     const summary =
       bestDays.length && bestHours.length
-        ? `Aapke channel ke top videos ke hisaab se: **${bestDays.join(', ')}** ko post karein. Views zyada aate waqt: **${bestHours.map(formatHour).join(', ')}** (UTC). Apne timezone ke hisaab se adjust karein.`
-        : 'Kaafi data nahi mila. Aur videos upload karein, phir exact time bata payenge.';
+        ? `Based on your top-performing videos: **${bestDays.join(
+            ', '
+          )}** perform best. Views are highest around: **${bestHours
+            .map(formatHour)
+            .join(', ')}** (UTC). Adjust these times to your local timezone.`
+        : 'We did not find enough data. Upload more videos and try again for a more accurate schedule.';
+
+    // Full heatmap: every (day, hour) that has views, for grid coloring
+    const heatmapSlots = DAYS.flatMap((day) =>
+      HOURS.map((hour) => {
+        const key = `${day}_${hour}`;
+        const views = slotViews[key] || 0;
+        const share = totalViews > 0 ? Math.round((views / totalViews) * 100) : 0;
+        return { day, hour, views, share };
+      })
+    ).filter((s) => s.views > 0);
 
     return NextResponse.json({
       bestSlots: topSlots.map((s) => ({
@@ -175,20 +269,46 @@ export async function GET(request: NextRequest) {
         views: s.views,
         share: totalViews > 0 ? Math.round((s.views / totalViews) * 100) : 0,
       })),
+      heatmapSlots,
       bestDays,
       bestHours,
       summary,
       totalVideosAnalyzed: videos.length,
     });
-  } catch (e) {
-    console.error('Best posting time error:', e);
+  } catch (e: unknown) {
+    const err = e as { response?: { status?: number; data?: { error?: { message?: string }; message?: string } }; message?: string };
+    console.error('Best posting time error:', err?.response?.data || err?.message || e);
+
+    let errorMessage = 'We could not read channel data from YouTube.';
+    let summary = 'Please check the channel link and that your YouTube Data API key is valid and has quota.';
+
+    if (err?.response?.status === 403) {
+      const msg = err.response?.data?.error?.message || err.response?.data?.message || '';
+      if (/quota|exceeded|limit/i.test(msg)) {
+        errorMessage = 'YouTube API quota exceeded. Try again later or check your Google Cloud quota.';
+        summary = 'The daily quota for YouTube Data API has been used. It resets at midnight Pacific Time.';
+      } else if (/forbidden|access|key/i.test(msg)) {
+        errorMessage = 'YouTube API access denied. Check that the API key is correct and YouTube Data API v3 is enabled.';
+        summary = 'In Super Admin → API Config, ensure the YouTube Data API key is valid and the API is enabled in Google Cloud Console.';
+      }
+    } else if (err?.response?.status === 400) {
+      errorMessage = 'Invalid request to YouTube API. The channel link may be in an unsupported format.';
+      summary = 'Try using the channel handle link: https://www.youtube.com/@channelname';
+    } else if (err?.response?.status === 404) {
+      errorMessage = 'Channel or resource not found.';
+      summary = 'Confirm the channel exists, is public, and the link is correct.';
+    } else if (err?.message && /network|timeout|ECONNREFUSED/i.test(err.message)) {
+      errorMessage = 'Could not reach YouTube. Check your internet connection and try again.';
+      summary = 'A network or timeout error occurred while calling YouTube.';
+    }
+
     return NextResponse.json(
       {
-        error: 'Channel data read nahi ho paya',
+        error: errorMessage,
         bestSlots: [],
         bestDays: [],
         bestHours: [],
-        summary: 'YouTube API error. Channel link sahi hai? API key check karein.',
+        summary,
       },
       { status: 200 }
     );

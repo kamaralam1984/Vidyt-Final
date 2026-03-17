@@ -877,6 +877,12 @@ function YouTubeLiveSEOContent() {
                 </div>
               </div>
             </div>
+
+            {/* Title Optimization (moved to left column) */}
+
+            {/* Thumbnail Analysis (moved to left column) */}
+
+            {/* Video upload (moved to left column) */}
           </motion.div>
 
           {/* RIGHT: Live SEO panel */}
@@ -1563,73 +1569,10 @@ function YouTubeLiveSEOContent() {
             )}
 
             {/* 5 Auto Descriptions — click to add to Description; SEO score shown; Short/Live aware */}
-            <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                <FileText className="w-5 h-5" /> 5 Automatic descriptions {contentType !== 'video' && `(${contentType === 'short' ? 'Short' : 'Live Stream'})`}
-              </h2>
-                <p className="text-xs text-[#888] mb-3">
-                  Five descriptions based on your title, keyword and current description. Click to replace your
-                  description field. The score reflects SEO quality.
-                </p>
-              {loadingDescriptions ? (
-                <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
-              ) : descriptions.length > 0 ? (
-                <ul className="space-y-2 max-h-56 overflow-y-auto">
-                  {descriptions.map((d, i) => (
-                    <li key={i}>
-                      <button
-                        type="button"
-                        onClick={() => addDescriptionToField(d.text)}
-                        className="w-full text-left p-3 rounded-lg bg-[#212121] hover:bg-[#2a2a2a] border border-[#333] transition"
-                      >
-                        <span className="text-[#FF0000] font-semibold text-sm">{d.seoScore}%</span>
-                        <p className="text-sm text-[#CCC] mt-1 line-clamp-2">{d.text}</p>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[#666] text-sm">
-                  Fill in a title, keyword or description to generate 5 automatic descriptions.
-                </p>
-              )}
-            </div>
+            {/* (Moved to left column under Channel link) */}
 
             {/* 25 Viral Hashtags — color coded; click to add; Short/Live aware */}
-            <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                <Hash className="w-5 h-5" /> 25 Viral hashtags {contentType !== 'video' && `(${contentType === 'short' ? 'Short' : 'Live Stream'})`}
-              </h2>
-              <p className="text-xs text-[#888] mb-3">
-                Colour legend: green = highly viral, amber = medium, gray = low. Click a hashtag to add it to the
-                description.
-              </p>
-              {loadingHashtags ? (
-                <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
-              ) : hashtags.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {hashtags.map((h, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => addHashtagToDescription(h.tag)}
-                      className={`px-2 py-1.5 rounded text-sm font-medium transition hover:opacity-90 flex items-center gap-1.5 ${
-                        h.viralLevel === 'high'
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                          : h.viralLevel === 'medium'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                            : 'bg-[#212121] text-[#888] border border-[#333]'
-                      }`}
-                    >
-                      <span>{h.tag.startsWith('#') ? h.tag : `#${h.tag}`}</span>
-                      {typeof h.viralScore === 'number' && <span className="opacity-90 font-semibold">{h.viralScore}%</span>}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[#666] text-sm">Enter a keyword or title to see 25 viral hashtags.</p>
-              )}
-            </div>
+            {/* (Moved to left column under Channel link) */}
 
             {/* Title Optimization */}
             <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">

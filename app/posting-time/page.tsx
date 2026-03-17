@@ -9,9 +9,9 @@ import { Clock, Youtube, Facebook, Instagram, Link2, Loader2, AlertCircle } from
 import { getAuthHeaders } from '@/utils/auth';
 
 const PLATFORM_LABELS = {
-  youtube: 'YouTube channel ya video',
-  facebook: 'Facebook page ya video',
-  instagram: 'Instagram profile ya reel',
+  youtube: 'YouTube channel or video',
+  facebook: 'Facebook page or video',
+  instagram: 'Instagram profile or reel',
 } as const;
 
 export default function PostingTimePage() {
@@ -27,6 +27,7 @@ export default function PostingTimePage() {
     bestDays?: string[];
     bestHours?: number[];
     bestSlots?: { day: string; hour: number; timeLabel: string; views: number; share: number }[];
+    heatmapSlots?: { day: string; hour: number; views: number; share: number }[];
     totalVideosAnalyzed?: number;
     error?: string;
   } | null>(null);
@@ -76,6 +77,7 @@ export default function PostingTimePage() {
           bestDays: res.data.bestDays,
           bestHours: res.data.bestHours,
           bestSlots: res.data.bestSlots,
+          heatmapSlots: res.data.heatmapSlots,
           totalVideosAnalyzed: res.data.totalVideosAnalyzed,
           error: res.data.error,
         });
@@ -106,7 +108,9 @@ export default function PostingTimePage() {
         });
       }
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Link se data nahi mila.';
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+        'We could not fetch data from this link.';
       setLinkBasedResult({ error: msg });
     } finally {
       setLoadingLink(false);
@@ -126,7 +130,7 @@ export default function PostingTimePage() {
             <div>
               <h1 className="text-3xl font-bold text-white">Best Posting Time</h1>
               <p className="text-[#AAAAAA]">
-                Platform select karein, link daalein — video/channel se accurate post time batayenge
+                Select a platform, paste your link — we will analyze your channel or videos and suggest the most accurate time to post.
               </p>
             </div>
           </div>
@@ -175,12 +179,12 @@ export default function PostingTimePage() {
           <div className="bg-[#181818] border border-[#212121] rounded-xl shadow-lg p-6 mb-6">
             <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
               <Link2 className="w-5 h-5 text-[#FF0000]" />
-              {platform === 'youtube' ? 'YouTube' : platform === 'facebook' ? 'Facebook' : 'Instagram'} ka link set karein
+              Paste your {platform === 'youtube' ? 'YouTube' : platform === 'facebook' ? 'Facebook' : 'Instagram'} link
             </h2>
             <p className="text-sm text-[#AAAAAA] mb-4">
               {platform === 'youtube'
-                ? 'Channel ya video link daalein — aapke videos ke hisaab se accurate post time bata denge.'
-                : 'Page ya video link daalein. Accurate analysis jald aayega.'}
+                ? 'Paste your channel or video link — we will analyze your recent videos and recommend your best posting time.'
+                : 'Paste your page/profile link. We will estimate the best posting time based on recent engagement.'}
             </p>
             <div className="flex flex-wrap gap-3 items-end">
               <div className="flex-1 min-w-[200px]">
@@ -208,7 +212,7 @@ export default function PostingTimePage() {
                 className="px-5 py-2.5 rounded-lg bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 text-white font-medium flex items-center gap-2"
               >
                 {loadingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-                {loadingLink ? 'Analyzing…' : 'Accurate time batao'}
+                {loadingLink ? 'Analyzing…' : 'Get accurate time'}
               </button>
             </div>
             {linkBasedResult?.error && (
@@ -222,7 +226,7 @@ export default function PostingTimePage() {
                 {linkBasedResult.summary.replace(/\*\*/g, '')}
                 {linkBasedResult.totalVideosAnalyzed != null && (
                   <p className="mt-2 text-emerald-400 text-xs">
-                    {linkBasedResult.totalVideosAnalyzed} videos analyze kiye.
+                    Analyzed {linkBasedResult.totalVideosAnalyzed} videos for this recommendation.
                   </p>
                 )}
               </div>
@@ -241,7 +245,25 @@ export default function PostingTimePage() {
             )}
           </div>
 
-          <PostingTimeHeatmap postingTime={postingTime} platform={platform} />
+          <PostingTimeHeatmap
+            postingTime={postingTime}
+            platform={platform}
+            slots={
+              linkBasedResult?.heatmapSlots?.length
+                ? linkBasedResult.heatmapSlots.map((s) => ({
+                    day: s.day,
+                    hour: s.hour,
+                    engagement: s.share ?? s.views ?? 0,
+                  }))
+                : linkBasedResult?.bestSlots?.length
+                  ? linkBasedResult.bestSlots.map((slot) => ({
+                      day: slot.day,
+                      hour: slot.hour,
+                      engagement: slot.share ?? slot.views ?? 0,
+                    }))
+                  : undefined
+            }
+          />
         </motion.div>
       </div>
     </DashboardLayout>

@@ -9,15 +9,42 @@ import { getToken, isAuthenticated } from '@/utils/auth';
 interface PostingTimeHeatmapProps {
   postingTime: { day: string; hour: number; confidence: number };
   platform?: 'youtube' | 'facebook' | 'instagram';
+  // Optional override when we already have per-slot engagement from a specific channel/link analysis
+  slots?: { day: string; hour: number; engagement: number }[];
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-export default function PostingTimeHeatmap({ postingTime, platform = 'youtube' }: PostingTimeHeatmapProps) {
+export default function PostingTimeHeatmap({
+  postingTime,
+  platform = 'youtube',
+  slots,
+}: PostingTimeHeatmapProps) {
   const [heatmap, setHeatmap] = useState<number[][]>([]);
 
   useEffect(() => {
+    // If we receive explicit slots (from link-based analysis), build heatmap directly
+    if (slots && slots.length > 0) {
+      const rawGrid: number[][] = [];
+      DAYS.forEach((day) => {
+        const dayData: number[] = [];
+        HOURS.forEach((hour) => {
+          const entry = slots.find((s) => s.day === day && s.hour === hour);
+          dayData.push(entry?.engagement ?? 0);
+        });
+        rawGrid.push(dayData);
+      });
+      // Normalize so max cell = 100; then green/yellow/orange/grey thresholds work (share % is often 1–30)
+      let maxVal = 0;
+      rawGrid.forEach((row) => row.forEach((v) => { if (v > maxVal) maxVal = v; }));
+      const formattedHeatmap = maxVal > 0
+        ? rawGrid.map((row) => row.map((v) => Math.round((v / maxVal) * 100)))
+        : rawGrid;
+      setHeatmap(formattedHeatmap);
+      return;
+    }
+
     const fetchHeatmap = async () => {
       try {
         if (!isAuthenticated()) {
@@ -55,7 +82,7 @@ export default function PostingTimeHeatmap({ postingTime, platform = 'youtube' }
     };
 
     fetchHeatmap();
-  }, [platform]);
+  }, [platform, slots]);
 
   const getHeatColor = (value: number) => {
     if (value >= 80) return 'bg-green-500';

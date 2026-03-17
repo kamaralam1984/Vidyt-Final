@@ -50,6 +50,16 @@ export default function TrendingPage() {
                 Discover what&apos;s trending on {platform}
               </p>
             </div>
+            <div className="ml-auto flex items-center">
+              <button
+                type="button"
+                onClick={fetchTrendingTopics}
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-60 disabled:cursor-not-allowed text-sm font-medium text-white"
+              >
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
 
           {/* Platform Selection */}
