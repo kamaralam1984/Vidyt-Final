@@ -3,10 +3,15 @@
  * Architecture: 10 inputs -> Dense(64, ReLU) -> Dropout(0.2) -> Dense(128, ReLU) -> Dropout(0.3) -> Dense(64, ReLU) -> Dropout(0.2) -> Dense(1, Sigmoid)
  */
 
-import * as tf from '@tensorflow/tfjs-node';
+import * as tf from '@tensorflow/tfjs';
 import path from 'path';
 import fs from 'fs/promises';
 import { normalizeFeatures, type ViralFeatures } from './featureUtils';
+
+// Ensure we are using the CPU backend in a Node environment without tfjs-node
+if (typeof window === 'undefined') {
+  tf.setBackend('cpu');
+}
 
 const MODEL_DIR = path.join(process.cwd(), 'data', 'viral_models');
 const DEFAULT_VERSION = 'model_v1';
@@ -80,6 +85,78 @@ function computeMetrics(
   return { accuracy, precision, recall, f1Score };
 }
 
+/**
+ * Custom IOHandler for Node.js filesystem without @tensorflow/tfjs-node
+ */
+function getFileSystemHandler(savePath: string): tf.io.IOHandler {
+  return {
+    save: async (modelArtifacts) => {
+      await fs.mkdir(savePath, { recursive: true });
+      const weightsPath = path.join(savePath, 'weights.bin');
+      const modelJsonPath = path.join(savePath, 'model.json');
+
+      const modelJson: any = {
+        modelTopology: modelArtifacts.modelTopology,
+        format: modelArtifacts.format,
+        generatedBy: modelArtifacts.generatedBy,
+        convertedBy: modelArtifacts.convertedBy,
+        weightsManifest: [{
+          paths: ['./weights.bin'],
+          weights: modelArtifacts.weightSpecs,
+        }],
+      };
+
+      if (modelArtifacts.userDefinedMetadata) {
+        modelJson.userDefinedMetadata = modelArtifacts.userDefinedMetadata;
+      }
+
+      await fs.writeFile(modelJsonPath, JSON.stringify(modelJson));
+      if (modelArtifacts.weightData) {
+        const data = modelArtifacts.weightData instanceof ArrayBuffer
+          ? Buffer.from(modelArtifacts.weightData)
+          : Buffer.concat(modelArtifacts.weightData.map(ab => Buffer.from(ab)));
+        await fs.writeFile(weightsPath, data);
+      }
+
+      return {
+        modelArtifactsInfo: {
+          dateSaved: new Date(),
+          modelTopologyType: 'JSON',
+          modelTopologyBytes: JSON.stringify(modelArtifacts.modelTopology).length,
+          weightSpecsBytes: JSON.stringify(modelArtifacts.weightSpecs).length,
+          weightDataBytes: modelArtifacts.weightData
+            ? (modelArtifacts.weightData instanceof ArrayBuffer
+              ? modelArtifacts.weightData.byteLength
+              : modelArtifacts.weightData.reduce((acc, ab) => acc + ab.byteLength, 0))
+            : 0,
+        },
+      };
+    },
+    load: async () => {
+      const modelJsonPath = path.join(savePath, 'model.json');
+      const weightsPath = path.join(savePath, 'weights.bin');
+
+      const modelJson = JSON.parse(await fs.readFile(modelJsonPath, 'utf8'));
+      const modelArtifacts: tf.io.ModelArtifacts = {
+        modelTopology: modelJson.modelTopology,
+        format: modelJson.format,
+        generatedBy: modelJson.generatedBy,
+        convertedBy: modelJson.convertedBy,
+        userDefinedMetadata: modelJson.userDefinedMetadata,
+      };
+
+      if (modelJson.weightsManifest) {
+        const weightSpecs = modelJson.weightsManifest[0].weights;
+        const weightData = await fs.readFile(weightsPath);
+        modelArtifacts.weightSpecs = weightSpecs;
+        modelArtifacts.weightData = weightData.buffer;
+      }
+
+      return modelArtifacts;
+    }
+  };
+}
+
 export async function trainModel(
   samples: TrainingSample[],
   options: { epochs?: number; batchSize?: number; validationSplit?: number; version?: string } = {}
@@ -102,20 +179,13 @@ export async function trainModel(
   const splitIdx = Math.floor(samples.length * (1 - validationSplit));
   const xTrain = xTensor.slice(0, splitIdx);
   const yTrain = yTensor.slice(0, splitIdx);
-  const xVal = xTensor.slice(splitIdx, samples.length);
-  const yVal = yTensor.slice(splitIdx, samples.length);
+  const xVal = xTensor.slice(splitIdx, samples.length - splitIdx);
+  const yVal = yTensor.slice(splitIdx, samples.length - splitIdx);
 
   const history = await model.fit(xTrain, yTrain, {
     epochs,
     batchSize,
     validationData: [xVal, yVal],
-    callbacks: {
-      onEpochEnd: (_, logs) => {
-        if (logs && process.env.NODE_ENV === 'development') {
-          console.log(`Epoch ${logs.epoch + 1} loss=${logs.loss?.toFixed(4)} val_loss=${logs.val_loss?.toFixed(4)}`);
-        }
-      },
-    },
   });
 
   const valPred = model.predict(xVal) as tf.Tensor;
@@ -135,9 +205,8 @@ export async function trainModel(
   const lastValAcc = (hist.val_acc ?? hist.valAccuracy)?.[lastEpoch - 1] ?? metrics.accuracy;
 
   const savePath = path.join(MODEL_DIR, version);
-  await fs.mkdir(savePath, { recursive: true });
-  await model.save(`file://${savePath}`);
-  (model as tf.LayersModel).dispose();
+  await model.save(getFileSystemHandler(savePath));
+  model.dispose();
 
   return {
     version,
@@ -157,8 +226,8 @@ export async function loadModel(version: string = DEFAULT_VERSION): Promise<tf.L
   const savePath = path.join(MODEL_DIR, version);
   try {
     await fs.access(savePath);
-    const model = await tf.loadLayersModel(`file://${savePath}/model.json`);
-    return model as tf.LayersModel;
+    const model = await tf.loadLayersModel(getFileSystemHandler(savePath));
+    return model;
   } catch {
     return null;
   }

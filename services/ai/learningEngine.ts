@@ -1,22 +1,10 @@
-/**
- * AI Learning Engine with TensorFlow
- * Trains models on viral dataset and improves predictions over time
- */
+import * as tf from '@tensorflow/tfjs';
+import path from 'path';
+import fs from 'fs/promises';
 
-// Use browser version of TensorFlow.js (compatible with Next.js)
-// Note: @tensorflow/tfjs-node has native dependencies that don't work in Next.js
-let tf: any;
-try {
-  // Use browser version (works in both browser and Node.js via Next.js)
-  tf = require('@tensorflow/tfjs-core');
-  // Also load converter if needed
-  if (typeof window === 'undefined') {
-    // Server-side: use core only
-    console.log('Using TensorFlow.js Core (server-side)');
-  }
-} catch (error) {
-  console.warn('TensorFlow.js not available, using fallback predictions:', error);
-  tf = null;
+// Ensure we are using the CPU backend in a Node environment
+if (typeof window === 'undefined') {
+  tf.setBackend('cpu');
 }
 import ViralDataset from '@/models/ViralDataset';
 import connectDB from '@/lib/mongodb';
@@ -59,10 +47,10 @@ export async function initializeModel(): Promise<void> {
     // Try to load existing model
     // In production, load from file system or cloud storage
     console.log('Initializing AI Learning Engine...');
-    
+
     // Create model architecture
     viralModel = createModelArchitecture();
-    
+
     console.log('✅ AI Learning Engine initialized');
   } catch (error) {
     console.error('Failed to initialize model:', error);
@@ -91,7 +79,7 @@ function createModelArchitecture(): any {
         kernelRegularizer: tf.regularizers.l2({ l2: 0.01 }),
       }),
       tf.layers.dropout({ rate: 0.2 }),
-      
+
       // Hidden layers
       tf.layers.dense({
         units: 128,
@@ -99,13 +87,13 @@ function createModelArchitecture(): any {
         kernelRegularizer: tf.regularizers.l2({ l2: 0.01 }),
       }),
       tf.layers.dropout({ rate: 0.3 }),
-      
+
       tf.layers.dense({
         units: 64,
         activation: 'relu',
       }),
       tf.layers.dropout({ rate: 0.2 }),
-      
+
       // Output layer - viral probability (0-100)
       tf.layers.dense({
         units: 1,
@@ -160,7 +148,7 @@ async function prepareTrainingData(): Promise<{
   const viralVideos = await ViralDataset.find({ isViral: true })
     .limit(1000)
     .sort({ collectedAt: -1 });
-  
+
   const nonViralVideos = await ViralDataset.find({ isViral: false })
     .limit(1000)
     .sort({ collectedAt: -1 });
@@ -188,7 +176,7 @@ async function prepareTrainingData(): Promise<{
  */
 export async function trainModel(): Promise<TrainingResult> {
   const startTime = Date.now();
-  
+
   try {
     if (!viralModel) {
       await initializeModel();
@@ -247,7 +235,7 @@ export async function trainModel(): Promise<TrainingResult> {
     const predictions = viralModel.predict(valXs) as any;
     const predValues = await predictions.data();
     const trueValues = await valYs.data();
-    
+
     let tp = 0, fp = 0, fn = 0;
     for (let i = 0; i < predValues.length; i++) {
       const pred = predValues[i] > 0.5 ? 1 : 0;
@@ -343,7 +331,7 @@ export async function predictWithModel(features: number[]): Promise<number> {
     const input = tf.tensor2d([features]);
     const prediction = viralModel.predict(input) as any;
     const value = await prediction.data();
-    
+
     input.dispose();
     prediction.dispose();
 
@@ -393,13 +381,85 @@ function incrementVersion(version: string): string {
 }
 
 /**
+ * Custom IOHandler for Node.js filesystem without @tensorflow/tfjs-node
+ */
+function getFileSystemHandler(savePath: string): tf.io.IOHandler {
+  return {
+    save: async (modelArtifacts) => {
+      await fs.mkdir(savePath, { recursive: true });
+      const weightsPath = path.join(savePath, 'weights.bin');
+      const modelJsonPath = path.join(savePath, 'model.json');
+
+      const modelJson: any = {
+        modelTopology: modelArtifacts.modelTopology,
+        format: modelArtifacts.format,
+        generatedBy: modelArtifacts.generatedBy,
+        convertedBy: modelArtifacts.convertedBy,
+        weightsManifest: [{
+          paths: ['./weights.bin'],
+          weights: modelArtifacts.weightSpecs,
+        }],
+      };
+
+      if (modelArtifacts.userDefinedMetadata) {
+        modelJson.userDefinedMetadata = modelArtifacts.userDefinedMetadata;
+      }
+
+      await fs.writeFile(modelJsonPath, JSON.stringify(modelJson));
+      if (modelArtifacts.weightData) {
+        const data = modelArtifacts.weightData instanceof ArrayBuffer
+          ? Buffer.from(modelArtifacts.weightData)
+          : Buffer.concat(modelArtifacts.weightData.map(ab => Buffer.from(ab)));
+        await fs.writeFile(weightsPath, data);
+      }
+
+      return {
+        modelArtifactsInfo: {
+          dateSaved: new Date(),
+          modelTopologyType: 'JSON',
+          modelTopologyBytes: JSON.stringify(modelArtifacts.modelTopology).length,
+          weightSpecsBytes: JSON.stringify(modelArtifacts.weightSpecs).length,
+          weightDataBytes: modelArtifacts.weightData
+            ? (modelArtifacts.weightData instanceof ArrayBuffer
+              ? modelArtifacts.weightData.byteLength
+              : modelArtifacts.weightData.reduce((acc, ab) => acc + ab.byteLength, 0))
+            : 0,
+        },
+      };
+    },
+    load: async () => {
+      const modelJsonPath = path.join(savePath, 'model.json');
+      const weightsPath = path.join(savePath, 'weights.bin');
+
+      const modelJson = JSON.parse(await fs.readFile(modelJsonPath, 'utf8'));
+      const modelArtifacts: tf.io.ModelArtifacts = {
+        modelTopology: modelJson.modelTopology,
+        format: modelJson.format,
+        generatedBy: modelJson.generatedBy,
+        convertedBy: modelJson.convertedBy,
+        userDefinedMetadata: modelJson.userDefinedMetadata,
+      };
+
+      if (modelJson.weightsManifest) {
+        const weightSpecs = modelJson.weightsManifest[0].weights;
+        const weightData = await fs.readFile(weightsPath);
+        modelArtifacts.weightSpecs = weightSpecs;
+        modelArtifacts.weightData = weightData.buffer;
+      }
+
+      return modelArtifacts;
+    }
+  };
+}
+
+/**
  * Save model to file system
  */
 export async function saveModel(path: string): Promise<void> {
   if (!viralModel) {
     throw new Error('No model to save');
   }
-  await viralModel.save(`file://${path}`);
+  await viralModel.save(getFileSystemHandler(path));
 }
 
 /**
@@ -407,7 +467,7 @@ export async function saveModel(path: string): Promise<void> {
  */
 export async function loadModel(path: string): Promise<void> {
   try {
-    viralModel = await tf.loadLayersModel(`file://${path}/model.json`);
+    viralModel = await tf.loadLayersModel(getFileSystemHandler(path));
     console.log('✅ Model loaded successfully');
   } catch (error) {
     console.error('Failed to load model:', error);

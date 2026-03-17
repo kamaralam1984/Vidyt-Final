@@ -17,7 +17,6 @@ const nextConfig = {
     };
     if (isServer) {
       config.externals = config.externals || [];
-      config.externals.push('@tensorflow/tfjs-node');
     }
     return config;
   },
