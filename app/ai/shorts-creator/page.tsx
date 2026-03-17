@@ -187,7 +187,12 @@ export default function ShortsCreatorPage() {
       setClips(res.data.clips || []);
       if (res.data.youtubeUrl) setSourceYoutubeUrl(res.data.youtubeUrl);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to generate clips');
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to generate clips';
+      if (err.response?.status === 413) {
+        alert('File too large (413). Please try a smaller video file or use a YouTube link.');
+      } else {
+        alert(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+      }
     } finally {
       setLoading(false);
     }

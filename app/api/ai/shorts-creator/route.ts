@@ -9,6 +9,15 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb',
+    },
+    responseLimit: false,
+  },
+};
+
 export async function POST(request: NextRequest) {
   const access = await requireAIToolAccess(request, 'ai_shorts_clipping');
   if (!access.allowed) {
@@ -30,7 +39,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Video link se download fail: ${msg}. Try uploading file instead.` }, { status: 400 });
       }
       const segments = await detectClipsFromVideo(tmpPath);
-      await fs.unlink(tmpPath).catch(() => {});
+      await fs.unlink(tmpPath).catch(() => { });
       tmpPath = null;
       if (segments.length > 0) {
         const clips = generateClipsFromSegments(segments, title);
@@ -59,7 +68,7 @@ export async function POST(request: NextRequest) {
       const buf = await file.arrayBuffer();
       await fs.writeFile(tmpPath, new Uint8Array(buf));
       const segments = await detectClipsFromVideo(tmpPath);
-      await fs.unlink(tmpPath).catch(() => {});
+      await fs.unlink(tmpPath).catch(() => { });
       tmpPath = null;
       if (segments.length > 0) {
         const clips = generateClipsFromSegments(segments, title);
@@ -88,7 +97,7 @@ export async function POST(request: NextRequest) {
       message: file ? 'Video uploaded but scene detection returned no segments; demo clips used.' : 'Demo clips generated.',
     });
   } catch (e: unknown) {
-    if (tmpPath) await fs.unlink(tmpPath).catch(() => {});
+    if (tmpPath) await fs.unlink(tmpPath).catch(() => { });
     const msg = e instanceof Error ? e.message : 'Generation failed';
     return NextResponse.json({ error: msg }, { status: 500 });
   }

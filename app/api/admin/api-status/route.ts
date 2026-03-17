@@ -178,9 +178,16 @@ export async function GET(request: NextRequest) {
           item.message = 'Live test OK (emails list endpoint).';
         } else {
           const data = await res.json().catch(() => ({}));
-          item.status = 'error';
           const msg: string = data?.message || `HTTP ${res.status} from Resend`;
-          item.message = msg.slice(0, 160);
+
+          // Handle restricted "Sending" keys
+          if (res.status === 403 && msg.toLowerCase().includes('restricted to only send emails')) {
+            item.status = 'ok';
+            item.message = 'Key verified (Restricted to sending only).';
+          } else {
+            item.status = 'error';
+            item.message = msg.slice(0, 160);
+          }
         }
       } catch (e: any) {
         item.status = 'error';
