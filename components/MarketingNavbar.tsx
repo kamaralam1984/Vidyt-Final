@@ -152,25 +152,17 @@ export default function MarketingNavbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-[#050712]/70 backdrop-blur-xl">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-1.5 lg:px-8">
         {/* Logo / brand */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="relative h-10 w-10">
+        <Link href="/" className="flex items-center group">
+          <div className="relative h-14 w-32 -my-2 mr-2">
             <Image
-              src="/logo.png"
+              src="/logo-navbar.png"
               alt="ViralBoost AI logo"
               fill
               className="object-contain"
               priority
             />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-tight text-white">
-              ViralBoost AI
-            </span>
-            <span className="text-xs text-white/50">
-              Modern AI tools for creators
-            </span>
           </div>
         </Link>
 
@@ -184,9 +176,8 @@ export default function MarketingNavbar() {
           >
             <span>{t('navbar.features')}</span>
             <ChevronDown
-              className={`h-4 w-4 transition-transform duration-200 ${
-                featuresOpen ? 'rotate-180' : ''
-              }`}
+              className={`h-4 w-4 transition-transform duration-200 ${featuresOpen ? 'rotate-180' : ''
+                }`}
             />
           </button>
 
@@ -229,9 +220,8 @@ export default function MarketingNavbar() {
                         setLocale(opt);
                         setLocaleMenuOpen(false);
                       }}
-                      className={`flex w-full items-center justify-between px-3 py-2 hover:bg-white/10 ${
-                        opt.countryCode === locale.countryCode ? 'bg-white/10' : ''
-                      }`}
+                      className={`flex w-full items-center justify-between px-3 py-2 hover:bg-white/10 ${opt.countryCode === locale.countryCode ? 'bg-white/10' : ''
+                        }`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-base leading-none">{opt.flag}</span>
@@ -328,9 +318,8 @@ export default function MarketingNavbar() {
           >
             <span>{t('navbar.features')}</span>
             <ChevronDown
-              className={`h-4 w-4 transition-transform ${
-                featuresOpen ? 'rotate-180' : ''
-              }`}
+              className={`h-4 w-4 transition-transform ${featuresOpen ? 'rotate-180' : ''
+                }`}
             />
           </button>
 

@@ -9,8 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Script from 'next/script';
 import axios from 'axios';
-import { 
-  Mail, Lock, User, Loader2, AlertCircle, Check, ArrowRight, 
+import {
+  Mail, Lock, User, Loader2, AlertCircle, Check, ArrowRight,
   Wifi, WifiOff, CheckCircle, XCircle, Building, Phone, Hash,
   Eye, EyeOff
 } from 'lucide-react';
@@ -103,7 +103,7 @@ function AuthPageContent() {
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-  
+
   // Form data
   const [formData, setFormData] = useState({
     companyName: '',
@@ -114,12 +114,12 @@ function AuthPageContent() {
     loginPin: '',
     uniqueId: '', // For login
   });
-  
+
   // OTP
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Loading states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -170,7 +170,7 @@ function AuthPageContent() {
 
     setLoading(true);
     setError('');
-    
+
     try {
       const response = await axios.post('/api/auth/send-otp', {
         email: formData.email,
@@ -292,7 +292,7 @@ function AuthPageContent() {
         if (response.data.token && response.data.uniqueId) {
           localStorage.setItem('token', response.data.token);
           localStorage.setItem('uniqueId', response.data.uniqueId);
-          
+
           // Show success with unique ID
           setSuccess(`Account created! Your Unique ID: ${response.data.uniqueId}. Please save this for login.`);
 
@@ -343,7 +343,7 @@ function AuthPageContent() {
           // @ts-ignore
           if (window.Razorpay) {
             clearInterval(checkRazorpay);
-            
+
             const options = {
               key: orderResponse.data.key,
               amount: orderResponse.data.amount,
@@ -420,7 +420,7 @@ function AuthPageContent() {
           className="text-center mb-8"
         >
           <Link href="/" className="inline-block mb-6">
-            <img src="/logo.png" alt="ViralBoost AI" className="h-12 w-auto object-contain mx-auto" />
+            <img src="/logo.png" alt="ViralBoost AI" className="h-72 w-auto object-contain mx-auto" />
           </Link>
           <h1 className="text-4xl font-bold text-white mb-2">
             {isLogin ? 'Sign In' : 'Create your account'}
@@ -428,7 +428,7 @@ function AuthPageContent() {
           {!isLogin && (
             <p className="text-[#AAAAAA]">Start your journey to viral content</p>
           )}
-          
+
           {/* Database Status */}
           <div className="flex items-center justify-center gap-2 mt-4">
             {dbStatus === 'checking' ? (
@@ -447,10 +447,10 @@ function AuthPageContent() {
               </div>
             )}
           </div>
-          </motion.div>
+        </motion.div>
 
-          {/* Login Form */}
-          {isLogin ? (
+        {/* Login Form */}
+        {isLogin ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -484,22 +484,20 @@ function AuthPageContent() {
                 <button
                   type="button"
                   onClick={() => setLoginMethod('uniqueIdPin')}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                    loginMethod === 'uniqueIdPin'
-                      ? 'bg-white text-[#0F0F0F]'
-                      : 'text-white hover:bg-[#212121]'
-                  }`}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${loginMethod === 'uniqueIdPin'
+                    ? 'bg-white text-[#0F0F0F]'
+                    : 'text-white hover:bg-[#212121]'
+                    }`}
                 >
                   Unique ID + PIN
                 </button>
                 <button
                   type="button"
                   onClick={() => setLoginMethod('emailPassword')}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                    loginMethod === 'emailPassword'
-                      ? 'bg-white text-[#0F0F0F]'
-                      : 'text-white hover:bg-[#212121]'
-                  }`}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${loginMethod === 'emailPassword'
+                    ? 'bg-white text-[#0F0F0F]'
+                    : 'text-white hover:bg-[#212121]'
+                    }`}
                 >
                   Email + Password
                 </button>
@@ -650,10 +648,10 @@ function AuthPageContent() {
                 )}
               </p>
             </div>
-            </motion.div>
-          ) : (
-            /* Signup Form */
-            <motion.div
+          </motion.div>
+        ) : (
+          /* Signup Form */
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-[#181818] border border-[#212121] rounded-2xl p-8 shadow-2xl"
@@ -665,11 +663,10 @@ function AuthPageContent() {
                   setSubscriptionType('trial');
                   setSelectedPlan(null);
                 }}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  subscriptionType === 'trial'
-                    ? 'bg-white text-[#0F0F0F]'
-                    : 'text-white hover:bg-[#212121]'
-                }`}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${subscriptionType === 'trial'
+                  ? 'bg-white text-[#0F0F0F]'
+                  : 'text-white hover:bg-[#212121]'
+                  }`}
               >
                 Free 7-day Trial
               </button>
@@ -678,11 +675,10 @@ function AuthPageContent() {
                   setSubscriptionType('paid');
                   setSelectedPlan(null);
                 }}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  subscriptionType === 'paid'
-                    ? 'bg-white text-[#0F0F0F]'
-                    : 'text-white hover:bg-[#212121]'
-                }`}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${subscriptionType === 'paid'
+                  ? 'bg-white text-[#0F0F0F]'
+                  : 'text-white hover:bg-[#212121]'
+                  }`}
               >
                 Paid Subscription
               </button>
@@ -719,11 +715,10 @@ function AuthPageContent() {
                       onClick={() => setSelectedPlan(plan)}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`relative p-4 rounded-lg border-2 transition-all ${
-                        selectedPlan?.id === plan.id
-                          ? 'border-[#FF0000] bg-[#FF0000]/20'
-                          : 'border-[#333333] bg-[#212121] hover:border-[#FF0000]'
-                      }`}
+                      className={`relative p-4 rounded-lg border-2 transition-all ${selectedPlan?.id === plan.id
+                        ? 'border-[#FF0000] bg-[#FF0000]/20'
+                        : 'border-[#333333] bg-[#212121] hover:border-[#FF0000]'
+                        }`}
                     >
                       {plan.popular && (
                         <div className="absolute -top-2 right-2 bg-[#FF0000] text-white text-xs px-2 py-1 rounded-full">
@@ -972,18 +967,18 @@ function AuthPageContent() {
                   ))}
                 </div>
               )}
-              </form>
+            </form>
 
-              <div className="mt-6 text-center">
-                <p className="text-[#AAAAAA] text-sm">
-                  Already have an account?{' '}
-                  <Link href="/login" className="text-white font-semibold hover:underline">
-                    Sign In
-                  </Link>
-                </p>
-              </div>
-            </motion.div>
-          )}
+            <div className="mt-6 text-center">
+              <p className="text-[#AAAAAA] text-sm">
+                Already have an account?{' '}
+                <Link href="/login" className="text-white font-semibold hover:underline">
+                  Sign In
+                </Link>
+              </p>
+            </div>
+          </motion.div>
+        )}
       </div>
       {/* Razorpay Script */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />

@@ -101,54 +101,54 @@ const HOME_FEATURES: {
   color: string;
   requiresFeature?: HomeFeatureKey;
 }[] = [
-  {
-    icon: Zap,
-    titleKey: 'home.feature.ai.title',
-    descKey: 'home.feature.ai.desc',
-    href: '/login',
-    color: '#FF0000',
-    requiresFeature: 'advancedAiViralPrediction',
-  },
-  {
-    icon: TrendingUp,
-    titleKey: 'home.feature.trends.title',
-    descKey: 'home.feature.trends.desc',
-    href: '/login',
-    color: '#f59e0b',
-    requiresFeature: 'realTimeTrendAnalysis',
-  },
-  {
-    icon: BarChart3,
-    titleKey: 'home.feature.analytics.title',
-    descKey: 'home.feature.analytics.desc',
-    href: '/login',
-    color: '#8b5cf6',
-    requiresFeature: 'advancedAnalyticsDashboard',
-  },
-  {
-    icon: Clock,
-    titleKey: 'home.feature.scheduling.title',
-    descKey: 'home.feature.scheduling.desc',
-    href: '/login',
-    color: '#10b981',
-    requiresFeature: 'bestPostingTimePredictions',
-  },
-  {
-    icon: Users,
-    titleKey: 'home.feature.competitors.title',
-    descKey: 'home.feature.competitors.desc',
-    href: '/login',
-    color: '#06b6d4',
-    requiresFeature: 'competitorAnalysis',
-  },
-  {
-    icon: Shield,
-    titleKey: 'home.feature.security.title',
-    descKey: 'home.feature.security.desc',
-    href: '#',
-    color: '#64748b',
-  },
-];
+    {
+      icon: Zap,
+      titleKey: 'home.feature.ai.title',
+      descKey: 'home.feature.ai.desc',
+      href: '/login',
+      color: '#FF0000',
+      requiresFeature: 'advancedAiViralPrediction',
+    },
+    {
+      icon: TrendingUp,
+      titleKey: 'home.feature.trends.title',
+      descKey: 'home.feature.trends.desc',
+      href: '/login',
+      color: '#f59e0b',
+      requiresFeature: 'realTimeTrendAnalysis',
+    },
+    {
+      icon: BarChart3,
+      titleKey: 'home.feature.analytics.title',
+      descKey: 'home.feature.analytics.desc',
+      href: '/login',
+      color: '#8b5cf6',
+      requiresFeature: 'advancedAnalyticsDashboard',
+    },
+    {
+      icon: Clock,
+      titleKey: 'home.feature.scheduling.title',
+      descKey: 'home.feature.scheduling.desc',
+      href: '/login',
+      color: '#10b981',
+      requiresFeature: 'bestPostingTimePredictions',
+    },
+    {
+      icon: Users,
+      titleKey: 'home.feature.competitors.title',
+      descKey: 'home.feature.competitors.desc',
+      href: '/login',
+      color: '#06b6d4',
+      requiresFeature: 'competitorAnalysis',
+    },
+    {
+      icon: Shield,
+      titleKey: 'home.feature.security.title',
+      descKey: 'home.feature.security.desc',
+      href: '#',
+      color: '#64748b',
+    },
+  ];
 
 export default function HomePage() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -252,8 +252,8 @@ export default function HomePage() {
               className="flex justify-center mb-0"
             >
               {/* Container 80% height = crop bottom 20% of logo */}
-              <div className="overflow-hidden flex justify-center items-start h-[3.8rem] md:h-[5.36rem]">
-                <img src="/logo.png" alt="ViralBoost AI" className="h-20 md:h-30 w-auto object-contain object-top scale-[0.7]" />
+              <div className="overflow-hidden flex justify-center items-start h-[19rem] md:h-[26.8rem]">
+                <img src="/logo.png" alt="ViralBoost AI" className="h-96 md:h-[30rem] w-auto object-contain object-top" />
               </div>
             </motion.div>
             <motion.h1
@@ -443,9 +443,8 @@ export default function HomePage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  className={`bg-[#181818] border-2 rounded-xl p-8 ${
-                    plan.popular ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20' : 'border-[#212121]'
-                  }`}
+                  className={`bg-[#181818] border-2 rounded-xl p-8 ${plan.popular ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20' : 'border-[#212121]'
+                    }`}
                 >
                   {plan.popular && (
                     <div className="bg-[#FF0000] text-white px-4 py-1 rounded-full text-sm font-semibold inline-block mb-4">
@@ -498,11 +497,10 @@ export default function HomePage() {
                   </ul>
                   <Link
                     href="/register"
-                    className={`block w-full py-3 px-6 rounded-lg font-semibold text-center transition-all ${
-                      plan.popular
-                        ? 'bg-[#FF0000] text-white hover:bg-[#CC0000]'
-                        : 'bg-[#212121] text-white hover:bg-[#333333]'
-                    }`}
+                    className={`block w-full py-3 px-6 rounded-lg font-semibold text-center transition-all ${plan.popular
+                      ? 'bg-[#FF0000] text-white hover:bg-[#CC0000]'
+                      : 'bg-[#212121] text-white hover:bg-[#333333]'
+                      }`}
                   >
                     {t('pricing.getStarted')}
                   </Link>
@@ -517,7 +515,7 @@ export default function HomePage() {
             viewport={{ once: true }}
             className="text-center mt-12"
           >
-              <Link
+            <Link
               href="/pricing"
               className="text-[#FF0000] hover:text-[#CC0000] font-semibold inline-flex items-center gap-2"
             >
@@ -627,15 +625,15 @@ export default function HomePage() {
               guidance to make your videos truly ready to go viral.
             </p>
             <ul className="space-y-3 text-sm text-[#DDDDDD]">
-                <li className="flex gap-2">
+              <li className="flex gap-2">
                 <Check className="w-4 h-4 text-[#10b981] mt-1" />
                 Deep channel audit with a clear, actionable improvement plan.
               </li>
-                <li className="flex gap-2">
+              <li className="flex gap-2">
                 <Check className="w-4 h-4 text-[#10b981] mt-1" />
                 Niche-specific ideas, content calendar and best posting time suggestions.
               </li>
-                <li className="flex gap-2">
+              <li className="flex gap-2">
                 <Check className="w-4 h-4 text-[#10b981] mt-1" />
                 Hooks, titles, thumbnails and descriptions that all follow one growth framework.
               </li>
