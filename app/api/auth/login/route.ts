@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     } catch (dbError: any) {
       console.error('Database connection error in login:', dbError);
       return NextResponse.json(
-        { 
+        {
           error: 'Database connection failed. Please try again.',
           details: process.env.NODE_ENV === 'development' ? dbError.message : undefined
         },
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    
+
     // Validate input
     const validated = loginSchema.parse(body);
     const { email, password } = validated;
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const User = (await import('@/models/User')).default;
     const userDoc = await User.findById(user.id);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         id: user.id,
@@ -50,6 +50,17 @@ export async function POST(request: NextRequest) {
       },
       token,
     });
+
+    // Set cookie for direct API access (OAuth flows)
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return response;
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     console.error('Login error:', error);
     return NextResponse.json(
-      { 
+      {
         error: error.message || 'Login failed',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       },

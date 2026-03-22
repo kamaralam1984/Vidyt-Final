@@ -9,14 +9,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb',
-    },
-    responseLimit: false,
-  },
-};
+
 
 export async function POST(request: NextRequest) {
   const access = await requireAIToolAccess(request, 'ai_shorts_clipping');

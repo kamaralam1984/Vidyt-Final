@@ -7,6 +7,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '50mb',
     },
+    serverComponentsExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg', 'natural'],
   },
   webpack: (config, { isServer }) => {
     config.resolve.fallback = {

@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
     '/api/facebook/page/videos', // Facebook page videos (public, returns empty array - Facebook doesn't support automatic fetching)
   ];
 
-  const isPublicRoute = publicRoutes.some(route => 
+  const isPublicRoute = publicRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   );
 
@@ -32,25 +32,34 @@ export async function middleware(request: NextRequest) {
 
   // Check authentication for protected routes
   const authHeader = request.headers.get('authorization');
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  let token: string | null = null;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else {
+    // Fallback to cookie for direct browser navigation (e.g. OAuth redirects)
+    const cookieToken = request.cookies.get('token')?.value;
+    if (cookieToken) {
+      token = cookieToken;
+    }
+  }
+
+  if (!token) {
     // Allow non-API routes (frontend pages)
     if (!request.nextUrl.pathname.startsWith('/api')) {
       return NextResponse.next();
     }
-    
+
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
     );
   }
-
-  const token = authHeader.substring(7);
   const user = await verifyToken(token);
 
   if (!user) {
     return NextResponse.json(
-      { 
+      {
         error: 'Invalid or expired token',
         message: 'Your session has expired. Please login again.'
       },

@@ -9,7 +9,7 @@ export interface IUser extends Document {
   phone?: string;
   loginPin?: string;
   role: 'user' | 'admin' | 'manager' | 'super-admin';
-  subscription: 'free' | 'pro' | 'enterprise';
+  subscription: 'free' | 'pro' | 'enterprise' | 'owner';
   subscriptionExpiresAt?: Date;
   subscriptionPlan?: {
     planId: string;
@@ -56,6 +56,11 @@ export interface IUser extends Document {
   passwordResetExpires?: Date;
   twoFactorEnabled: boolean;
   twoFactorSecret?: string;
+  youtube?: {
+    access_token?: string;
+    refresh_token?: string;
+    expiry_date?: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
   videos: mongoose.Types.ObjectId[];
@@ -70,7 +75,7 @@ const UserSchema = new Schema<IUser>({
   phone: { type: String },
   loginPin: { type: String },
   role: { type: String, enum: ['user', 'admin', 'manager', 'super-admin'], default: 'user' },
-  subscription: { type: String, enum: ['free', 'pro', 'enterprise'], default: 'free' },
+  subscription: { type: String, enum: ['free', 'pro', 'enterprise', 'owner'], default: 'free' },
   subscriptionExpiresAt: { type: Date },
   subscriptionPlan: {
     planId: { type: String },
@@ -117,6 +122,11 @@ const UserSchema = new Schema<IUser>({
   passwordResetExpires: { type: Date },
   twoFactorEnabled: { type: Boolean, default: false },
   twoFactorSecret: { type: String },
+  youtube: {
+    access_token: { type: String },
+    refresh_token: { type: String },
+    expiry_date: { type: Date }
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   videos: [{ type: Schema.Types.ObjectId, ref: 'Video' }],

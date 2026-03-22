@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISubscription extends Document {
   userId: mongoose.Types.ObjectId;
-  plan: 'free' | 'pro' | 'enterprise';
+  plan: 'free' | 'pro' | 'enterprise' | 'owner';
   status: 'active' | 'cancelled' | 'expired' | 'trial';
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
@@ -31,7 +31,7 @@ export interface ISubscription extends Document {
 
 const SubscriptionSchema = new Schema<ISubscription>({
   userId: { type: Schema.Types.ObjectId, required: true, ref: 'User', index: true },
-  plan: { type: String, enum: ['free', 'pro', 'enterprise'], required: true, index: true },
+  plan: { type: String, enum: ['free', 'pro', 'enterprise', 'owner'], required: true, index: true },
   status: { type: String, enum: ['active', 'cancelled', 'expired', 'trial'], default: 'active', index: true },
   currentPeriodStart: { type: Date, required: true },
   currentPeriodEnd: { type: Date, required: true },

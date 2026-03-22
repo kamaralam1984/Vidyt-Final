@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
+import Subscription from '@/models/Subscription';
 import { getUserFromRequest } from '@/lib/auth';
 import { sendPaymentReceiptEmail } from '@/services/email';
 import { getRoleFromPlanAndUser } from '@/lib/auth';
@@ -78,6 +79,36 @@ export async function POST(request: NextRequest) {
     user.subscriptionPlan.razorpayPaymentId = razorpay_payment_id;
     user.role = getRoleFromPlanAndUser(user) as any;
     await user.save();
+
+    console.log("Subscriptions: creating DB record", {
+        userId: user._id,
+        plan: user.subscription,
+        status: 'active',
+        startDate,
+        endDate
+    });
+
+    // Create physical subscription record
+    await Subscription.create({
+        userId: user._id,
+        plan: user.subscription,
+        status: 'active',
+        currentPeriodStart: startDate,
+        currentPeriodEnd: endDate,
+        cancelAtPeriodEnd: false,
+        paymentMethod: {
+            type: 'razorpay',
+            subscriptionId: razorpay_order_id,
+            customerId: user.email // optional metadata mapping
+        },
+        billingHistory: [{
+            amount: user.subscriptionPlan.price || 0,
+            currency: user.subscriptionPlan.currency || 'INR',
+            date: startDate,
+            invoiceId: razorpay_payment_id,
+            status: 'paid'
+        }]
+    });
 
     // Send payment receipt email
     const plan = user.subscriptionPlan;

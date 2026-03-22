@@ -39,18 +39,28 @@ export async function verifyPassword(password: string, hashedPassword: string): 
  * Database version - fetches full user data
  */
 export async function getUserFromRequest(request: NextRequest): Promise<AuthUser | null> {
+  let token: string | null = null;
   const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else {
+    // Fallback to cookie for direct browser navigation (e.g. OAuth redirects)
+    const cookieToken = request.cookies.get('token')?.value;
+    if (cookieToken) {
+      token = cookieToken;
+    }
+  }
+
+  if (!token) {
     return null;
   }
 
-  const token = authHeader.substring(7);
-  
   // Use JWT verification first (no DB call)
   // For Node.js runtime (API routes), use sync version
   const { verifyTokenSync } = await import('./auth-jwt');
   const jwtUser = verifyTokenSync(token);
-  
+
   if (!jwtUser) {
     return null;
   }

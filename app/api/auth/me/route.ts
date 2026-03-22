@@ -29,6 +29,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Auto-sync Owner tier for Super Admins
+    let needsSave = false;
+    if (user.role === 'super-admin') {
+        if (user.subscription !== 'owner') {
+            user.subscription = 'owner';
+            needsSave = true;
+        }
+        if (!user.subscriptionPlan || user.subscriptionPlan.status !== 'active' || user.subscriptionPlan.planId !== 'owner') {
+            user.subscriptionPlan = {
+                ...user.subscriptionPlan,
+                currency: user.subscriptionPlan?.currency || 'USD',
+                planId: 'owner',
+                planName: 'Owner',
+                status: 'active',
+                billingPeriod: 'year',
+                price: 0
+            };
+            needsSave = true;
+        }
+        if (needsSave) {
+            await user.save();
+        }
+    }
+
     return NextResponse.json({
       success: true,
       user: {

@@ -126,23 +126,31 @@ export default function SubscriptionPage() {
 
       const u = subRes.data.user;
       const planId = (u?.subscriptionPlan?.planId || u?.subscription || 'free').toLowerCase();
-      const plan = planId === 'pro' || planId === 'enterprise' ? planId : 'free';
+      const plan = ['pro', 'enterprise', 'owner'].includes(planId) ? planId : 'free';
       const subPlan = u?.subscriptionPlan;
       setSubscription({
         plan,
-        status: (subPlan?.status as Subscription['status']) || 'active',
+        status: plan === 'owner' ? 'active' : ((subPlan?.status as Subscription['status']) || 'active'),
         currentPeriodStart: subPlan?.startDate || new Date().toISOString(),
         currentPeriodEnd: subPlan?.endDate || u?.subscriptionExpiresAt || new Date().toISOString(),
         cancelAtPeriodEnd: false,
       });
 
-      setUsage(usageRes.data || {
+      const usageData = usageRes.data || {
         videosAnalyzed: 0,
         videosLimit: '5',
         storageUsed: 0,
         storageLimit: '100 MB',
         analysesThisMonth: 0,
-      });
+      };
+
+      if (plan === 'owner') {
+        usageData.videosLimitLabel = 'Unlimited';
+        usageData.videosLimit = Infinity;
+        usageData.storageLimit = 'Unlimited';
+      }
+
+      setUsage(usageData);
 
       setInvoices(invoicesRes.data.invoices || []);
     } catch (error) {
@@ -199,6 +207,8 @@ export default function SubscriptionPage() {
         return '#FF0000';
       case 'enterprise':
         return '#FFD700';
+      case 'owner':
+        return '#8B5CF6';
       default:
         return '#AAAAAA';
     }
@@ -286,14 +296,17 @@ export default function SubscriptionPage() {
                   <div>
                     <p className="text-[#AAAAAA] text-sm mb-1">Current Period</p>
                     <p className="text-white font-semibold">
-                      {new Date(subscription.currentPeriodStart).toLocaleDateString()} -{' '}
-                      {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                      {subscription.plan === 'owner' ? (
+                        'Lifetime Access'
+                      ) : (
+                        <>{new Date(subscription.currentPeriodStart).toLocaleDateString()} - {new Date(subscription.currentPeriodEnd).toLocaleDateString()}</>
+                      )}
                     </p>
                   </div>
                   <div>
                     <p className="text-[#AAAAAA] text-sm mb-1">Next Billing Date</p>
                     <p className="text-white font-semibold">
-                      {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                      {subscription.plan === 'owner' ? 'Never' : new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -319,7 +332,7 @@ export default function SubscriptionPage() {
                   </motion.div>
                 )}
 
-                {!subscription.cancelAtPeriodEnd && subscription.plan !== 'free' && (
+                {!subscription.cancelAtPeriodEnd && subscription.plan !== 'free' && subscription.plan !== 'owner' && (
                   <div className="mt-6">
                     <button
                       onClick={handleCancelSubscription}

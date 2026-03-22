@@ -37,51 +37,77 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProps) {
   const pathname = usePathname();
   const [aiStudioAllowed, setAiStudioAllowed] = useState(false);
+  const [allowedSystems, setAllowedSystems] = useState<Record<string, boolean>>({});
+  const [loadingSystems, setLoadingSystems] = useState(true);
+  
+  const [platformControls, setPlatformControls] = useState<Record<string, any>>({});
+  const [loadingControls, setLoadingControls] = useState(true);
 
   useEffect(() => {
-    const fetchAiStudioAccess = async () => {
+    const fetchSystems = async () => {
       try {
-        const response = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
-        if (response.data.user) {
-          const u = response.data.user;
-          const uniqueId = u.uniqueId || localStorage.getItem('uniqueId');
-          if (uniqueId) localStorage.setItem('uniqueId', uniqueId);
-          try {
-            const featRes = await axios.get('/api/features/ai-studio', { headers: getAuthHeaders() });
-            setAiStudioAllowed(!!featRes.data?.allowed);
-          } catch (_) {
-            setAiStudioAllowed(false);
-          }
+        const res = await axios.get('/api/features/all', { headers: getAuthHeaders() });
+        if (res.data.features) {
+          setAllowedSystems(res.data.features);
         }
       } catch (_) {
-        setAiStudioAllowed(false);
+      } finally {
+        setLoadingSystems(false);
       }
     };
-    fetchAiStudioAccess();
+    
+    const fetchPlatformControls = async () => {
+        try {
+            const res = await axios.get('/api/user/controls', { headers: getAuthHeaders() });
+            if (res.data) {
+                setPlatformControls(res.data);
+            }
+        } catch (_) {
+            setPlatformControls({});
+        } finally {
+            setLoadingControls(false);
+        }
+    };
+
+    fetchSystems();
+    fetchPlatformControls();
   }, []);
+
+  useEffect(() => {
+    setAiStudioAllowed(!!allowedSystems['script_generator'] || !!allowedSystems['thumbnail_generator'] || !!allowedSystems['hook_generator'] || !!allowedSystems['shorts_creator'] || !!allowedSystems['youtube_growth']);
+  }, [allowedSystems]);
   const aiStudioItems = [
-    { icon: FileText, label: 'Script Generator', href: '/ai/script-generator' },
-    { icon: Zap, label: 'AI Coach', href: '/ai/script-generator?mode=coach' },
-    { icon: Image, label: 'Thumbnail Generator', href: '/ai/thumbnail-generator' },
-    { icon: Zap, label: 'Hook Generator', href: '/ai/hook-generator' },
-    { icon: Film, label: 'Shorts Creator', href: '/ai/shorts-creator' },
-    { icon: TrendingUp, label: 'YouTube Growth', href: '/tools/youtube-growth' },
-  ];
+    { id: 'script_generator', icon: FileText, label: 'Script Generator', href: '/ai/script-generator' },
+    { id: 'ai_coach', icon: Zap, label: 'AI Coach', href: '/ai/script-generator?mode=coach' },
+    { id: 'thumbnail_generator', icon: Image, label: 'Thumbnail Generator', href: '/ai/thumbnail-generator' },
+    { id: 'hook_generator', icon: Zap, label: 'Hook Generator', href: '/ai/hook-generator' },
+    { id: 'shorts_creator', icon: Film, label: 'Shorts Creator', href: '/ai/shorts-creator' },
+    { id: 'youtube_growth', icon: TrendingUp, label: 'YouTube Growth', href: '/tools/youtube-growth' },
+  ].filter(item => allowedSystems[item.id] !== false);
+
   const menuItems = [
-    { icon: Home, label: 'Dashboard', href: '/dashboard' },
-    { icon: Video, label: 'My Videos', href: '/videos' },
-    { icon: Search, label: 'YouTube Live SEO Analyzer', href: '/dashboard/youtube-seo' },
-    { icon: Facebook, label: 'Facebook SEO Analyzer', href: '/dashboard/facebook-seo' },
-    { icon: Instagram, label: 'Instagram SEO Analyzer', href: '/dashboard/instagram-seo' },
-    { icon: Zap, label: 'AI Viral Optimization Engine', href: '/dashboard/viral-optimizer' },
-    { icon: Target, label: 'Channel Audit', href: '/channel-audit' },
-    { icon: Facebook, label: 'Facebook Audit', href: '/facebook-audit' },
-    { icon: TrendingUp, label: 'Trending', href: '/trending' },
-    { icon: Hash, label: 'Hashtags', href: '/hashtags' },
-    { icon: Clock, label: 'Posting Time', href: '/posting-time' },
-    { icon: BarChart3, label: 'Analytics', href: '/analytics' },
-    { icon: Calendar, label: 'Content Calendar', href: '/calendar' },
-  ];
+    { id: 'dashboard', icon: Home, label: 'Dashboard', href: '/dashboard' },
+    { id: 'videos', icon: Video, label: 'My Videos', href: '/videos', platform: 'youtube' },
+    { id: 'youtube_seo', icon: Search, label: 'YouTube Live SEO Analyzer', href: '/dashboard/youtube-seo', platform: 'youtube' },
+    { id: 'facebook_seo', icon: Facebook, label: 'Facebook SEO Analyzer', href: '/dashboard/facebook-seo', platform: 'facebook' },
+    { id: 'instagram_seo', icon: Instagram, label: 'Instagram SEO Analyzer', href: '/dashboard/instagram-seo', platform: 'instagram' },
+    { id: 'viral_optimizer', icon: Zap, label: 'AI Viral Optimization Engine', href: '/dashboard/viral-optimizer', platform: 'youtube' },
+    { id: 'channel_audit', icon: Target, label: 'Channel Audit', href: '/channel-audit', platform: 'youtube' },
+    { id: 'facebook_audit', icon: Facebook, label: 'Facebook Audit', href: '/facebook-audit', platform: 'facebook' },
+    { id: 'trending', icon: TrendingUp, label: 'Trending', href: '/trending' },
+    { id: 'hashtags', icon: Hash, label: 'Hashtags', href: '/hashtags' },
+    { id: 'posting_time', icon: Clock, label: 'Posting Time', href: '/posting-time' },
+    { id: 'analytics', icon: BarChart3, label: 'Analytics', href: '/analytics' },
+    { id: 'calendar', icon: Calendar, label: 'Content Calendar', href: '/calendar' },
+  ]
+  .filter(item => allowedSystems[item.id] !== false)
+  .filter(item => {
+      // Dynamic hiding based on platform control API
+      if (item.platform && platformControls[item.platform]) {
+          return platformControls[item.platform].isEnabled;
+      }
+      return true; // if no platform setting restricts it, allow it.
+  });
 
   return (
     <>

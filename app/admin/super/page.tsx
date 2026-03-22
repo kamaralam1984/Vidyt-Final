@@ -33,6 +33,7 @@ import {
   Key,
   ChevronDown,
   ChevronRight,
+  Headphones,
 } from 'lucide-react';
 import { removeToken } from '@/utils/auth';
 
@@ -65,7 +66,10 @@ export default function SuperAdminPage() {
   const [modifySubmitting, setModifySubmitting] = useState(false);
   const [roleChangingId, setRoleChangingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'users' | 'tables' | 'aiStudio' | 'apiConfig' | 'discounts'>('users');
+  const [viewMode, setViewMode] = useState<'users' | 'tables' | 'aiStudio' | 'apiConfig' | 'discounts' | 'systemControl'>('users');
+  const [systems, setSystems] = useState<{ id: string; label: string; group: string; enabled: boolean; allowedRoles: string[] }[]>([]);
+  const [systemsLoading, setSystemsLoading] = useState(false);
+  const [systemsSaving, setSystemsSaving] = useState(false);
   const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['manager', 'admin', 'super-admin']);
   const [aiStudioSaving, setAiStudioSaving] = useState(false);
   const [aiToolsAccess, setAiToolsAccess] = useState<Record<string, string[]>>({});
@@ -240,11 +244,20 @@ export default function SuperAdminPage() {
     try {
       const q = new URLSearchParams({ page: String(tablePage), limit: String(tableLimit) });
       if (tableSearch.trim()) q.set('search', tableSearch.trim());
-      const res = await fetch(`/api/admin/data/collections/${selectedTable}?${q}`, {
+      
+      let endpoint = `/api/admin/data/collections/${selectedTable}?${q}`;
+      if (selectedTable === 'subscriptions') {
+          endpoint = `/api/admin/subscriptions?${q}`;
+      }
+
+      const res = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const json = await res.json();
+        if (selectedTable === 'subscriptions') {
+            console.log("Fetched subscriptions:", json);
+        }
         setTableData(json.data || []);
         setTableTotal(json.pagination?.total ?? 0);
       } else {
@@ -324,6 +337,19 @@ export default function SuperAdminPage() {
       fetchDiscounts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (viewMode === 'systemControl') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        setSystemsLoading(true);
+        fetch('/api/admin/features', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.features) setSystems(d.features);
+          })
+          .catch(() => {})
+          .finally(() => setSystemsLoading(false));
+      }
+    }
   }, [viewMode]);
 
   useEffect(() => {
@@ -658,9 +684,17 @@ export default function SuperAdminPage() {
                   className="overflow-hidden"
                 >
                   <div className="space-y-0.5 pl-1 pb-2">
+                    <button type="button" className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'systemControl' ? 'bg-[#212121] text-white' : ''}`} onClick={() => setViewMode('systemControl')}>
+                      <Settings className="w-4 h-4" />
+                      <span>System Control</span>
+                    </button>
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/dashboard/super')}>
                       <LayoutDashboard className="w-4 h-4" />
                       <span>Super Admin</span>
+                    </button>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/admin/super/support')}>
+                      <Headphones className="w-4 h-4" />
+                      <span>Support Queue</span>
                     </button>
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/videos')}>
                       <Video className="w-4 h-4" />
@@ -1067,6 +1101,113 @@ export default function SuperAdminPage() {
                   {apiConfigSaving ? 'Saving...' : 'Save API Config'}
                 </button>
               </form>
+            )}
+          </div>
+        ) : viewMode === 'systemControl' ? (
+          <div id="system-control-main" className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Settings className="w-8 h-8 text-[#FF0000]" />
+                <div>
+                  <h1 className="text-2xl font-bold">System Control</h1>
+                  <p className="text-sm text-[#AAAAAA]">Enable/Disable features globally and manage role-based access.</p>
+                </div>
+              </div>
+              <button
+                disabled={systemsSaving || systemsLoading}
+                onClick={async () => {
+                  const token = localStorage.getItem('token');
+                  if (!token) return;
+                  setSystemsSaving(true);
+                  try {
+                    const res = await fetch('/api/admin/features', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ features: systems }),
+                    });
+                    if (res.ok) alert('System configuration saved successfully.');
+                    else {
+                      const d = await res.json();
+                      alert(d.error || 'Failed to save');
+                    }
+                  } catch (_) {
+                    alert('Failed to save');
+                  } finally {
+                    setSystemsSaving(false);
+                  }
+                }}
+                className="px-6 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 font-medium shadow-lg shadow-red-600/20 transition-all"
+              >
+                {systemsSaving ? (
+                  <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Saving...</div>
+                ) : 'Save Configuration'}
+              </button>
+            </div>
+
+            {systemsLoading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="w-10 h-10 animate-spin text-[#FF0000] mb-4" />
+                <p className="text-[#888]">Loading systems...</p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {['sidebar', 'dashboard'].map((group) => (
+                  <div key={group} className="space-y-4">
+                    <h2 className="text-sm font-semibold text-[#FF0000] uppercase tracking-widest border-b border-[#212121] pb-2">
+                      {group === 'sidebar' ? 'Sidebar Features' : 'Dashboard Widgets'}
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {systems.filter(s => s.group === group).map((sys) => (
+                        <div key={sys.id} className="bg-[#181818] border border-[#212121] rounded-xl p-4 hover:border-[#333] transition-colors">
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <h3 className="font-semibold text-white">{sys.label}</h3>
+                              <p className="text-xs text-[#666] mt-1">ID: {sys.id}</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={sys.enabled}
+                                onChange={(e) => {
+                                  setSystems(prev => prev.map(p => p.id === sys.id ? { ...p, enabled: e.target.checked } : p));
+                                }}
+                              />
+                              <div className="w-11 h-6 bg-[#212121] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF0000]"></div>
+                            </label>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-medium text-[#888] uppercase tracking-wider">Allowed Roles</p>
+                            <div className="flex flex-wrap gap-2">
+                              {['user', 'manager', 'admin', 'super-admin'].map((role) => (
+                                <button
+                                  key={role}
+                                  onClick={() => {
+                                    setSystems(prev => prev.map(p => {
+                                      if (p.id !== sys.id) return p;
+                                      const roles = p.allowedRoles.includes(role)
+                                        ? p.allowedRoles.filter(r => r !== role)
+                                        : [...p.allowedRoles, role];
+                                      return { ...p, allowedRoles: roles };
+                                    }));
+                                  }}
+                                  className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${
+                                    sys.allowedRoles.includes(role)
+                                      ? 'bg-[#FF0000]/10 text-[#FF0000] border border-[#FF0000]/20'
+                                      : 'bg-[#0F0F0F] text-[#555] border border-[#212121] hover:border-[#444]'
+                                  }`}
+                                >
+                                  {role}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         ) : viewMode === 'tables' ? (
