@@ -1,9 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import crypto from 'crypto';
 import { hashPassword } from '@/lib/auth';
-import { sendPasswordResetEmail } from '@/services/email';
+import { sendPasswordResetOTP } from '@/services/email';
 
 /**
  * Request password reset
@@ -17,80 +19,82 @@ export async function POST(request: NextRequest) {
 
     if (!email) {
       return NextResponse.json(
-        { error: 'Email is required' },
+        { success: false, message: 'Email is required' },
         { status: 400 }
       );
     }
 
+    console.log("OTP request for:", email);
+
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
     
-    // Always return success (security best practice - don't reveal if email exists)
+    // Always return success (security best practice) or explicit not found if preferred by user
+    // The user's snippet returns 404 for 'User not found', so I'll follow that.
     if (!user) {
-      return NextResponse.json({
-        success: true,
-        message: 'If an account exists with this email, you will receive a password reset link.',
-      });
+      return NextResponse.json(
+        { success: false, message: 'User not found with this email' },
+        { status: 404 }
+      );
     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+    // Generate reset OTP (6 digits)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes (user requested 5 min)
 
-    // Save reset token to user
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpires = resetTokenExpiry;
-    await user.save();
+    // Save OTP to user (bypassing full validation to handle legacy data issues)
+    await User.updateOne(
+      { _id: user._id },
+      { 
+        passwordResetToken: otp,
+        passwordResetExpires: otpExpiry
+      }
+    );
 
-    // Generate reset URL
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    // Send password reset OTP email
+    try {
+      const emailSent = await sendPasswordResetOTP(user.email, otp, user.name);
+      if (!emailSent) throw new Error('SMTP/Resend failed');
+    } catch (emailError) {
+      console.error("Email Error:", emailError);
+      return NextResponse.json(
+        { success: false, message: 'Failed to send OTP email. Please check your SMTP configuration.' },
+        { status: 500 }
+      );
+    }
     
-    // Send password reset email
-    const emailSent = await sendPasswordResetEmail(user.email, resetUrl, user.name);
-    
-    // In development, also log the URL
     if (process.env.NODE_ENV === 'development') {
-      console.log('📧 Password Reset Link Generated:');
-      console.log('   Email:', user.email);
-      console.log('   Reset URL:', resetUrl);
-      console.log('   Email Sent:', emailSent ? 'Yes' : 'No (check SMTP config)');
+      console.log('✅ OTP Code for', user.email, 'is:', otp);
     }
 
     return NextResponse.json({
       success: true,
-      message: 'If an account exists with this email, you will receive a password reset link.',
-      // In development, return the reset URL for testing
-      ...(process.env.NODE_ENV === 'development' && { 
-        resetUrl,
-        emailSent,
-        note: emailSent ? 'Email sent successfully' : 'Email not configured - check console for reset link'
-      }),
+      message: 'OTP sent successfully',
+      // In development, return the OTP for testing
+      ...(process.env.NODE_ENV === 'development' && { otp }),
     });
   } catch (error: any) {
-    console.error('Password reset error:', error);
+    console.error('OTP API ERROR:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to process password reset request',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        success: false, 
+        message: error.message || 'Internal server error' 
       },
       { status: 500 }
     );
   }
 }
 
-/**
- * Reset password with token (from email link)
- */
 export async function PUT(request: NextRequest) {
   try {
     await connectDB();
 
     const body = await request.json();
-    const { token, newPassword } = body;
+    const { email, otp, newPassword } = body;
 
-    if (!token || !newPassword) {
+    if (!email || !otp || !newPassword) {
       return NextResponse.json(
-        { error: 'Token and new password are required' },
+        { error: 'Email, OTP, and new password are required' },
         { status: 400 }
       );
     }
@@ -102,22 +106,30 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Find user by email and verify OTP
     const user = await User.findOne({
-      passwordResetToken: token,
+      email: email.toLowerCase(),
+      passwordResetToken: otp, // OTP is stored in passwordResetToken
       passwordResetExpires: { $gt: new Date() },
     });
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid or expired reset link. Please request a new password reset.' },
+        { error: 'Invalid or expired OTP code. Please request a new one.' },
         { status: 400 }
       );
     }
 
-    user.password = await hashPassword(newPassword);
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-    await user.save();
+    // Update password and clear OTP (bypassing full validation to handle legacy data issues)
+    const hashedPassword = await hashPassword(newPassword);
+    await User.updateOne(
+      { _id: user._id },
+      { 
+        password: hashedPassword,
+        passwordResetToken: undefined,
+        passwordResetExpires: undefined
+      }
+    );
 
     return NextResponse.json({
       success: true,
@@ -127,8 +139,8 @@ export async function PUT(request: NextRequest) {
     console.error('Password reset (PUT) error:', error);
     return NextResponse.json(
       {
-        error: 'Failed to reset password. The link may have expired.',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        success: false,
+        message: error.message || 'Failed to reset password. Please try again.',
       },
       { status: 500 }
     );

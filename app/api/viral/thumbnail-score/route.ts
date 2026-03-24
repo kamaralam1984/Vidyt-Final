@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import { analyzeThumbnail, analyzeThumbnailFromBuffer } from '@/services/thumbnailAnalyzer';

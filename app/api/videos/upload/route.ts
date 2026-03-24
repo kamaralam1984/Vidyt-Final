@@ -1,9 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Video from '@/models/Video';
 import User from '@/models/User';
 import { getUserFromRequest } from '@/lib/auth';
-import { checkAnalysisLimit } from '@/lib/usageCheck';
+import { checkLimit, getLimitExceededResponse } from '@/lib/limitChecker';
 import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { analyzeVideoHook } from '@/services/hookAnalyzer';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
@@ -29,22 +31,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
     }
 
-    const user = await User.findById(userId).select('subscription role').lean();
-    const u = user as { subscription?: string; role?: string } | null;
-    const planId = authUser?.role === 'super-admin' ? 'owner' : (u?.subscription || 'free');
-    const limitResult = await checkAnalysisLimit(userId, planId);
-    if (!limitResult.allowed) {
-      return NextResponse.json(
-        {
-          error: 'Usage limit reached',
-          message: limitResult.message,
-          used: limitResult.used,
-          limit: limitResult.limit,
-          period: limitResult.period,
-        },
-        { status: 403 }
-      );
+    const user = await User.findById(userId);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+    
+    if (!checkLimit(user, 'analyses')) {
+      return NextResponse.json(getLimitExceededResponse(), { status: 403 });
+    }
+    const planId = user.subscription || 'free';
 
     const titleSuggestionsLimit = getTitleSuggestionsCount(planId);
     
@@ -145,6 +140,15 @@ export async function POST(request: NextRequest) {
     // Update video with analysis ID
     video.analysisId = analysis._id;
     await video.save();
+    
+    // Update usage
+    try {
+      if (!user.usageStats) user.usageStats = { videosAnalyzed: 0, analysesThisMonth: 0, competitorsTracked: 0, hashtagsGenerated: 0 };
+      user.usageStats.analysesThisMonth = (user.usageStats.analysesThisMonth || 0) + 1;
+      user.usageStats.videosAnalyzed = (user.usageStats.videosAnalyzed || 0) + 1;
+      await user.save();
+    } catch(e) {}
+
     
     return NextResponse.json({
       success: true,

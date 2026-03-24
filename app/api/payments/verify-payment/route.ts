@@ -1,150 +1,127 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
-import Subscription from '@/models/Subscription';
+import Payment from '@/models/Payment';
 import { getUserFromRequest } from '@/lib/auth';
-import { sendPaymentReceiptEmail } from '@/services/email';
-import { getRoleFromPlanAndUser } from '@/lib/auth';
-import { z } from 'zod';
-
-const verifyPaymentSchema = z.object({
-  razorpay_order_id: z.string(),
-  razorpay_payment_id: z.string(),
-  razorpay_signature: z.string(),
-});
+import { PLAN_PRICES_USD, PLAN_ROLE_MAP, isValidPlan } from '@/utils/currency';
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-
-    // Get authenticated user
-    const authUser = await getUserFromRequest(request);
-    if (!authUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const validated = verifyPaymentSchema.parse(body);
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = validated;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      plan,
+      billingPeriod,
+    } = await request.json();
 
-    // Find user
-    const user = await User.findById(authUser.id);
-    if (!user || !user.subscriptionPlan) {
-      return NextResponse.json(
-        { error: 'User or subscription plan not found' },
-        { status: 404 }
-      );
+    // ── Validate plan ──
+    if (!plan || !isValidPlan(plan)) {
+      return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
-    // Verify signature
-    const text = `${razorpay_order_id}|${razorpay_payment_id}`;
-    const generatedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
-      .update(text)
+    // ── Verify Razorpay signature ──
+    const secret = process.env.RAZORPAY_KEY_SECRET || 'secret';
+    const body = razorpay_order_id + '|' + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(body.toString())
       .digest('hex');
 
-    if (generatedSignature !== razorpay_signature) {
-      return NextResponse.json(
-        { error: 'Invalid payment signature' },
-        { status: 400 }
-      );
+    if (expectedSignature !== razorpay_signature) {
+      return NextResponse.json({ error: 'Invalid payment signature' }, { status: 400 });
     }
 
-    // Calculate subscription end date
-    const startDate = new Date();
-    let endDate = new Date();
-    
-    if (user.subscriptionPlan.billingPeriod === 'month') {
-      endDate.setMonth(endDate.getMonth() + 1);
-    } else {
-      endDate.setFullYear(endDate.getFullYear() + 1);
+    await connectDB();
+
+    // ── Fetch plan label from DB (graceful fallback) ──
+    let planName = plan.charAt(0).toUpperCase() + plan.slice(1);
+    try {
+      const PlanModel = (await import('@/models/Plan')).default;
+      const dbPlan = await PlanModel.findOne({ planId: plan });
+      if (dbPlan) planName = dbPlan.label || dbPlan.name || planName;
+    } catch {
+      // Non-critical: proceed without plan name
     }
 
-    // If early bird discount applied and monthly plan, add 1 extra month
-    if (user.subscriptionPlan.earlyBirdDiscount && user.subscriptionPlan.billingPeriod === 'month') {
-      endDate.setMonth(endDate.getMonth() + 1);
-    }
+    // ── Calculate expiry date ──
+    const expiryDays = billingPeriod === 'year' ? 365 : 30;
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + expiryDays);
 
-    // Update user subscription and role by plan (Pro→manager, Enterprise→admin; super-admin preserved)
-    user.subscription = user.subscriptionPlan.planId as 'free' | 'pro' | 'enterprise';
-    user.subscriptionExpiresAt = endDate;
-    user.subscriptionPlan.status = 'active';
-    user.subscriptionPlan.startDate = startDate;
-    user.subscriptionPlan.endDate = endDate;
-    user.subscriptionPlan.paymentId = razorpay_payment_id;
-    user.subscriptionPlan.razorpayPaymentId = razorpay_payment_id;
-    user.role = getRoleFromPlanAndUser(user) as any;
-    await user.save();
+    const newRole = PLAN_ROLE_MAP[plan] || 'user';
 
-    console.log("Subscriptions: creating DB record", {
-        userId: user._id,
-        plan: user.subscription,
-        status: 'active',
-        startDate,
-        endDate
-    });
-
-    // Create physical subscription record
-    await Subscription.create({
-        userId: user._id,
-        plan: user.subscription,
-        status: 'active',
-        currentPeriodStart: startDate,
-        currentPeriodEnd: endDate,
-        cancelAtPeriodEnd: false,
-        paymentMethod: {
-            type: 'razorpay',
-            subscriptionId: razorpay_order_id,
-            customerId: user.email // optional metadata mapping
+    // ── Update user in DB ──
+    const updatedUser = await User.findByIdAndUpdate(
+      user.id,
+      {
+        subscription: plan,
+        role: newRole,
+        subscriptionExpiresAt: expiryDate,
+        subscriptionPlan: {
+          planId: plan,
+          planName,
+          status: 'active',
+          startDate: new Date(),
+          endDate: expiryDate,
+          razorpayOrderId: razorpay_order_id,
+          razorpayPaymentId: razorpay_payment_id,
+          price: PLAN_PRICES_USD[plan] ?? 0,
+          currency: 'USD',
         },
-        billingHistory: [{
-            amount: user.subscriptionPlan.price || 0,
-            currency: user.subscriptionPlan.currency || 'INR',
-            date: startDate,
-            invoiceId: razorpay_payment_id,
-            status: 'paid'
-        }]
-    });
+        usageStats: {
+          videosAnalyzed: 0,
+          analysesThisMonth: 0,
+          competitorsTracked: 0,
+          hashtagsGenerated: 0,
+        },
+      },
+      { new: true }
+    );
 
-    // Send payment receipt email
-    const plan = user.subscriptionPlan;
-    if (plan && user.email) {
-      await sendPaymentReceiptEmail(
-        user.email,
-        user.name || undefined,
-        {
-          planName: plan.planName || plan.planId,
-          amount: plan.price ?? 0,
-          currency: plan.currency || 'INR',
-          billingPeriod: plan.billingPeriod || 'month',
-          startDate: plan.startDate || startDate,
-          endDate: plan.endDate || endDate,
-          paymentId: razorpay_payment_id,
-        }
-      );
+    if (!updatedUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    await Payment.findOneAndUpdate(
+      { orderId: razorpay_order_id },
+      {
+        $set: {
+          userId: updatedUser._id,
+          paymentId: razorpay_payment_id,
+          plan,
+          billingPeriod: billingPeriod === 'year' ? 'year' : 'month',
+          amount: PLAN_PRICES_USD[plan] ?? 0,
+          currency: 'USD',
+          status: 'success',
+          gateway: 'razorpay',
+          metadata: {
+            source: 'verify-payment',
+            razorpay_signature,
+          },
+        },
+      },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'Payment verified and subscription activated',
-      subscription: user.subscriptionPlan,
-      uniqueId: user.uniqueId,
+      message: 'Plan upgraded successfully',
+      plan: updatedUser.subscription,
+      role: updatedUser.role,
     });
   } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
-        { status: 400 }
-      );
-    }
-
     console.error('Verify payment error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to verify payment' },
+      { error: 'Failed to verify payment' },
       { status: 500 }
     );
   }

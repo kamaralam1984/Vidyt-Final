@@ -37,10 +37,13 @@ export default function Navbar() {
             setDaysLeft(null);
           } else {
             const subPlan = u.subscriptionPlan;
-            const sub = u.subscription;
+            const sub = (u.subscription || 'free').toLowerCase();
             if (subPlan?.planName) setPlanName(subPlan.planName);
+            else if (sub === 'starter') setPlanName('Starter');
             else if (sub === 'pro') setPlanName('Pro');
             else if (sub === 'enterprise') setPlanName('Enterprise');
+            else if (sub === 'custom') setPlanName('Custom');
+            else if (sub === 'owner') setPlanName('Owner');
             else setPlanName('Free');
             const endDate = subPlan?.endDate ? new Date(subPlan.endDate) : (u.subscriptionExpiresAt ? new Date(u.subscriptionExpiresAt) : null);
             if (endDate && !isNaN(endDate.getTime())) {
@@ -99,6 +102,15 @@ export default function Navbar() {
           </div>
         )}
         <div className="flex items-center gap-1">
+          {userRole === 'super-admin' && (
+            <Link
+              href="/dashboard/super"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-[#FF0000] border border-[#FF0000]/40 bg-[#FF0000]/10 hover:bg-[#FF0000]/20 transition-colors"
+            >
+              <Crown className="w-4 h-4" />
+              <span>Super Admin</span>
+            </Link>
+          )}
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;

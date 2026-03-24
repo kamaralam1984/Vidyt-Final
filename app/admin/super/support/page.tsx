@@ -1,9 +1,11 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { Loader2, Headphones, Search, Filter } from 'lucide-react';
+import { Loader2, Headphones, Search, Filter, AlertCircle, Clock, CheckCircle2, Activity } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
 
 interface Ticket {
@@ -41,6 +43,10 @@ export default function SuperAdminSupportQueue() {
         }
     };
 
+    const openTickets = tickets.filter(t => t.status === 'open');
+    const highPriority = tickets.filter(t => t.priority === 'high' && t.status === 'open');
+    const resolvedToday = tickets.filter(t => t.status === 'resolved' && new Date(t.createdAt).toDateString() === new Date().toDateString());
+
     const filteredTickets = tickets.filter(t => {
         const matchesSearch = t.subject.toLowerCase().includes(searchTerm.toLowerCase()) || t._id.includes(searchTerm);
         const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
@@ -62,18 +68,31 @@ export default function SuperAdminSupportQueue() {
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Headphones className="w-8 h-8 text-[#FF0000]" />
-                        Support Queue (Admin)
+                        Support Queue
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">
-                        Manage global support tickets, override AI replies, and handle priority escalations.
+                        Manage global support tickets and handle priority escalations.
                     </p>
                 </div>
-                <button 
-                    onClick={() => router.push('/admin/super')}
-                    className="px-4 py-2 bg-[#212121] text-white rounded-lg hover:bg-[#333] transition-colors text-sm font-medium"
-                >
-                    Back to Super Admin
-                </button>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                {[
+                    { label: 'Total Open', value: openTickets.length, icon: Clock, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                    { label: 'High Priority', value: highPriority.length, icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-500/10' },
+                    { label: 'Resolved Today', value: resolvedToday.length, icon: CheckCircle2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                ].map((stat, i) => (
+                    <div key={i} className="bg-white dark:bg-[#181818] border border-gray-200 dark:border-[#212121] rounded-2xl p-6 flex items-center gap-5 shadow-sm transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-[#333]">
+                        <div className={`w-12 h-12 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                            <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* Controls */}

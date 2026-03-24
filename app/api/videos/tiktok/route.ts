@@ -1,9 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Video from '@/models/Video';
 import User from '@/models/User';
 import { getUserFromRequest } from '@/lib/auth';
-import { checkAnalysisLimit } from '@/lib/usageCheck';
+import { checkLimit, getLimitExceededResponse } from '@/lib/limitChecker';
 import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { extractTikTokMetadata } from '@/services/tiktok';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
@@ -36,20 +38,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const planId = (user as { role?: string }).role === 'super-admin' ? 'owner' : (user.subscription || 'free');
-    const limitResult = await checkAnalysisLimit(authUser.id, planId);
-    if (!limitResult.allowed) {
-      return NextResponse.json(
-        {
-          error: 'Usage limit reached',
-          message: limitResult.message,
-          used: limitResult.used,
-          limit: limitResult.limit,
-          period: limitResult.period,
-        },
-        { status: 403 }
-      );
+    if (!checkLimit(user, 'analyses')) {
+      return NextResponse.json(getLimitExceededResponse(), { status: 403 });
     }
+    const planId = user.subscription || 'free';
 
     const body = await request.json();
     const { tiktokUrl } = body;
@@ -139,7 +131,7 @@ export async function POST(request: NextRequest) {
     // Update user usage stats
     try {
       if (!user.usageStats) {
-        user.usageStats = { videosAnalyzed: 0, analysesThisMonth: 0, competitorsTracked: 0 };
+        user.usageStats = { videosAnalyzed: 0, analysesThisMonth: 0, competitorsTracked: 0, hashtagsGenerated: 0 };
       }
       user.usageStats.analysesThisMonth = (user.usageStats.analysesThisMonth || 0) + 1;
       user.usageStats.videosAnalyzed = (user.usageStats.videosAnalyzed || 0) + 1;

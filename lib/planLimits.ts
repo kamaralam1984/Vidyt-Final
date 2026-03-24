@@ -1,9 +1,11 @@
 /**
  * Single source of truth for plan limits and features.
- * Pro and Enterprise users get exactly what is defined here.
+ * Reads from MongoDB in the background to provide a synchronous API.
  */
 
-export type PlanId = 'free' | 'pro' | 'enterprise' | 'owner';
+import connectDB from './mongodb';
+
+export type PlanId = 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'owner';
 
 export interface PlanLimits {
   /** Video analyses: per day (pro/enterprise) or per month (free) */
@@ -35,6 +37,7 @@ export interface PlanFeatures {
 export interface PlanRoll {
   id: PlanId;
   name: string;
+  role: string;
   limits: PlanLimits;
   features: PlanFeatures;
   /** Display labels for limits (e.g. "30/days", "5/month") */
@@ -48,22 +51,14 @@ export interface PlanRoll {
   featureList: string[];
 }
 
+// ──────────────── Static Fallbacks ────────────────
+
 const FREE_ROLL: PlanRoll = {
   id: 'free',
   name: 'Free',
-  limits: {
-    analysesLimit: 5,
-    analysesPeriod: 'month',
-    titleSuggestions: 3,
-    hashtagCount: 10,
-    competitorsTracked: 3,
-  },
-  limitsDisplay: {
-    videos: '5/month',
-    analyses: 'Basic',
-    storage: '—',
-    support: 'Community',
-  },
+  role: 'user',
+  limits: { analysesLimit: 5, analysesPeriod: 'month', titleSuggestions: 3, hashtagCount: 10, competitorsTracked: 3 },
+  limitsDisplay: { videos: '5/month', analyses: 'Basic', storage: '—', support: 'Community' },
   features: {
     advancedAiViralPrediction: false,
     realTimeTrendAnalysis: false,
@@ -79,32 +74,39 @@ const FREE_ROLL: PlanRoll = {
     advancedAnalyticsDashboard: false,
     customIntegrations: false,
   },
-  featureList: [
-    '5 video analyses per month',
-    'Basic viral score prediction',
-    'Thumbnail analysis',
-    'Title optimization (3 suggestions)',
-    'Hashtag generator (10 hashtags)',
-    'Community support',
-  ],
+  featureList: ['5 video analyses/month', 'Basic viral score', 'Title optimization (3)', 'Hashtag generator (10)', 'Community support'],
+};
+
+const STARTER_ROLL: PlanRoll = {
+  id: 'starter',
+  name: 'Starter',
+  role: 'user',
+  limits: { analysesLimit: 10, analysesPeriod: 'day', titleSuggestions: 5, hashtagCount: 15, competitorsTracked: 10 },
+  limitsDisplay: { videos: '10/days', analyses: 'Standard AI', storage: '—', support: 'Email' },
+  features: {
+    advancedAiViralPrediction: true,
+    realTimeTrendAnalysis: true,
+    bestPostingTimePredictions: false,
+    competitorAnalysis: true,
+    emailSupport: true,
+    priorityProcessing: false,
+    teamCollaboration: false,
+    whiteLabelReports: false,
+    customAiModelTraining: false,
+    dedicatedAccountManager: false,
+    prioritySupport24x7: false,
+    advancedAnalyticsDashboard: false,
+    customIntegrations: false,
+  },
+  featureList: ['10 video analyses/day', 'Standard viral prediction', 'Real-time trends', 'Email support'],
 };
 
 const PRO_ROLL: PlanRoll = {
   id: 'pro',
   name: 'Pro',
-  limits: {
-    analysesLimit: 30,
-    analysesPeriod: 'day',
-    titleSuggestions: 10,
-    hashtagCount: 20,
-    competitorsTracked: 50,
-  },
-  limitsDisplay: {
-    videos: '30/days',
-    analyses: 'Advanced AI',
-    storage: '—',
-    support: 'Email',
-  },
+  role: 'manager',
+  limits: { analysesLimit: 30, analysesPeriod: 'day', titleSuggestions: 10, hashtagCount: 20, competitorsTracked: 50 },
+  limitsDisplay: { videos: '30/days', analyses: 'Advanced AI', storage: '—', support: 'Email' },
   features: {
     advancedAiViralPrediction: true,
     realTimeTrendAnalysis: true,
@@ -120,36 +122,15 @@ const PRO_ROLL: PlanRoll = {
     advancedAnalyticsDashboard: false,
     customIntegrations: false,
   },
-  featureList: [
-    '30 video analyses per day',
-    'Advanced AI viral prediction',
-    'Real-time trend analysis',
-    'Title optimization (10 suggestions)',
-    'Hashtag generator (20 hashtags)',
-    'Best posting time predictions',
-    'Competitor analysis',
-    'Email support',
-    'Priority processing',
-  ],
+  featureList: ['30 video analyses/day', 'Advanced AI prediction', 'Best posting times', 'Priority support'],
 };
 
-/** Enterprise: paid plan with 100/day limits (distinct from Owner). */
 const ENTERPRISE_ROLL: PlanRoll = {
   id: 'enterprise',
   name: 'Enterprise',
-  limits: {
-    analysesLimit: 100,
-    analysesPeriod: 'day',
-    titleSuggestions: 10,
-    hashtagCount: 20,
-    competitorsTracked: -1,
-  },
-  limitsDisplay: {
-    videos: '100 Videos/Days',
-    analyses: 'Custom AI',
-    storage: '—',
-    support: '24/7 Priority',
-  },
+  role: 'admin',
+  limits: { analysesLimit: 100, analysesPeriod: 'day', titleSuggestions: 10, hashtagCount: 20, competitorsTracked: -1 },
+  limitsDisplay: { videos: '100/days', analyses: 'Custom AI', storage: '—', support: '24/7 Priority' },
   features: {
     advancedAiViralPrediction: true,
     realTimeTrendAnalysis: true,
@@ -165,36 +146,39 @@ const ENTERPRISE_ROLL: PlanRoll = {
     advancedAnalyticsDashboard: true,
     customIntegrations: true,
   },
-  featureList: [
-    'Everything in Pro',
-    'Team collaboration (up to 10 users)',
-    'White-label reports',
-    'Custom AI model training',
-    'Dedicated account manager',
-    '24/7 priority support',
-    'Advanced analytics dashboard',
-    '100 videos /days',
-    'Custom integrations',
-  ],
+  featureList: ['100 videos /day', 'Team collaboration', 'White-label reports', '24/7 priority support'],
 };
 
-/** Owner: super-admin only. No limits (not the same as Enterprise). */
+const CUSTOM_ROLL: PlanRoll = {
+  id: 'custom',
+  name: 'Custom',
+  role: 'admin',
+  limits: { analysesLimit: 500, analysesPeriod: 'day', titleSuggestions: 50, hashtagCount: 50, competitorsTracked: -1 },
+  limitsDisplay: { videos: '500/days', analyses: 'Custom AI', storage: '—', support: '24/7 Priority' },
+  features: {
+    advancedAiViralPrediction: true,
+    realTimeTrendAnalysis: true,
+    bestPostingTimePredictions: true,
+    competitorAnalysis: true,
+    emailSupport: true,
+    priorityProcessing: true,
+    teamCollaboration: true,
+    whiteLabelReports: true,
+    customAiModelTraining: true,
+    dedicatedAccountManager: true,
+    prioritySupport24x7: true,
+    advancedAnalyticsDashboard: true,
+    customIntegrations: true,
+  },
+  featureList: ['Everything in Enterprise', 'Custom usage limits', 'Dedicated support team'],
+};
+
 const OWNER_ROLL: PlanRoll = {
   id: 'owner',
   name: 'Owner',
-  limits: {
-    analysesLimit: -1,
-    analysesPeriod: 'month',
-    titleSuggestions: -1,
-    hashtagCount: -1,
-    competitorsTracked: -1,
-  },
-  limitsDisplay: {
-    videos: 'Unlimited',
-    analyses: 'Unlimited',
-    storage: '—',
-    support: 'Full',
-  },
+  role: 'superadmin',
+  limits: { analysesLimit: -1, analysesPeriod: 'month', titleSuggestions: -1, hashtagCount: -1, competitorsTracked: -1 },
+  limitsDisplay: { videos: 'Unlimited', analyses: 'Unlimited', storage: '—', support: 'Full' },
   features: {
     advancedAiViralPrediction: true,
     realTimeTrendAnalysis: true,
@@ -210,19 +194,109 @@ const OWNER_ROLL: PlanRoll = {
     advancedAnalyticsDashboard: true,
     customIntegrations: true,
   },
-  featureList: ['Unlimited access', 'No limits', 'All features'],
+  featureList: ['Unlimited access', 'All features enabled'],
 };
 
 export const PLAN_ROLLS: Record<PlanId, PlanRoll> = {
   free: FREE_ROLL,
+  starter: STARTER_ROLL,
   pro: PRO_ROLL,
   enterprise: ENTERPRISE_ROLL,
+  custom: CUSTOM_ROLL,
   owner: OWNER_ROLL,
 };
 
+// ──────────────── Runtime Cache (Sync) ────────────────
+
+let planCache: Record<string, PlanRoll> = { ...PLAN_ROLLS };
+let lastFetchTime = 0;
+let isFetching = false;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * Background sync function. Updates the planCache variable.
+ * Does not block execution.
+ */
+async function syncPlansFromDB() {
+  if (isFetching) return;
+  isFetching = true;
+  try {
+    const Plan = (await import('@/models/Plan')).default;
+    await connectDB();
+    const dbPlans = await Plan.find({}).lean();
+    
+    if (dbPlans && dbPlans.length > 0) {
+      const newCache: Record<string, PlanRoll> = { ...PLAN_ROLLS };
+      
+      dbPlans.forEach((p: any) => {
+        const planId = p.planId as PlanId;
+        const staticRoll = PLAN_ROLLS[planId] || FREE_ROLL;
+        
+        newCache[planId] = {
+          id: planId,
+          name: p.name || staticRoll.name,
+          role: p.role || staticRoll.role,
+          limits: {
+            analysesLimit: p.limits?.analysesLimit ?? staticRoll.limits.analysesLimit,
+            analysesPeriod: p.limits?.analysesPeriod ?? staticRoll.limits.analysesPeriod,
+            titleSuggestions: p.limits?.titleSuggestions ?? staticRoll.limits.titleSuggestions,
+            hashtagCount: p.limits?.hashtagCount ?? staticRoll.limits.hashtagCount,
+            competitorsTracked: p.limits?.competitorsTracked ?? staticRoll.limits.competitorsTracked,
+          },
+          features: {
+            advancedAiViralPrediction: p.featureFlags?.advancedAiViralPrediction ?? staticRoll.features.advancedAiViralPrediction,
+            realTimeTrendAnalysis: p.featureFlags?.realTimeTrendAnalysis ?? staticRoll.features.realTimeTrendAnalysis,
+            bestPostingTimePredictions: p.featureFlags?.bestPostingTimePredictions ?? staticRoll.features.bestPostingTimePredictions,
+            competitorAnalysis: p.featureFlags?.competitorAnalysis ?? staticRoll.features.competitorAnalysis,
+            emailSupport: p.featureFlags?.emailSupport ?? staticRoll.features.emailSupport,
+            priorityProcessing: p.featureFlags?.priorityProcessing ?? staticRoll.features.priorityProcessing,
+            teamCollaboration: p.featureFlags?.teamCollaboration ?? staticRoll.features.teamCollaboration,
+            whiteLabelReports: p.featureFlags?.whiteLabelReports ?? staticRoll.features.whiteLabelReports,
+            customAiModelTraining: p.featureFlags?.customAiModelTraining ?? staticRoll.features.customAiModelTraining,
+            dedicatedAccountManager: p.featureFlags?.dedicatedAccountManager ?? staticRoll.features.dedicatedAccountManager,
+            prioritySupport24x7: p.featureFlags?.prioritySupport24x7 ?? staticRoll.features.prioritySupport24x7,
+            advancedAnalyticsDashboard: p.featureFlags?.advancedAnalyticsDashboard ?? staticRoll.features.advancedAnalyticsDashboard,
+            customIntegrations: p.featureFlags?.customIntegrations ?? staticRoll.features.customIntegrations,
+          },
+          limitsDisplay: {
+            videos: p.limitsDisplay?.videos ?? staticRoll.limitsDisplay.videos,
+            analyses: p.limitsDisplay?.analyses ?? staticRoll.limitsDisplay.analyses,
+            storage: p.limitsDisplay?.storage ?? staticRoll.limitsDisplay.storage,
+            support: p.limitsDisplay?.support ?? staticRoll.limitsDisplay.support,
+          },
+          featureList: p.features && p.features.length > 0 ? p.features : staticRoll.featureList,
+        };
+      });
+      planCache = newCache;
+      lastFetchTime = Date.now();
+    }
+  } catch (error) {
+    console.error('Plan background sync failed:', error);
+  } finally {
+    isFetching = false;
+  }
+}
+
+/**
+ * Returns the plan configuration SYNCLY. 
+ * If cache is stale, triggers a background refresh for next time.
+ */
 export function getPlanRoll(planId: string | undefined): PlanRoll {
   const id = (planId || 'free') as PlanId;
-  return PLAN_ROLLS[id] ?? FREE_ROLL;
+  
+  // Trigger background refresh if stale
+  if (Date.now() - lastFetchTime > CACHE_TTL) {
+    syncPlansFromDB(); 
+  }
+  
+  return planCache[id] || PLAN_ROLLS[id] || FREE_ROLL;
+}
+
+/**
+ * Force refresh the plan cache (can be awaited from API route)
+ */
+export async function refreshPlanCache() {
+  await syncPlansFromDB();
 }
 
 export function isOwnerPlan(planId: string | undefined): boolean {
@@ -249,7 +323,7 @@ export function getHashtagCount(planId: string | undefined): number {
   return n < 0 ? UNLIMITED_CAP : n;
 }
 
-/** For backward compatibility: numeric limits used by stripe/usage APIs (videos = analyses limit, period implied) */
+/** For backward compatibility: numeric limits used by stripe/usage APIs */
 export function getSubscriptionLimitsForApi(planId: string | undefined): {
   videos: number;
   analyses: number;
@@ -260,7 +334,7 @@ export function getSubscriptionLimitsForApi(planId: string | undefined): {
   return {
     videos: limits.analysesLimit,
     analyses: limits.analysesLimit,
-    competitors: limits.competitorsTracked === -1 ? -1 : limits.competitorsTracked,
+    competitors: limits.competitorsTracked,
     analysesPeriod: limits.analysesPeriod,
   };
 }

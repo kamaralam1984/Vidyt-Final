@@ -15,9 +15,11 @@ export interface IYoutubeGrowth extends Document {
   channelId?: string;
   channelTitle?: string;
   subscriberCount?: number;
+  totalWatchTime?: number;
+  totalLikes?: number;
   videos: IVideoSnapshot[];
-  subscriberGrowthData?: { date: string; count: number }[];
-  viewsGrowthData?: { date: string; views: number }[];
+  subscriberGrowthData?: { timestamp: Date; count: number }[];
+  viewsGrowthData?: { timestamp: Date; views: number }[];
   aiInsights: string[];
   lastFetchedAt: Date;
   createdAt: Date;
@@ -38,9 +40,11 @@ const YoutubeGrowthSchema = new Schema<IYoutubeGrowth>({
   channelId: { type: String },
   channelTitle: { type: String },
   subscriberCount: { type: Number },
+  totalWatchTime: { type: Number, default: 0 },
+  totalLikes: { type: Number, default: 0 },
   videos: [VideoSnapshotSchema],
-  subscriberGrowthData: [{ date: { type: String }, count: { type: Number } }],
-  viewsGrowthData: [{ date: { type: String }, views: { type: Number } }],
+  subscriberGrowthData: [{ timestamp: { type: Date }, count: { type: Number } }],
+  viewsGrowthData: [{ timestamp: { type: Date }, views: { type: Number } }],
   aiInsights: [{ type: String }],
   lastFetchedAt: { type: Date, default: Date.now },
 }, { timestamps: true });

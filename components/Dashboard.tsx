@@ -133,6 +133,7 @@ export default function Dashboard() {
             loading={loading} 
             setLoading={setLoading} 
             isYoutubeConnected={isYoutubeConnected}
+            allowedSystems={allowedSystems}
           />
         )}
 

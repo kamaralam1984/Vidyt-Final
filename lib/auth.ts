@@ -9,6 +9,14 @@ import connectDB from '@/lib/mongodb';
 import { generateToken, type AuthUser } from './auth-jwt';
 import { getPlanLimits } from '@/lib/planLimits';
 
+export const VALID_PLANS = ['free', 'starter', 'pro', 'enterprise', 'custom', 'owner'] as const;
+
+export function normalizePlan(plan: string | undefined | null): typeof VALID_PLANS[number] {
+  if (!plan) return 'free';
+  const normalized = plan.toLowerCase().trim();
+  return VALID_PLANS.includes(normalized as any) ? normalized as any : 'free';
+}
+
 /**
  * Generate a unique 6-digit numeric ID for user login
  */
@@ -78,7 +86,7 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
       email: user.email,
       name: user.name,
       role: user.role as any,
-      subscription: user.subscription as any,
+      subscription: normalizePlan(user.subscription) as any,
     };
   } catch (error) {
     // Fallback to JWT data if DB fails
@@ -86,72 +94,7 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
   }
 }
 
-/**
- * Register new user
- */
-export async function registerUser(
-  email: string,
-  password: string,
-  name: string,
-  companyName?: string,
-  phone?: string,
-  loginPin?: string
-): Promise<{ user: AuthUser; token: string; uniqueId?: string }> {
-  await connectDB();
 
-  // Check if user exists (including temporary users created during OTP flow)
-  const existingUser = await User.findOne({ email });
-  if (existingUser && existingUser.password) {
-    throw new Error('User already exists');
-  }
-
-  // If temporary user exists (from OTP flow), update it; otherwise create new
-  let user;
-  if (existingUser && !existingUser.password) {
-    // Update temporary user
-    user = existingUser;
-    if (!user.uniqueId) {
-      user.uniqueId = await generateUniqueNumericId();
-    }
-    user.password = await hashPassword(password);
-    user.name = name;
-    if (companyName) user.companyName = companyName;
-    if (phone) user.phone = phone;
-    if (loginPin) user.loginPin = loginPin;
-    user.role = 'user';
-    user.subscription = 'free';
-    await user.save();
-  } else {
-    // Create new user
-    user = new User({
-      uniqueId: await generateUniqueNumericId(),
-      email,
-      password: await hashPassword(password),
-      name,
-      companyName: companyName || undefined,
-      phone: phone || undefined,
-      loginPin: loginPin || undefined,
-      role: 'user',
-      subscription: 'free',
-      emailVerified: false, // Will be verified via OTP before payment
-      createdAt: new Date(),
-    });
-    await user.save();
-  }
-
-
-  const authUser: AuthUser = {
-    id: user._id.toString(),
-    email: user.email,
-    name: user.name,
-    role: user.role as any,
-    subscription: user.subscription as any,
-  };
-
-  const token = generateToken(authUser);
-
-  return { user: authUser, token, uniqueId: user.uniqueId };
-}
 
 /**
  * Login user with unique ID and PIN
@@ -187,8 +130,10 @@ export async function loginUserWithPin(
   const token = generateToken(authUser);
 
   // Update last login and role in DB
+  const normalizedPlan = normalizePlan(user.subscription);
   user.lastLogin = new Date();
   user.role = role;
+  user.subscription = normalizedPlan; // Ensure normalized on login
   await user.save();
 
   return { user: authUser, token };
@@ -229,8 +174,10 @@ export async function loginUser(
   const token = generateToken(authUser);
 
   // Update last login and role in DB
+  const normalizedPlan = normalizePlan(user.subscription);
   user.lastLogin = new Date();
   user.role = role;
+  user.subscription = normalizedPlan; // Ensure normalized on login
   await user.save();
 
   return { user: authUser, token };
@@ -240,8 +187,9 @@ export async function loginUser(
  * Get role from plan: Free → user, Pro → manager, Enterprise → admin. Super-admin is always preserved.
  */
 export function getRoleFromPlanAndUser(user: { role?: string; subscription?: string; subscriptionPlan?: { planId?: string } }): 'user' | 'admin' | 'manager' | 'super-admin' {
-  if (user.role === 'super-admin') return 'super-admin';
-  const plan = (user.subscriptionPlan?.planId || user.subscription || 'free').toLowerCase();
+  if (user.role === 'super-admin' || user.role === 'superadmin') return 'super-admin';
+  const rawPlan = user.subscriptionPlan?.planId || user.subscription || 'free';
+  const plan = normalizePlan(rawPlan);
   if (plan === 'enterprise') return 'admin';
   if (plan === 'pro') return 'manager';
   return 'user';

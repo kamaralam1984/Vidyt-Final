@@ -26,6 +26,7 @@ import {
   Search,
 } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
+import UsageBar from './UsageBar';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -190,6 +191,8 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                   </>
                 )}
               </ul>
+              {/* Progress Bar Rendering */}
+              <UsageBar />
             </nav>
           </motion.aside>
         )}

@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Youtube, Facebook, Instagram, Shield, Save, Loader2, History, Power, Settings2, Trash2, Headphones } from 'lucide-react';

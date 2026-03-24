@@ -286,23 +286,57 @@ export function generateClipsFromSegments(
   });
 }
 
-export function generateYouTubeInsights(videos: { views: number; publishedAt?: Date; duration?: number }[]): string[] {
+export function generateYouTubeInsights(videos: { views: number; title?: string; publishedAt?: Date; duration?: number; viralScore?: number }[]): string[] {
   const insights: string[] = [];
-  if (videos.length > 0) {
-    const byDay = new Map<string, number>();
-    videos.forEach((v, i) => {
-      const d = v.publishedAt ? new Date(v.publishedAt).toLocaleDateString('en-US', { weekday: 'long' }) : 'Unknown';
-      byDay.set(d, (byDay.get(d) || 0) + (v.views || 0));
-    });
-    const bestDay = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (bestDay) insights.push(`Your best posting day is ${bestDay[0]} (highest total views).`);
-    const durations = videos.map(v => v.duration).filter(Boolean) as number[];
-    if (durations.length > 0) {
-      const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-      if (avg <= 90) insights.push('Videos between 30-90 seconds tend to perform better for Shorts.');
-      else insights.push('Longer videos (8+ min) can drive more watch time if retention is high.');
+  if (!videos || videos.length === 0) return ['Connect your channel to get AI insights.'];
+
+  // 1. Best Posting Day
+  const byDay = new Map<string, number>();
+  videos.forEach((v) => {
+    const d = v.publishedAt ? new Date(v.publishedAt).toLocaleDateString('en-US', { weekday: 'long' }) : 'Unknown';
+    byDay.set(d, (byDay.get(d) || 0) + (v.views || 0));
+  });
+  const sortedDays = [...byDay.entries()].sort((a, b) => b[1] - a[1]);
+  if (sortedDays[0]) insights.push(`Your best posting day is ${sortedDays[0][0]} (highest total views).`);
+
+  // 2. Trend Analysis
+  const recentVideos = videos.slice(0, 10);
+  const olderVideos = videos.slice(10, 20);
+  if (recentVideos.length && olderVideos.length) {
+    const recentAvg = recentVideos.reduce((s, v) => s + v.views, 0) / recentVideos.length;
+    const olderAvg = olderVideos.reduce((s, v) => s + v.views, 0) / olderVideos.length;
+    if (recentAvg < olderAvg * 0.8) {
+      insights.push("⚠️ Your channel views are declining. Improve thumbnails and hooks to regain momentum.");
+    } else if (recentAvg > olderAvg * 1.2) {
+      insights.push("🚀 Your channel is growing! Double down on your recent content style.");
     }
-    insights.push('Post consistently: 2-3 times per week for growth.');
   }
-  return insights.length ? insights : ['Connect your channel to get AI insights.'];
+
+  // 3. Performance Insights
+  const avgViews = videos.reduce((s, v) => s + v.views, 0) / videos.length;
+  if (avgViews < 1000) {
+    insights.push("📉 Low engagement detected. Try experimenting with trending topics in your niche.");
+  }
+
+  const bestVideo = [...videos].sort((a, b) => b.views - a.views)[0];
+  if (bestVideo && bestVideo.views > avgViews * 3) {
+    insights.push(`🔥 Your video "${bestVideo.title?.slice(0, 30)}..." is overperforming. Create a follow-up or part 2.`);
+  }
+
+  // 4. Video Length Strategy
+  const durations = videos.map(v => v.duration).filter(Boolean) as number[];
+  if (durations.length > 0) {
+    const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+    if (avgDuration <= 60) {
+      insights.push('🎯 Your current focus is on Shorts. Try adding 1-2 long-form videos (8+ min) to build deeper audience connection.');
+    } else {
+      insights.push('🎥 Your long-form videos drive watch time. Ensure you add high-energy hooks in the first 30 seconds.');
+    }
+  }
+
+  // 5. General Strategy
+  insights.push('🕒 Improvement: Try posting at 7 PM IST to catch peak audience activity.');
+  insights.push('🖼️ Pro Tip: Use high-contrast thumbnails with larger text to improve CTR.');
+
+  return insights;
 }

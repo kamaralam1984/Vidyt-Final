@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import { schedulePost, cancelScheduledPost, bulkSchedulePosts } from '@/services/scheduler/contentCalendar';

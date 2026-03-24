@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import { createCheckoutSession, SUBSCRIPTION_PLANS } from '@/services/payments/stripe';
@@ -16,7 +18,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { planId } = body;
 
-    if (!planId || !SUBSCRIPTION_PLANS[planId]) {
+    if (!planId) {
+      return NextResponse.json(
+        { error: 'Plan ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if the plan exists in the database or is 'free'
+    let plan = null;
+    if (planId === 'free') {
+      plan = { id: 'free', name: 'Free', price: 0 };
+    } else {
+      const PlanModel = (await import('@/models/Plan')).default;
+      await (await import('@/lib/mongodb')).default();
+      plan = await PlanModel.findOne({ 
+        $or: [
+          { planId: planId }, 
+          { dbId: planId }, 
+          { _id: planId.match(/^[0-9a-fA-F]{24}$/) ? planId : null }
+        ] 
+      });
+    }
+
+    if (!plan && !SUBSCRIPTION_PLANS[planId]) {
       return NextResponse.json(
         { error: 'Invalid plan ID' },
         { status: 400 }

@@ -17,9 +17,11 @@ import {
   ArrowRight,
   Menu,
   X,
+  Lock,
 } from 'lucide-react';
 import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 import { useTranslations } from '@/context/translations';
+import { useUser } from '@/hooks/useUser';
 
 const FEATURES = [
   // Column 1
@@ -108,6 +110,18 @@ const FEATURES = [
   },
 ] as const;
 
+const FEATURE_TO_FLAG_MAP: Record<string, string> = {
+  'daily-ideas': 'daily_ideas',
+  'ai-coach': 'ai_coach',
+  'keyword-research': 'keyword_research',
+  'script-writer': 'script_writer',
+  'title-generator': 'title_generator',
+  'channel-audit': 'channel_audit_tool',
+  'ai-shorts': 'ai_shorts_clipping',
+  'thumbnail-maker': 'ai_thumbnail_maker',
+  'optimize': 'optimize',
+};
+
 type Feature = (typeof FEATURES)[number];
 
 const MAIN_LINKS = [
@@ -125,6 +139,7 @@ export default function MarketingNavbar() {
   const { locale, setLocale } = useLocale();
   const { t } = useTranslations();
   const [localeMenuOpen, setLocaleMenuOpen] = useState(false);
+  const { authenticated, loading } = useUser();
 
   const openFeatures = () => {
     if (closeTimer.current) {
@@ -236,16 +251,28 @@ export default function MarketingNavbar() {
               </div>
             )}
           </div>
-          <Link href="/login" className="text-sm text-white/70 transition hover:text-white">
-            {t('navbar.signIn')}
-          </Link>
-          <Link
-            href="/signup"
-            className="flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-red-500/40 hover:bg-red-700 hover:shadow-red-500/60 transition"
-          >
-            {t('navbar.getStarted')}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          {!loading && authenticated ? (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 rounded-full bg-red-600 px-6 py-2 text-sm font-medium text-white shadow-lg shadow-red-500/40 hover:bg-red-700 hover:shadow-red-500/60 transition"
+            >
+              Dashboard
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="text-sm text-white/70 transition hover:text-white">
+                {t('navbar.signIn')}
+              </Link>
+              <Link
+                href="/signup"
+                className="flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-red-500/40 hover:bg-red-700 hover:shadow-red-500/60 transition"
+              >
+                {t('navbar.getStarted')}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile menu button */}
@@ -350,18 +377,29 @@ export default function MarketingNavbar() {
               </Link>
             ))}
             <div className="mt-3 flex gap-2">
-              <Link
-                href="/login"
-                className="flex-1 rounded-full border border-white/15 px-3 py-2 text-center text-xs text-white/80"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/signup"
-                className="flex-1 rounded-full bg-red-600 px-3 py-2 text-center text-xs font-medium text-white hover:bg-red-700"
-              >
-                Get Started Free
-              </Link>
+              {!loading && authenticated ? (
+                <Link
+                  href="/dashboard"
+                  className="flex-1 rounded-full bg-red-600 px-3 py-2 text-center text-xs font-medium text-white hover:bg-red-700"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="flex-1 rounded-full border border-white/15 px-3 py-2 text-center text-xs text-white/80"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="flex-1 rounded-full bg-red-600 px-3 py-2 text-center text-xs font-medium text-white hover:bg-red-700"
+                  >
+                    Get Started Free
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -370,46 +408,67 @@ export default function MarketingNavbar() {
   );
 }
 
-function IconBadge({ feature }: { feature: Feature }) {
+function IconBadge({ feature, isLocked }: { feature: Feature, isLocked?: boolean }) {
   const Icon = feature.icon;
   return (
     <div className="relative flex h-10 w-10 items-center justify-center">
       <div
-        className={`absolute inset-0 rounded-2xl bg-gradient-to-tr ${feature.gradient} opacity-60 blur-xl`}
+        className={`absolute inset-0 rounded-2xl bg-gradient-to-tr ${feature.gradient} ${isLocked ? 'grayscale opacity-20' : 'opacity-60'} blur-xl`}
       />
       <div className="relative flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-[#050712]">
-        <Icon className="h-5 w-5 text-white" />
+        {isLocked ? (
+          <Lock className="h-4 w-4 text-white/40" />
+        ) : (
+          <Icon className="h-5 w-5 text-white" />
+        )}
       </div>
     </div>
   );
 }
 
 function FeatureCard({ feature }: { feature: Feature }) {
+  const { authenticated, plan } = useUser();
+  
+  const flag = FEATURE_TO_FLAG_MAP[feature.id];
+  const isLocked = authenticated && plan && flag ? !(plan.features as any)[flag] : false;
+  
+  // Always go to the marketing tool page first as requested by the user
+  const href = `/tools/${feature.id}`;
+
   return (
     <Link
-      href={feature.href || '#'}
-      className="
+      href={href as any}
+      className={`
         group relative flex h-400px w-full items-start gap-3
         rounded-[102px] border border-white/10 bg-white/5 px-3 py-3 text-left
         shadow-[0_18px_45px_rgba(0,0,0,0.6)]
         transition duration-200
         hover:-translate-y-0.5 hover:scale-[1.01]
-        hover:border-sky-400/50 hover:bg-white/10
-      "
+        ${isLocked ? 'opacity-70 grayscale-[0.5] hover:border-amber-500/30' : 'hover:border-sky-400/50 hover:bg-white/10'}
+      `}
     >
       <div
         className={`
           pointer-events-none absolute inset-0 rounded-[12px]
           bg-gradient-to-br ${feature.gradient}
           opacity-0 blur-2xl transition-opacity duration-200
-          group-hover:opacity-40
+          ${!isLocked && 'group-hover:opacity-40'}
         `}
       />
       <div className="relative flex items-start gap-3">
-        <IconBadge feature={feature} />
+        <IconBadge feature={feature} isLocked={isLocked} />
         <div className="space-y-1">
-          <div className="text-sm font-semibold text-white">{feature.title}</div>
-          <p className="text-[11px] leading-snug text-white/70 line-clamp-3">{feature.desc}</p>
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold text-white">{feature.title}</div>
+            {isLocked && (
+              <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 uppercase tracking-tight">
+                PRO
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] leading-snug text-white/70 line-clamp-2">
+            {isLocked ? 'Upgrade to Pro to unlock this advanced AI feature.' : feature.desc}
+          </p>
         </div>
       </div>
     </Link>

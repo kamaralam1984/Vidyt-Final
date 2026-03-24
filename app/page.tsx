@@ -26,6 +26,7 @@ import { getAuthHeaders } from '@/utils/auth';
 import { getPlanFeatures, type PlanId, type PlanFeatures } from '@/lib/planLimits';
 import { useLocale } from '@/context/LocaleContext';
 import { useTranslations } from '@/context/translations';
+import { useUser } from '@/hooks/useUser';
 
 const PRICING_PLANS = [
   {
@@ -160,6 +161,7 @@ export default function HomePage() {
   );
   const { locale } = useLocale();
   const { t } = useTranslations();
+  const { authenticated, loading } = useUser();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -188,33 +190,26 @@ export default function HomePage() {
       .then((res) => {
         const apiPlans = res.data?.plans || [];
         setMarketingPlans(
-          PRICING_PLANS.map((p) => {
-            const id = p.name.toLowerCase(); // free/pro/enterprise
-            const api = apiPlans.find((ap: any) => ap.id === id);
-            if (!api || !api.discount) return p as any;
-            const d = api.discount;
-            const factor = Math.max(0, 1 - d.percentage / 100);
-            const discountedMonthRaw =
-              p.priceMonth === 0 ? 0 : p.priceMonth * factor;
-            const discountedYearRaw =
-              p.priceYear === 0 ? 0 : p.priceYear * factor;
-            const discountedMonth =
-              Math.round(discountedMonthRaw * 100) / 100;
-            const discountedYear =
-              Math.round(discountedYearRaw * 100) / 100;
+          apiPlans.map((p: any) => {
+            const id = p.id || p.dbId;
+            const isPro = id === 'pro';
+            const hasDiscount = p.discount && p.discount.percentage > 0;
+            const factor = hasDiscount ? (1 - p.discount.percentage / 100) : 1;
+            const originalPriceMonth = p.price;
+            const originalPriceYear = p.price * 10;
+            const priceMonth = Math.round(originalPriceMonth * factor * 100) / 100;
+            const priceYear = Math.round(originalPriceYear * factor * 100) / 100;
+
             return {
-              ...p,
-              priceMonth: discountedMonth,
-              priceYear: discountedYear,
-              // keep original prices for strike-through display
-              originalPriceMonth: p.priceMonth,
-              originalPriceYear: p.priceYear,
-              discount: {
-                percentage: d.percentage,
-                label: d.label,
-                endsAt: d.endsAt,
-              },
-            } as any;
+              name: p.name,
+              popular: isPro,
+              priceMonth,
+              priceYear,
+              originalPriceMonth,
+              originalPriceYear,
+              features: p.features || [],
+              discount: p.discount ? { percentage: p.discount.percentage, label: p.discount.label, endsAt: p.discount.endsAt } : undefined,
+            };
           })
         );
       })
@@ -452,7 +447,7 @@ export default function HomePage() {
                     </div>
                   )}
                   <h3 className="text-2xl font-bold text-white mb-2">
-                    {t((plan as any).labelKey || 'pricing.plan.pro.name')}
+                    {plan.name}
                   </h3>
                   <div className="mb-2 space-y-1">
                     <div className="flex items-baseline gap-2">
@@ -488,12 +483,15 @@ export default function HomePage() {
                     )}
                   </div>
                   <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-center gap-2 text-[#AAAAAA]">
-                        <Check className="w-5 h-5 text-[#10b981]" />
-                        {t(feature as any)}
-                      </li>
-                    ))}
+                    {plan.features.map((feature, i) => {
+                      const translated = typeof feature === 'string' && feature.startsWith('pricing.') ? t(feature as any) : feature;
+                      return (
+                        <li key={i} className="flex items-center gap-2 text-[#AAAAAA]">
+                          <Check className="w-5 h-5 text-[#10b981]" />
+                          {translated}
+                        </li>
+                      );
+                    })}
                   </ul>
                   <Link
                     href="/register"
@@ -549,59 +547,68 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
+                id: 'script-writer',
                 title: 'YouTube Script Writer',
                 desc: 'Turn any topic into a ready-to-record YouTube script with hooks, sections and CTAs.',
                 href: '/ai/script-generator',
               },
               {
+                id: 'daily-ideas',
                 title: 'Video Ideas & Hooks Generator',
                 desc: 'Daily viral ideas, hooks and angles optimized for your niche.',
                 href: '/ai/script-generator?mode=ideas',
               },
               {
+                id: 'keyword-research',
                 title: 'YouTube Keyword Research',
                 desc: 'Discover high-intent YouTube keywords based on real search data.',
                 href: '/dashboard/youtube-seo?tab=keywords',
               },
               {
+                id: 'title-generator',
                 title: 'Title & CTR Optimization',
                 desc: 'Turn boring titles into click‑worthy headlines with AI title scoring.',
                 href: '/dashboard/youtube-seo?tab=titles',
               },
               {
+                id: 'thumbnail-maker',
                 title: 'AI Thumbnail Optimization',
                 desc: 'Optimize thumbnails for CTR and compare which version is stronger.',
                 href: '/dashboard/youtube-seo?tab=thumbnails',
               },
               {
+                id: 'ai-shorts',
                 title: 'Shorts & Clip Generator',
                 desc: 'Auto‑clip long videos into Shorts that hook viewers in the first 3 seconds.',
                 href: '/ai/shorts-creator',
               },
-            ].map((tool, index) => (
-              <motion.div
-                key={tool.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-[#181818] border border-[#262626] rounded-xl p-6 hover:border-[#FF0000] transition-all"
-              >
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  {tool.title}
-                </h3>
-                <p className="text-sm text-[#AAAAAA] mb-4">
-                  {tool.desc}
-                </p>
-                <Link
-                  href={tool.href}
-                  className="inline-flex items-center gap-1 text-sm text-[#FF0000] hover:text-[#CC0000]"
+            ].map((tool, index) => {
+              const toolHref = `/tools/${tool.id}`;
+              return (
+                <motion.div
+                  key={tool.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.05 }}
+                  className="bg-[#181818] border border-[#262626] rounded-xl p-6 hover:border-[#FF0000] transition-all"
                 >
-                  Start using this tool
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </motion.div>
-            ))}
+                  <h3 className="text-xl font-semibold text-white mb-2">
+                    {tool.title}
+                  </h3>
+                  <p className="text-sm text-[#AAAAAA] mb-4">
+                    {tool.desc}
+                  </p>
+                  <Link
+                    href={toolHref}
+                    className="inline-flex items-center gap-1 text-sm text-[#FF0000] hover:text-[#CC0000]"
+                  >
+                    Start using this tool
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -640,13 +647,13 @@ export default function HomePage() {
             </ul>
             <div className="mt-6 flex flex-wrap gap-4">
               <Link
-                href="/channel-audit"
+                href="/tools/channel-audit"
                 className="px-6 py-3 bg-[#FF0000] text-white rounded-lg text-sm font-semibold hover:bg-[#CC0000] transition"
               >
                 Run a free channel audit
               </Link>
               <Link
-                href="/ai/script-generator?mode=coach"
+                href="/tools/ai-coach"
                 className="px-6 py-3 bg-[#262626] text-white rounded-lg text-sm font-semibold hover:bg-[#333333] transition flex items-center gap-2"
               >
                 Ask the AI Coach

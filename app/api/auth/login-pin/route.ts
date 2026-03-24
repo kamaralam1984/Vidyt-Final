@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { loginUserWithPin } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
@@ -42,7 +44,7 @@ export async function POST(request: NextRequest) {
     const User = (await import('@/models/User')).default;
     const userDoc = await User.findById(user.id);
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         id: user.id,
@@ -55,6 +57,16 @@ export async function POST(request: NextRequest) {
       },
       token,
     });
+
+    response.cookies.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    });
+
+    return response;
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

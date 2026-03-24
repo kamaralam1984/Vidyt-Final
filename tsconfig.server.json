@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2018",
+    "outDir": ".server-build",
+    "esModuleInterop": true
+  },
+  "include": ["server.ts", "lib/**/*.ts"],
+  "exclude": ["node_modules", ".next"]
+}

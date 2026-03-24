@@ -12,6 +12,7 @@ interface VideoUploadProps {
   loading: boolean;
   setLoading: (loading: boolean) => void;
   isYoutubeConnected?: boolean;
+  allowedSystems?: Record<string, boolean>;
 }
 
 export default function VideoUpload({ onAnalysisComplete, loading, setLoading, isYoutubeConnected }: VideoUploadProps) {

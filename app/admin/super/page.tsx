@@ -1,9 +1,17 @@
 'use client';
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/Navbar';
+import PlanDiscountsManager from '@/components/admin/PlanDiscountsManager';
+import PlanManager from '@/components/admin/PlanManager';
+import UserPlanManager from '@/components/admin/UserPlanManager';
+import PlanConfigEditor from '@/components/admin/PlanConfigEditor';
+import SystemAccessMatrix from '@/components/admin/SystemAccessMatrix';
+import UnifiedFeatureMatrix from '@/components/admin/UnifiedFeatureMatrix';
 import {
   Loader2,
   Shield,
@@ -34,6 +42,8 @@ import {
   ChevronDown,
   ChevronRight,
   Headphones,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { removeToken } from '@/utils/auth';
 
@@ -66,10 +76,13 @@ export default function SuperAdminPage() {
   const [modifySubmitting, setModifySubmitting] = useState(false);
   const [roleChangingId, setRoleChangingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'users' | 'tables' | 'aiStudio' | 'apiConfig' | 'discounts' | 'systemControl'>('users');
+  const [viewMode, setViewMode] = useState<string>('users');
   const [systems, setSystems] = useState<{ id: string; label: string; group: string; enabled: boolean; allowedRoles: string[] }[]>([]);
   const [systemsLoading, setSystemsLoading] = useState(false);
   const [systemsSaving, setSystemsSaving] = useState(false);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [plansSaving, setPlansSaving] = useState(false);
   const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['manager', 'admin', 'super-admin']);
   const [aiStudioSaving, setAiStudioSaving] = useState(false);
   const [aiToolsAccess, setAiToolsAccess] = useState<Record<string, string[]>>({});
@@ -348,6 +361,16 @@ export default function SuperAdminPage() {
           })
           .catch(() => {})
           .finally(() => setSystemsLoading(false));
+
+        // Also fetch plans for role mapping
+        setPlansLoading(true);
+        fetch('/api/admin/plan-config', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.plans) setPlans(d.plans);
+          })
+          .catch(() => {})
+          .finally(() => setPlansLoading(false));
       }
     }
   }, [viewMode]);
@@ -585,6 +608,13 @@ export default function SuperAdminPage() {
                       <span>Users</span>
                     </button>
                     <button
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+                      onClick={() => router.push('/admin/analytics')}
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      <span>Growth Analytics</span>
+                    </button>
+                    <button
                       className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'tables' ? 'bg-[#212121] text-white' : ''}`}
                       onClick={() => {
                         setViewMode('tables');
@@ -739,14 +769,14 @@ export default function SuperAdminPage() {
           </div>
 
           {/* Billing / Plans — sliding section */}
-          <div className="mb-1">
+          <div className="mb-4">
             <button
               type="button"
               onClick={() => setOpenBilling((o) => !o)}
               className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] text-left"
             >
               <span className="text-xs font-semibold text-[#888] uppercase tracking-wider">
-                Billing & Plans
+                Billing & Config
               </span>
               {openBilling ? (
                 <ChevronDown className="w-4 h-4 text-[#666]" />
@@ -764,20 +794,105 @@ export default function SuperAdminPage() {
                   className="overflow-hidden"
                 >
                   <div className="space-y-0.5 pl-1 pb-2">
+                    <p className="px-3 py-1 text-[10px] uppercase tracking-wider text-[#666]">
+                      Global Control
+                    </p>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
+                      onClick={() => router.push('/admin/super/dashboard')}
+                    >
+                      <LayoutDashboard className="w-4 h-4 text-[#FF0000]" />
+                      <span>New Super Dashboard</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${
+                        viewMode === 'systemControl' ? 'bg-[#212121] text-white' : ''
+                      }`}
+                      onClick={() => setViewMode('systemControl')}
+                    >
+                      <Settings className="w-4 h-4 text-[#FF0000]" />
+                      <span>System Control</span>
+                    </button>
                     <button
                       type="button"
                       className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${
                         viewMode === 'discounts' ? 'bg-[#212121] text-white' : ''
                       }`}
-                      onClick={() => setViewMode('discounts')}
+                      onClick={() => { setViewMode('discounts'); setLoading(false); }}
                     >
                       <Flame className="w-4 h-4 text-[#FF0000]" />
                       <span>Plan Discounts</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${
+                        viewMode === 'plans' ? 'bg-[#212121] text-white' : ''
+                      }`}
+                      onClick={() => { setViewMode('plans'); setLoading(false); }}
+                    >
+                      <Hash className="w-4 h-4 text-[#FF0000]" />
+                      <span>Manage Plans</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${
+                        viewMode === 'userPlans' ? 'bg-[#212121] text-white' : ''
+                      }`}
+                      onClick={() => { setViewMode('userPlans'); setLoading(false); }}
+                    >
+                      <UserCog className="w-4 h-4 text-[#FF0000]" />
+                      <span>User Plans</span>
+                    </button>
+                    <button
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'accessControl' ? 'bg-[#212121] text-white' : ''}`}
+                      onClick={() => setViewMode('accessControl')}
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>System Access Matrix</span>
+                    </button>
+                    <button
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'unifiedAccess' ? 'bg-[#212121] text-white font-bold' : ''}`}
+                      onClick={() => setViewMode('unifiedAccess')}
+                    >
+                      <ShieldCheck className="w-4 h-4 text-[#FF0000]" />
+                      <span>Unified Access Matrix</span>
                     </button>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+
+          {/* New subscription control section */}
+          <div className="mb-4">
+            <div className="px-3 py-2 mb-1">
+              <span className="text-xs font-semibold text-[#888] uppercase tracking-wider">
+                Subscription Control
+              </span>
+            </div>
+            <div className="space-y-0.5 px-1">
+              {[
+                { id: 'free', label: 'Free Plan Control', icon: '🆓' },
+                { id: 'starter', label: 'Starter Plan Control', icon: '🌱' },
+                { id: 'pro', label: 'Pro Plan Control', icon: '🚀' },
+                { id: 'enterprise', label: 'Enterprise Plan Control', icon: '🏢' },
+                { id: 'custom', label: 'Custom Plan Control', icon: '🛠️' },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#212121] text-sm transition-all ${
+                    viewMode === `plan-control-${p.id}` ? 'bg-[#FF0000]/20 text-[#FF0000] font-bold border border-[#FF0000]/20' : 'text-[#BBB]'
+                  }`}
+                  onClick={() => setViewMode(`plan-control-${p.id}`)}
+                >
+                  <span className="grayscale-0">{p.icon}</span>
+                  <span>{p.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <button
@@ -1144,6 +1259,7 @@ export default function SuperAdminPage() {
               </button>
             </div>
 
+
             {systemsLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="w-10 h-10 animate-spin text-[#FF0000] mb-4" />
@@ -1179,27 +1295,36 @@ export default function SuperAdminPage() {
                           <div className="space-y-2">
                             <p className="text-[10px] font-medium text-[#888] uppercase tracking-wider">Allowed Roles</p>
                             <div className="flex flex-wrap gap-2">
-                              {['user', 'manager', 'admin', 'super-admin'].map((role) => (
-                                <button
-                                  key={role}
-                                  onClick={() => {
-                                    setSystems(prev => prev.map(p => {
-                                      if (p.id !== sys.id) return p;
-                                      const roles = p.allowedRoles.includes(role)
-                                        ? p.allowedRoles.filter(r => r !== role)
-                                        : [...p.allowedRoles, role];
-                                      return { ...p, allowedRoles: roles };
-                                    }));
-                                  }}
-                                  className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${
-                                    sys.allowedRoles.includes(role)
-                                      ? 'bg-[#FF0000]/10 text-[#FF0000] border border-[#FF0000]/20'
-                                      : 'bg-[#0F0F0F] text-[#555] border border-[#212121] hover:border-[#444]'
-                                  }`}
-                                >
-                                  {role}
-                                </button>
-                              ))}
+                              {['user', 'manager', 'admin', 'super-admin'].map((role) => {
+                                const linkedPlans = plans.filter(p => p.role === role).map(p => p.label || p.planId);
+                                return (
+                                  <div key={role} className="flex flex-col gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setSystems(prev => prev.map(p => {
+                                          if (p.id !== sys.id) return p;
+                                          const roles = p.allowedRoles.includes(role)
+                                            ? p.allowedRoles.filter(r => r !== role)
+                                            : [...p.allowedRoles, role];
+                                          return { ...p, allowedRoles: roles };
+                                        }));
+                                      }}
+                                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex flex-col items-center gap-0.5 min-w-[64px] ${
+                                        sys.allowedRoles.includes(role)
+                                          ? 'bg-[#FF0000] text-white shadow-lg shadow-red-600/20'
+                                          : 'bg-[#0F0F0F] text-[#555] border border-[#212121] hover:border-[#444]'
+                                      }`}
+                                    >
+                                      <span>{role.toUpperCase()}</span>
+                                    </button>
+                                    {linkedPlans.length > 0 && (
+                                      <p className="text-[8px] text-[#666] text-center truncate px-1" title={linkedPlans.join(', ')}>
+                                        {linkedPlans.slice(0, 2).join(', ')}{linkedPlans.length > 2 ? '...' : ''}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
@@ -1303,240 +1428,24 @@ export default function SuperAdminPage() {
               </div>
             )}
           </div>
-        ) : viewMode === 'discounts' ? (
-          <div id="discounts-main" className="max-w-3xl mx-auto space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Flame className="w-8 h-8 text-[#FF0000]" />
-              <div>
-                <h1 className="text-2xl font-bold">Plan Discount Offers</h1>
-                <p className="text-sm text-[#AAAAAA]">
-                  Free / Pro / Enterprise plans ke liye **kab se kab tak kitna % off** yahan se set karein.
-                </p>
-              </div>
-            </div>
-
-            {/* Animated current offers spotlight */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-              className="relative overflow-hidden rounded-2xl border border-[#272727] bg-gradient-to-br from-[#151515] via-[#0a0a0a] to-[#1f0b0b] p-5"
-            >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,0,0,0.24),transparent_60%)]" />
-              <div className="relative flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold tracking-[0.2em] text-[#ff9a9a] uppercase mb-1">
-                    Live offers
-                  </p>
-                  <h2 className="text-lg font-bold text-white">
-                    {discounts.length ? 'Active plan discounts' : 'No active discounts'}
-                  </h2>
-                  <p className="text-xs text-[#bbbbbb]">
-                    Super admin yahan se time‑bound promotional offers chala sakta hai.
-                  </p>
-                </div>
-                <motion.div
-                  className="relative h-14 w-14 rounded-full border border-red-500/40 bg-black/60 flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.6)]"
-                  animate={{ rotate: [0, 360] }}
-                  transition={{ repeat: Infinity, duration: 18, ease: 'linear' }}
-                >
-                  <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-red-500 via-amber-400 to-red-700 flex items-center justify-center">
-                    <Flame className="w-5 h-5 text-white" />
-                  </div>
-                </motion.div>
-              </div>
-            </motion.div>
-
-            {/* Discount create form */}
-            <motion.form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const token = localStorage.getItem('token');
-                if (!token) return;
-                setDiscountSaving(true);
-                try {
-                  const res = await fetch('/api/admin/plan-discounts', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                      planId: discountForm.planId,
-                      label: discountForm.label || undefined,
-                      percentage: Number(discountForm.percentage || '0'),
-                      startsAt: discountForm.startsAt,
-                      endsAt: discountForm.endsAt,
-                    }),
-                  });
-                  const json = await res.json();
-                  if (!res.ok) {
-                    alert(json.error || 'Failed to save discount');
-                  } else {
-                    setDiscounts((prev) => [...prev, json.discount]);
-                    alert('Discount offer saved.');
-                  }
-                } catch {
-                  alert('Failed to save discount');
-                } finally {
-                  setDiscountSaving(false);
-                }
-              }}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-[#181818] border border-[#272727] rounded-2xl p-5 space-y-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-white">Create / schedule offer</h3>
-                  <p className="text-xs text-[#888888]">
-                    Example: “Holi Offer – Pro plan 40% OFF 10 March se 20 March tak”.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
-                    Plan *
-                  </label>
-                  <select
-                    value={discountForm.planId}
-                    onChange={(e) =>
-                      setDiscountForm((f) => ({ ...f, planId: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-sm focus:ring-2 focus:ring-[#FF0000]"
-                  >
-                    <option value="free">Free</option>
-                    <option value="pro">Pro</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
-                    Label (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={discountForm.label}
-                    onChange={(e) =>
-                      setDiscountForm((f) => ({ ...f, label: e.target.value }))
-                    }
-                    placeholder="e.g. Holi Offer, New Year Sale"
-                    className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
-                    Discount % *
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={discountForm.percentage}
-                    onChange={(e) =>
-                      setDiscountForm((f) => ({ ...f, percentage: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-sm"
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
-                      Start (UTC) *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={discountForm.startsAt}
-                      onChange={(e) =>
-                        setDiscountForm((f) => ({ ...f, startsAt: e.target.value }))
-                      }
-                      className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-[#AAAAAA] mb-1">
-                      End (UTC) *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={discountForm.endsAt}
-                      onChange={(e) =>
-                        setDiscountForm((f) => ({ ...f, endsAt: e.target.value }))
-                      }
-                      className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={discountSaving}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FF0000] hover:bg-[#CC0000] text-sm font-medium disabled:opacity-50"
-              >
-                {discountSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Saving...
-                  </>
-                ) : (
-                  <>
-                    <Flame className="w-4 h-4" /> Save offer
-                  </>
-                )}
-              </button>
-            </motion.form>
-
-            {/* Existing / upcoming discounts list */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-[#181818] border border-[#272727] rounded-2xl p-5"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-white">Scheduled & active offers</h3>
-                {discountsLoading && (
-                  <div className="flex items-center gap-1 text-xs text-[#AAAAAA]">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Loading
-                  </div>
-                )}
-              </div>
-              {discountsError && (
-                <p className="text-xs text-red-400 mb-2">{discountsError}</p>
-              )}
-              {discounts.length === 0 && !discountsLoading ? (
-                <p className="text-xs text-[#888888]">
-                  Abhi koi discount set nahi hai. Upar form se naya offer create karein.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {discounts.map((d) => (
-                    <div
-                      key={d.id}
-                      className="flex items-start justify-between gap-3 rounded-lg border border-[#2a2a2a] bg-[#111111] px-3 py-2 text-xs"
-                    >
-                      <div>
-                        <div className="flex items-center gap-1 mb-1">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold text-red-300">
-                            {d.percentage}% OFF
-                          </span>
-                          <span className="capitalize text-[#DDDDDD]">{d.planId}</span>
-                        </div>
-                        {d.label && (
-                          <p className="text-[11px] text-[#ffffff] font-medium">
-                            {d.label}
-                          </p>
-                        )}
-                        <p className="text-[11px] text-[#aaaaaa]">
-                          {new Date(d.startsAt).toLocaleString()} &rarr;{' '}
-                          {new Date(d.endsAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
+        ) : viewMode === 'planConfig' || viewMode.startsWith('plan-control-') ? (
+          <div className="max-w-4xl mx-auto">
+            <PlanConfigEditor propPlanId={viewMode.startsWith('plan-control-') ? viewMode.replace('plan-control-', '') : undefined} />
           </div>
+        ) : viewMode === 'accessControl' ? (
+          <div className="max-w-6xl mx-auto">
+            <SystemAccessMatrix />
+          </div>
+        ) : viewMode === 'unifiedAccess' ? (
+          <div className="max-w-full mx-auto">
+            <UnifiedFeatureMatrix />
+          </div>
+        ) : viewMode === 'discounts' ? (
+          <PlanDiscountsManager />
+        ) : viewMode === 'plans' ? (
+          <PlanManager />
+        ) : viewMode === 'userPlans' ? (
+          <UserPlanManager />
         ) : (
           <div id="users-main" className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6 flex-wrap gap-3">

@@ -26,47 +26,6 @@ interface Plan {
   popular?: boolean;
 }
 
-const paidPlans: Plan[] = [
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 5,
-    period: 'month',
-    description: 'For serious creators',
-    popular: true,
-    features: [
-      'Unlimited video analyses',
-      'Advanced AI viral prediction',
-      'Real-time trend analysis',
-      'Title optimization (10 suggestions)',
-      'Hashtag generator (20 hashtags)',
-      'Best posting time predictions',
-      'Competitor analysis',
-      'Email support',
-      'Priority processing',
-    ],
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 12,
-    period: 'month',
-    description: 'For agencies and teams',
-    features: [
-      'Everything in Pro',
-      'Team collaboration (up to 10 users)',
-      'White-label reports',
-      'API access',
-      'Custom AI model training',
-      'Dedicated account manager',
-      '24/7 priority support',
-      'Advanced analytics dashboard',
-      'Bulk video processing',
-      'Custom integrations',
-    ],
-  },
-];
-
 type SubscriptionType = 'trial' | 'paid';
 type LoginMethod = 'uniqueIdPin' | 'emailPassword';
 
@@ -102,6 +61,7 @@ function AuthPageContent() {
   const [subscriptionType, setSubscriptionType] = useState<SubscriptionType>('trial');
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [paidPlansState, setPaidPlansState] = useState<Plan[]>([]);
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
   // Form data
@@ -140,6 +100,29 @@ function AuthPageContent() {
       else if (mode === 'signup') setIsLogin(false);
     }
 
+    axios.get('/api/subscriptions/plans?withDiscounts=1').then(res => {
+      const plans = res.data?.plans || [];
+      const payPlans = plans.filter((p: any) => p.price > 0).map((p: any) => {
+         let rawId = (p.id || p.dbId || p.name).toLowerCase();
+         if (rawId.includes('starter')) rawId = 'starter';
+         else if (rawId.includes('pro')) rawId = 'pro';
+         else if (rawId.includes('enterprise')) rawId = 'enterprise';
+         else if (rawId.includes('custom')) rawId = 'custom';
+         else rawId = rawId.replace(/\s+/g, '-');
+
+         return {
+           id: rawId,
+           name: p.name,
+           price: p.price,
+           period: p.interval || 'month',
+           description: p.description || '',
+           features: p.features || [],
+           popular: rawId === 'pro'
+         };
+      });
+      setPaidPlansState(payPlans);
+    }).catch(err => console.error("Failed to load plans", err));
+
     const checkDbStatus = async () => {
       try {
         const response = await fetch('/api/health/db');
@@ -162,9 +145,17 @@ function AuthPageContent() {
     setFormData({ ...formData, [field]: value });
   };
 
+  const isFormValid = () => {
+    if (!formData.name || formData.name.length < 2) return false;
+    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) return false;
+    if (!formData.password || formData.password.length < 8 || !/[A-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) return false;
+    if (subscriptionType === 'paid' && (!formData.companyName || formData.companyName.length < 2)) return false;
+    return true;
+  };
+
   const sendOTP = async () => {
-    if (!formData.email) {
-      setError('Please enter your email first');
+    if (!isFormValid()) {
+      setError('Please properly fill all required fields before sending OTP.');
       return;
     }
 
@@ -172,22 +163,73 @@ function AuthPageContent() {
     setError('');
 
     try {
-      const response = await axios.post('/api/auth/send-otp', {
-        email: formData.email,
+      const response = await axios.post('/api/auth/prepare-signup', {
+        ...formData,
+        planId: subscriptionType === 'trial' ? 'free' : (selectedPlan?.id || 'free'),
+        billingPeriod,
       });
 
       if (response.data.success) {
         setOtpSent(true);
-        setSuccess('OTP sent to your email!');
+        setSuccess('OTP sent to your email! Enter it below to proceed.');
         if (process.env.NODE_ENV === 'development' && response.data.otp) {
           console.log('OTP (Dev):', response.data.otp);
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to send OTP');
+      setError(err.response?.data?.error || 'Failed to prepare signup');
     } finally {
       setLoading(false);
     }
+  };
+
+  const openRazorpay = (orderId: string, amount: number, currency: string, key: string) => {
+    const options = {
+      key,
+      amount,
+      currency,
+      name: 'ViralBoost AI',
+      description: `${selectedPlan?.name || ''} Plan - ${billingPeriod === 'month' ? 'Monthly' : 'Yearly'}`,
+      order_id: orderId,
+      handler: async function (response: any) {
+        try {
+          setLoading(true);
+          const verifyResponse = await axios.post(
+            '/api/payments/verify-signup-payment',
+            {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }
+          );
+          if (verifyResponse.data.success) {
+            localStorage.setItem('token', verifyResponse.data.token);
+            if (verifyResponse.data.uniqueId) localStorage.setItem('uniqueId', verifyResponse.data.uniqueId);
+            setSuccess(`Account Created Successfully! Your Unique ID: ${verifyResponse.data.uniqueId}`);
+            setTimeout(() => {
+              router.push(`/user/${verifyResponse.data.uniqueId}`);
+            }, 3000);
+          } else {
+            setError('Payment verification failed');
+            setLoading(false);
+          }
+        } catch (err: any) {
+          setError(err.response?.data?.error || 'Payment verification failed');
+          setLoading(false);
+        } 
+      },
+      prefill: { email: formData.email, name: formData.name },
+      theme: { color: '#8B5CF6' },
+      modal: {
+        ondismiss: function() {
+           setLoading(false);
+           setError('Payment cancelled. You can retry by clicking Verify OTP & Pay again.');
+        }
+      }
+    };
+    // @ts-ignore
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -199,7 +241,6 @@ function AuthPageContent() {
     try {
       if (isLogin) {
         if (loginMethod === 'uniqueIdPin') {
-          // Login with Unique ID + PIN
           if (!formData.uniqueId || !formData.loginPin) {
             setError('Please enter your 6-digit Unique ID and PIN');
             setLoading(false);
@@ -221,7 +262,6 @@ function AuthPageContent() {
             }
           }
         } else {
-          // Login with Email + Password
           if (!formData.email || !formData.password) {
             setError('Please enter your email and password');
             setLoading(false);
@@ -248,165 +288,49 @@ function AuthPageContent() {
           }
         }
       } else {
-        // Signup flow (both trial and paid require email OTP verification first)
+        // Signup flow logic
+        if (!isFormValid()) {
+          setError('Please fill all required fields correctly.');
+          setLoading(false);
+          return;
+        }
+
         if (!otpSent) {
-          setError('Please verify your email with OTP first');
+          setError('Please send OTP first');
           setLoading(false);
           return;
         }
 
-        // Verify OTP first
         if (otp.length !== 6) {
-          setError('Please enter 6-digit OTP');
+          setError('Please enter the 6-digit OTP to proceed.');
           setLoading(false);
           return;
         }
 
-        try {
-          const otpResponse = await axios.post('/api/auth/verify-otp', {
-            email: formData.email,
-            otp,
-          });
-
-          if (!otpResponse.data.success) {
-            setError('Invalid OTP');
-            setLoading(false);
-            return;
-          }
-        } catch (err: any) {
-          setError(err.response?.data?.error || 'Invalid OTP');
-          setLoading(false);
-          return;
-        }
-
-        // Register user
-        const response = await axios.post('/api/auth/register', {
-          name: formData.name,
+        const response = await axios.post('/api/auth/verify-and-pay', {
           email: formData.email,
-          password: formData.password,
-          companyName: formData.companyName || undefined,
-          phone: formData.phone || undefined,
-          loginPin: formData.loginPin || undefined,
+          otp,
         });
 
-        if (response.data.token && response.data.uniqueId) {
+        if (response.data.isFree) {
           localStorage.setItem('token', response.data.token);
-          localStorage.setItem('uniqueId', response.data.uniqueId);
-
-          // Show success with unique ID
+          if (response.data.uniqueId) localStorage.setItem('uniqueId', response.data.uniqueId);
           setSuccess(`Account created! Your Unique ID: ${response.data.uniqueId}. Please save this for login.`);
-
-          if (subscriptionType === 'trial') {
-            // Activate free trial
-            const trialResponse = await axios.post(
-              '/api/payments/create-order',
-              { planId: 'free', billingPeriod: 'month' },
-              { headers: { Authorization: `Bearer ${response.data.token}` } }
-            );
-
-            if (trialResponse.data.success) {
-              setTimeout(() => {
-                router.push(`/user/${response.data.uniqueId}`);
-              }, 2000);
-            }
-          } else if (subscriptionType === 'paid' && selectedPlan) {
-            // Proceed to payment
-            handlePayment(response.data.token, response.data.uniqueId);
-          }
+          setTimeout(() => {
+            router.push(`/user/${response.data.uniqueId}`);
+          }, 3000);
+        } else {
+          openRazorpay(response.data.orderId, response.data.amount, response.data.currency, response.data.key);
         }
       }
     } catch (err: any) {
       setError(err.response?.data?.error || `${isLogin ? 'Login' : 'Registration'} failed`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePayment = async (token: string, uniqueId?: string) => {
-    if (!selectedPlan) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const orderResponse = await axios.post(
-        '/api/payments/create-order',
-        {
-          planId: selectedPlan.id,
-          billingPeriod: billingPeriod,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (orderResponse.data.orderId) {
-        const checkRazorpay = setInterval(() => {
-          // @ts-ignore
-          if (window.Razorpay) {
-            clearInterval(checkRazorpay);
-
-            const options = {
-              key: orderResponse.data.key,
-              amount: orderResponse.data.amount,
-              currency: orderResponse.data.currency,
-              name: 'ViralBoost AI',
-              description: `${selectedPlan.name} Plan - ${billingPeriod === 'month' ? 'Monthly' : 'Yearly'}`,
-              order_id: orderResponse.data.orderId,
-              handler: async function (response: any) {
-                try {
-                  const verifyResponse = await axios.post(
-                    '/api/payments/verify-payment',
-                    {
-                      razorpay_order_id: response.razorpay_order_id,
-                      razorpay_payment_id: response.razorpay_payment_id,
-                      razorpay_signature: response.razorpay_signature,
-                    },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                  );
-
-                  if (verifyResponse.data.success && uniqueId) {
-                    router.push(`/user/${uniqueId}`);
-                  } else {
-                    setError('Payment verification failed');
-                  }
-                } catch (err: any) {
-                  setError(err.response?.data?.error || 'Payment verification failed');
-                }
-              },
-              prefill: {
-                email: formData.email,
-                name: formData.name,
-              },
-              theme: {
-                color: '#8B5CF6',
-              },
-            };
-
-            // @ts-ignore
-            const razorpay = new window.Razorpay(options);
-            razorpay.open();
-          }
-        }, 100);
-
-        setTimeout(() => {
-          clearInterval(checkRazorpay);
-          if (!(window as any).Razorpay) {
-            setError('Failed to load payment gateway. Please refresh the page.');
-          }
-        }, 5000);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to initiate payment');
-    } finally {
       setLoading(false);
     }
   };
 
   const getPrice = (plan: Plan) => {
-    const yearlyPrices: Record<string, number> = {
-      pro: 25,
-      enterprise: 50,
-    };
-    const price = billingPeriod === 'year' ? yearlyPrices[plan.id] : plan.price;
+    const price = billingPeriod === 'year' ? plan.price * 10 : plan.price;
     return `$${price}${billingPeriod === 'year' ? '/year' : '/month'}`;
   };
 
@@ -708,8 +632,8 @@ function AuthPageContent() {
                 </div>
 
                 {/* Plan Cards */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  {paidPlans.map((plan) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  {paidPlansState.map((plan) => (
                     <motion.button
                       key={plan.id}
                       onClick={() => setSelectedPlan(plan)}
@@ -887,40 +811,50 @@ function AuthPageContent() {
               </div>
 
               {/* Email OTP for Paid Plans */}
-              {subscriptionType === 'paid' && (
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Email OTP
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        maxLength={6}
-                        className="w-full px-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-                        placeholder="Enter 6-digit code"
-                      />
-                    </div>
-                    <motion.button
-                      type="button"
-                      onClick={sendOTP}
-                      disabled={loading || otpSent}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] font-semibold disabled:opacity-50"
-                    >
-                      {otpSent ? 'Resend' : 'Send OTP'}
-                    </motion.button>
+              {/* Email OTP for all signups */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Email OTP
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      className="w-full px-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                      placeholder="Enter 6-digit code"
+                    />
                   </div>
+                  <motion.button
+                    type="button"
+                    onClick={() => {
+                      setOtpSent(false); // Reset to allow re-sending
+                      setTimeout(sendOTP, 10);
+                    }}
+                    disabled={loading || !isFormValid()}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] font-semibold disabled:opacity-50"
+                  >
+                    {otpSent ? 'Resend' : 'Send OTP'}
+                  </motion.button>
                 </div>
-              )}
+              </div>
 
               {/* Submit Button */}
               <motion.button
                 type="submit"
-                disabled={loading || (subscriptionType === 'paid' && !selectedPlan)}
+                disabled={
+                  loading ||
+                  (!isLogin && (
+                    !otpSent ||
+                    otp.length !== 6 ||
+                    !isFormValid() ||
+                    (subscriptionType === 'paid' && !selectedPlan)
+                  ))
+                }
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
@@ -928,7 +862,7 @@ function AuthPageContent() {
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    {subscriptionType === 'paid' ? 'Processing...' : 'Creating account...'}
+                    {subscriptionType === 'paid' ? 'Processing Payment...' : 'Creating account...'}
                   </>
                 ) : (
                   <>

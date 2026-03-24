@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { oauth2Client } from '@/services/youtubeUpload';
 import { getUserFromRequest } from '@/lib/auth';

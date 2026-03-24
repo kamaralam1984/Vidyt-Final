@@ -1,18 +1,18 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import PlatformControl from '@/models/PlatformControl';
 import ControlLog from '@/models/ControlLog';
+import { requireSuperAdminAccess } from '@/lib/adminAuth';
 
 // Master switch - enables/disables all platforms
 export async function POST(request: NextRequest) {
     try {
         await connectDB();
-        const user = await getUserFromRequest(request);
-        
-        if (!user || user.role !== 'super-admin') {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
+        const access = await requireSuperAdminAccess(request);
+        if (access.error) return access.error;
+        const user = access.user;
 
         const body = await request.json();
         const { isEnabled } = body; // boolean true/false

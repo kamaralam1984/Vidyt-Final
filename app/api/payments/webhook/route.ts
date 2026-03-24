@@ -1,7 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
+import Payment from '@/models/Payment';
+import { PLAN_ROLE_MAP } from '@/lib/limitChecker';
 
 /**
  * Razorpay Webhook Handler
@@ -62,15 +66,72 @@ export async function POST(request: NextRequest) {
           endDate.setMonth(endDate.getMonth() + 1);
         }
 
-        // Update subscription
-        user.subscription = user.subscriptionPlan.planId as 'free' | 'pro' | 'enterprise';
+        // Update subscription and role by plan
+        user.subscription = user.subscriptionPlan.planId as any;
         user.subscriptionExpiresAt = endDate;
         user.subscriptionPlan.status = 'active';
         user.subscriptionPlan.startDate = startDate;
         user.subscriptionPlan.endDate = endDate;
         user.subscriptionPlan.paymentId = payment.id;
         user.subscriptionPlan.razorpayPaymentId = payment.id;
+        user.role = (PLAN_ROLE_MAP[user.subscription] || 'user') as any;
+
+        // Reset usage stats for new period
+        user.usageStats = {
+          videosAnalyzed: 0,
+          analysesThisMonth: 0,
+          competitorsTracked: 0,
+          hashtagsGenerated: 0
+        };
+
         await user.save();
+      }
+
+      if (user?.subscriptionPlan?.planId) {
+        await Payment.findOneAndUpdate(
+          { orderId },
+          {
+            $set: {
+              userId: user._id,
+              orderId,
+              paymentId: payment.id,
+              plan: user.subscriptionPlan.planId,
+              billingPeriod: user.subscriptionPlan.billingPeriod === 'year' ? 'year' : 'month',
+              amount: Number(payment.amount || 0) / 100,
+              currency: String(payment.currency || 'INR').toUpperCase(),
+              status: 'success',
+              gateway: 'razorpay',
+              metadata: {
+                source: 'webhook',
+                webhookEvent: event.event,
+              },
+            },
+          },
+          { upsert: true, new: true }
+        );
+      }
+    } else if (event.event === 'payment.failed') {
+      const payment = event.payload.payment.entity;
+      const orderId = payment?.order_id;
+      if (orderId) {
+        await Payment.findOneAndUpdate(
+          { orderId },
+          {
+            $set: {
+              orderId,
+              paymentId: payment.id,
+              amount: Number(payment.amount || 0) / 100,
+              currency: String(payment.currency || 'INR').toUpperCase(),
+              status: 'failed',
+              gateway: 'razorpay',
+              metadata: {
+                source: 'webhook',
+                webhookEvent: event.event,
+              },
+            },
+          },
+          { upsert: true, new: true }
+        );
       }
     }
 

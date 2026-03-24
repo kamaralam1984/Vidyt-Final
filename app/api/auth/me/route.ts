@@ -1,7 +1,10 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import User from '@/models/User';
 import connectDB from '@/lib/mongodb';
+import { PLAN_LIMITS } from '@/lib/limitChecker';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,8 +32,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Auto-sync Owner tier for Super Admins
     let needsSave = false;
+
+    // Check Plan Expiry
+    if (user.subscription !== 'owner' && user.subscriptionExpiresAt && user.subscriptionExpiresAt < new Date()) {
+      user.subscription = 'free';
+      user.role = 'user';
+      if (user.subscriptionPlan) {
+        user.subscriptionPlan.status = 'expired';
+      }
+      needsSave = true;
+    }
+
+    // Auto-sync Owner tier for Super Admins
     if (user.role === 'super-admin') {
         if (user.subscription !== 'owner') {
             user.subscription = 'owner';
@@ -76,6 +90,11 @@ export async function GET(request: NextRequest) {
         whiteLabelCompanyName: user.whiteLabelCompanyName,
         whiteLabelLogoUrl: user.whiteLabelLogoUrl,
         webhookUrl: user.webhookUrl,
+        computedLimits: {
+          analyses: user.subscription === 'owner' ? Number.MAX_SAFE_INTEGER : 
+                   user.subscription === 'custom' ? ((user.customLimits as any)?.get ? (user.customLimits as any).get('analyses') : (user.customLimits as any)?.analyses || 0) :
+                   (PLAN_LIMITS[user.subscription]?.analyses || PLAN_LIMITS['free'].analyses)
+        }
       },
     });
   } catch (error: any) {

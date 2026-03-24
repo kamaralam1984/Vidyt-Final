@@ -40,10 +40,22 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
       return { videos: L.videos, analyses: L.analyses, competitors: L.competitors };
     })(),
   },
+  starter: {
+    id: 'starter',
+    name: 'Starter',
+    price: 3, // $3/month (adjust if needed)
+    currency: 'USD',
+    interval: 'month',
+    features: getPlanRoll('starter').featureList,
+    limits: (() => {
+      const L = getSubscriptionLimitsForApi('starter');
+      return { videos: L.videos, analyses: L.analyses, competitors: L.competitors };
+    })(),
+  },
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 5,
+    price: 15,
     currency: 'USD',
     interval: 'month',
     features: getPlanRoll('pro').featureList,
@@ -55,12 +67,24 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 12,
+    price: 25,
     currency: 'USD',
     interval: 'month',
     features: getPlanRoll('enterprise').featureList,
     limits: (() => {
       const L = getSubscriptionLimitsForApi('enterprise');
+      return { videos: L.videos, analyses: L.analyses, competitors: L.competitors };
+    })(),
+  },
+  custom: {
+    id: 'custom',
+    name: 'Custom',
+    price: 50, // $50/month (adjust if needed)
+    currency: 'USD',
+    interval: 'month',
+    features: getPlanRoll('custom').featureList,
+    limits: (() => {
+      const L = getSubscriptionLimitsForApi('custom');
       return { videos: L.videos, analyses: L.analyses, competitors: L.competitors };
     })(),
   },

@@ -47,23 +47,10 @@ interface Plan {
   };
 }
 
-const plans: Plan[] = [
-  {
-    id: 'free',
-    name: 'Free',
-    price: 0,
-    period: 'month',
-    description: 'Perfect for getting started',
+const PLAN_UI_PRESETS: Record<string, any> = {
+  free: {
     icon: Sparkles,
     color: '#AAAAAA',
-    features: [
-      '5 video analyses per month',
-      'Basic viral score prediction',
-      'Thumbnail analysis',
-      'Title optimization (3 suggestions)',
-      'Hashtag generator (10 hashtags)',
-      'Community support',
-    ],
     limits: {
       videos: '5/month',
       analyses: 'Basic',
@@ -71,26 +58,10 @@ const plans: Plan[] = [
       support: 'Community',
     },
   },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 5,
-    period: 'month',
-    description: 'For serious creators',
+  pro: {
     icon: Zap,
     color: '#FF0000',
     popular: true,
-    features: [
-      '30 video analyses per day',
-      'Advanced AI viral prediction',
-      'Real-time trend analysis',
-      'Title optimization (10 suggestions)',
-      'Hashtag generator (20 hashtags)',
-      'Best posting time predictions',
-      'Competitor analysis',
-      'Email support',
-      'Priority processing',
-    ],
     limits: {
       videos: '30/days',
       analyses: 'Advanced AI',
@@ -98,25 +69,9 @@ const plans: Plan[] = [
       support: 'Email',
     },
   },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 12,
-    period: 'month',
-    description: 'For agencies and teams',
+  enterprise: {
     icon: Crown,
     color: '#FFD700',
-    features: [
-      'Everything in Pro',
-      'Team collaboration (up to 10 users)',
-      'White-label reports',
-      'Custom AI model training',
-      'Dedicated account manager',
-      '24/7 priority support',
-      'Advanced analytics dashboard',
-      '100 videos /days',
-      'Custom integrations',
-    ],
     limits: {
       videos: '100 Videos/Days',
       analyses: 'Custom AI',
@@ -124,14 +79,14 @@ const plans: Plan[] = [
       support: '24/7 Priority',
     },
   },
-];
+};
 
 export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
   const [loading, setLoading] = useState<string | null>(null);
   const [userPlan, setUserPlan] = useState<string | null>(null);
-   const [activePlans, setActivePlans] = useState<Plan[]>(plans);
-   const [plansLoading, setPlansLoading] = useState(false);
+  const [activePlans, setActivePlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
   const { locale } = useLocale();
 
   useEffect(() => {
@@ -160,23 +115,36 @@ export default function PricingPage() {
         setPlansLoading(true);
         const res = await axios.get('/api/subscriptions/plans?withDiscounts=1');
         const apiPlans = res.data?.plans || [];
-        // Merge discount info into local UI plans by id
-        setActivePlans((prev) =>
-          prev.map((p) => {
-            const api = apiPlans.find((ap: any) => ap.id === p.id);
-            if (!api || !api.discount) return p;
-            const d = api.discount;
-            return {
-              ...p,
-              discount: {
-                percentage: d.percentage,
-                label: d.label,
-                startsAt: d.startsAt,
-                endsAt: d.endsAt,
-              },
-            };
-          })
-        );
+        
+        const formattedPlans = apiPlans.map((p: any) => {
+          const preset = PLAN_UI_PRESETS[p.id] || {
+            icon: Star,
+            color: '#3b82f6',
+            limits: {
+              videos: p.limits?.videos === -1 ? 'Unlimited' : `${p.limits?.videos || 'Custom'}/month`,
+              analyses: p.limits?.analyses === -1 ? 'Unlimited' : (typeof p.limits?.analyses === 'number' ? `${p.limits.analyses}/month` : 'Standard'),
+              storage: '—',
+              support: 'Priority',
+            }
+          };
+
+          return {
+            id: p.id || p.dbId,
+            dbId: p.dbId,
+            name: p.name,
+            price: p.price,
+            period: p.interval || 'month',
+            description: p.description || 'Custom Plan',
+            features: p.features || [],
+            popular: preset.popular || false,
+            icon: preset.icon,
+            color: preset.color,
+            limits: preset.limits,
+            discount: p.discount,
+          };
+        });
+
+        setActivePlans(formattedPlans);
       } catch (error) {
         console.error('Error fetching plans with discounts:', error);
       } finally {
@@ -186,10 +154,25 @@ export default function PricingPage() {
 
     fetchUserPlan();
     fetchPlans();
+
+    // Load Razorpay script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
   }, []);
 
-  const handleSubscribe = async (planId: string) => {
-    setLoading(planId);
+  const handleSubscribe = async (plan: Plan) => {
+    if (plan.price === 0) {
+      window.location.href = '/dashboard';
+      return;
+    }
+
+    setLoading(plan.id);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -199,9 +182,9 @@ export default function PricingPage() {
       }
 
       const response = await axios.post(
-        '/api/subscriptions/checkout',
+        '/api/payments/create-order',
         {
-          planId,
+          plan: plan.id,
           billingPeriod,
         },
         {
@@ -209,18 +192,56 @@ export default function PricingPage() {
         }
       );
 
-      if (response.data.url || response.data.checkoutUrl) {
-        window.location.href = response.data.url || response.data.checkoutUrl;
-      } else {
-        alert('Subscription successful!');
-        setUserPlan(planId);
-      }
+      const orderData = response.data;
+      openRazorpay(orderData, plan.id);
     } catch (error: any) {
-      console.error('Subscription error:', error);
-      alert(error.response?.data?.error || 'Failed to subscribe. Please try again.');
-    } finally {
+      console.error('Order creation error:', error);
+      alert(error.response?.data?.error || 'Failed to initiate payment. Please try again.');
       setLoading(null);
     }
+  };
+
+  const openRazorpay = (order: any, planId: string) => {
+    const options = {
+      key: order.key, // Use key from server order response
+      amount: order.amount,
+      currency: order.currency || 'INR',
+      name: 'ViralBoost AI',
+      description: `Upgrade to ${planId} Plan`,
+      order_id: order.id,
+      handler: async function (response: any) {
+        try {
+          setLoading(planId);
+          await axios.post('/api/payments/verify-payment', {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            plan: planId,
+            billingPeriod,
+          }, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+
+          alert('✅ Plan upgraded successfully!');
+          window.location.href = '/dashboard';
+        } catch (error: any) {
+          console.error('Payment verification error:', error);
+          alert('Payment verification failed. Please contact support.');
+        } finally {
+          setLoading(null);
+        }
+      },
+      prefill: {
+        name: '',
+        email: '',
+      },
+      theme: {
+        color: '#FF0000',
+      },
+    };
+
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
   };
 
   const getPrice = (plan: Plan) => {
@@ -324,7 +345,9 @@ export default function PricingPage() {
           {/* Plans Grid */}
           <div className="max-w-7xl mx-auto px-6 pb-16">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {activePlans.map((plan, index) => {
+              {activePlans
+                .filter(p => !userPlan || (userPlan === 'free' ? p.id !== 'free' : true))
+                .map((plan, index) => {
                 const Icon = plan.icon;
                 const isCurrentPlan = userPlan === plan.id;
                 const savings = getSavings(plan);
@@ -462,7 +485,7 @@ export default function PricingPage() {
                         </motion.button>
                       ) : (
                         <motion.button
-                          onClick={() => handleSubscribe(plan.id)}
+                          onClick={() => handleSubscribe(plan)}
                           disabled={loading === plan.id}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}

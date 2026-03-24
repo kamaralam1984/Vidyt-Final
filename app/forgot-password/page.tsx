@@ -14,6 +14,10 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [step, setStep] = useState<'EMAIL' | 'OTP'>('EMAIL');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     // Check database connection status
@@ -35,24 +39,45 @@ export default function ForgotPasswordPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess(false);
+    
+    try {
+      const response = await axios.post('/api/auth/password-reset', { email });
+      if (response.data.success) {
+        setStep('OTP');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
 
     try {
-      const response = await axios.post('/api/auth/password-reset', {
+      const response = await axios.put('/api/auth/password-reset', {
         email,
+        otp,
+        newPassword
       });
 
       if (response.data.success) {
         setSuccess(true);
-      } else {
-        setError('Failed to send reset email. Please try again.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to send reset email. Please check your email address.');
+      setError(err.response?.data?.message || 'Failed to reset password. Check if OTP is correct.');
     } finally {
       setLoading(false);
     }
@@ -61,136 +86,105 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center px-6">
       <div className="max-w-md w-full">
-        {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
           <Link href="/" className="inline-block mb-4">
             <img src="/logo.png" alt="ViralBoost AI" className="h-72 w-auto object-contain mx-auto" />
           </Link>
           <h1 className="text-2xl font-bold text-white mb-2">Reset Your Password</h1>
-          <p className="text-[#AAAAAA]">Enter your email to receive a password reset link</p>
-
-          {/* Database Status Indicator */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mt-4 flex items-center justify-center gap-2"
-          >
-            {dbStatus === 'checking' ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#f59e0b]" />
-            ) : dbStatus === 'connected' ? (
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <div className="w-3 h-3 bg-[#10b981] rounded-full animate-pulse"></div>
-                  <div className="absolute inset-0 w-3 h-3 bg-[#10b981] rounded-full animate-ping opacity-75"></div>
-                </div>
-                <span className="text-xs text-[#10b981] font-medium">Database Connected</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#ef4444] rounded-full"></div>
-                <span className="text-xs text-[#ef4444] font-medium">Database Disconnected</span>
-              </div>
-            )}
-          </motion.div>
+          <p className="text-[#AAAAAA]">
+            {step === 'EMAIL' ? 'Enter your email to receive an OTP' : 'Enter the code and your new password'}
+          </p>
         </motion.div>
 
-        {/* Reset Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-[#181818] border border-[#212121] rounded-xl p-8 shadow-lg"
-        >
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-[#10b981]/20 border border-[#10b981] rounded-lg flex items-center gap-3"
-            >
-              <Check className="w-5 h-5 text-[#10b981]" />
-              <div>
-                <p className="text-[#10b981] text-sm font-semibold">Reset link sent!</p>
-                <p className="text-[#10b981] text-xs mt-1">
-                  Check your email for password reset instructions.
-                </p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-[#181818] border border-[#212121] rounded-xl p-8 shadow-lg">
+          {success ? (
+            <div className="space-y-6 text-center">
+              <div className="w-16 h-16 bg-[#10b981]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="w-8 h-8 text-[#10b981]" />
               </div>
-            </motion.div>
-          )}
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-[#ef4444]/20 border border-[#ef4444] rounded-lg flex items-center gap-3"
-            >
-              <AlertCircle className="w-5 h-5 text-[#ef4444]" />
-              <p className="text-[#ef4444] text-sm">{error}</p>
-            </motion.div>
-          )}
-
-          {!success ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <p className="text-xs text-[#AAAAAA] mt-2">
-                  We&apos;ll send you a link to reset your password
-                </p>
-              </div>
-
-              <motion.button
-                type="submit"
-                disabled={loading}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Sending reset link...
-                  </>
-                ) : (
-                  <>
-                    Send Reset Link
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </motion.button>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-4 bg-[#212121] rounded-lg">
-                <p className="text-[#AAAAAA] text-sm">
-                  If an account exists with this email, you&apos;ll receive password reset instructions shortly.
-                </p>
-              </div>
-              <Link
-                href="/login"
-                className="block w-full py-3 px-6 bg-[#212121] text-white rounded-lg hover:bg-[#333333] transition-colors font-semibold text-center flex items-center justify-center gap-2"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Back to Login
+              <h2 className="text-xl font-bold text-white">Password Updated!</h2>
+              <p className="text-[#AAAAAA]">Your password has been reset successfully. You can now log in with your new password.</p>
+              <Link href="/login" className="block w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold">
+                Sign In Now
               </Link>
             </div>
+          ) : (
+            <>
+              {error && (
+                <div className="mb-6 p-4 bg-[#ef4444]/20 border border-[#ef4444] rounded-lg flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-[#ef4444]" />
+                  <p className="text-[#ef4444] text-sm">{error}</p>
+                </div>
+              )}
+
+              {step === 'EMAIL' ? (
+                <form onSubmit={handleSendOTP} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                        placeholder="you@example.com"
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg font-semibold flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send OTP'}
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">6-Digit OTP</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white text-center text-2xl tracking-[0.5em] font-bold focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                      placeholder="000000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">New Password</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => setStep('EMAIL')} className="w-1/3 py-3 px-4 bg-[#212121] text-white rounded-lg font-semibold">
+                      Back
+                    </button>
+                    <button type="submit" disabled={loading} className="flex-1 py-3 px-6 bg-[#FF0000] text-white rounded-lg font-semibold flex items-center justify-center gap-2">
+                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Reset Password'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </>
           )}
 
           <div className="mt-6 text-center">

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 
@@ -13,6 +15,24 @@ export async function GET() {
     results.tests.mongodb = { status: 'success', message: 'Connected' };
   } catch (error: any) {
     results.tests.mongodb = { status: 'error', message: error.message };
+  }
+
+  // Test Email Service
+  try {
+    const { sendOTPEmail } = await import('@/services/email');
+    const testEmail = process.env.SMTP_USER || 'test@example.com';
+    const testOtp = '123456';
+    const emailSent = await sendOTPEmail(testEmail, testOtp, 'Test User');
+    results.tests.email = { 
+      status: emailSent ? 'success' : 'failed',
+      message: emailSent ? 'Test OTP email sent successfully' : 'Failed to send test email',
+      smtpUser: process.env.SMTP_USER || 'Not configured',
+      smtpHost: process.env.SMTP_HOST || 'Not configured',
+      emailFrom: process.env.EMAIL_FROM || 'Not configured',
+      resendAvailable: !!process.env.RESEND_API_KEY,
+    };
+  } catch (error: any) {
+    results.tests.email = { status: 'error', message: error.message, stack: error.stack };
   }
 
   // Test YouTube service

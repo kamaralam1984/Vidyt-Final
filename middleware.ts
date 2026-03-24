@@ -6,6 +6,8 @@ import { verifyToken } from '@/lib/auth-jwt';
  * Middleware to protect API routes
  */
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
   // Public routes that don't need authentication
   const publicRoutes = [
     '/api/auth/login',
@@ -13,6 +15,9 @@ export async function middleware(request: NextRequest) {
     '/api/auth/password-reset', // Password reset (public)
     '/api/auth/send-otp', // OTP sending (public)
     '/api/auth/verify-otp', // OTP verification (public)
+    '/api/auth/prepare-signup', // New strict signup preparation
+    '/api/auth/verify-and-pay', // New strict signup OTP verification and payment
+    '/api/payments/verify-signup-payment', // New strict signup payment verification
     '/api/auth/me', // Allow /api/auth/me to handle auth internally
     '/api/subscriptions/plans',
     '/api/health/db', // Database health check
@@ -23,7 +28,12 @@ export async function middleware(request: NextRequest) {
   ];
 
   const isPublicRoute = publicRoutes.some(route =>
-    request.nextUrl.pathname.startsWith(route)
+    pathname.startsWith(route)
+  );
+
+  const protectedPageRoutes = ['/admin', '/dashboard', '/user'];
+  const isProtectedPageRoute = protectedPageRoutes.some(route =>
+    pathname.startsWith(route)
   );
 
   if (isPublicRoute) {
@@ -45,10 +55,14 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!token) {
-    // Allow non-API routes (frontend pages)
-    if (!request.nextUrl.pathname.startsWith('/api')) {
-      return NextResponse.next();
+    // Protect key frontend panels from unauthenticated access.
+    if (isProtectedPageRoute) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
     }
+
+    if (!pathname.startsWith('/api')) return NextResponse.next();
 
     return NextResponse.json(
       { error: 'Unauthorized' },
@@ -58,6 +72,13 @@ export async function middleware(request: NextRequest) {
   const user = await verifyToken(token);
 
   if (!user) {
+    if (isProtectedPageRoute) {
+      const loginUrl = new URL('/login', request.url);
+      const response = NextResponse.redirect(loginUrl);
+      response.cookies.delete('token');
+      return response;
+    }
+
     return NextResponse.json(
       {
         error: 'Invalid or expired token',
@@ -81,5 +102,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/api/:path*', // Only protect API routes, dashboard is protected client-side
+  matcher: ['/api/:path*', '/admin/:path*', '/dashboard/:path*', '/user/:path*'],
 };

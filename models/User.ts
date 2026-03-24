@@ -8,8 +8,8 @@ export interface IUser extends Document {
   companyName?: string;
   phone?: string;
   loginPin?: string;
-  role: 'user' | 'admin' | 'manager' | 'super-admin';
-  subscription: 'free' | 'pro' | 'enterprise' | 'owner';
+  role: 'user' | 'admin' | 'manager' | 'super-admin' | 'superadmin';
+  subscription: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'owner';
   subscriptionExpiresAt?: Date;
   subscriptionPlan?: {
     planId: string;
@@ -38,11 +38,16 @@ export interface IUser extends Document {
     emailUpdates: boolean;
     darkMode: boolean;
   };
+  language?: 'en' | 'hi';
+  lastUsageAlertSent?: Date;
+  lastExpiryAlertSent?: Date;
   usageStats?: {
     videosAnalyzed: number;
     analysesThisMonth: number;
     competitorsTracked: number;
+    hashtagsGenerated: number;
   };
+  customLimits?: Record<string, number>;
   lastLogin?: Date;
   accountManagerEmail?: string;
   webhookUrl?: string;
@@ -74,8 +79,8 @@ const UserSchema = new Schema<IUser>({
   companyName: { type: String },
   phone: { type: String },
   loginPin: { type: String },
-  role: { type: String, enum: ['user', 'admin', 'manager', 'super-admin'], default: 'user' },
-  subscription: { type: String, enum: ['free', 'pro', 'enterprise', 'owner'], default: 'free' },
+  role: { type: String, enum: ['user', 'admin', 'manager', 'super-admin', 'superadmin'], default: 'user' },
+  subscription: { type: String, enum: ['free', 'starter', 'pro', 'enterprise', 'custom', 'owner'], default: 'free' },
   subscriptionExpiresAt: { type: Date },
   subscriptionPlan: {
     planId: { type: String },
@@ -104,11 +109,16 @@ const UserSchema = new Schema<IUser>({
     emailUpdates: { type: Boolean, default: true },
     darkMode: { type: Boolean, default: false },
   },
+  language: { type: String, enum: ['en', 'hi'], default: 'en' },
+  lastUsageAlertSent: { type: Date },
+  lastExpiryAlertSent: { type: Date },
   usageStats: {
     videosAnalyzed: { type: Number, default: 0 },
     analysesThisMonth: { type: Number, default: 0 },
     competitorsTracked: { type: Number, default: 0 },
+    hashtagsGenerated: { type: Number, default: 0 },
   },
+  customLimits: { type: Map, of: Number, default: {} },
   lastLogin: { type: Date },
   accountManagerEmail: { type: String },
   webhookUrl: { type: String },

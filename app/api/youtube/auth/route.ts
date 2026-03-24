@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { oauth2Client } from '@/services/youtubeUpload';
 import { getUserFromRequest } from '@/lib/auth';
@@ -11,7 +13,8 @@ export async function GET(request: NextRequest) {
 
         const scopes = [
             'https://www.googleapis.com/auth/youtube.upload',
-            'https://www.googleapis.com/auth/youtube.readonly'
+            'https://www.googleapis.com/auth/youtube.readonly',
+            'https://www.googleapis.com/auth/yt-analytics.readonly'
         ];
 
         const url = oauth2Client.generateAuthUrl({

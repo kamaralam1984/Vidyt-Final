@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAIToolAccess } from '@/lib/aiStudioAccess';
 import { cutSegment } from '@/lib/videoShorts';
