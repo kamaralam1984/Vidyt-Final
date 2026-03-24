@@ -83,6 +83,8 @@ function AuthPageContent() {
 
   // Loading states
   const [loading, setLoading] = useState(false);
+  /** OTP send/resend only — do not block "Verify & Pay" (was sharing `loading` and disabled the main button). */
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [fxRates, setFxRates] = useState<Record<string, number> | null>(null);
@@ -168,7 +170,7 @@ function AuthPageContent() {
       return;
     }
 
-    setLoading(true);
+    setSendingOtp(true);
     setError('');
 
     try {
@@ -190,7 +192,7 @@ function AuthPageContent() {
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to prepare signup');
     } finally {
-      setLoading(false);
+      setSendingOtp(false);
     }
   };
 
@@ -238,9 +240,27 @@ function AuthPageContent() {
         }
       }
     };
-    // @ts-ignore
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+    try {
+      // @ts-ignore
+      const Rzp = window.Razorpay;
+      if (!Rzp) {
+        setError('Payment gateway failed to load. Refresh the page and try again.');
+        setLoading(false);
+        return;
+      }
+      if (!key || !orderId) {
+        setError('Payment could not be started. Please try again.');
+        setLoading(false);
+        return;
+      }
+      const rzp = new Rzp(options);
+      rzp.open();
+      setLoading(false);
+    } catch (e) {
+      console.error('Razorpay open failed:', e);
+      setError('Could not open payment window. Please try Verify OTP & Pay again.');
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -271,6 +291,9 @@ function AuthPageContent() {
             } else {
               router.push(`/user/${response.data.user.uniqueId}`);
             }
+          } else {
+            setError('Login failed. Please check your credentials.');
+            setLoading(false);
           }
         } else {
           if (!formData.email || !formData.password) {
@@ -296,6 +319,9 @@ function AuthPageContent() {
             } else {
               router.push('/dashboard');
             }
+          } else {
+            setError('Login failed. Please check your credentials.');
+            setLoading(false);
           }
         }
       } else {
@@ -327,6 +353,7 @@ function AuthPageContent() {
           localStorage.setItem('token', response.data.token);
           if (response.data.uniqueId) localStorage.setItem('uniqueId', response.data.uniqueId);
           setSuccess(`Account created! Your Unique ID: ${response.data.uniqueId}. Please save this for login.`);
+          setLoading(false);
           setTimeout(() => {
             router.push(`/user/${response.data.uniqueId}`);
           }, 3000);
@@ -857,16 +884,22 @@ function AuthPageContent() {
                   </div>
                   <motion.button
                     type="button"
-                    onClick={() => {
-                      setOtpSent(false); // Reset to allow re-sending
-                      setTimeout(sendOTP, 10);
-                    }}
-                    disabled={loading || !isFormValid()}
+                    onClick={() => void sendOTP()}
+                    disabled={sendingOtp || !isFormValid()}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] font-semibold disabled:opacity-50"
+                    className="px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] font-semibold disabled:opacity-50 flex items-center justify-center gap-2 min-w-[7rem]"
                   >
-                    {otpSent ? 'Resend' : 'Send OTP'}
+                    {sendingOtp ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Sending…
+                      </>
+                    ) : otpSent ? (
+                      'Resend'
+                    ) : (
+                      'Send OTP'
+                    )}
                   </motion.button>
                 </div>
               </div>

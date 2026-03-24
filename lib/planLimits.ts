@@ -218,6 +218,10 @@ const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
  * Does not block execution.
  */
 async function syncPlansFromDB() {
+  // Mongoose / DB only exist on the server — never sync from client (e.g. useUser, app/page).
+  if (typeof window !== 'undefined') {
+    return;
+  }
   if (isFetching) return;
   isFetching = true;
   try {
