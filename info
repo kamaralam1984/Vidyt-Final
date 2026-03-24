@@ -110,10 +110,19 @@ Implemented route groups include:
 
 Also dynamic behavior hardened for server-side data usage routes.
 
+**Cron jobs (middleware):** `/api/cron/daily`, `/api/cron/ai-retrain`, `/api/cron/sync-prediction-outcomes` — JWT ke bina call ho sakte hain; har route **andar** `Authorization: Bearer CRON_SECRET` verify karti hai (agar `CRON_SECRET` set ho).
+
 ## H. Production AI, Queue, Monitoring (add-on stack)
 - **Python FastAPI** viral ML service (`ai-services/viral_prediction/`) — embeddings + classifier; Node calls it first, **internal ensemble fallback** if down
-- **Accuracy metrics:** `GET /api/ai/metrics` (MAE/RMSE trends from `ViralPrediction` data); Redis cache where enabled
-- **Super Admin AI Monitoring:** UI `/admin/super/ai-monitoring` + `GET /api/admin/super/ai-monitoring` (models, predictions, support AI stats, queue snapshot)
+- **Ground truth / validation (real labels — not fake metrics):**
+  - Har prediction par `engagement` = **prediction ke waqt ka snapshot** (inputs)
+  - **`outcome`** subdocument = **baad me verify** hua asli result: `viralScore0to100`, views/likes/comments, `capturedAt`, `source` (`youtube_api` | `user_submitted` | `admin` | `cron_sync`)
+  - **`POST /api/ai/outcome`** — user/admin apne prediction par actual stats ya score submit karke label banata hai
+  - **`POST /api/cron/sync-prediction-outcomes`** — `CRON_SECRET` + YouTube Data API se jin `ViralPrediction` me `videoId` hai aur `outcome` khali hai, un par auto-label (`services/youtubeVideoStats.ts`, `lib/predictionOutcomeSync.ts`)
+  - **`GET /api/ai/metrics`** — MAE/RMSE **sirf** jahan `outcome.viralScore0to100` set hai; kam labels par `null` + `insufficientGroundTruth`; `?scope=global` sirf super-admin (warna sirf apne predictions)
+  - **Training:** Python/ worker training samples me **pehle** `getLabeledPredictionTrainingSamples()` (verified outcomes), phir `ViralDataset` — true labels pipeline retrain ke liye
+  - Helpers: `lib/viralOutcome.ts` (score formula, YouTube id extract), predict API me `videoId` / `videoUrl` save for sync
+- **Super Admin AI Monitoring:** UI `/admin/super/ai-monitoring` + `GET /api/admin/super/ai-monitoring` (models, **labeledPredictions** count, total predictions, support AI, queue)
 - **Background jobs:** Redis + **BullMQ** queue (`lib/queue.ts`), worker `workers/aiWorker.ts` — optional async **prediction / training / support_ai** when env flags on; `AIJobLog` model
 - **Auto-retrain cron hook:** `POST /api/cron/ai-retrain` + scheduler wiring; model **rollback** API for admins
 - **Support AI:** OpenAI-based classification/replies (`services/ai/supportAI.ts`), embeddings helper; routes e.g. `/api/support/ai-reply`, enriched `/api/support/tickets`
@@ -174,6 +183,9 @@ Ye section important hai. System strong hai, lekin kuch areas abhi complete nahi
 7. **Plan discounts vs display**
    - marketing cards ab **list price** (Manage Plans) dikhate hain; agar checkout par discount apply karna ho to alag explicit wiring
 
+8. **Non-YouTube platforms ke liye auto outcome sync**
+   - TikTok/Instagram/Facebook par public stats se auto-label abhi YouTube jaisa centralized nahi — manual `POST /api/ai/outcome` ya future connectors
+
 ---
 
 ## 5) What Must Be Implemented Next (Priority Roadmap)
@@ -209,20 +221,20 @@ Ye section important hai. System strong hai, lekin kuch areas abhi complete nahi
 
 ## 6) Current Final Status
 
-- Core SaaS + super-admin + **unified plan pricing** + **production AI stack** (metrics, monitoring UI, optional BullMQ worker, Python predictor) implemented.
+- Core SaaS + super-admin + **unified plan pricing** + **production AI stack** + **verified ground-truth loop** (outcome fields, `/api/ai/outcome`, YouTube sync cron, metrics sirf labeled par) implemented.
 - API routes `force-dynamic` where needed; build passes (ESLint warnings only).
-- Long-term: expand tests, reduce warnings, tighten ops/alerting.
+- Long-term: multi-platform outcome sync, test coverage, ops/alerting.
 
 ---
 
 ## 7) Plain Summary
 
-ViralBoost AI me auth, plans (admin-driven prices), payments, analysis, viral AI (Python + fallback), tracking, analytics, super-admin (including AI monitoring), support AI + chat memory — sab integrated direction me hain.  
-Ab priority: consistency audits, warning cleanup, deeper tests, aur production ops polish.
+ViralBoost AI me auth, plans (admin-driven prices), payments, analysis, viral AI (Python + fallback), **labeled accuracy metrics**, tracking, analytics, super-admin (AI monitoring), support AI + chat memory — integrated.  
+Ab priority: IG/FB/TT outcome automation, consistency audits, warnings cleanup, deeper tests.
 
 ---
 
-Last updated: 2026-03-24 — unified pricing, Starter tier, AI/queue/monitoring reflected.
+Last updated: 2026-03-25 — AI ground truth (`outcome`), metrics-only-on-labeled, cron sync, training merge.
 # ViralBoost AI – Website Systems, Kaise Kaam Karta Hai, aur Fayde (Full Detail)
 
 Is file mein website ke saare systems, unka kaam karne ka tareeka, aur users ko kis cheez se kya fayda hota hai – sab detail mein diya gaya hai.
@@ -303,14 +315,20 @@ Is file mein website ke saare systems, unka kaam karne ka tareeka, aur users ko 
 
 ## 5. VIRAL PREDICTION AUR AI
 
-### Kaise kaam karta hai (API: `/api/ai/predict`, `/api/ai/train`)
-- Hook, thumbnail, title, text, engagement signals se **viral probability** aur **confidence**
-- **Python FastAPI** service (embeddings + sklearn pipeline) — primary path jab service up ho; **internal ensemble** fallback agar service down
-- Training: Python train endpoint prefer; Node/legacy path fallback; optional **BullMQ** async train when enabled
-- **Accuracy tracking:** predictions store hote hain; `GET /api/ai/metrics` se MAE/RMSE style reports (jab actuals available hon)
+### Kaise kaam karta hai (API: `/api/ai/predict`, `/api/ai/train`, `/api/ai/outcome`)
+- Hook, thumbnail, title, text, engagement snapshot se **viral probability** aur **confidence**; body me **`videoId`** ya **`videoUrl`** bhejo taaki baad me YouTube sync se **outcome** bharkar **sahi labels** milen
+- **Python FastAPI** service (embeddings + sklearn pipeline) — primary; **internal ensemble** fallback
+- Training: dataset + **verified predictions** (`outcome` wale rows) merge ho kar Python/ worker train call
+- **MAE / RMSE:** `GET /api/ai/metrics` — **ground truth only** (`outcome.viralScore0to100`); 5+ labeled samples ke baad hi numbers; super-admin `?scope=global`
+- **Feedback loop:** manually `POST /api/ai/outcome` (views/likes/comments ya seedha `viralScore0to100`); cron `POST /api/cron/sync-prediction-outcomes` (YouTube API + `CRON_SECRET`)
+
+### APIs (short)
+- `POST /api/ai/predict` — save + optional `videoId`/`videoUrl`
+- `POST /api/ai/outcome` — label ek prediction (owner ya super-admin)
+- `GET /api/ai/metrics` — labeled-only accuracy; `POST /api/ai/train` — Enterprise training (labeled samples pref)
 
 ### Fayde
-- Zyada consistent, scalable prediction path; admin monitoring se model health dikhti hai.
+- Model accuracy ab **approx input-vs-input** nahi, **prediction vs verified outcome** se measure hoti hai; retraining ko **true labels** mil sakte hain.
 
 ---
 
@@ -513,7 +531,7 @@ Is file mein website ke saare systems, unka kaam karne ka tareeka, aur users ko 
 - **Super-admin** `/dashboard/super` (legacy full control) **aur** `/admin/super/*` (new analytics-style dashboard, AI monitoring, etc.)
 - **Billing & Config:** Manage Plans, plan discounts, user plans — **yahi prices pure site par drive** karte hain
 - **Users:** list, create, role/plan ops, PIN, passwords
-- **AI Monitoring:** model versions, prediction/support stats, queue snapshot
+- **AI Monitoring:** model versions, **total vs ground-truth labeled** prediction counts, support AI stats, queue snapshot
 - **Database Tables:** collections grid, search, pagination
 - Sidebars: operational tools + link to newer global dashboards where applicable
 
@@ -623,12 +641,15 @@ Rough **roll defaults** (`lib/planLimits` / seeded `Plan` docs); Super Admin lim
 4. **Discount-at-checkout parity**
    - Agar `PlanDiscount` se checkout amount bhi kam karna ho to create-order/verify flow me explicit discount math (ab UI list price dikhaata hai).
 
-5. **Warnings & tests**
+5. **Multi-platform outcome automation**
+   - YouTube ke ilawa TikTok/IG/FB par bina manual `outcome` ke auto-label abhi poora nahi.
+
+6. **Warnings & tests**
    - ESLint hook/image warnings; end-to-end tests payments + worker + Python service health.
 
-6. **Chrome DevTools noise**
+7. **Chrome DevTools noise**
    - Local dev me `GET /.well-known/appspecific/com.chrome.devtools.json` **404** — Chrome debugger request; ignore.
 
 ---
 
-Last updated: 2026-03-24 — pricing unification, Starter, AI/queue/monitoring, support AI/chat; stale bullets removed.
+Last updated: 2026-03-25 — ground-truth `outcome`, `/api/ai/outcome`, cron sync, metrics-on-labeled-only, training merge; see section H & §5.
