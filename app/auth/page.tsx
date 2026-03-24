@@ -332,11 +332,7 @@ function AuthPageContent() {
           return;
         }
 
-        if (!otpSent) {
-          setError('Please send OTP first');
-          setLoading(false);
-          return;
-        }
+        // Do not gate on otpSent — it can desync after Resend/refresh; server validates PendingUser + OTP.
 
         if (otp.length !== 6) {
           setError('Please enter the 6-digit OTP to proceed.');
@@ -638,6 +634,7 @@ function AuthPageContent() {
             {/* Subscription Type Tabs */}
             <div className="flex gap-2 mb-6 bg-[#212121] p-1 rounded-lg">
               <button
+                type="button"
                 onClick={() => {
                   setSubscriptionType('trial');
                   setSelectedPlan(null);
@@ -650,6 +647,7 @@ function AuthPageContent() {
                 Free 7-day Trial
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setSubscriptionType('paid');
                   setSelectedPlan(null);
@@ -672,6 +670,7 @@ function AuthPageContent() {
                     Monthly
                   </span>
                   <button
+                    type="button"
                     onClick={() => setBillingPeriod(billingPeriod === 'month' ? 'year' : 'month')}
                     className="relative w-14 h-7 bg-[#212121] rounded-full p-1 transition-colors"
                   >
@@ -690,6 +689,7 @@ function AuthPageContent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   {paidPlansState.map((plan) => (
                     <motion.button
+                      type="button"
                       key={plan.id}
                       onClick={() => setSelectedPlan(plan)}
                       whileHover={{ scale: 1.02 }}
@@ -738,7 +738,7 @@ function AuthPageContent() {
               </motion.div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
                   Company Name {subscriptionType === 'paid' && '*'}
@@ -905,20 +905,18 @@ function AuthPageContent() {
               </div>
 
               {/* Submit Button */}
-              <motion.button
-                type="submit"
+              <button
+                type="button"
                 disabled={
                   loading ||
-                  (!isLogin && (
-                    !otpSent ||
-                    otp.length !== 6 ||
-                    !isFormValid() ||
-                    (subscriptionType === 'paid' && !selectedPlan)
-                  ))
+                  otp.length !== 6 ||
+                  !isFormValid() ||
+                  (subscriptionType === 'paid' && !selectedPlan)
                 }
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                onClick={() =>
+                  void handleSubmit({ preventDefault: () => {} } as unknown as React.FormEvent)
+                }
+                className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
@@ -931,7 +929,7 @@ function AuthPageContent() {
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
-              </motion.button>
+              </button>
 
               {/* Benefits */}
               {subscriptionType === 'trial' && (
@@ -976,7 +974,7 @@ function AuthPageContent() {
         )}
       </div>
       {/* Razorpay Script */}
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
     </div>
   );
 }

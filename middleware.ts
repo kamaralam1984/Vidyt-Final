@@ -31,12 +31,15 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
+  const publicCronRoutes = ['/api/cron/ai-retrain', '/api/cron/sync-prediction-outcomes', '/api/cron/daily'];
+  const isPublicCron = publicCronRoutes.includes(pathname);
+
   const protectedPageRoutes = ['/admin', '/dashboard', '/user'];
   const isProtectedPageRoute = protectedPageRoutes.some(route =>
     pathname.startsWith(route)
   );
 
-  if (isPublicRoute) {
+  if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/')) {
     return NextResponse.next();
   }
 
