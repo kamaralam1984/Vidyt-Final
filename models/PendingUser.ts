@@ -12,7 +12,14 @@ export interface IPendingUser extends Document {
   loginPin?: string;
   planId?: string;
   billingPeriod?: string;
+  countryCode?: string;
   currency?: string; // ISO currency code e.g. 'USD', 'INR', 'EUR'
+  /** USD total for this checkout (after early-bird rules), for receipts */
+  amountUsd?: number;
+  /** Razorpay order amount in smallest unit (paise, cents, etc.) */
+  rzpAmountMinor?: number;
+  /** Razorpay order currency (matches charge) */
+  rzpCurrency?: string;
   razorpayOrderId?: string;
   createdAt: Date;
 }
@@ -29,7 +36,11 @@ const PendingUserSchema = new Schema<IPendingUser>({
   loginPin: { type: String },
   planId: { type: String },
   billingPeriod: { type: String },
-  currency: { type: String, default: 'USD' }, // ISO currency code
+  countryCode: { type: String },
+  currency: { type: String, default: 'USD' },
+  amountUsd: { type: Number },
+  rzpAmountMinor: { type: Number },
+  rzpCurrency: { type: String },
   razorpayOrderId: { type: String },
   createdAt: { type: Date, default: Date.now, expires: 86400 } // TTL index for 24 hours
 }, {

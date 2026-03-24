@@ -15,6 +15,7 @@ import {
   Eye, EyeOff
 } from 'lucide-react';
 import { useLocale } from '@/context/LocaleContext';
+import { computeSignupUsdCharge, convertUsdToCurrency } from '@/lib/paymentCurrencyShared';
 
 interface Plan {
   id: string;
@@ -84,6 +85,7 @@ function AuthPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fxRates, setFxRates] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -141,6 +143,13 @@ function AuthPageContent() {
     return () => clearInterval(interval);
   }, [router, pathname]);
 
+  useEffect(() => {
+    fetch('/api/public/currency-rates')
+      .then((r) => r.json())
+      .then((d) => setFxRates(d.rates || null))
+      .catch(() => setFxRates(null));
+  }, []);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
@@ -167,6 +176,8 @@ function AuthPageContent() {
         ...formData,
         planId: subscriptionType === 'trial' ? 'free' : (selectedPlan?.id || 'free'),
         billingPeriod,
+        currency: locale.currency,
+        countryCode: locale.countryCode,
       });
 
       if (response.data.success) {
@@ -330,8 +341,25 @@ function AuthPageContent() {
   };
 
   const getPrice = (plan: Plan) => {
-    const price = billingPeriod === 'year' ? plan.price * 10 : plan.price;
-    return `$${price}${billingPeriod === 'year' ? '/year' : '/month'}`;
+    const priceMonthly = plan.price;
+    const priceYearly = plan.price * 10;
+    const usd = computeSignupUsdCharge({
+      planId: plan.id,
+      billingPeriod,
+      priceMonthly,
+      priceYearly,
+    });
+    const suffix = billingPeriod === 'year' ? '/year' : '/month';
+    if (!fxRates || locale.currency === 'USD') {
+      return `$${usd}${suffix}`;
+    }
+    const local = convertUsdToCurrency(usd, locale.currency, fxRates);
+    const formatted = new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency: locale.currency,
+      maximumFractionDigits: 0,
+    }).format(local);
+    return `${formatted}${suffix} (~$${usd} USD)`;
   };
 
   return (

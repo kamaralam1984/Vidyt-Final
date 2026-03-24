@@ -10,6 +10,8 @@ import { generateUniqueNumericId, VALID_PLANS, normalizePlan } from '@/lib/auth'
 import Razorpay from 'razorpay';
 import { z } from 'zod';
 import Plan from '@/models/Plan';
+import { buildRazorpayOrderFromUsd } from '@/lib/paymentCurrency';
+import { computeSignupUsdCharge, SIGNUP_EARLY_BIRD_DISCOUNT } from '@/lib/paymentCurrencyShared';
 
 const verifyAndPaySchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -41,8 +43,6 @@ const razorpay = new Razorpay({
 });
 
 
-
-const EARLY_BIRD_DISCOUNT = true;
 
 export async function POST(request: NextRequest) {
   try {
@@ -152,21 +152,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let amount = billingPeriod === 'month' ? planPrice.month : planPrice.year;
+    const amountUsd = computeSignupUsdCharge({
+      planId,
+      billingPeriod: billingPeriod as 'month' | 'year',
+      priceMonthly: planPrice.month,
+      priceYearly: planPrice.year,
+    });
 
-    // Early bird logic
-    let discountApplied = false;
-    if (EARLY_BIRD_DISCOUNT && planId !== 'free' && billingPeriod === 'year') {
-      amount = amount - planPrice.month;
-      discountApplied = true;
-    } else if (EARLY_BIRD_DISCOUNT && planId !== 'free' && billingPeriod === 'month') {
-      discountApplied = true;
-    }
+    const discountApplied =
+      SIGNUP_EARLY_BIRD_DISCOUNT &&
+      planId !== 'free' &&
+      (billingPeriod === 'year' || billingPeriod === 'month');
 
-    const amountInPaise = Math.round(amount * 100);
+    const checkoutCurrencyPref = (pendingUser.currency || 'USD').toUpperCase();
+    const { amountMinor, currency: rzpCurrency, convertedMajor } = await buildRazorpayOrderFromUsd(
+      amountUsd,
+      checkoutCurrencyPref
+    );
 
     // If Free Trial or $0 plan -> activate immediately
-    if (planId === 'free' || amountInPaise === 0) {
+    if (planId === 'free' || amountMinor === 0) {
       const uniqueId = await generateUniqueNumericId();
 
       const user = new User({
@@ -224,30 +229,37 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    // Otherwise, create Razorpay Order
+    // Otherwise, create Razorpay Order (amount = smallest unit for rzpCurrency)
     const orderOptions: any = {
-      amount: amountInPaise,
-      currency: 'INR',
+      amount: amountMinor,
+      currency: rzpCurrency,
       receipt: `signup_${pendingUser._id.toString()}`.slice(0, 40),
       notes: {
         pendingUserId: pendingUser._id.toString(),
         planId,
         billingPeriod,
         earlyBirdDiscount: discountApplied,
+        priceUSD: String(amountUsd),
+        checkoutCurrency: rzpCurrency,
       },
     };
 
     const razorpayOrder = await razorpay.orders.create(orderOptions);
 
-    // Save order details to pendingUser
     pendingUser.razorpayOrderId = razorpayOrder.id;
+    pendingUser.currency = rzpCurrency;
+    pendingUser.amountUsd = amountUsd;
+    pendingUser.rzpAmountMinor = amountMinor;
+    pendingUser.rzpCurrency = rzpCurrency;
     await pendingUser.save();
 
     return NextResponse.json({
       success: true,
       orderId: razorpayOrder.id,
-      amount: amountInPaise,
-      currency: 'INR',
+      amount: amountMinor,
+      currency: rzpCurrency,
+      amountUsd,
+      convertedMajor,
       key: process.env.RAZORPAY_KEY_ID,
       isFree: false,
     });

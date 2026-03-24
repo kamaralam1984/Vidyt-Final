@@ -5,22 +5,7 @@ import { razorpay } from '@/services/payments/razorpay';
 import { getUserFromRequest } from '@/lib/auth';
 import { isValidPlan } from '@/utils/currency';
 import { getActivePlanPricing, usdAmountForBilling } from '@/lib/planPricing';
-
-/**
- * Fetch exchange rates from our internal proxy (cached, with fallback).
- */
-async function getExchangeRates(): Promise<Record<string, number>> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/public/currency-rates`, {
-      next: { revalidate: 3600 },
-    });
-    const data = await res.json();
-    return data.rates ?? { USD: 1, INR: 83.5 };
-  } catch {
-    return { USD: 1, INR: 83.5 };
-  }
-}
+import { buildRazorpayOrderFromUsd } from '@/lib/paymentCurrency';
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,26 +32,22 @@ export async function POST(request: NextRequest) {
 
     const baseAmount = usdAmountForBilling(planPricing, billingPeriod === 'year' ? 'year' : 'month');
 
-    // ── Currency conversion ──
-    const targetCurrency = (userCurrency || 'INR').toUpperCase();
-    const rates = await getExchangeRates();
-    const rate = rates[targetCurrency] ?? 1;
-    const convertedAmount = Math.round(baseAmount * rate * 100) / 100;
-
-    // Razorpay requires amount in smallest currency unit (e.g. paise for INR, cents for USD)
-    // Most currencies use 2 decimal places; JPY uses 0 — handle by rounding.
-    const amountInSmallestUnit = Math.round(convertedAmount * 100);
+    const targetCurrency = (userCurrency || 'USD').toUpperCase();
+    const { amountMinor, currency: checkoutCurrency, convertedMajor } = await buildRazorpayOrderFromUsd(
+      baseAmount,
+      targetCurrency
+    );
 
     const order = await razorpay.orders.create({
-      amount: amountInSmallestUnit,
-      currency: targetCurrency,
+      amount: amountMinor,
+      currency: checkoutCurrency,
       receipt: `receipt_${Date.now()}`,
       notes: {
         userId: user.id,
         planId,
         billingPeriod: billingPeriod ?? 'month',
         priceUSD: String(baseAmount),
-        userCurrency: targetCurrency,
+        userCurrency: checkoutCurrency,
       },
     });
 
@@ -76,7 +57,7 @@ export async function POST(request: NextRequest) {
       currency: order.currency,
       plan: planId,
       priceUSD: baseAmount,
-      convertedPrice: convertedAmount,
+      convertedPrice: convertedMajor,
       key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error: any) {

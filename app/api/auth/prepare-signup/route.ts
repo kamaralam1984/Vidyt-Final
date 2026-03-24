@@ -41,6 +41,8 @@ const prepareSignupSchema = z.object({
   loginPin: z.string().min(4).max(6).optional().or(z.literal('')),
   planId: z.string().optional(),
   billingPeriod: z.enum(['month', 'year']).optional(),
+  currency: z.string().length(3).optional(),
+  countryCode: z.string().max(32).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -49,7 +51,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validated = prepareSignupSchema.parse(body);
-    const { email, password, name, companyName, phone, loginPin, billingPeriod } = validated;
+    const { email, password, name, companyName, phone, loginPin, billingPeriod, currency, countryCode } =
+      validated;
 
     const selectedPlan = normalizePlan(body.planId);
 
@@ -96,6 +99,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password);
 
     // Save or update PendingUser
+    const checkoutCurrency = (currency || 'USD').toUpperCase();
     const pendingData = {
       email: email.toLowerCase(),
       name,
@@ -105,6 +109,8 @@ export async function POST(request: NextRequest) {
       loginPin: loginPin || undefined,
       planId,
       billingPeriod,
+      currency: checkoutCurrency,
+      countryCode: countryCode || undefined,
       otp,
       otpExpires,
       isEmailVerified: false,

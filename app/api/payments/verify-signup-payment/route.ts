@@ -10,7 +10,12 @@ import { generateUniqueNumericId } from '@/lib/auth';
 import { generateToken } from '@/lib/auth-jwt';
 import { sendPaymentReceiptEmail } from '@/services/email';
 import { PLAN_ROLE_MAP, isValidPlan } from '@/utils/currency';
-import { getActivePlanPricing, usdAmountForBilling } from '@/lib/planPricing';
+import { getActivePlanPricing } from '@/lib/planPricing';
+import {
+  computeSignupUsdCharge,
+  fromRazorpaySmallestUnit,
+  SIGNUP_EARLY_BIRD_DISCOUNT,
+} from '@/lib/paymentCurrencyShared';
 import { z } from 'zod';
 
 const verifySignupPaymentSchema = z.object({
@@ -83,7 +88,6 @@ export async function POST(request: NextRequest) {
       ? pendingUser.planId
       : 'free';
     const billingPeriod = pendingUser.billingPeriod || 'month';
-    const currency = pendingUser.currency || 'USD';
 
     // Calculate subscription end date
     const startDate = new Date();
@@ -99,8 +103,28 @@ export async function POST(request: NextRequest) {
     const role = (PLAN_ROLE_MAP[planId] || 'user') as 'user' | 'manager' | 'admin';
 
     const planSnap = await getActivePlanPricing(planId);
-    const price = planSnap ? usdAmountForBilling(planSnap, billingPeriod === 'year' ? 'year' : 'month') : 0;
-    
+    let priceUsd = 0;
+    if (planSnap) {
+      priceUsd = computeSignupUsdCharge({
+        planId,
+        billingPeriod: billingPeriod === 'year' ? 'year' : 'month',
+        priceMonthly: planSnap.priceMonthly,
+        priceYearly: planSnap.priceYearly,
+      });
+    }
+    if (pendingUser.amountUsd != null && pendingUser.amountUsd >= 0) {
+      priceUsd = pendingUser.amountUsd;
+    }
+
+    const receiptCurrency = pendingUser.rzpCurrency || pendingUser.currency || 'USD';
+    const receiptAmount =
+      pendingUser.rzpAmountMinor != null
+        ? fromRazorpaySmallestUnit(pendingUser.rzpAmountMinor, receiptCurrency)
+        : priceUsd;
+
+    const earlyBirdDiscount =
+      SIGNUP_EARLY_BIRD_DISCOUNT && planId !== 'free' && billingPeriod === 'year';
+
     // Convert to new User account
     const uniqueId = await generateUniqueNumericId();
 
@@ -120,15 +144,15 @@ export async function POST(request: NextRequest) {
         planId,
         planName: planId.charAt(0).toUpperCase() + planId.slice(1),
         billingPeriod,
-        price,
-        currency,
+        price: priceUsd,
+        currency: 'USD',
         status: 'active',
         startDate,
         endDate,
         paymentId: razorpay_payment_id,
         razorpayOrderId: razorpay_order_id,
         razorpayPaymentId: razorpay_payment_id,
-        earlyBirdDiscount: false,
+        earlyBirdDiscount,
       },
       createdAt: new Date(),
     });
@@ -149,8 +173,8 @@ export async function POST(request: NextRequest) {
         customerId: user.email
       },
       billingHistory: [{
-        amount: price,
-        currency,
+        amount: receiptAmount,
+        currency: receiptCurrency,
         date: startDate,
         invoiceId: razorpay_payment_id,
         status: 'paid'
@@ -168,8 +192,8 @@ export async function POST(request: NextRequest) {
         user.name || undefined,
         {
           planName: planId.charAt(0).toUpperCase() + planId.slice(1),
-          amount: price,
-          currency: 'INR',
+          amount: receiptAmount,
+          currency: receiptCurrency,
           billingPeriod: billingPeriod as 'month' | 'year',
           startDate: startDate,
           endDate: endDate,

@@ -291,7 +291,14 @@ export async function sendPaymentReceiptEmail(
   try {
     const startStr = receipt.startDate instanceof Date ? receipt.startDate.toLocaleDateString() : String(receipt.startDate);
     const endStr = receipt.endDate instanceof Date ? receipt.endDate.toLocaleDateString() : String(receipt.endDate);
-    const amountStr = receipt.currency === 'INR' ? `₹${receipt.amount}` : `$${receipt.amount}`;
+    const amountStr =
+      receipt.currency && receipt.currency.length === 3
+        ? new Intl.NumberFormat('en', {
+            style: 'currency',
+            currency: receipt.currency,
+            maximumFractionDigits: 2,
+          }).format(receipt.amount)
+        : `$${receipt.amount}`;
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid #ddd}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI · Payment Receipt</p></div><div class="content"><h2>Thank you for your payment</h2><p>Hello ${userName || 'User'},</p><table><tr><th>Plan</th><td>${receipt.planName}</td></tr><tr><th>Amount</th><td>${amountStr}/${receipt.billingPeriod === 'year' ? 'year' : 'month'}</td></tr><tr><th>Start</th><td>${startStr}</td></tr><tr><th>End</th><td>${endStr}</td></tr>${receipt.paymentId ? `<tr><th>Payment ID</th><td>${receipt.paymentId}</td></tr>` : ''}</table></div><div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div></div></body></html>`;
     const ok = await sendMail({ to: email, subject: `Payment Receipt - ${receipt.planName} - ViralBoost AI`, html, text: `Plan: ${receipt.planName}\nAmount: ${amountStr}\nStart: ${startStr}\nEnd: ${endStr}` });
     if (ok) return true;

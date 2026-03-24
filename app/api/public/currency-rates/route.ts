@@ -1,53 +1,19 @@
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getUsdRates } from '@/lib/currencyRates';
 
-// Simple in-memory cache (lasts for the lifetime of the serverless function warm instance)
-let cachedRates: Record<string, number> | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const now = Date.now();
-
-    // Return cached rates if fresh
-    if (cachedRates && now - cacheTimestamp < CACHE_TTL_MS) {
-      return NextResponse.json({
-        success: true,
-        base: 'USD',
-        rates: cachedRates,
-        cached: true,
-        timestamp: new Date(cacheTimestamp).toISOString(),
-      });
-    }
-
-    // Fetch fresh rates from exchangerate-api
-    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD', {
-      next: { revalidate: 3600 }, // Next.js ISR cache
-    });
-
-    if (!response.ok) {
-      throw new Error(`Exchange rate API responded with ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Cache the result
-    cachedRates = data.rates;
-    cacheTimestamp = now;
-
+    const rates = await getUsdRates();
     return NextResponse.json({
       success: true,
       base: 'USD',
-      rates: data.rates,
-      cached: false,
+      rates,
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Currency rates error:', error.message);
-
-    // Fallback rates (approximate) if the external API fails
+    console.error('Currency rates error:', error?.message);
     const fallbackRates: Record<string, number> = {
       USD: 1,
       INR: 83.5,
@@ -61,12 +27,10 @@ export async function GET(request: NextRequest) {
       BRL: 4.97,
       MXN: 17.1,
     };
-
     return NextResponse.json({
       success: true,
       base: 'USD',
       rates: fallbackRates,
-      cached: false,
       fallback: true,
       timestamp: new Date().toISOString(),
     });
