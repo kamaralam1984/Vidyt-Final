@@ -64,11 +64,12 @@ async function sendMail(options: { to: string; subject: string; html: string; te
       try {
         const { Resend } = await import('resend');
         const resend = new Resend(config.resendApiKey);
-        const { error } = await resend.emails.send({ 
-          from: emailFrom, 
-          to: options.to, 
-          subject: options.subject, 
-          html: options.html 
+        const { error } = await resend.emails.send({
+          from: emailFrom,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          ...(options.text ? { text: options.text } : {}),
         });
         if (!error) {
           console.log('✅ Email sent via Resend:', options.to);
@@ -270,6 +271,14 @@ export async function sendVerificationEmail(
   }
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export interface PaymentReceiptData {
   planName: string;
   amount: number;
@@ -278,10 +287,17 @@ export interface PaymentReceiptData {
   startDate: Date;
   endDate: Date;
   paymentId?: string;
+  /** Account login reference (signup / dashboard) */
+  uniqueId?: string;
+  razorpayOrderId?: string;
+  /** Bill-to email (usually same as recipient) */
+  userEmail?: string;
+  /** Plan amount in USD for reference line on the bill */
+  amountUsd?: number;
 }
 
 /**
- * Send payment receipt email after successful subscription payment
+ * Send payment receipt / bill confirmation after successful subscription payment
  */
 export async function sendPaymentReceiptEmail(
   email: string,
@@ -291,6 +307,7 @@ export async function sendPaymentReceiptEmail(
   try {
     const startStr = receipt.startDate instanceof Date ? receipt.startDate.toLocaleDateString() : String(receipt.startDate);
     const endStr = receipt.endDate instanceof Date ? receipt.endDate.toLocaleDateString() : String(receipt.endDate);
+    const paidAtStr = new Date().toLocaleString();
     const amountStr =
       receipt.currency && receipt.currency.length === 3
         ? new Intl.NumberFormat('en', {
@@ -299,10 +316,111 @@ export async function sendPaymentReceiptEmail(
             maximumFractionDigits: 2,
           }).format(receipt.amount)
         : `$${receipt.amount}`;
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid #ddd}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI · Payment Receipt</p></div><div class="content"><h2>Thank you for your payment</h2><p>Hello ${userName || 'User'},</p><table><tr><th>Plan</th><td>${receipt.planName}</td></tr><tr><th>Amount</th><td>${amountStr}/${receipt.billingPeriod === 'year' ? 'year' : 'month'}</td></tr><tr><th>Start</th><td>${startStr}</td></tr><tr><th>End</th><td>${endStr}</td></tr>${receipt.paymentId ? `<tr><th>Payment ID</th><td>${receipt.paymentId}</td></tr>` : ''}</table></div><div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div></div></body></html>`;
-    const ok = await sendMail({ to: email, subject: `Payment Receipt - ${receipt.planName} - ViralBoost AI`, html, text: `Plan: ${receipt.planName}\nAmount: ${amountStr}\nStart: ${startStr}\nEnd: ${endStr}` });
+    const usdRef =
+      receipt.amountUsd != null && Number.isFinite(receipt.amountUsd)
+        ? new Intl.NumberFormat('en', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(
+            receipt.amountUsd
+          )
+        : null;
+    const periodLabel = receipt.billingPeriod === 'year' ? 'Yearly' : 'Monthly';
+    const lineDescription = `${escapeHtml(receipt.planName)} plan (${periodLabel})`;
+    const receiptNo = receipt.paymentId ? escapeHtml(receipt.paymentId) : '—';
+    const safeName = escapeHtml(userName || 'Customer');
+    const safeBillEmail = escapeHtml(receipt.userEmail || email);
+    const safeUnique = receipt.uniqueId ? escapeHtml(String(receipt.uniqueId)) : '';
+    const safeOrderId = receipt.razorpayOrderId ? escapeHtml(receipt.razorpayOrderId) : '';
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f0f0f0;margin:0;padding:24px;color:#111}
+.wrap{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.hdr{background:#0F0F0F;color:#fff;padding:24px;text-align:center}
+.badge{display:inline-block;background:#16a34a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.06em;padding:6px 14px;border-radius:999px;margin-top:12px}
+.body{padding:28px}
+h1{font-size:20px;margin:0 0 8px}
+.sub{color:#555;font-size:14px;margin:0 0 24px}
+.box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:20px}
+.box h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;margin:0 0 10px}
+.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5e7eb;font-size:14px}
+.row:last-child{border-bottom:none}
+.row .k{color:#6b7280}
+.tot{font-size:18px;font-weight:700;padding-top:12px;margin-top:8px;border-top:2px solid #111}
+.foot{text-align:center;padding:16px 24px 24px;font-size:12px;color:#888}
+</style></head><body>
+<div class="wrap">
+  <div class="hdr">${getEmailLogoHtml()}
+    <p style="margin:12px 0 0;font-size:15px;opacity:.95">ViralBoost AI</p>
+    <div class="badge">PAID — Payment confirmed</div>
+  </div>
+  <div class="body">
+    <h1>Bill &amp; payment confirmation</h1>
+    <p class="sub">Thank you, ${safeName}. This email is your official receipt for the payment below.</p>
+    <div class="box">
+      <h2>Receipt details</h2>
+      <div class="row"><span class="k">Receipt #</span><span>${receiptNo}</span></div>
+      <div class="row"><span class="k">Date &amp; time</span><span>${escapeHtml(paidAtStr)}</span></div>
+      <div class="row"><span class="k">Bill to</span><span>${safeBillEmail}</span></div>
+      ${safeUnique ? `<div class="row"><span class="k">Your Unique ID</span><span><strong>${safeUnique}</strong> (save for PIN login)</span></div>` : ''}
+    </div>
+    <div class="box">
+      <h2>Charges</h2>
+      <div class="row"><span>${lineDescription}</span><span>${amountStr}</span></div>
+      ${usdRef ? `<div class="row"><span class="k">Plan reference (USD)</span><span>${usdRef}</span></div>` : ''}
+      <div class="row tot"><span>Total paid</span><span>${amountStr}</span></div>
+    </div>
+    <div class="box">
+      <h2>Subscription period</h2>
+      <div class="row"><span class="k">Starts</span><span>${escapeHtml(startStr)}</span></div>
+      <div class="row"><span class="k">Renews / ends</span><span>${escapeHtml(endStr)}</span></div>
+    </div>
+    ${
+      safeOrderId || receipt.paymentId
+        ? `<div class="box"><h2>Payment reference (Razorpay)</h2>
+      ${safeOrderId ? `<div class="row"><span class="k">Order ID</span><span style="word-break:break-all">${safeOrderId}</span></div>` : ''}
+      ${receipt.paymentId ? `<div class="row"><span class="k">Payment ID</span><span style="word-break:break-all">${escapeHtml(receipt.paymentId)}</span></div>` : ''}
+    </div>`
+        : ''
+    }
+    <p style="font-size:13px;color:#6b7280;margin:0">Keep this email for your records. For billing questions, reply to this thread or contact support from your dashboard.</p>
+  </div>
+  <div class="foot">© ${new Date().getFullYear()} ViralBoost AI · Secure payment processed via Razorpay</div>
+</div>
+</body></html>`;
+
+    const textLines = [
+      'ViralBoost AI — Payment confirmed (bill / receipt)',
+      '',
+      `Receipt #: ${receipt.paymentId || '—'}`,
+      `Paid at: ${paidAtStr}`,
+      `Bill to: ${receipt.userEmail || email}`,
+      ...(receipt.uniqueId ? [`Your Unique ID: ${receipt.uniqueId}`] : []),
+      '',
+      `Plan: ${receipt.planName} (${periodLabel})`,
+      `Amount paid: ${amountStr}`,
+      ...(usdRef ? [`Plan reference (USD): ${usdRef}`] : []),
+      '',
+      `Subscription start: ${startStr}`,
+      `Subscription end: ${endStr}`,
+      ...(receipt.razorpayOrderId ? [`Razorpay Order: ${receipt.razorpayOrderId}`] : []),
+      ...(receipt.paymentId ? [`Razorpay Payment: ${receipt.paymentId}`] : []),
+      '',
+      '© ViralBoost AI',
+    ];
+    const text = textLines.join('\n');
+
+    const ok = await sendMail({
+      to: email,
+      subject: `Payment confirmed — Your ViralBoost AI bill & receipt [${receipt.planName}]`,
+      html,
+      text,
+    });
     if (ok) return true;
-    if (process.env.NODE_ENV === 'development') { console.log('📧 Receipt (no email):', email); return true; }
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📧 Receipt (no email):', email);
+      return true;
+    }
     return false;
   } catch (error) {
     console.error('❌ Payment receipt email error:', error);

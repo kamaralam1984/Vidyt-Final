@@ -187,19 +187,19 @@ export async function POST(request: NextRequest) {
     // Send payment receipt
     if (user.email) {
       // Background email send
-      sendPaymentReceiptEmail(
-        user.email,
-        user.name || undefined,
-        {
-          planName: planId.charAt(0).toUpperCase() + planId.slice(1),
-          amount: receiptAmount,
-          currency: receiptCurrency,
-          billingPeriod: billingPeriod as 'month' | 'year',
-          startDate: startDate,
-          endDate: endDate,
-          paymentId: razorpay_payment_id,
-        }
-      ).catch(err => console.error("Receipt email error:", err));
+      sendPaymentReceiptEmail(user.email, user.name || undefined, {
+        planName: planId.charAt(0).toUpperCase() + planId.slice(1),
+        amount: receiptAmount,
+        currency: receiptCurrency,
+        billingPeriod: billingPeriod as 'month' | 'year',
+        startDate,
+        endDate,
+        paymentId: razorpay_payment_id,
+        uniqueId: String(uniqueId),
+        razorpayOrderId: razorpay_order_id,
+        userEmail: user.email,
+        amountUsd: priceUsd,
+      }).catch((err) => console.error('Receipt email error:', err));
     }
 
     const authUser = {
