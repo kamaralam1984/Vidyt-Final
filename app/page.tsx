@@ -28,70 +28,16 @@ import { useLocale } from '@/context/LocaleContext';
 import { useTranslations } from '@/context/translations';
 import { useUser } from '@/hooks/useUser';
 
-const PRICING_PLANS = [
-  {
-    name: 'Free',
-    labelKey: 'pricing.plan.free.name',
-    priceMonth: 0,
-    priceYear: 0,
-    features: [
-      'pricing.plan.free.f1',
-      'pricing.plan.free.f2',
-      'pricing.plan.free.f3',
-      'pricing.plan.free.f4',
-      'pricing.plan.free.f5',
-      'pricing.plan.free.f6',
-    ],
-  },
-  {
-    name: 'Pro',
-    labelKey: 'pricing.plan.pro.name',
-    priceMonth: 5,
-    priceYear: 50,
-    popular: true,
-    features: [
-      'pricing.plan.pro.f1',
-      'pricing.plan.pro.f2',
-      'pricing.plan.pro.f3',
-      'pricing.plan.pro.f4',
-      'pricing.plan.pro.f5',
-      'pricing.plan.pro.f6',
-      'pricing.plan.pro.f7',
-      'pricing.plan.pro.f8',
-      'pricing.plan.pro.f9',
-    ],
-  },
-  {
-    name: 'Enterprise',
-    labelKey: 'pricing.plan.enterprise.name',
-    priceMonth: 12,
-    priceYear: 120,
-    features: [
-      'pricing.plan.enterprise.f1',
-      'pricing.plan.enterprise.f2',
-      'pricing.plan.enterprise.f3',
-      'pricing.plan.enterprise.f4',
-      'pricing.plan.enterprise.f5',
-      'pricing.plan.enterprise.f6',
-      'pricing.plan.enterprise.f7',
-      'pricing.plan.enterprise.f8',
-      'pricing.plan.enterprise.f9',
-      'pricing.plan.enterprise.f10',
-    ],
-  },
-] as const;
-
 type HomeFeatureKey = keyof PlanFeatures;
 
-type MarketingPlan = (typeof PRICING_PLANS)[number] & {
+/** Pricing cards: amounts and copy come from Manage Plans via /api/subscriptions/plans */
+type MarketingPlan = {
+  planId: string;
+  name: string;
   popular?: boolean;
-  originalPriceMonth?: number;
-  originalPriceYear?: number;
-  discount?: {
-    percentage: number;
-    label?: string;
-    endsAt: string;
-  };
+  priceMonth: number;
+  priceYear: number;
+  features: string[];
 };
 
 const HOME_FEATURES: {
@@ -156,9 +102,7 @@ export default function HomePage() {
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
   const [planId, setPlanId] = useState<PlanId | null>(null);
   const [planLoaded, setPlanLoaded] = useState(false);
-  const [marketingPlans, setMarketingPlans] = useState<MarketingPlan[]>(
-    () => PRICING_PLANS.map((p) => ({ ...p }))
-  );
+  const [marketingPlans, setMarketingPlans] = useState<MarketingPlan[]>([]);
   const { locale } = useLocale();
   const { t } = useTranslations();
   const { authenticated, loading } = useUser();
@@ -184,38 +128,30 @@ export default function HomePage() {
       })
       .finally(() => setPlanLoaded(true));
 
-    // Fetch active discounts for marketing pricing preview
     axios
-      .get('/api/subscriptions/plans?withDiscounts=1')
+      .get('/api/subscriptions/plans')
       .then((res) => {
         const apiPlans = res.data?.plans || [];
         setMarketingPlans(
           apiPlans.map((p: any) => {
-            const id = p.id || p.dbId;
-            const isPro = id === 'pro';
-            const hasDiscount = p.discount && p.discount.percentage > 0;
-            const factor = hasDiscount ? (1 - p.discount.percentage / 100) : 1;
-            const originalPriceMonth = p.price;
-            const originalPriceYear = p.price * 10;
-            const priceMonth = Math.round(originalPriceMonth * factor * 100) / 100;
-            const priceYear = Math.round(originalPriceYear * factor * 100) / 100;
-
+            const id = String(p.id || p.dbId || '');
+            const priceMonth = Number(p.price) || 0;
+            const priceYear =
+              typeof p.priceYearly === 'number' && p.priceYearly > 0
+                ? p.priceYearly
+                : priceMonth * 10;
             return {
+              planId: id,
               name: p.name,
-              popular: isPro,
+              popular: id === 'pro',
               priceMonth,
               priceYear,
-              originalPriceMonth,
-              originalPriceYear,
-              features: p.features || [],
-              discount: p.discount ? { percentage: p.discount.percentage, label: p.discount.label, endsAt: p.discount.endsAt } : undefined,
+              features: Array.isArray(p.features) ? p.features : [],
             };
           })
         );
       })
-      .catch(() => {
-        // ignore failure – keep default prices
-      });
+      .catch(() => setMarketingPlans([]));
   }, []);
 
   const planFeatures = planId ? getPlanFeatures(planId) : null;
@@ -407,7 +343,10 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {marketingPlans.length === 0 ? (
+            <p className="text-center text-[#AAAAAA] py-12">Loading plans…</p>
+          ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {marketingPlans.map((plan, index) => {
               const basePrice = billingPeriod === 'year' ? plan.priceYear : plan.priceMonth;
               const isFree = plan.priceMonth === 0 && plan.priceYear === 0;
@@ -433,7 +372,7 @@ export default function HomePage() {
               const periodLabel = billingPeriod === 'year' ? '/year' : '/month';
               return (
                 <motion.div
-                  key={plan.name}
+                  key={plan.planId || plan.name}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -451,36 +390,11 @@ export default function HomePage() {
                   </h3>
                   <div className="mb-2 space-y-1">
                     <div className="flex items-baseline gap-2">
-                      {plan.discount && plan.discount.percentage > 0 ? (
-                        <>
-                          <span className="text-xl line-through text-[#777777]">
-                            {billingPeriod === 'year'
-                              ? `$${(plan as any).originalPriceYear}${periodLabel}`
-                              : `$${(plan as any).originalPriceMonth}${periodLabel}`}
-                          </span>
-                          <span className="text-4xl font-bold text-white">
-                            {priceLabel}
-                            <span className="text-lg text-[#AAAAAA]">{periodLabel}</span>
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-4xl font-bold text-white">
-                          {priceLabel}
-                          <span className="text-lg text-[#AAAAAA]">{periodLabel}</span>
-                        </span>
-                      )}
+                      <span className="text-4xl font-bold text-white">
+                        {priceLabel}
+                        <span className="text-lg text-[#AAAAAA]">{periodLabel}</span>
+                      </span>
                     </div>
-                    {plan.discount && plan.discount.percentage > 0 && (
-                      <>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FF0000]/15 text-[#FF6B6B] text-xs font-semibold">
-                          {plan.discount.label || t('pricing.limitedOffer')} · {plan.discount.percentage}% OFF
-                        </span>
-                        <div className="text-[10px] text-[#888888]">
-                          {t('pricing.validTill')}{' '}
-                          {new Date(plan.discount.endsAt as any).toLocaleDateString()}
-                        </div>
-                      </>
-                    )}
                   </div>
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, i) => {
@@ -506,6 +420,7 @@ export default function HomePage() {
               );
             })}
           </div>
+          )}
 
           <motion.div
             initial={{ opacity: 0 }}

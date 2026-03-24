@@ -27,6 +27,8 @@ interface Plan {
   id: string;
   name: string;
   price: number;
+  /** USD yearly total from Manage Plans (10× monthly or custom annual price) */
+  priceYear: number;
   period: 'month' | 'year';
   description: string;
   features: string[];
@@ -39,12 +41,6 @@ interface Plan {
     storage: string;
     support: string;
   };
-  discount?: {
-    percentage: number;
-    label?: string;
-    startsAt: string;
-    endsAt: string;
-  };
 }
 
 const PLAN_UI_PRESETS: Record<string, any> = {
@@ -56,6 +52,16 @@ const PLAN_UI_PRESETS: Record<string, any> = {
       analyses: 'Basic',
       storage: '—',
       support: 'Community',
+    },
+  },
+  starter: {
+    icon: Rocket,
+    color: '#3b82f6',
+    limits: {
+      videos: '10/day',
+      analyses: 'Standard',
+      storage: '—',
+      support: 'Email',
     },
   },
   pro: {
@@ -113,7 +119,7 @@ export default function PricingPage() {
     const fetchPlans = async () => {
       try {
         setPlansLoading(true);
-        const res = await axios.get('/api/subscriptions/plans?withDiscounts=1');
+        const res = await axios.get('/api/subscriptions/plans');
         const apiPlans = res.data?.plans || [];
         
         const formattedPlans = apiPlans.map((p: any) => {
@@ -127,20 +133,23 @@ export default function PricingPage() {
               support: 'Priority',
             }
           };
+          const price = Number(p.price) || 0;
+          const priceYear =
+            typeof p.priceYearly === 'number' && p.priceYearly > 0 ? p.priceYearly : price * 10;
 
           return {
             id: p.id || p.dbId,
             dbId: p.dbId,
             name: p.name,
-            price: p.price,
+            price,
+            priceYear,
             period: p.interval || 'month',
             description: p.description || 'Custom Plan',
             features: p.features || [],
-            popular: preset.popular || false,
+            popular: p.id === 'pro' || preset.popular || false,
             icon: preset.icon,
             color: preset.color,
             limits: preset.limits,
-            discount: p.discount,
           };
         });
 
@@ -246,18 +255,12 @@ export default function PricingPage() {
 
   const getPrice = (plan: Plan) => {
     if (plan.price === 0) return 'Free';
-    const base = billingPeriod === 'year' ? plan.price * 10 : plan.price;
-    const hasDiscount = plan.discount && plan.discount.percentage > 0;
-    const rawDiscounted = hasDiscount
-      ? base - (base * plan.discount!.percentage) / 100
-      : base;
-    const discounted = Math.max(0, Math.round(rawDiscounted * 100) / 100); // up to 2 decimals
+    const base = billingPeriod === 'year' ? plan.priceYear : plan.price;
     const suffix = billingPeriod === 'year' ? '/year' : '/month';
 
     const format = (value: number) =>
       Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2).replace(/\.00$/, '');
 
-    // Currency conversion for display only
     const rateMap: Record<string, number> = {
       USD: 1,
       INR: 83,
@@ -266,21 +269,13 @@ export default function PricingPage() {
     };
     const rate = rateMap[locale.currency] ?? 1;
     const baseConverted = Math.round(base * rate * 100) / 100;
-    const discConverted = Math.round(discounted * rate * 100) / 100;
-
-    if (!hasDiscount) {
-      return `${locale.currencySymbol}${format(baseConverted)}${suffix}`;
-    }
-
-    // When discount is active, we show only discounted price here;
-    // old price is rendered separately with strike-through.
-    return `${locale.currencySymbol}${format(discConverted)}${suffix}`;
+    return `${locale.currencySymbol}${format(baseConverted)}${suffix}`;
   };
 
   const getSavings = (plan: Plan) => {
     if (plan.price === 0 || billingPeriod === 'month') return null;
     const monthlyPrice = plan.price;
-    const yearlyPrice = plan.price * 10;
+    const yearlyPrice = plan.priceYear;
     const savings = (monthlyPrice * 12 - yearlyPrice) / (monthlyPrice * 12);
     return Math.round(savings * 100);
   };
@@ -400,40 +395,15 @@ export default function PricingPage() {
                         <p className="text-[#AAAAAA] text-sm mb-4">{plan.description}</p>
                         <div className="mb-2 space-y-1">
                           <div className="flex items-baseline justify-center gap-2">
-                            {plan.discount && plan.discount.percentage > 0 ? (
-                              <>
-                                <span className="text-xl line-through text-[#777777]">
-                                  {billingPeriod === 'year'
-                                    ? `${locale.currencySymbol}${(plan.price * 10 * (locale.currency === 'USD' ? 1 : (locale.currency === 'INR' ? 83 : locale.currency === 'EUR' ? 0.92 : 0.79))).toFixed(0)}${billingSuffix}`
-                                    : `${locale.currencySymbol}${(plan.price * (locale.currency === 'USD' ? 1 : (locale.currency === 'INR' ? 83 : locale.currency === 'EUR' ? 0.92 : 0.79))).toFixed(0)}${billingSuffix}`}
-                                </span>
-                                <span className="text-4xl font-bold text-white">
-                                  {getPrice(plan)}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-4xl font-bold text-white">
-                                {getPrice(plan)}
-                              </span>
-                            )}
+                            <span className="text-4xl font-bold text-white">
+                              {getPrice(plan)}
+                            </span>
                           </div>
-                          {plan.discount && plan.discount.percentage > 0 && (
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FF0000]/15 text-[#FF6B6B] text-xs font-semibold">
-                                {plan.discount.label || 'Limited time offer'} ·{' '}
-                                {plan.discount.percentage}% OFF
-                              </span>
-                              <span className="text-[10px] text-[#888888]">
-                                Valid till{' '}
-                                {new Date(plan.discount.endsAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                          {savings && !plan.discount && (
+                          {savings ? (
                             <span className="ml-2 text-sm text-[#10b981]">
                               Save {savings}%
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
 

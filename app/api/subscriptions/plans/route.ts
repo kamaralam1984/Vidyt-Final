@@ -5,7 +5,7 @@ import { SUBSCRIPTION_PLANS, getSubscriptionLimits } from '@/services/payments/s
 import connectDB from '@/lib/mongodb';
 import PlanDiscount from '@/models/PlanDiscount';
 import Plan from '@/models/Plan';
-import { PLAN_PRICES_USD } from '@/utils/currency';
+import { yearlyUsdFromMonthly } from '@/lib/planPricing';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,21 +15,23 @@ export async function GET(request: NextRequest) {
     await connectDB();
     
     // Fetch active plans from the database
-    const dbPlans = await Plan.find({ isActive: true }).sort({ createdAt: 1 }).lean();
+    const dbPlans = await Plan.find({ isActive: true }).sort({ priceMonthly: 1 }).lean();
     
     // Format the dbPlans into the structure expected by the frontend
     const plans = dbPlans.map((p: any) => {
       // If there's a matching hardcoded plan (like free, pro, enterprise), grab its limits
       const basePlan = SUBSCRIPTION_PLANS[p.planId];
+      const priceMonthly = p.priceMonthly;
+      const priceYearly = yearlyUsdFromMonthly(priceMonthly, p.priceYearly);
       
       return {
         id: p.planId,
         dbId: String(p._id),
         name: p.name,
         label: (p as any).label || p.name,
-        price: p.priceMonthly,
-        priceUSD: PLAN_PRICES_USD[p.planId] ?? p.priceMonthly, // authoritative USD price
-        priceYearly: p.priceYearly,
+        price: priceMonthly,
+        priceUSD: priceMonthly,
+        priceYearly,
         currency: p.currency || 'USD',
         interval: p.billingPeriod === 'year' ? 'year' : 'month',
         features: p.features || [],

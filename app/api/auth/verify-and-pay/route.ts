@@ -135,14 +135,13 @@ export async function POST(request: NextRequest) {
     if (planId === 'free') {
       planPrice = { month: 0, year: 0 };
     } else {
-      // Find plan by dbId or _id based on what frontend sent
-      try {
-        const dbPlan = await Plan.findOne({ $or: [{ dbId: String(planId) }, { _id: String(planId).match(/^[0-9a-fA-F]{24}$/) ? planId : null }] });
-        if (dbPlan) {
-          planPrice = { month: dbPlan.price, year: dbPlan.price * 10 };
-        }
-      } catch (err) {
-        console.error('Failed to parse plan lookup:', err);
+      const dbJob = await Plan.findOne({ planId, isActive: true }).lean();
+      const dbPlan = dbJob as { priceMonthly?: number; priceYearly?: number | null } | null;
+      if (dbPlan && typeof dbPlan.priceMonthly === 'number') {
+        const month = dbPlan.priceMonthly;
+        const year =
+          dbPlan.priceYearly != null && dbPlan.priceYearly > 0 ? dbPlan.priceYearly : month * 10;
+        planPrice = { month, year };
       }
     }
 

@@ -6,7 +6,8 @@ import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import Payment from '@/models/Payment';
 import { getUserFromRequest } from '@/lib/auth';
-import { PLAN_PRICES_USD, PLAN_ROLE_MAP, isValidPlan } from '@/utils/currency';
+import { PLAN_ROLE_MAP, isValidPlan } from '@/utils/currency';
+import { getActivePlanPricing, usdAmountForBilling } from '@/lib/planPricing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,8 +43,14 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    const planMeta = await getActivePlanPricing(plan);
+    const recordedPriceUsd =
+      planMeta && plan !== 'free'
+        ? usdAmountForBilling(planMeta, billingPeriod === 'year' ? 'year' : 'month')
+        : 0;
+
     // ── Fetch plan label from DB (graceful fallback) ──
-    let planName = plan.charAt(0).toUpperCase() + plan.slice(1);
+    let planName = planMeta?.label || plan.charAt(0).toUpperCase() + plan.slice(1);
     try {
       const PlanModel = (await import('@/models/Plan')).default;
       const dbPlan = await PlanModel.findOne({ planId: plan });
@@ -74,7 +81,7 @@ export async function POST(request: NextRequest) {
           endDate: expiryDate,
           razorpayOrderId: razorpay_order_id,
           razorpayPaymentId: razorpay_payment_id,
-          price: PLAN_PRICES_USD[plan] ?? 0,
+          price: recordedPriceUsd,
           currency: 'USD',
         },
         usageStats: {
@@ -99,7 +106,7 @@ export async function POST(request: NextRequest) {
           paymentId: razorpay_payment_id,
           plan,
           billingPeriod: billingPeriod === 'year' ? 'year' : 'month',
-          amount: PLAN_PRICES_USD[plan] ?? 0,
+          amount: recordedPriceUsd,
           currency: 'USD',
           status: 'success',
           gateway: 'razorpay',

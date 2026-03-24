@@ -100,7 +100,7 @@ function AuthPageContent() {
       else if (mode === 'signup') setIsLogin(false);
     }
 
-    axios.get('/api/subscriptions/plans?withDiscounts=1').then(res => {
+    axios.get('/api/subscriptions/plans').then(res => {
       const plans = res.data?.plans || [];
       const payPlans = plans.filter((p: any) => p.price > 0).map((p: any) => {
          let rawId = (p.id || p.dbId || p.name).toLowerCase();

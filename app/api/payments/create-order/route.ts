@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { razorpay } from '@/services/payments/razorpay';
-import connectDB from '@/lib/mongodb';
 import { getUserFromRequest } from '@/lib/auth';
-import { PLAN_PRICES_USD, isValidPlan } from '@/utils/currency';
+import { isValidPlan } from '@/utils/currency';
+import { getActivePlanPricing, usdAmountForBilling } from '@/lib/planPricing';
 
 /**
  * Fetch exchange rates from our internal proxy (cached, with fallback).
@@ -40,14 +40,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan selected for payment' }, { status: 400 });
     }
 
-    // ── Get USD base price ──
-    const priceUSD = PLAN_PRICES_USD[planId];
-    if (priceUSD === undefined) {
+    const planPricing = await getActivePlanPricing(planId);
+    if (!planPricing) {
       return NextResponse.json({ error: 'Plan pricing not found' }, { status: 404 });
     }
 
-    // Annual billing: 10× monthly (2 months free)
-    const baseAmount = billingPeriod === 'year' ? priceUSD * 10 : priceUSD;
+    const baseAmount = usdAmountForBilling(planPricing, billingPeriod === 'year' ? 'year' : 'month');
 
     // ── Currency conversion ──
     const targetCurrency = (userCurrency || 'INR').toUpperCase();
@@ -58,8 +56,6 @@ export async function POST(request: NextRequest) {
     // Razorpay requires amount in smallest currency unit (e.g. paise for INR, cents for USD)
     // Most currencies use 2 decimal places; JPY uses 0 — handle by rounding.
     const amountInSmallestUnit = Math.round(convertedAmount * 100);
-
-    await connectDB();
 
     const order = await razorpay.orders.create({
       amount: amountInSmallestUnit,

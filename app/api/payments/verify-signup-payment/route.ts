@@ -9,7 +9,8 @@ import Subscription from '@/models/Subscription';
 import { generateUniqueNumericId } from '@/lib/auth';
 import { generateToken } from '@/lib/auth-jwt';
 import { sendPaymentReceiptEmail } from '@/services/email';
-import { PLAN_PRICES_USD, PLAN_ROLE_MAP, isValidPlan } from '@/utils/currency';
+import { PLAN_ROLE_MAP, isValidPlan } from '@/utils/currency';
+import { getActivePlanPricing, usdAmountForBilling } from '@/lib/planPricing';
 import { z } from 'zod';
 
 const verifySignupPaymentSchema = z.object({
@@ -97,9 +98,8 @@ export async function POST(request: NextRequest) {
     // Role mapping
     const role = (PLAN_ROLE_MAP[planId] || 'user') as 'user' | 'manager' | 'admin';
 
-    // Pricing (USD base)
-    const basePriceUSD = PLAN_PRICES_USD[planId] ?? 0;
-    const price = billingPeriod === 'year' ? basePriceUSD * 10 : basePriceUSD;
+    const planSnap = await getActivePlanPricing(planId);
+    const price = planSnap ? usdAmountForBilling(planSnap, billingPeriod === 'year' ? 'year' : 'month') : 0;
     
     // Convert to new User account
     const uniqueId = await generateUniqueNumericId();
