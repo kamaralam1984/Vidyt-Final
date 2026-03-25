@@ -91,7 +91,9 @@ export async function POST(request: Request) {
 
     // EventId: deterministic UUIDv5 from stable fields + timestamp rounded to seconds.
     // This makes retries/concurrent duplicates idempotent.
-    const TRACKING_EVENT_NS = '00000000-0000-0000-0000-000000000001';
+    // Must be a UUID that passes `uuid` package validation (v5 namespace). The previous
+    // `...000001` value is not valid per strict RFC checks and caused "Invalid UUID" at runtime.
+    const TRACKING_EVENT_NS = '00000000-0000-0000-0000-000000000000';
     const eventId = uuidv5(
       [
         decoded.id,
