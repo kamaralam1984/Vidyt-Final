@@ -16,6 +16,7 @@ export async function GET(request: Request) {
 
     const paymentRows = await Payment.find({}, { amount: 1, status: 1, createdAt: 1 })
       .lean();
+    const hasPaymentData = paymentRows.length > 0;
     const revenueInputs = paymentRows.map((row: any) => ({
       amount: Number(row.amount || 0),
       status: String(row.status || ''),
@@ -56,6 +57,10 @@ export async function GET(request: Request) {
       .lean();
 
     return NextResponse.json({
+      // True when MongoDB has at least one Payment row (any status).
+      hasPaymentData,
+      // Current calendar month total from successful payments (MTD) — use for dashboard KPIs.
+      monthToDateRevenue: revenueTotals.monthly,
       monthlyRevenue: monthlyRevenue.map((m: any) => ({
         month: m._id,
         revenue: m.total,

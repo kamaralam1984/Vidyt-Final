@@ -71,6 +71,16 @@ export default function RevenuePage() {
         </div>
       )}
 
+      {!error && data && data.hasPaymentData === false && (
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
+          <p className="font-medium text-amber-50">Abhi tak koi payment record nahi hai</p>
+          <p className="mt-1 text-xs text-amber-100/70">
+            Ye page sirf <strong className="text-amber-50">MongoDB ke Payment</strong> documents se revenue dikhata hai (Razorpay verify / webhook ke baad save hote hain).
+            Local testing ke liye ek successful payment complete karein — phir yahan numbers aur charts dikhenge.
+          </p>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <RevenueMetricCard
@@ -82,9 +92,9 @@ export default function RevenuePage() {
           gradient="from-emerald-600 to-emerald-800"
         />
         <RevenueMetricCard
-          title="Monthly Revenue"
-          value={fmt(data?.monthlyRevenue?.[Math.max((data?.monthlyRevenue?.length || 1) - 1, 0)]?.revenue || 0)}
-          subtitle="curr month"
+          title="Month-to-date revenue"
+          value={fmt(typeof data?.monthToDateRevenue === 'number' ? data.monthToDateRevenue : 0)}
+          subtitle="successful payments, this month"
           icon={DollarSign}
           gradient="from-violet-600 to-violet-800"
         />
