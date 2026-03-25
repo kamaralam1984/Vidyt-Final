@@ -28,7 +28,10 @@ npx cap add android
 # optional: npx cap add ios   (macOS + Xcode only)
 npx cap sync
 npx cap open android
+# or from this folder: npm run mobile:android   (same as open:android)
 ```
+
+From **repo root** (parent folder), use: `npm run mobile:android` (runs `cd mobile && npx cap open android`).
 
 Build/run the project from Android Studio. For **Play Store**, use Android Studio: **Build → Generate Signed App Bundle**.
 
