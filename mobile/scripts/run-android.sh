@@ -10,7 +10,9 @@ ensure_jdk_with_jlink() {
     export PATH="${JAVA_HOME}/bin:${PATH}"
     return 0
   fi
+  # Android Studio (Snap) ships a full JDK with jlink — no apt install needed
   for candidate in \
+    /snap/android-studio/current/jbr \
     /usr/lib/jvm/java-17-openjdk-amd64 \
     /usr/lib/jvm/java-21-openjdk-amd64 \
     /usr/lib/jvm/java-1.17.0-openjdk-amd64 \

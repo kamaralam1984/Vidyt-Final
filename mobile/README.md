@@ -31,14 +31,17 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools
 
 ### Build error: `jlink ... does not exist`
 
-Gradle ko **poora JDK** chahiye. Agar sirf **JRE** hai (`openjdk-21-jre`) to yeh error aata hai.
+`run:android` pehle **Android Studio Snap** ka bundled JDK use karta hai:  
+`/snap/android-studio/current/jbr` (jisme `jlink` hota hai).
+
+Agar phir bhi error ho, poora JDK lagao:
 
 ```bash
 sudo apt install openjdk-17-jdk
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ```
 
-Phir `npm run run:android` dubara. Optional: `mobile/android/gradle.properties` mein uncomment karke `org.gradle.java.home=...` set karo.
+Optional: `mobile/android/gradle.properties` mein `org.gradle.java.home=...`.
 
 ## One-time setup
 
