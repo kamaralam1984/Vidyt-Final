@@ -29,6 +29,17 @@ export ANDROID_HOME=$HOME/Android/Sdk
 export PATH=$PATH:$ANDROID_HOME/platform-tools
 ```
 
+### Build error: `jlink ... does not exist`
+
+Gradle ko **poora JDK** chahiye. Agar sirf **JRE** hai (`openjdk-21-jre`) to yeh error aata hai.
+
+```bash
+sudo apt install openjdk-17-jdk
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+```
+
+Phir `npm run run:android` dubara. Optional: `mobile/android/gradle.properties` mein uncomment karke `org.gradle.java.home=...` set karo.
+
 ## One-time setup
 
 ```bash

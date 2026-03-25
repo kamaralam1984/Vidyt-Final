@@ -3,6 +3,35 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# Android Gradle needs a full JDK (includes jlink). JRE-only installs fail with:
+#   jlink executable .../bin/jlink does not exist
+ensure_jdk_with_jlink() {
+  if [[ -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/jlink" ]]; then
+    export PATH="${JAVA_HOME}/bin:${PATH}"
+    return 0
+  fi
+  for candidate in \
+    /usr/lib/jvm/java-17-openjdk-amd64 \
+    /usr/lib/jvm/java-21-openjdk-amd64 \
+    /usr/lib/jvm/java-1.17.0-openjdk-amd64 \
+    /usr/lib/jvm/java-1.21.0-openjdk-amd64; do
+    if [[ -x "${candidate}/bin/jlink" ]]; then
+      export JAVA_HOME="$candidate"
+      export PATH="${JAVA_HOME}/bin:${PATH}"
+      return 0
+    fi
+  done
+  echo "Gradle needs a full JDK (with \`jlink\`). OpenJDK JRE-only packages do not include it."
+  echo ""
+  echo "Ubuntu / Debian:"
+  echo "  sudo apt install openjdk-17-jdk"
+  echo "  export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
+  echo ""
+  echo "Optional: add to ~/.bashrc, or set org.gradle.java.home in mobile/android/gradle.properties"
+  exit 1
+}
+ensure_jdk_with_jlink
+
 if [[ -z "${ANDROID_HOME:-}" && -d "${HOME}/Android/Sdk" ]]; then
   export ANDROID_HOME="${HOME}/Android/Sdk"
   export PATH="${PATH}:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator:${ANDROID_HOME}/cmdline-tools/latest/bin"
