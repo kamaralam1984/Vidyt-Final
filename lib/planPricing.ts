@@ -2,8 +2,9 @@ import connectDB from '@/lib/mongodb';
 import Plan from '@/models/Plan';
 import type { IPlan } from '@/models/Plan';
 import { PLAN_PRICES_USD, isValidPlan } from '@/utils/currency';
+import { yearlyUsdFromMonthly as yearlyFromMonthlyPure, usdAmountForBilling as usdAmountForBillingPure, type BillingPeriod as BillingPeriodPure } from '@/lib/planPricingMath';
 
-export type BillingPeriod = 'month' | 'year';
+export type BillingPeriod = BillingPeriodPure;
 
 export interface ActivePlanPricing {
   planId: string;
@@ -15,12 +16,11 @@ export interface ActivePlanPricing {
 }
 
 export function yearlyUsdFromMonthly(monthly: number, storedYearly?: number | null): number {
-  if (storedYearly != null && storedYearly > 0) return storedYearly;
-  return monthly * 10;
+  return yearlyFromMonthlyPure(monthly, storedYearly);
 }
 
 export function usdAmountForBilling(p: ActivePlanPricing, period: BillingPeriod): number {
-  return period === 'year' ? p.priceYearly : p.priceMonthly;
+  return usdAmountForBillingPure(p, period);
 }
 
 /**
