@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+mobile/node_modules
 /.pnp
 .pnp.js
 
@@ -38,3 +39,11 @@ next-env.d.ts
 # uploads
 /public/uploads
 /uploads
+
+# Capacitor Android (local SDK / build)
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/local.properties
+mobile/android/*.iml
+mobile/android/.idea/
