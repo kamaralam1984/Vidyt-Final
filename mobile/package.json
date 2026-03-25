@@ -5,7 +5,9 @@
   "scripts": {
     "sync": "cap sync",
     "open:android": "cap open android",
-    "open:ios": "cap open ios"
+    "open:ios": "cap open ios",
+    "mobile:android": "cap open android",
+    "mobile:sync": "cap sync"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
