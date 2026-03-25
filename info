@@ -39,11 +39,13 @@ User value:
 - **Manage Plans (Super Admin → Billing & Config):** `priceMonthly` / `priceYearly` MongoDB `Plan` docs — **single source of truth** for marketing + Razorpay (`GET /api/subscriptions/plans`, `lib/planPricing.ts`)
 - Tiers: **Free**, **Starter** (default **$3/mo**), **Pro** (default **$15/mo**), **Enterprise**, **Custom** — display amounts admin-configurable
 - Checkout + payment verification uses **DB plan prices** (not hardcoded constants only; fallback if plan row missing)
+- **Currency correctness:** DB plan prices are stored/treated as **USD**; signup/checkout now converts **USD → selected locale currency** (from `LocaleContext`) and sends Razorpay order with the correct `amount` + `currency` (minor units handling: paise/cents; JPY/JR-style 0-decimals supported)
+- **Signup billing consistency:** `prepare-signup` stores `PendingUser.currency` + country; `verify-and-pay` creates Razorpay order using that currency and stores USD + Razorpay metadata on `PendingUser`, so **billingHistory + receipt** use the charged amount/currency (no USD/INR mismatch)
 - Subscription status and usage APIs; plan → role mapping (e.g. Pro → manager, Enterprise → admin; Starter → user)
 - Invoice/receipt related flows
 
 User value:
-- same prices on landing, `/pricing`, signup, and checkout
+- same prices on landing, `/pricing`, signup, and checkout (and the charged amount matches the selected currency)
 - clear plan upgrade path; controlled usage by plan
 
 ## C. Video Analysis System
@@ -112,7 +114,12 @@ Also dynamic behavior hardened for server-side data usage routes.
 
 **Cron jobs (middleware):** `/api/cron/daily`, `/api/cron/ai-retrain`, `/api/cron/sync-prediction-outcomes` — JWT ke bina call ho sakte hain; har route **andar** `Authorization: Bearer CRON_SECRET` verify karti hai (agar `CRON_SECRET` set ho).
 
-## H. Production AI, Queue, Monitoring (add-on stack)
+## H. Mobile App (PWA + Native Shell)
+- **PWA install:** `public/manifest.webmanifest` + `public/sw.js`, and `components/PWARegister.tsx` registers the service worker for “Add to Home Screen” / standalone feel
+- **Native mobile shell (Android):** `mobile/` uses **Capacitor** to wrap the existing website inside a WebView (no separate React Native rewrite). Server URL is controlled by `CAPACITOR_SERVER_URL`
+- **Dev/run from terminal:** `npm run mobile:run:android` / `cd mobile && npm run run:android` (uses `cap run android`); Android Studio Snap JBR is auto-detected for Gradle
+
+## I. Production AI, Queue, Monitoring (add-on stack)
 - **Python FastAPI** viral ML service (`ai-services/viral_prediction/`) — embeddings + classifier; Node calls it first, **internal ensemble fallback** if down
 - **Ground truth / validation (real labels — not fake metrics):**
   - Har prediction par `engagement` = **prediction ke waqt ka snapshot** (inputs)
@@ -414,19 +421,21 @@ Is file mein website ke saare systems, unka kaam karne ka tareeka, aur users ko 
 
 ### Kaise kaam karta hai
 - **Pricing / home / signup:** plans **`GET /api/subscriptions/plans`** se — amounts **Mongo `Plan` collection** se (Manage Plans)
-- **Subscribe / signup payment:** Razorpay amount **active plan ki DB price** se (`lib/planPricing.ts`); list price marketing par bhi wahi
+- **Subscribe / signup payment:** active plan ki DB price **USD** me treat hoti hai (`lib/planPricing.ts`)
+- **Currency correctness:** signup/checkout me `LocaleContext` se selected `country/currency` li jati hai; server **USD → selected currency** convert karta hai aur Razorpay order **correct `amount` + `currency`** ke saath banata hai (minor units handling)
+- **Early-bird parity:** yearly early-bird rules server-side (USD base) same as DB reference ke hisaab se apply
 - Payment verify hone par plan activate; **role** plan mapping ke hisaab
 - **Subscription** page: current plan, usage, payment history, PDF receipt jahan available
 
 ### APIs
 - `GET /api/subscriptions/plans` – Public active plans (sorted by price); optional `?withDiscounts=1` ab mainly metadata (display list price unchanged on cards)
-- `POST /api/payments/create-order` – Razorpay order (USD base from DB → convert)
+- `POST /api/payments/create-order` – Razorpay order (USD base from DB → convert to selected currency)
 - `POST /api/payments/verify-payment` – Verify + activate + record **DB-matched** price snapshot
 - `POST /api/payments/verify-signup-payment` – Signup flow verify
 - `GET /api/subscriptions/usage`, `GET /api/subscriptions/invoices`
 
 ### Fayde
-- Safe payment; clear plan/usage/receipts; PDF se record rakhna easy.
+- Safe payment; clear plan/usage/receipts; charged amount selected currency ke hisaab se record hota hai; PDF se record rakhna easy.
 
 ---
 
