@@ -5,6 +5,8 @@
   "scripts": {
     "sync": "cap sync",
     "open:android": "bash scripts/open-android-studio.sh",
+    "run:android": "bash scripts/run-android.sh",
+    "run:android:list": "cap run android --list",
     "open:ios": "cap open ios",
     "mobile:android": "bash scripts/open-android-studio.sh",
     "mobile:sync": "cap sync"

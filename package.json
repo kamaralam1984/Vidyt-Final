@@ -14,7 +14,8 @@
     "test": "node --test tests/**/*.test.js",
     "mobile:install": "cd mobile && npm install",
     "mobile:sync": "cd mobile && npx cap sync",
-    "mobile:android": "cd mobile && npm run open:android"
+    "mobile:android": "cd mobile && npm run open:android",
+    "mobile:run:android": "cd mobile && npm run run:android"
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",

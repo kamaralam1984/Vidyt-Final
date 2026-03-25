@@ -2,6 +2,33 @@
 
 This folder wraps your **deployed website** in an Android/iOS WebView. Your Next.js server must be reachable at the URL you configure (HTTPS in production).
 
+## Run app from terminal (no Android Studio window needed)
+
+1. **Emulator chalao** (Android Studio → Device Manager → Play) **ya** phone USB + USB debugging.
+2. Repo se:
+
+```bash
+cd mobile
+npm run run:android
+```
+
+Ya root se: `npm run mobile:run:android`
+
+Kaunsa emulator/device: `npm run run:android:list` phir:
+
+```bash
+npx cap run android --target Medium_Phone_API_36.1
+```
+
+(Target naam tumhare PC par list se aayega.)
+
+**Pehli baar:** `ANDROID_HOME` set karo agar `adb` nahi milta:
+
+```bash
+export ANDROID_HOME=$HOME/Android/Sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+```
+
 ## One-time setup
 
 ```bash
