@@ -35,6 +35,21 @@ From **repo root** (parent folder), use: `npm run mobile:android` (runs `cd mobi
 
 Build/run the project from Android Studio. For **Play Store**, use Android Studio: **Build → Generate Signed App Bundle**.
 
+### “Unable to launch Android Studio” (Linux)
+
+Capacitor defaults to `/usr/local/android-studio/bin/studio.sh`. If you use **Snap**:
+
+```bash
+export CAPACITOR_ANDROID_STUDIO_PATH=/snap/android-studio/current/bin/studio.sh
+npm run mobile:android
+```
+
+The `npm run open:android` / `mobile:android` scripts also try that path automatically via `scripts/open-android-studio.sh`.
+
+**Without fixing the path:** open Android Studio manually → **File → Open** → choose this repo’s **`mobile/android`** folder.
+
+**CLI only (no IDE):** install Android SDK + `ANDROID_HOME`, then from `mobile/android` run `./gradlew assembleDebug` (APK under `app/build/outputs/apk/debug/`).
+
 ## After changing `capacitor.config.ts`
 
 ```bash

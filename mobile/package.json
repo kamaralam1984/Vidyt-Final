@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "scripts": {
     "sync": "cap sync",
-    "open:android": "cap open android",
+    "open:android": "bash scripts/open-android-studio.sh",
     "open:ios": "cap open ios",
-    "mobile:android": "cap open android",
+    "mobile:android": "bash scripts/open-android-studio.sh",
     "mobile:sync": "cap sync"
   },
   "dependencies": {
