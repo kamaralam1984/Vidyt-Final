@@ -136,7 +136,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'OTP sent to your email',
-      ...(process.env.NODE_ENV === 'development' && { otp }),
+      // E2E/test convenience: return OTP so Playwright can complete signup.
+      ...(process.env.NODE_ENV === 'development' || process.env.TEST_E2E === 'true' ? { otp } : {}),
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {

@@ -7,6 +7,16 @@ import { verifyToken } from '@/lib/auth-jwt';
  */
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const enableTestAuthHeader =
+    process.env.ENABLE_TEST_AUTH_HEADER === 'true' || process.env.NODE_ENV === 'test';
+  // Optional: test-only logging for header visibility issues.
+  if (enableTestAuthHeader && pathname.startsWith('/api/auth/')) {
+    try {
+      console.log('[middleware:test] headers', Object.fromEntries(request.headers.entries()));
+    } catch {
+      // ignore
+    }
+  }
 
   // Public routes that don't need authentication
   const publicRoutes = [
@@ -55,6 +65,21 @@ export async function middleware(request: NextRequest) {
     if (cookieToken) {
       token = cookieToken;
     }
+  }
+
+  // Test-only auth fallback for integration/E2E runners.
+  // Some runtimes/clients may not reliably forward Authorization headers into middleware.
+  if (!token && enableTestAuthHeader) {
+    const testToken = request.headers.get('x-test-token');
+    if (testToken) token = testToken;
+  }
+
+  // Query-string fallback (robust to header stripping).
+  if (!token && enableTestAuthHeader) {
+    const qpToken =
+      request.nextUrl.searchParams.get('test_token') ||
+      request.nextUrl.searchParams.get('token');
+    if (qpToken) token = qpToken;
   }
 
   if (!token) {

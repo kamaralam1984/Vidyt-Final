@@ -14,6 +14,16 @@ export function useTracker() {
   const lastPath = useRef<string | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  function getOrCreateSessionId() {
+    if (typeof window === 'undefined') return null;
+    const sidKey = 'vb_session_id';
+    const existing = sessionStorage.getItem(sidKey);
+    if (existing) return existing;
+    const sid = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem(sidKey, sid);
+    return sid;
+  }
+
   const getTokenPayload = useCallback((): { id?: string } => {
     try {
       const headers = getAuthHeaders();
@@ -59,10 +69,17 @@ export function useTracker() {
     // Also persist to DB via HTTP (for timeline + session update)
     const headers = getAuthHeaders();
     if (headers.Authorization) {
+      const sid = getOrCreateSessionId();
       fetch('/api/admin/super/tracking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ page: pathname, previousPage, timestamp: new Date().toISOString() }),
+        body: JSON.stringify({
+          action: 'page',
+          page: pathname,
+          previousPage,
+          sessionId: sid,
+          timestamp: new Date().toISOString(),
+        }),
       }).catch(() => { /* silent fail */ });
     }
 

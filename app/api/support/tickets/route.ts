@@ -8,35 +8,10 @@ import TicketReply from '@/models/TicketReply';
 import User from '@/models/User';
 import PlatformControl from '@/models/PlatformControl';
 import { getApiConfig } from '@/lib/apiConfig';
-
-const generateAIResponse = async (apiKey: string, prompt: string) => {
-    try {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-3.5-turbo',
-                messages: [
-                    { role: 'system', content: 'You are a SaaS support assistant. Solve the user issue clearly and provide a helpful step-by-step solution.' },
-                    { role: 'user', content: prompt }
-                ],
-                max_tokens: 500,
-                temperature: 0.7
-            })
-        });
-
-        const data = await res.json();
-        if (data.choices && data.choices.length > 0) {
-            return data.choices[0].message.content;
-        }
-    } catch (error) {
-        console.error('OpenAI Error:', error);
-    }
-    return null;
-};
+import { analyzeAndDraftSupportReply } from '@/services/ai/supportAI';
+import { rateLimit, getClientIP } from '@/lib/rateLimiter';
+import { enqueueAiJob } from '@/lib/queue';
+import { logError } from '@/lib/observability';
 
 export async function GET(req: NextRequest) {
     try {
@@ -47,13 +22,29 @@ export async function GET(req: NextRequest) {
         const user = await User.findById(authUser.id);
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        let query = {};
+        const url = new URL(req.url);
+        const page = Math.max(1, Number(url.searchParams.get('page') || 1));
+        const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit') || 20)));
+        const skip = (page - 1) * limit;
+
+        let query: Record<string, any> = {};
         if (user.role !== 'admin' && user.role !== 'super-admin') {
             query = { userId: user._id };
         }
 
-        const tickets = await Ticket.find(query).sort({ createdAt: -1 });
-        return NextResponse.json({ tickets });
+        const [tickets, total] = await Promise.all([
+            Ticket.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Ticket.countDocuments(query),
+        ]);
+        return NextResponse.json({
+            tickets,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit),
+            }
+        });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -67,6 +58,12 @@ export async function POST(req: NextRequest) {
         await connectDB();
         const user = await User.findById(authUser.id);
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+        const ip = getClientIP(req);
+        const limiter = rateLimit(`support-ticket:${authUser.id}:${ip}`, 20, 60 * 1000);
+        if (!limiter.allowed) {
+            return NextResponse.json({ error: 'Rate limit exceeded. Try again shortly.' }, { status: 429 });
+        }
 
         const { subject, message } = await req.json();
         if (!subject || !message) {
@@ -105,27 +102,52 @@ export async function POST(req: NextRequest) {
             message
         });
 
-        // Trigger AI Auto-reply 
+        // Trigger AI auto-reply with AI category/confidence.
         if (isAiAllowed) {
             const apiConfig = await getApiConfig();
             if (apiConfig.openaiApiKey) {
-                const aiPrompt = `User Plan: ${plan.toUpperCase()}\nIssue: ${message}\n\nPlease help this user out clearly.`;
-                const aiMsg = await generateAIResponse(apiConfig.openaiApiKey, aiPrompt);
-                
-                if (aiMsg) {
+                const ai = await analyzeAndDraftSupportReply({
+                    apiKey: apiConfig.openaiApiKey,
+                    subject,
+                    message,
+                    userPlan: plan,
+                    confidenceThreshold: 0.75,
+                });
+                ticket.category = ai.category;
+                ticket.aiConfidence = ai.confidence;
+                ticket.aiAutoReplied = ai.shouldAutoReply;
+                ticket.assignedToAdmin = !ai.shouldAutoReply;
+                if (ai.shouldAutoReply && ai.aiReply) {
                     await TicketReply.create({
                         ticketId: ticket._id,
                         sender: 'ai',
-                        message: aiMsg
+                        message: ai.aiReply,
+                        tokenUsage: ai.tokenUsage || undefined,
                     });
+                    ticket.aiLastReplyAt = new Date();
                 }
+                await ticket.save();
+            }
+        }
+
+        // Optional async processing in queue for production scale.
+        if (process.env.AI_SUPPORT_QUEUE_ENABLED === 'true') {
+            try {
+                await enqueueAiJob({
+                    jobType: 'support_ai',
+                    userId: String(authUser.id),
+                    data: { ticketId: String(ticket._id), confidenceThreshold: 0.75 },
+                    opts: { priority: priority === 'high' ? 10 : 5 },
+                });
+            } catch (e) {
+                logError('support_ticket_queue_enqueue_failed', e, { ticketId: String(ticket._id) });
             }
         }
 
         return NextResponse.json({ ticket, message: 'Ticket created successfully.' });
 
     } catch (error: any) {
-        console.error('Ticket Create Error:', error);
+        logError('support_ticket_create_failed', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

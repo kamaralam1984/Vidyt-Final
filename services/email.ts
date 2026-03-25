@@ -305,6 +305,12 @@ export async function sendPaymentReceiptEmail(
   receipt: PaymentReceiptData
 ): Promise<boolean> {
   try {
+    // In tests we don't want to depend on SMTP/Resend.
+    if (process.env.NODE_ENV === 'test') {
+      console.log('📧 (test) Payment receipt would be sent to:', email);
+      return true;
+    }
+
     const startStr = receipt.startDate instanceof Date ? receipt.startDate.toLocaleDateString() : String(receipt.startDate);
     const endStr = receipt.endDate instanceof Date ? receipt.endDate.toLocaleDateString() : String(receipt.endDate);
     const paidAtStr = new Date().toLocaleString();

@@ -61,6 +61,21 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
   }
 
   if (!token) {
+    // Middleware-provided identity: if Next middleware verified the JWT,
+    // it injects x-user-* headers. This avoids relying on Authorization/cookies
+    // being forwarded correctly by every client/runtime.
+    const userId = request.headers.get('x-user-id');
+    if (userId) {
+      const role = request.headers.get('x-user-role') || 'user';
+      const subscriptionRaw = request.headers.get('x-user-subscription') || 'free';
+      return {
+        id: userId,
+        email: '',
+        name: '',
+        role: role as any,
+        subscription: normalizePlan(subscriptionRaw) as any,
+      };
+    }
     return null;
   }
 

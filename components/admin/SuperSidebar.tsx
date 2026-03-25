@@ -13,6 +13,7 @@ import {
   Zap,
   BarChart2,
   Headphones,
+  Cpu,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: '/admin/super/live', label: 'Live Tracking', icon: Radio },
   { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
   { href: '/admin/super/support', label: 'Support Queue', icon: Headphones },
+  { href: '/admin/super/ai-monitoring', label: 'AI Monitoring', icon: Cpu },
   { href: '/admin/super/platform-controls', label: 'Platform Controls', icon: Settings },
 ];
 

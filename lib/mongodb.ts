@@ -1,10 +1,26 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/viralboost';
+// Next dev server can load `.env.local` and overwrite `NODE_ENV`, which would
+// break our test database routing. Prefer the explicit test DB when the
+// test harness flags are enabled.
+const shouldUseTestDb =
+  process.env.MONGODB_URI_TEST &&
+  (process.env.NODE_ENV === 'test' ||
+    process.env.AI_TEST_MODE === 'true' ||
+    process.env.ENABLE_TEST_AUTH_HEADER === 'true');
+
+const MONGODB_URI = shouldUseTestDb
+  ? process.env.MONGODB_URI_TEST
+  : process.env.NODE_ENV === 'test'
+    ? process.env.MONGODB_URI_TEST || process.env.MONGODB_URI || 'mongodb://localhost:27017/viralboost_test'
+    : process.env.MONGODB_URI || 'mongodb://localhost:27017/viralboost';
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
+
+// Make the value type-safe for TS: the guard above guarantees this is a non-empty string.
+const MONGODB_URI_SAFE: string = MONGODB_URI as string;
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -22,26 +38,42 @@ if (!global.mongoose) {
 }
 
 async function connectDB() {
+  // If we already have an active connection, reuse it.
+  // If it was previously closed, `cached.conn`/`cached.promise` may still be set;
+  // reset cache so we reconnect.
   if (cached.conn) {
-    return cached.conn;
+    if (mongoose.connection?.readyState === 1) return cached.conn;
+    cached.conn = null;
+    cached.promise = null;
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 10000, // Timeout after 10s
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-      connectTimeoutMS: 10000, // Give up initial connection after 10s
+      serverSelectionTimeoutMS: 10_000, // Timeout after 10s
+      socketTimeoutMS: 45_000, // Close sockets after 45s of inactivity
+      connectTimeoutMS: 10_000, // Give up initial connection after 10s
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log('MongoDB connected successfully');
-      return mongoose;
-    }).catch((error) => {
-      console.error('MongoDB connection error:', error);
-      cached.promise = null;
-      throw error;
-    });
+    cached.promise = (async () => {
+      // Transient startup/connect issues can happen in CI/dev.
+      // Retry a few times to avoid failing the first request.
+      const attempts = 3;
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+          const conn = await mongoose.connect(MONGODB_URI_SAFE, opts);
+          console.log('MongoDB connected successfully');
+          return conn;
+        } catch (error) {
+          console.error('MongoDB connection error:', error);
+          cached.promise = null; // allow next attempt / next call to recreate
+          if (attempt >= attempts - 1) throw error;
+          const delay = 200 * Math.pow(2, attempt);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+      }
+      throw new Error('MongoDB connection retry loop exited unexpectedly');
+    })();
   }
 
   try {

@@ -1,20 +1,19 @@
 export const dynamic = "force-dynamic";
 
 import connectDB from '@/lib/mongodb';
-import TrackingLog from '@/models/TrackingLog';
 import UserSession from '@/models/UserSession';
-import ActivityLog from '@/models/ActivityLog';
-import ActivityTimeline from '@/models/ActivityTimeline';
 import { getUserFromRequest } from '@/lib/auth-jwt';
 import { getGeoFromIP, getClientIP } from '@/lib/geolocation';
 import { NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
-import { emitAdminAlert } from '@/lib/socket-server';
+import { v5 as uuidv5 } from 'uuid';
+import { enqueueTrackingEvent, type NormalizedTrackingAction } from '@/lib/trackingQueue';
+import { logError } from '@/lib/observability';
 
 export async function POST(request: Request) {
-  try {
-    await connectDB();
+  // Extract client IP once so it's available for both the happy-path and error logging.
+  const ip = getClientIP(request);
 
+  try {
     const decoded = await getUserFromRequest(request);
     if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -26,9 +25,12 @@ export async function POST(request: Request) {
       action = 'page',
       sessionId,
     } = body || {};
-    const ip = getClientIP(request);
+
+    // Timestamp comes from the client; we keep it for eventId dedupe stability.
     const now = new Date(timestamp || Date.now());
-    const normalizedAction =
+    const roundedSecond = Math.floor(now.getTime() / 1000) * 1000;
+
+    const normalizedAction: NormalizedTrackingAction =
       action === 'login' || action === 'start'
         ? 'start'
         : action === 'logout' || action === 'end'
@@ -37,112 +39,96 @@ export async function POST(request: Request) {
             ? 'heartbeat'
             : 'page';
 
-    // Find active session. Prefer explicit client sessionId first to avoid duplicates.
-    let session = null as any;
-    if (sessionId) {
-      session = await UserSession.findOne({
+    // We now push tracking writes to a queue (worker does DB writes in batches).
+    // To keep session/activity dedupe correct under concurrency, we still resolve
+    // an existing sessionId (or generate a deterministic one) before enqueueing.
+
+    await connectDB();
+
+    const pagePath = page || '/';
+    const sessionIdStr = sessionId ? String(sessionId) : '';
+
+    // If client provided sessionId, prefer it.
+    let resolvedSessionId = sessionIdStr;
+    let existingSession: any = null;
+    if (resolvedSessionId) {
+      existingSession = await UserSession.findOne({ userId: decoded.id, sessionId: resolvedSessionId }).lean();
+    }
+
+    if (!existingSession) {
+      // Otherwise, use active session if present.
+      existingSession = await UserSession.findOne({
         userId: decoded.id,
-        sessionId: String(sessionId),
-      });
-    }
-    if (!session) {
-      session = await UserSession.findOne({
-        userId: decoded.id,
-        isActive: true
-      }).sort({ lastSeen: -1 });
-    }
+        isActive: true,
+      })
+        .sort({ lastSeen: -1 })
+        .lean();
 
-    if (!session && (normalizedAction === 'start' || normalizedAction === 'page' || normalizedAction === 'heartbeat')) {
-      // Create a session if missing
-      const geo = await getGeoFromIP(ip);
-      const resolvedSessionId = String(sessionId || uuidv4());
-      try {
-        session = await UserSession.create({
-          userId: decoded.id,
-          sessionId: resolvedSessionId,
-          loginTime: now,
-          lastSeen: now,
-          currentPage: page || '/',
-          currentPageSince: now,
-          ipAddress: ip,
-          isActive: true,
-          ...(geo && {
-            country: geo.country,
-            state: geo.state,
-            city: geo.city,
-            latitude: geo.latitude,
-            longitude: geo.longitude,
-            distanceFromAdmin: geo.distanceFromAdmin,
-          }),
-        });
-      } catch (err: any) {
-        // Handle race condition: same sessionId created by a parallel tracking request.
-        if (err?.code === 11000 && resolvedSessionId) {
-          session = await UserSession.findOne({ userId: decoded.id, sessionId: resolvedSessionId });
-        } else {
-          throw err;
-        }
+      if (existingSession?.sessionId) {
+        resolvedSessionId = String(existingSession.sessionId);
+      } else {
+        // Deterministic session bucket: same user -> same sessionId in the bucket window.
+        const bucketMs = Number(process.env.TRACKING_SESSION_BUCKET_MS ?? 30 * 60 * 1000); // 30m
+        const bucket = Math.floor(Date.now() / bucketMs);
+        resolvedSessionId = `vb_${decoded.id}_${bucket}`;
       }
     }
 
-    if (session) {
-      const nextPage = page || session.currentPage;
-      const didPageChange = !!nextPage && nextPage !== session.currentPage;
-      session.lastSeen = now;
-      session.currentPage = nextPage;
-      if (didPageChange) {
-        session.currentPageSince = now;
+    // Compute geo only when we believe the session is new (avoids IP API on every event).
+    let geo: any = null;
+    if (!existingSession && (normalizedAction === 'start' || normalizedAction === 'page' || normalizedAction === 'heartbeat')) {
+      const geoCacheKey = `ip:${ip}`;
+      const ttlMs = Number(process.env.TRACKING_GEO_CACHE_TTL_MS ?? 60 * 60 * 1000); // 1h
+      const gcache = (globalThis as any).__VB_GEO_CACHE__ || ((globalThis as any).__VB_GEO_CACHE__ = new Map());
+      const cached = gcache.get(geoCacheKey);
+      if (cached && Date.now() - cached.at < ttlMs) {
+        geo = cached.val;
+      } else {
+        geo = await getGeoFromIP(ip);
+        gcache.set(geoCacheKey, { at: Date.now(), val: geo });
       }
-      if (normalizedAction === 'end') {
-        session.isActive = false;
-        session.logoutTime = now;
-        session.durationSeconds = Math.round((now.getTime() - new Date(session.loginTime).getTime()) / 1000);
-      }
-      await session.save();
     }
 
-    const activeSessionId = session?.sessionId || sessionId || 'unknown';
+    // EventId: deterministic UUIDv5 from stable fields + timestamp rounded to seconds.
+    // This makes retries/concurrent duplicates idempotent.
+    const TRACKING_EVENT_NS = '00000000-0000-0000-0000-000000000001';
+    const eventId = uuidv5(
+      [
+        decoded.id,
+        resolvedSessionId,
+        normalizedAction,
+        pagePath,
+        previousPage ? String(previousPage) : '',
+        String(Math.floor(roundedSecond / 1000)), // seconds
+      ].join('|'),
+      TRACKING_EVENT_NS
+    );
 
-    // Log to TrackingLog
-    await TrackingLog.create({
+    const userAgent = request.headers.get('user-agent') || undefined;
+
+    const job = await enqueueTrackingEvent({
+      eventId,
       userId: decoded.id,
-      sessionId: activeSessionId,
-      page: page || '/',
+      sessionId: resolvedSessionId,
+      timestamp: now.toISOString(),
+      normalizedAction,
+      page: pagePath,
+      previousPage: previousPage ? String(previousPage) : undefined,
       ipAddress: ip,
-      timestamp: now,
-      country: session?.country,
-      city: session?.city,
+      userAgent,
+      country: geo?.country,
+      state: geo?.state,
+      city: geo?.city,
+      district: geo?.district,
+      distanceFromAdmin: geo?.distanceFromAdmin,
     });
 
-    // Record to ActivityTimeline (richer per-user history)
-    await ActivityTimeline.create({
-      userId: decoded.id,
-      sessionId: activeSessionId,
-      action: normalizedAction === 'start' ? 'session_start' : normalizedAction === 'end' ? 'session_end' : 'page_visit',
-      page: page || '/',
-      previousPage: previousPage || undefined,
-      timestamp: now,
-    });
-
-    // Legacy ActivityLog for compatibility
-    await ActivityLog.create({
-      userId: decoded.id,
-      sessionId: activeSessionId,
-      page: page || '/',
-      ipAddress: ip,
-      timestamp: now,
-    }).catch(() => {});
-
-    // Emit real-time event to admin room via Socket.io
-    try {
-      const { emitLiveUsersUpdate } = await import('@/lib/socket-server');
-      // Lightweight ping — the admin live page will re-query the DB on receipt
-      emitLiveUsersUpdate([]);
-    } catch { /* socket not running in dev without server.ts */ }
-
-    return NextResponse.json({ success: true, sessionId: activeSessionId });
+    // Best-effort: return success even if queue is temporarily slow.
+    return NextResponse.json({ success: true, sessionId: resolvedSessionId, queued: Boolean(job?.id) });
   } catch (error) {
-    console.error('[Tracking Error]', error);
+    logError('tracking_route_failed', error, {
+      ip: ip,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

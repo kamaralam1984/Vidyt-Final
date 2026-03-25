@@ -16,6 +16,7 @@ import {
   fromRazorpaySmallestUnit,
   SIGNUP_EARLY_BIRD_DISCOUNT,
 } from '@/lib/paymentCurrencyShared';
+import { razorpay } from '@/services/payments/razorpay';
 import { z } from 'zod';
 
 const verifySignupPaymentSchema = z.object({
@@ -122,6 +123,23 @@ export async function POST(request: NextRequest) {
         ? fromRazorpaySmallestUnit(pendingUser.rzpAmountMinor, receiptCurrency)
         : priceUsd;
 
+    // Currency/amount mismatch detection: compare saved order charge vs Razorpay payment entity.
+    const paymentEntity: any = await (razorpay as any).payments.fetch(razorpay_payment_id);
+    const paymentOrderId = paymentEntity?.order_id || paymentEntity?.orderId;
+    if (paymentOrderId && paymentOrderId !== razorpay_order_id) {
+      return NextResponse.json({ error: 'Razorpay order mismatch' }, { status: 400 });
+    }
+    const actualCurrency = String(paymentEntity?.currency || receiptCurrency).toUpperCase();
+    const actualAmountMajor = fromRazorpaySmallestUnit(
+      Number(paymentEntity?.amount || 0),
+      actualCurrency
+    );
+    const roundedSaved = Number(receiptAmount.toFixed(2));
+    const roundedActual = Number(actualAmountMajor.toFixed(2));
+    if (actualCurrency !== receiptCurrency || roundedSaved !== roundedActual) {
+      return NextResponse.json({ error: 'Payment currency/amount mismatch' }, { status: 400 });
+    }
+
     const earlyBirdDiscount =
       SIGNUP_EARLY_BIRD_DISCOUNT && planId !== 'free' && billingPeriod === 'year';
 
@@ -144,8 +162,9 @@ export async function POST(request: NextRequest) {
         planId,
         planName: planId.charAt(0).toUpperCase() + planId.slice(1),
         billingPeriod,
-        price: priceUsd,
-        currency: 'USD',
+        // Store charged amount/currency for auditability and analytics correctness
+        price: receiptAmount,
+        currency: receiptCurrency,
         status: 'active',
         startDate,
         endDate,

@@ -7,11 +7,11 @@ import PendingUser from '@/models/PendingUser';
 import { verifyOTP } from '@/services/otp';
 import { generateToken } from '@/lib/auth-jwt';
 import { generateUniqueNumericId, VALID_PLANS, normalizePlan } from '@/lib/auth';
-import Razorpay from 'razorpay';
 import { z } from 'zod';
 import Plan from '@/models/Plan';
 import { buildRazorpayOrderFromUsd } from '@/lib/paymentCurrency';
 import { computeSignupUsdCharge, SIGNUP_EARLY_BIRD_DISCOUNT } from '@/lib/paymentCurrencyShared';
+import { razorpay } from '@/services/payments/razorpay';
 
 const verifyAndPaySchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -37,10 +37,7 @@ function checkRateLimit(email: string): boolean {
   return true;
 }
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-});
+// Uses shared Razorpay client (real SDK in prod, mock when RAZORPAY_MOCK=true)
 
 
 

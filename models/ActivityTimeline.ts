@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IActivityTimeline extends Document {
+  eventId: string;
   userId: mongoose.Types.ObjectId;
   sessionId: string;
   action: 'page_visit' | 'session_start' | 'session_end' | 'payment_step';
@@ -12,6 +13,7 @@ export interface IActivityTimeline extends Document {
 }
 
 const ActivityTimelineSchema = new Schema<IActivityTimeline>({
+  eventId: { type: String, required: true, unique: true, sparse: true, index: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   sessionId: { type: String, required: true, index: true },
   action: { type: String, enum: ['page_visit', 'session_start', 'session_end', 'payment_step'], default: 'page_visit' },

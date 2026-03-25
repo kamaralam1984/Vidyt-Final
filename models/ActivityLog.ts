@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IActivityLog extends Document {
+  eventId?: string;
   userId: mongoose.Types.ObjectId;
   sessionId: string;
   page: string;
@@ -10,6 +11,9 @@ export interface IActivityLog extends Document {
 }
 
 const ActivityLogSchema = new Schema<IActivityLog>({
+  // Optional for backward compatibility; new queued writes will set it and
+  // enforce idempotency via the unique index.
+  eventId: { type: String, index: true, unique: true, sparse: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   sessionId: { type: String, required: true, index: true },
   page: { type: String, required: true },

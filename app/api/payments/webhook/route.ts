@@ -6,6 +6,7 @@ import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import Payment from '@/models/Payment';
 import { PLAN_ROLE_MAP } from '@/lib/limitChecker';
+import { fromRazorpaySmallestUnit } from '@/lib/paymentCurrencyShared';
 
 /**
  * Razorpay Webhook Handler
@@ -44,11 +45,25 @@ export async function POST(request: NextRequest) {
     if (event.event === 'payment.captured') {
       const payment = event.payload.payment.entity;
       const orderId = payment.order_id;
+      const paymentId = payment.id;
 
       // Find user by order ID
       const user = await User.findOne({
         'subscriptionPlan.razorpayOrderId': orderId,
       });
+
+      // Idempotency: duplicate webhooks must not extend subscription again.
+      if (user?.subscriptionPlan?.razorpayPaymentId === paymentId) {
+        const already = await Payment.findOne({ paymentId, status: 'success', gateway: 'razorpay' });
+        if (already) return NextResponse.json({ success: true });
+      }
+
+      const alreadyVerified = paymentId
+        ? await Payment.findOne({ paymentId, status: 'success', gateway: 'razorpay' })
+        : null;
+      if (alreadyVerified) {
+        return NextResponse.json({ success: true });
+      }
 
       if (user && user.subscriptionPlan) {
         // Calculate subscription end date
@@ -94,10 +109,10 @@ export async function POST(request: NextRequest) {
             $set: {
               userId: user._id,
               orderId,
-              paymentId: payment.id,
+              paymentId: paymentId,
               plan: user.subscriptionPlan.planId,
               billingPeriod: user.subscriptionPlan.billingPeriod === 'year' ? 'year' : 'month',
-              amount: Number(payment.amount || 0) / 100,
+              amount: fromRazorpaySmallestUnit(Number(payment.amount || 0), String(payment.currency || 'INR').toUpperCase()),
               currency: String(payment.currency || 'INR').toUpperCase(),
               status: 'success',
               gateway: 'razorpay',
@@ -119,8 +134,8 @@ export async function POST(request: NextRequest) {
           {
             $set: {
               orderId,
-              paymentId: payment.id,
-              amount: Number(payment.amount || 0) / 100,
+              paymentId: payment?.id,
+              amount: fromRazorpaySmallestUnit(Number(payment.amount || 0), String(payment.currency || 'INR').toUpperCase()),
               currency: String(payment.currency || 'INR').toUpperCase(),
               status: 'failed',
               gateway: 'razorpay',

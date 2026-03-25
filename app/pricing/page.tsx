@@ -227,6 +227,9 @@ export default function PricingPage() {
             razorpay_signature: response.razorpay_signature,
             plan: planId,
             billingPeriod,
+              // Forward server-created order charge so backend can detect mismatches
+              amountMinor: order.amount,
+              currency: order.currency || 'INR',
           }, {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });

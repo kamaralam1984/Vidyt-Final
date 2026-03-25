@@ -6,6 +6,7 @@
 import ViralDataset from '@/models/ViralDataset';
 import connectDB from '@/lib/mongodb';
 import { predictWithModel, initializeModel, getModelInfo } from './learningEngine';
+import { predictWithPythonService } from './viralPredictionService';
 
 export interface ViralPredictionInput {
   hookScore: number;
@@ -46,6 +47,44 @@ export async function predictViralPotential(
   input: ViralPredictionInput
 ): Promise<ViralPredictionOutput> {
   await connectDB();
+
+  // Prefer Python ML microservice if available.
+  const py = await predictWithPythonService({
+    title: '',
+    description: '',
+    hashtags: input.hashtags || [],
+    duration: input.videoDuration,
+    platform: input.platform,
+    category: 'general',
+    engagement: { views: 0, likes: 0, comments: 0 },
+    thumbnail_score: input.thumbnailScore,
+    hook_score: input.hookScore,
+    title_score: input.titleScore,
+    trending_score: input.trendingScore,
+  });
+  if (py) {
+    const predictedViews = Math.max(500, Math.round((py.viral_probability / 100) * 25000));
+    const engagementRate = Math.max(1, Math.min(25, py.viral_probability * 0.18));
+    return {
+      viralProbability: py.viral_probability,
+      predictedViews,
+      engagementForecast: {
+        likes: Math.round(predictedViews * (engagementRate / 100) * 0.65),
+        comments: Math.round(predictedViews * (engagementRate / 100) * 0.25),
+        shares: Math.round(predictedViews * (engagementRate / 100) * 0.1),
+        engagementRate,
+      },
+      growthCurve: generateGrowthCurve(predictedViews, py.viral_probability),
+      confidence: py.confidence,
+      factors: {
+        hook: { score: input.hookScore, impact: input.hookScore * 0.25 },
+        thumbnail: { score: input.thumbnailScore, impact: input.thumbnailScore * 0.25 },
+        title: { score: input.titleScore, impact: input.titleScore * 0.2 },
+        trending: { score: input.trendingScore, impact: input.trendingScore * 0.15 },
+        timing: { score: calculateTimingScore(input.postingTime), impact: calculateTimingScore(input.postingTime) * 0.15 },
+      },
+    };
+  }
 
   // Initialize model if not already loaded
   try {

@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { ingestAllPlatforms } from '@/services/dataPipeline/ingestion';
+import { enqueueAiJob } from '@/lib/queue';
 
 /**
  * Job Scheduler for background tasks
@@ -44,7 +45,16 @@ class JobScheduler {
     // AI model retraining (weekly)
     this.scheduleJob('model-retraining', '0 3 * * 0', async () => {
       console.log('🤖 Running AI model retraining job...');
-      // TODO: Retrain models with new data
+      try {
+        const job = await enqueueAiJob({
+          jobType: 'training',
+          data: { triggeredBy: 'scheduler', minSamples: 100 },
+          opts: { priority: 10 },
+        });
+        console.log(`✅ AI retraining enqueued: ${String(job.id)}`);
+      } catch (error) {
+        console.error('❌ AI model retraining enqueue failed:', error);
+      }
     });
 
     console.log(`✅ Job scheduler started with ${this.jobs.size} jobs`);

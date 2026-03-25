@@ -5,6 +5,11 @@ export interface ITicketReply extends Document {
   sender: 'user' | 'ai' | 'admin';
   message: string;
   isInternal?: boolean;
+  tokenUsage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -13,7 +18,12 @@ const TicketReplySchema = new Schema<ITicketReply>({
   ticketId: { type: Schema.Types.ObjectId, required: true, ref: 'Ticket', index: true },
   sender: { type: String, enum: ['user', 'ai', 'admin'], required: true },
   message: { type: String, required: true },
-  isInternal: { type: Boolean, default: false }
+  isInternal: { type: Boolean, default: false },
+  tokenUsage: {
+    promptTokens: { type: Number, default: 0 },
+    completionTokens: { type: Number, default: 0 },
+    totalTokens: { type: Number, default: 0 },
+  }
 }, { timestamps: true });
 
 if (mongoose.models.TicketReply) {
