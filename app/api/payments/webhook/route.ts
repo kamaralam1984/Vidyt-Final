@@ -7,6 +7,7 @@ import User from '@/models/User';
 import Payment from '@/models/Payment';
 import { PLAN_ROLE_MAP } from '@/lib/limitChecker';
 import { fromRazorpaySmallestUnit } from '@/lib/paymentCurrencyShared';
+import { buildRazorpayMetadata } from '@/lib/paymentMode';
 
 /**
  * Razorpay Webhook Handler
@@ -116,10 +117,10 @@ export async function POST(request: NextRequest) {
               currency: String(payment.currency || 'INR').toUpperCase(),
               status: 'success',
               gateway: 'razorpay',
-              metadata: {
+              metadata: buildRazorpayMetadata({
                 source: 'webhook',
                 webhookEvent: event.event,
-              },
+              }),
             },
           },
           { upsert: true, new: true }
@@ -139,10 +140,10 @@ export async function POST(request: NextRequest) {
               currency: String(payment.currency || 'INR').toUpperCase(),
               status: 'failed',
               gateway: 'razorpay',
-              metadata: {
+              metadata: buildRazorpayMetadata({
                 source: 'webhook',
                 webhookEvent: event.event,
-              },
+              }),
             },
           },
           { upsert: true, new: true }

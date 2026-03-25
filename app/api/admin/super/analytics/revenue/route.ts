@@ -6,6 +6,7 @@ import Payment from '@/models/Payment';
 import User from '@/models/User';
 import { requireAdminAccess } from '@/lib/adminAuth';
 import { PLAN_PRICES, calculateTotalRevenue } from '@/lib/revenueCalc';
+import { paymentKindFromDoc, splitSuccessfulRevenueByKind } from '@/lib/paymentMode';
 
 export async function GET(request: Request) {
   try {
@@ -14,9 +15,20 @@ export async function GET(request: Request) {
     const access = await requireAdminAccess(request);
     if (access.error) return access.error;
 
-    const paymentRows = await Payment.find({}, { amount: 1, status: 1, createdAt: 1 })
-      .lean();
+    const paymentRows = await Payment.find(
+      {},
+      { amount: 1, status: 1, createdAt: 1, metadata: 1, gateway: 1 }
+    ).lean();
     const hasPaymentData = paymentRows.length > 0;
+    const revenueSplit = splitSuccessfulRevenueByKind(
+      paymentRows as Array<{
+        amount: number;
+        status: string;
+        createdAt: Date;
+        metadata?: Record<string, unknown> | null;
+        gateway?: string;
+      }>
+    );
     const revenueInputs = paymentRows.map((row: any) => ({
       amount: Number(row.amount || 0),
       status: String(row.status || ''),
@@ -61,6 +73,7 @@ export async function GET(request: Request) {
       hasPaymentData,
       // Current calendar month total from successful payments (MTD) — use for dashboard KPIs.
       monthToDateRevenue: revenueTotals.monthly,
+      revenueSplit,
       monthlyRevenue: monthlyRevenue.map((m: any) => ({
         month: m._id,
         revenue: m.total,
@@ -86,6 +99,7 @@ export async function GET(request: Request) {
         status: p.status,
         gateway: p.gateway,
         date: p.createdAt,
+        kind: paymentKindFromDoc(p),
       })),
       planPrices: Object.entries(PLAN_PRICES).map(([k, v]) => ({
         plan: k,

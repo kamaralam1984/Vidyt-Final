@@ -75,8 +75,7 @@ export default function RevenuePage() {
         <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
           <p className="font-medium text-amber-50">Abhi tak koi payment record nahi hai</p>
           <p className="mt-1 text-xs text-amber-100/70">
-            Ye page sirf <strong className="text-amber-50">MongoDB ke Payment</strong> documents se revenue dikhata hai (Razorpay verify / webhook ke baad save hote hain).
-            Local testing ke liye ek successful payment complete karein — phir yahan numbers aur charts dikhenge.
+            Ye page <strong className="text-amber-50">MongoDB ke Payment</strong> documents se revenue dikhata hai — <strong className="text-amber-50">live</strong> (Razorpay live) aur <strong className="text-amber-50">demo/test</strong> (Razorpay test key, mock, ya super-admin demo record) dono yahi save hokar dikhte hain.
           </p>
         </div>
       )}
@@ -113,6 +112,26 @@ export default function RevenuePage() {
           gradient="from-red-600 to-red-800"
         />
       </div>
+
+      {/* Live vs Demo/Test split (MTD) */}
+      {data?.revenueSplit && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-400/90">Live (production)</p>
+            <p className="mt-1 text-2xl font-bold text-white">{fmt(data.revenueSplit.live?.monthToDate || 0)}</p>
+            <p className="text-xs text-white/40 mt-1">
+              MTD · {data.revenueSplit.live?.count ?? 0} successful payments · Today {fmt(data.revenueSplit.live?.today || 0)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-amber-300/90">Demo / Test</p>
+            <p className="mt-1 text-2xl font-bold text-white">{fmt(data.revenueSplit.demoTest?.monthToDate || 0)}</p>
+            <p className="text-xs text-white/40 mt-1">
+              MTD · {data.revenueSplit.demoTest?.count ?? 0} successful payments · Today {fmt(data.revenueSplit.demoTest?.today || 0)}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Monthly Revenue Chart */}
       <div className="bg-[#141414] border border-white/5 rounded-2xl p-6">
@@ -212,7 +231,7 @@ export default function RevenuePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/5">
-                {['User', 'Plan', 'Amount', 'Status', 'Gateway', 'Date'].map(h => (
+                {['User', 'Plan', 'Amount', 'Type', 'Status', 'Gateway', 'Date'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs text-white/40 uppercase font-medium">{h}</th>
                 ))}
               </tr>
@@ -234,6 +253,15 @@ export default function RevenuePage() {
                     <span className="text-xs capitalize text-white/60 px-2 py-1 bg-white/5 rounded-md">{p.plan}</span>
                   </td>
                   <td className="px-4 py-3 text-white font-mono text-sm">{fmt(p.amount)}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded font-medium ${
+                        p.kind === 'demo_test' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'
+                      }`}
+                    >
+                      {p.kind === 'demo_test' ? 'Demo / Test' : 'Live'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[p.status] || ''}`}>
                       {p.status}

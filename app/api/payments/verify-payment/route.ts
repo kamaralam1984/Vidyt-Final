@@ -13,6 +13,7 @@ import { fromRazorpaySmallestUnit } from '@/lib/paymentCurrencyShared';
 import { buildRazorpayOrderFromUsd } from '@/lib/paymentCurrency';
 import { withRetry } from '@/lib/withRetry';
 import { maybeFailpoint } from '@/lib/testFailpoints';
+import { buildRazorpayMetadata } from '@/lib/paymentMode';
 
 export async function POST(request: NextRequest) {
   try {
@@ -189,10 +190,10 @@ export async function POST(request: NextRequest) {
               currency: chargedCurrency,
               status: 'success',
               gateway: 'razorpay',
-              metadata: {
+              metadata: buildRazorpayMetadata({
                 source: 'verify-payment',
                 razorpay_signature,
-              },
+              }),
             },
           },
           { upsert: true, new: true }
