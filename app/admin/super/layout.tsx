@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import SuperSidebar from '@/components/admin/SuperSidebar';
 import { getAuthHeaders } from '@/utils/auth';
 import axios from 'axios';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname() || '';
+  /** `/admin/super` root page has its own full "SaaS Control Center" sidebar — hide the slim SuperSidebar to avoid two left bars */
+  const hideOuterSidebar = pathname === '/admin/super';
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
@@ -42,8 +45,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <SuperSidebar />
-      <main className="pl-64 min-h-screen">
+      {!hideOuterSidebar && <SuperSidebar />}
+      <main className={hideOuterSidebar ? 'min-h-screen' : 'pl-64 min-h-screen'}>
         {children}
       </main>
     </div>
