@@ -29,6 +29,8 @@ const ROLE_COLORS: Record<string, string> = {
   'manager':     'bg-blue-500/20 text-blue-400 border border-blue-500/30',
   'admin':       'bg-orange-500/20 text-orange-400 border border-orange-500/30',
   'super-admin': 'bg-red-500/20 text-red-400 border border-red-500/30',
+  'enterprise':  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+  'custom':      'bg-purple-500/20 text-purple-400 border border-purple-500/30',
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -36,6 +38,8 @@ const ROLE_LABELS: Record<string, string> = {
   'manager':     'Manager',
   'admin':       'Admin',
   'super-admin': 'Super Admin',
+  'enterprise':  'Enterprise Plan',
+  'custom':      'Custom',
 };
 
 export default function PlanManager() {
@@ -67,13 +71,22 @@ export default function PlanManager() {
   const fetchPlans = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/admin/plans');
+      const response = await axios.get('/api/admin/plans', {
+        headers: getAuthHeaders(),
+        timeout: 30_000,
+      });
       if (response.data.success) {
         setPlans(response.data.plans || []);
         setError('');
+      } else {
+        setError(response.data?.error || 'Failed to load plans');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load plans');
+      const msg =
+        err.code === 'ECONNABORTED'
+          ? 'Request timed out. Check that MongoDB is running and MONGODB_URI is correct.'
+          : err.response?.data?.error || err.message || 'Failed to load plans';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -81,7 +94,10 @@ export default function PlanManager() {
 
   const fetchRoleData = async () => {
     try {
-      const res = await axios.get('/api/admin/unified-feature-matrix', { headers: getAuthHeaders() });
+      const res = await axios.get('/api/admin/unified-feature-matrix', {
+        headers: getAuthHeaders(),
+        timeout: 30_000,
+      });
       if (res.data.features && res.data.plans) {
         // For each plan, collect all unique roles that have access to any enabled feature
         const planRoleMap: Record<string, Set<string>> = {};
@@ -102,7 +118,7 @@ export default function PlanManager() {
         });
 
         const result: Record<string, string[]> = {};
-        const roleOrder = ['user', 'manager', 'admin', 'super-admin'];
+        const roleOrder = ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'];
         Object.entries(planRoleMap).forEach(([planId, rolesSet]) => {
           result[planId] = roleOrder.filter(r => rolesSet.has(r));
         });
@@ -128,21 +144,30 @@ export default function PlanManager() {
         .filter((f) => f);
 
       let response;
+      const hdr = getAuthHeaders();
       if (editingId) {
-        response = await axios.patch('/api/admin/plans', {
-          id: editingId,
-          ...formData,
-          priceMonthly: Number(formData.priceMonthly),
-          priceYearly: formData.priceYearly ? Number(formData.priceYearly) : undefined,
-          features,
-        });
+        response = await axios.patch(
+          '/api/admin/plans',
+          {
+            id: editingId,
+            ...formData,
+            priceMonthly: Number(formData.priceMonthly),
+            priceYearly: formData.priceYearly ? Number(formData.priceYearly) : undefined,
+            features,
+          },
+          { headers: hdr, timeout: 30_000 }
+        );
       } else {
-        response = await axios.post('/api/admin/plans', {
-          ...formData,
-          priceMonthly: Number(formData.priceMonthly),
-          priceYearly: formData.priceYearly ? Number(formData.priceYearly) : undefined,
-          features,
-        });
+        response = await axios.post(
+          '/api/admin/plans',
+          {
+            ...formData,
+            priceMonthly: Number(formData.priceMonthly),
+            priceYearly: formData.priceYearly ? Number(formData.priceYearly) : undefined,
+            features,
+          },
+          { headers: hdr, timeout: 30_000 }
+        );
       }
 
       if (response.data.success) {
@@ -177,6 +202,8 @@ export default function PlanManager() {
     try {
       const response = await axios.delete('/api/admin/plans', {
         params: { id },
+        headers: getAuthHeaders(),
+        timeout: 30_000,
       });
 
       if (response.data.success) {
@@ -191,10 +218,14 @@ export default function PlanManager() {
 
   const handleToggleStatus = async (plan: Plan) => {
     try {
-      const response = await axios.patch('/api/admin/plans', {
-        id: plan.id,
-        isActive: !plan.isActive,
-      });
+      const response = await axios.patch(
+        '/api/admin/plans',
+        {
+          id: plan.id,
+          isActive: !plan.isActive,
+        },
+        { headers: getAuthHeaders(), timeout: 30_000 }
+      );
 
       if (response.data.success) {
         setSuccess(`Plan ${plan.isActive ? 'hidden' : 'activated'} successfully`);

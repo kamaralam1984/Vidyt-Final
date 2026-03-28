@@ -82,7 +82,7 @@ export default function UnifiedControlPanel() {
     setError(null);
     try {
       const [plansRes, controlsRes] = await Promise.all([
-        fetch('/api/admin/plans'),
+        fetch('/api/admin/plans', { headers: getAuthHeaders() }),
         axios.get('/api/admin/super/controls', { headers: getAuthHeaders() }).catch(err => {
           console.error('Controls API error:', err);
           return { data: { controls: [] } };
@@ -147,7 +147,7 @@ export default function UnifiedControlPanel() {
       const plan = plans.find((p) => p.planId === planId);
       const res = await fetch(`/api/admin/plans/${planId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           id: plan?._id,
           role: newRole,

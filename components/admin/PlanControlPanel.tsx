@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Check, Zap, Crown, Sparkles, Rocket, Globe } from 'lucide-react';
+import { getAuthHeaders } from '@/utils/auth';
 
 /**
  * Unified Super Admin - Plan & Role Control Panel
@@ -22,7 +23,7 @@ export default function PlanControlPanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/plans');
+      const res = await fetch('/api/admin/plans', { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.success) {
         setPlans(data.plans);
@@ -43,7 +44,7 @@ export default function PlanControlPanel() {
       const plan = plans.find((p) => p.planId === planId);
       const res = await fetch(`/api/admin/plans/${planId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           id: plan._id,
           role: newRole,

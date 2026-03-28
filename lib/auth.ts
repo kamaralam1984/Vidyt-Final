@@ -88,23 +88,27 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
     return null;
   }
 
-  // Optionally fetch fresh user data from DB
+  // Optionally fetch fresh user data from DB (bounded wait so API routes don't hang forever if MongoDB is slow/down)
   try {
-    await connectDB();
-    const user = await User.findById(jwtUser.id);
-    if (!user) {
-      return null;
+    const dbUser = await Promise.race([
+      (async () => {
+        await connectDB();
+        return User.findById(jwtUser.id);
+      })(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000)),
+    ]);
+    if (dbUser) {
+      return {
+        id: dbUser._id.toString(),
+        email: dbUser.email,
+        name: dbUser.name,
+        role: dbUser.role as any,
+        subscription: normalizePlan(dbUser.subscription) as any,
+      };
     }
-
-    return {
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      role: user.role as any,
-      subscription: normalizePlan(user.subscription) as any,
-    };
+    // Timeout or missing user document: use JWT (still verified)
+    return jwtUser;
   } catch (error) {
-    // Fallback to JWT data if DB fails
     return jwtUser;
   }
 }
@@ -201,11 +205,11 @@ export async function loginUser(
 /**
  * Get role from plan: Free → user, Pro → manager, Enterprise → admin. Super-admin is always preserved.
  */
-export function getRoleFromPlanAndUser(user: { role?: string; subscription?: string; subscriptionPlan?: { planId?: string } }): 'user' | 'admin' | 'manager' | 'super-admin' {
+export function getRoleFromPlanAndUser(user: { role?: string; subscription?: string; subscriptionPlan?: { planId?: string } }): 'user' | 'admin' | 'manager' | 'super-admin' | 'enterprise' {
   if (user.role === 'super-admin' || user.role === 'superadmin') return 'super-admin';
   const rawPlan = user.subscriptionPlan?.planId || user.subscription || 'free';
   const plan = normalizePlan(rawPlan);
-  if (plan === 'enterprise') return 'admin';
+  if (plan === 'enterprise') return 'enterprise';
   if (plan === 'pro') return 'manager';
   return 'user';
 }
@@ -213,10 +217,10 @@ export function getRoleFromPlanAndUser(user: { role?: string; subscription?: str
 /**
  * Check if user has permission
  */
-export function hasPermission(user: AuthUser | null, requiredRole: 'user' | 'admin' | 'manager'): boolean {
+export function hasPermission(user: AuthUser | null, requiredRole: 'user' | 'admin' | 'manager' | 'enterprise'): boolean {
   if (!user) return false;
   if (user.role === 'super-admin') return true;
-  const roleHierarchy: Record<string, number> = { user: 1, manager: 2, admin: 3 };
+  const roleHierarchy: Record<string, number> = { user: 1, manager: 2, admin: 3, enterprise: 4 };
   return (roleHierarchy[user.role] ?? 0) >= (roleHierarchy[requiredRole] ?? 0);
 }
 

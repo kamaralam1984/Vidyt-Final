@@ -4,11 +4,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Plan from '@/models/Plan';
 import { getUserFromRequest } from '@/lib/auth';
+import { isSuperAdminRole } from '@/lib/adminAuth';
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
-    if (!user || user.role !== 'super-admin') {
+    if (!user || !isSuperAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -29,7 +30,18 @@ export async function GET(request: NextRequest) {
         isCustom: p.isCustom,
         billingPeriod: p.billingPeriod,
         isActive: p.isActive,
+        role: p.role || 'user', // Add role information
+        limits: p.limits || {}, // Add limits
+        featureFlags: p.featureFlags || {}, // Add feature flags
       })),
+      roleMapping: {
+        'free': 'user',
+        'starter': 'user',
+        'pro': 'manager',
+        'enterprise': 'admin',
+        'custom': 'admin',
+        'owner': 'super-admin'
+      }
     });
   } catch (e: any) {
     console.error('Get plans error:', e);
@@ -40,7 +52,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
-    if (!user || user.role !== 'super-admin') {
+    if (!user || !isSuperAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -54,6 +66,9 @@ export async function POST(request: NextRequest) {
       currency = 'USD',
       features,
       billingPeriod = 'both',
+      role = 'user', // NEW: Role assignment with plan
+      limits = {}, // NEW: Custom limits per role
+      featureFlags = {}, // NEW: Feature flags per plan
     } = body;
 
     // Validations
@@ -62,6 +77,13 @@ export async function POST(request: NextRequest) {
         { error: 'planId, name, and priceMonthly are required' },
         { status: 400 }
       );
+    }
+
+    // NEW: Validate role
+    if (!['user', 'manager', 'admin', 'super-admin'].includes(role)) {
+      return NextResponse.json({ 
+        error: 'Invalid role. Must be: user, manager, admin, or super-admin' 
+      }, { status: 400 });
     }
 
     if (typeof priceMonthly !== 'number' || priceMonthly < 0) {
@@ -91,6 +113,9 @@ export async function POST(request: NextRequest) {
       isCustom: true,
       billingPeriod,
       isActive: true,
+      role, // NEW: Assign role
+      limits, // NEW: Set limits
+      featureFlags, // NEW: Set feature flags
     });
 
     return NextResponse.json({
@@ -107,6 +132,9 @@ export async function POST(request: NextRequest) {
         isCustom: plan.isCustom,
         billingPeriod: plan.billingPeriod,
         isActive: plan.isActive,
+        role: plan.role, // NEW: Include role in response
+        limits: plan.limits, // NEW: Include limits
+        featureFlags: plan.featureFlags, // NEW: Include feature flags
       },
     });
   } catch (e: any) {
@@ -118,7 +146,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
-    if (!user || user.role !== 'super-admin') {
+    if (!user || !isSuperAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -133,6 +161,9 @@ export async function PATCH(request: NextRequest) {
       features,
       billingPeriod,
       isActive,
+      role, // NEW: Allow changing role
+      limits, // NEW: Allow changing limits
+      featureFlags, // NEW: Allow changing feature flags
     } = body;
 
     if (!id) {
@@ -167,6 +198,17 @@ export async function PATCH(request: NextRequest) {
     if (features !== undefined) updateData.features = features;
     if (billingPeriod !== undefined) updateData.billingPeriod = billingPeriod;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (role !== undefined) {
+      // NEW: Validate role
+      if (!['user', 'manager', 'admin', 'super-admin'].includes(role)) {
+        return NextResponse.json({ 
+          error: 'Invalid role. Must be: user, manager, admin, or super-admin' 
+        }, { status: 400 });
+      }
+      updateData.role = role;
+    }
+    if (limits !== undefined) updateData.limits = limits;
+    if (featureFlags !== undefined) updateData.featureFlags = featureFlags;
 
     await connectDB();
     const plan = await Plan.findByIdAndUpdate(id, updateData, { new: true });
@@ -189,6 +231,9 @@ export async function PATCH(request: NextRequest) {
         isCustom: plan.isCustom,
         billingPeriod: plan.billingPeriod,
         isActive: plan.isActive,
+        role: plan.role, // NEW: Include role
+        limits: plan.limits, // NEW: Include limits
+        featureFlags: plan.featureFlags, // NEW: Include feature flags
       },
     });
   } catch (e: any) {
@@ -200,7 +245,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
-    if (!user || user.role !== 'super-admin') {
+    if (!user || !isSuperAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
