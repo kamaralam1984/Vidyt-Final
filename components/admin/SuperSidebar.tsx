@@ -8,17 +8,18 @@ import {
   DollarSign,
   Radio,
   Clock,
-  Settings,
   ChevronRight,
   Zap,
   BarChart2,
   Headphones,
   Cpu,
+  Package,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
   { href: '/admin/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/super', label: 'Control Center', icon: Package },
   { href: '/admin/super/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/admin/super/users', label: 'Users', icon: Users },
   { href: '/admin/super/revenue', label: 'Revenue', icon: DollarSign },
@@ -26,7 +27,6 @@ const NAV_ITEMS = [
   { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
   { href: '/admin/super/support', label: 'Support Queue', icon: Headphones },
   { href: '/admin/super/ai-monitoring', label: 'AI Monitoring', icon: Cpu },
-  { href: '/admin/super/platform-controls', label: 'Platform Controls', icon: Settings },
 ];
 
 export default function SuperSidebar() {
@@ -50,7 +50,11 @@ export default function SuperSidebar() {
       {/* Nav */}
       <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname.startsWith(href);
+          const p = pathname || '';
+          const isActive =
+            href === '/admin/super'
+              ? p === '/admin/super' || p === '/admin/super/'
+              : p.startsWith(href);
           return (
             <motion.div key={href} whileHover={{ x: 2 }} whileTap={{ scale: 0.98 }}>
               <Link
