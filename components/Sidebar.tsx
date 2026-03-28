@@ -12,7 +12,6 @@ import {
   Hash,
   Clock,
   BarChart3,
-  Sparkles,
   Target,
   Facebook,
   Instagram,
@@ -24,6 +23,7 @@ import {
   Zap,
   Film,
   Search,
+  Loader2,
 } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
 import UsageBar from './UsageBar';
@@ -37,7 +37,6 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProps) {
   const pathname = usePathname();
-  const [aiStudioAllowed, setAiStudioAllowed] = useState(false);
   const [allowedSystems, setAllowedSystems] = useState<Record<string, boolean>>({});
   const [loadingSystems, setLoadingSystems] = useState(true);
   
@@ -74,9 +73,9 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
     fetchPlatformControls();
   }, []);
 
-  useEffect(() => {
-    setAiStudioAllowed(!!allowedSystems['script_generator'] || !!allowedSystems['thumbnail_generator'] || !!allowedSystems['hook_generator'] || !!allowedSystems['shorts_creator'] || !!allowedSystems['youtube_growth']);
-  }, [allowedSystems]);
+  /** API load hone tak empty object par `!== false` sab dikha deta tha — sirf explicit `true` par item dikhao. */
+  const navReady = !loadingSystems && !loadingControls;
+
   const aiStudioItems = [
     { id: 'script_generator', icon: FileText, label: 'Script Generator', href: '/ai/script-generator' },
     { id: 'ai_coach', icon: Zap, label: 'AI Coach', href: '/ai/script-generator?mode=coach' },
@@ -84,7 +83,9 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
     { id: 'hook_generator', icon: Zap, label: 'Hook Generator', href: '/ai/hook-generator' },
     { id: 'shorts_creator', icon: Film, label: 'Shorts Creator', href: '/ai/shorts-creator' },
     { id: 'youtube_growth', icon: TrendingUp, label: 'YouTube Growth', href: '/tools/youtube-growth' },
-  ].filter(item => allowedSystems[item.id] !== false);
+  ].filter((item) => navReady && allowedSystems[item.id] === true);
+
+  const aiStudioAllowed = aiStudioItems.length > 0;
 
   const menuItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard', href: '/dashboard' },
@@ -101,14 +102,11 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
     { id: 'analytics', icon: BarChart3, label: 'Analytics', href: '/analytics' },
     { id: 'calendar', icon: Calendar, label: 'Content Calendar', href: '/calendar' },
   ]
-  .filter(item => allowedSystems[item.id] !== false)
-  .filter(item => {
-      // Dynamic hiding based on platform control API
-      if (item.platform && platformControls[item.platform]) {
-          return platformControls[item.platform].isEnabled;
-      }
-      return true; // if no platform setting restricts it, allow it.
-  });
+    .filter((item) => navReady && allowedSystems[item.id] === true)
+    .filter((item) => {
+      if (!item.platform) return true;
+      return platformControls[item.platform]?.isEnabled === true;
+    });
 
   return (
     <>
@@ -134,6 +132,18 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
             </div>
             <nav className="p-4 flex flex-col flex-1 min-h-0">
               <ul className="space-y-2 flex-1 overflow-y-auto min-h-0">
+                {!navReady ? (
+                  <li className="py-6 flex flex-col items-center justify-center gap-3 text-[#666]">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#FF0000]/70" />
+                    <p className="text-xs text-center px-2">Access load ho raha hai…</p>
+                    <div className="w-full space-y-2 mt-2">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-10 rounded-lg bg-[#1a1a1a] animate-pulse" />
+                      ))}
+                    </div>
+                  </li>
+                ) : (
+                  <>
                 {menuItems.map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -188,6 +198,8 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                         </motion.li>
                       );
                     })}
+                  </>
+                )}
                   </>
                 )}
               </ul>
