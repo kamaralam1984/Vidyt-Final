@@ -116,6 +116,25 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  const roleNorm = String(user.role || '')
+    .toLowerCase()
+    .replace(/_/g, '-');
+  const isSuperAdminRole = roleNorm === 'super-admin' || roleNorm === 'superadmin';
+
+  // Canonical URL: /dashboard/super → /admin/super (same UI, always use admin layout + sidebar)
+  if (pathname === '/dashboard/super' || pathname.startsWith('/dashboard/super/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/dashboard\/super/, '/admin/super');
+    return NextResponse.redirect(url);
+  }
+
+  // Super Admin panel: only super-admin roles (not generic admin / user)
+  const isSuperAdminPanelRoute =
+    pathname === '/admin/super' || pathname.startsWith('/admin/super/');
+  if (isSuperAdminPanelRoute && !isSuperAdminRole) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   // Add user to request headers for API routes
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', user.id);

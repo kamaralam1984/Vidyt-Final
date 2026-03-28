@@ -17,7 +17,6 @@ import {
   Save,
   Loader2,
   Power,
-  Toggle2,
   Plus,
   Trash2,
   Edit2,
@@ -53,16 +52,11 @@ interface RoleDefinition {
   isCustom?: boolean;
 }
 
-type UnifiedControlPanelProps = {
-  /** When true, fits inside a parent layout (no full-screen hero, no duplicate page chrome). */
-  embedded?: boolean;
-};
-
 /**
  * Unified Control Panel - Manage Plans, Roles & Platforms
  * All controls in ONE page
  */
-export default function UnifiedControlPanel({ embedded = false }: UnifiedControlPanelProps) {
+export default function UnifiedControlPanel() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [controls, setControls] = useState<PlatformControl[]>([]);
   const [loading, setLoading] = useState(false);
@@ -240,7 +234,10 @@ export default function UnifiedControlPanel({ embedded = false }: UnifiedControl
     }
   };
 
-  const roleInfo = {
+  const roleInfo: Record<
+    string,
+    { color: string; badgeColor: string; level: number }
+  > = {
     user: { color: '#AAAAAA', badgeColor: 'bg-gray-500', level: 1 },
     manager: { color: '#FF0000', badgeColor: 'bg-red-500', level: 2 },
     admin: { color: '#FFD700', badgeColor: 'bg-amber-500', level: 3 },
@@ -261,13 +258,9 @@ export default function UnifiedControlPanel({ embedded = false }: UnifiedControl
     support: Headphones,
   };
 
-  const shell = embedded
-    ? 'rounded-2xl border border-white/10 bg-gradient-to-b from-[#141414] to-[#0a0a0a] p-6'
-    : 'min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black p-6';
-
   if (loading) {
     return (
-      <div className={`${embedded ? 'rounded-2xl border border-white/10 bg-[#141414] p-12' : 'min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black p-6'} flex items-center justify-center`}>
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black p-6 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-red-500 mx-auto mb-4" />
           <p className="text-gray-400">Loading control panel...</p>
@@ -277,15 +270,13 @@ export default function UnifiedControlPanel({ embedded = false }: UnifiedControl
   }
 
   return (
-    <div className={shell}>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        {!embedded && (
-          <div className="mb-12">
-            <h1 className="text-4xl font-bold text-white mb-2">Control Center</h1>
-            <p className="text-gray-400">Manage plans, roles, and platform controls from one place</p>
-          </div>
-        )}
+        <div className="mb-12">
+          <h1 className="text-4xl font-bold text-white mb-2">Control Center</h1>
+          <p className="text-gray-400">Manage plans, roles, and platform controls from one place</p>
+        </div>
 
         {/* Alert Messages */}
         {error && (
@@ -321,7 +312,8 @@ export default function UnifiedControlPanel({ embedded = false }: UnifiedControl
             ) : (
               plans.map((plan) => {
                 const Icon = planIcons[plan.planId] || Globe;
-                const info = roleInfo[plan.role] || roleInfo.user;
+                const info =
+                  roleInfo[String(plan.role ?? 'user')] ?? roleInfo.user;
 
                 return (
                   <div key={plan.planId} className="bg-gray-800 border-2 border-gray-700 rounded-xl p-6 hover:border-gray-600 transition-all">

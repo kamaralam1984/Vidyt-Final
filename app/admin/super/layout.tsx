@@ -14,11 +14,13 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     const check = async () => {
       try {
         const res = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
-        const role = res.data?.user?.role;
-        if (['super-admin', 'superadmin', 'admin'].includes(role)) {
+        const role = String(res.data?.user?.role || '')
+          .toLowerCase()
+          .replace(/_/g, '-');
+        if (role === 'super-admin' || role === 'superadmin') {
           setAllowed(true);
         } else {
-          router.push('/login');
+          router.replace('/dashboard');
         }
       } catch {
         router.push('/login');

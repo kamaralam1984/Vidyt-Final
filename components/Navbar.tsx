@@ -31,7 +31,10 @@ export default function Navbar() {
             setUserUniqueId(uniqueId);
             if (typeof window !== 'undefined') localStorage.setItem('uniqueId', uniqueId);
           }
-          const isSuperAdmin = (u.role || '').toLowerCase() === 'super-admin';
+          const roleNorm = String(u.role || '')
+            .toLowerCase()
+            .replace(/_/g, '-');
+          const isSuperAdmin = roleNorm === 'super-admin' || roleNorm === 'superadmin';
           if (isSuperAdmin) {
             setPlanName('Owner');
             setDaysLeft(null);
@@ -73,6 +76,11 @@ export default function Navbar() {
     { icon: MessageCircle, label: 'Support', href: '/support' },
   ];
 
+  const roleNormNav = String(userRole || '')
+    .toLowerCase()
+    .replace(/_/g, '-');
+  const isSuperRoleNav = roleNormNav === 'super-admin' || roleNormNav === 'superadmin';
+
   return (
     <nav className="fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between gap-4 px-4 bg-[#0F0F0F] border-b border-[#212121]">
       <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
@@ -84,7 +92,8 @@ export default function Navbar() {
           <div className="hidden sm:flex items-center gap-3 text-sm">
             {userName && <span className="text-white font-medium truncate max-w-[120px]" title={userName}>{userName}</span>}
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
-              userRole === 'super-admin' ? 'bg-[#FF0000]/20 text-[#FF0000]'
+              isSuperRoleNav
+                ? 'bg-[#FF0000]/20 text-[#FF0000]'
               : userRole === 'admin' ? 'bg-[#FF0000]/20 text-[#FF0000]'
               : userRole === 'manager' ? 'bg-yellow-400/20 text-yellow-400'
               : 'bg-[#212121] text-[#AAAAAA]'
@@ -102,9 +111,9 @@ export default function Navbar() {
           </div>
         )}
         <div className="flex items-center gap-1">
-          {userRole === 'super-admin' && (
+          {isSuperRoleNav && (
             <Link
-              href="/dashboard/super"
+              href="/admin/super"
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-[#FF0000] border border-[#FF0000]/40 bg-[#FF0000]/10 hover:bg-[#FF0000]/20 transition-colors"
             >
               <Crown className="w-4 h-4" />
