@@ -6,7 +6,7 @@ import User from '@/models/User';
 import { google } from 'googleapis';
 import { Readable } from 'stream';
 import connectDB from '@/lib/mongodb';
-import { clampYoutubeTitle, SEO_DESCRIPTION_MAX_WORDS, truncateToWordCount } from '@/lib/buildUploadSeo';
+import { normalizeYoutubeTitle, SEO_DESCRIPTION_MAX_WORDS, truncateToWordCount } from '@/lib/buildUploadSeo';
 
 
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
         const formData = await request.formData();
         const videoFile = formData.get('video') as File;
-        const title = clampYoutubeTitle((formData.get('title') as string) || '');
+        const title = normalizeYoutubeTitle((formData.get('title') as string) || '');
         const descriptionRaw = (formData.get('description') as string) || '';
         const description = truncateToWordCount(descriptionRaw, SEO_DESCRIPTION_MAX_WORDS);
         const tags = formData.get('tags') as string || '';

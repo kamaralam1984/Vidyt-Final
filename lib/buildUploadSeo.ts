@@ -8,7 +8,8 @@ export const SEO_DESCRIPTION_MAX_WORDS = 200;
 
 export function truncateToWordCount(text: string, maxWords: number): string {
   const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) return text.trim();
+  // Under limit: return text as-is so spaces while typing (e.g. "hello ") are kept
+  if (words.length <= maxWords) return text;
   return words.slice(0, maxWords).join(' ');
 }
 
@@ -25,7 +26,7 @@ export function clampYoutubeTitle(title: string, maxChars = YOUTUBE_TITLE_MAX_CH
 export function takeFiveTitles(titles: string[], maxChars = YOUTUBE_TITLE_MAX_CHARS): string[] {
   return titles
     .slice(0, 5)
-    .map((t) => clampYoutubeTitle(t, maxChars));
+    .map((t) => clampYoutubeTitle(t.trim(), maxChars));
 }
 
 export interface UploadSeoPack {
