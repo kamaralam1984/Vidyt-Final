@@ -18,7 +18,7 @@ export interface AnalysisLimitResult {
 /**
  * Get start of today (UTC) and start of current month (UTC).
  */
-function getPeriodStart(period: 'day' | 'month'): Date {
+export function getPeriodStart(period: 'day' | 'month'): Date {
   const now = new Date();
   if (period === 'day') {
     const start = new Date(now);
@@ -43,6 +43,20 @@ export async function getAnalysisUsageCount(
     uploadedAt: { $gte: start },
   });
   return count;
+}
+
+/** File uploads to the app (platform === upload) in the current period. */
+export async function getUploadUsageCount(
+  userId: string,
+  period: 'day' | 'month'
+): Promise<number> {
+  await connectDB();
+  const start = getPeriodStart(period);
+  return Video.countDocuments({
+    userId,
+    platform: 'upload',
+    uploadedAt: { $gte: start },
+  });
 }
 
 /**

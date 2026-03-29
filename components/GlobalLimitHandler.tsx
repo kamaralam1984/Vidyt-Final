@@ -19,9 +19,12 @@ export default function GlobalLimitHandler() {
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
-        const res = await axios.get('/api/auth/me', { headers: { Authorization: `Bearer ${token}` }});
-        
-        const user = res.data?.user;
+        const [meRes, usageRes] = await Promise.all([
+          axios.get('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get('/api/user/usage', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+        ]);
+
+        const user = meRes.data?.user;
         if (user) {
            const subPlan = user.subscriptionPlan;
            if (subPlan?.status === 'expired') {
@@ -30,13 +33,13 @@ export default function GlobalLimitHandler() {
            if (user.subscription === 'free') {
                setShowFreeUpsell(true);
            }
-           
-           const used = user.usageStats?.analysesThisMonth || 0;
-           const limit = user.computedLimits?.analyses || 1;
-           const percent = (used / limit) * 100;
-           
-           if (percent >= 80 && percent < 100) {
-              setShowNearLimitBanner(true);
+
+           const va = usageRes?.data?.usage?.videoAnalysis;
+           if (va && va.limit > 0 && va.limit < Number.MAX_SAFE_INTEGER) {
+             const percent = (va.used / va.limit) * 100;
+             if (percent >= 80 && percent < 100) {
+               setShowNearLimitBanner(true);
+             }
            }
         }
       } catch(e) {}
