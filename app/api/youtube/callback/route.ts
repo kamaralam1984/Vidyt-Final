@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { oauth2Client } from '@/services/youtubeUpload';
+import { getMainYoutubeOAuthRedirectUri } from '@/services/youtubeUpload';
 import { getUserFromRequest } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
@@ -28,16 +28,11 @@ export async function GET(request: NextRequest) {
         // Use a fresh client to avoid any state issues
         const { google } = await import('googleapis');
         
-        // Use fallbacks for environment variables as requested
         const clientId = process.env.CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
         const clientSecret = process.env.CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
-        const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/youtube/callback';
+        const redirectUri = getMainYoutubeOAuthRedirectUri();
 
-        const client = new google.auth.OAuth2(
-            clientId,
-            clientSecret,
-            redirectUri
-        );
+        const client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
         console.log('YouTube Callback: Exchanging code for tokens...');
         const { tokens } = await client.getToken(code);

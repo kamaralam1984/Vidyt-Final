@@ -1,5 +1,9 @@
 import { google } from 'googleapis';
-import { oauth2Client, refreshAccessToken } from './youtubeUpload';
+import {
+  getMainYoutubeOAuthRedirectUri,
+  oauth2Client,
+  refreshAccessToken,
+} from './youtubeUpload';
 
 /**
  * Fetches real YouTube statistics and growth data for a connected user.
@@ -10,9 +14,9 @@ export async function getRealYouTubeData(credentials: {
   expiry_date?: Date | number;
 }, range: 'today' | 'week' | 'month' | 'year' = 'month') {
   const auth = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET || process.env.CLIENT_SECRET,
+    getMainYoutubeOAuthRedirectUri()
   );
 
   const formattedCredentials = {

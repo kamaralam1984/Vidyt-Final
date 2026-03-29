@@ -1,15 +1,22 @@
 import { google } from 'googleapis';
 import { Stream } from 'stream';
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
+/**
+ * Single source of truth for the main YouTube OAuth redirect.
+ * Must match Google Cloud Console "Authorized redirect URIs" and `/api/youtube/callback`.
+ */
+export function getMainYoutubeOAuthRedirectUri(): string {
+  const fromEnv = process.env.GOOGLE_REDIRECT_URI?.trim();
+  if (fromEnv) return fromEnv;
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+  return `${base}/api/youtube/callback`;
+}
 
-export const oauth2Client = new google.auth.OAuth2(
-    CLIENT_ID,
-    CLIENT_SECRET,
-    REDIRECT_URI
-);
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || process.env.CLIENT_SECRET;
+const REDIRECT_URI = getMainYoutubeOAuthRedirectUri();
+
+export const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
 export interface YouTubeUploadParams {
     title: string;
@@ -69,7 +76,7 @@ export async function getYouTubeClient(credentials: { access_token?: string | nu
     const auth = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET || process.env.CLIENT_SECRET,
-        process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/youtube/callback`
+        getMainYoutubeOAuthRedirectUri()
     );
 
     auth.setCredentials(credentials);

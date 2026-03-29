@@ -7,6 +7,7 @@ import { google } from 'googleapis';
 import { Readable } from 'stream';
 import connectDB from '@/lib/mongodb';
 import { normalizeYoutubeTitle, SEO_DESCRIPTION_MAX_WORDS, truncateToWordCount } from '@/lib/buildUploadSeo';
+import { getMainYoutubeOAuthRedirectUri } from '@/services/youtubeUpload';
 import Channel, { type IChannel } from '@/models/Channel';
 
 
@@ -76,9 +77,11 @@ export async function POST(request: NextRequest) {
 
         const clientId = process.env.CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
         const clientSecret = process.env.CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
-        const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/youtube/callback';
-
-        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+        const oauth2Client = new google.auth.OAuth2(
+            clientId,
+            clientSecret,
+            getMainYoutubeOAuthRedirectUri()
+        );
 
         const accessToken = channelDoc ? channelDoc.accessToken : dbUser.youtube!.access_token!;
         const refreshToken = channelDoc ? channelDoc.refreshToken : dbUser.youtube!.refresh_token!;
