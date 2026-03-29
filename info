@@ -1,664 +1,193 @@
-# ViralBoost AI - Final System Overview (Fresh File)
+# ViralBoost AI - Website Functions and Systems (Web Info)
 
-Is file me website ka updated final status diya gaya hai:
-- kya implement ho chuka hai,
-- user ko kya fayda milta hai,
-- kya missing hai,
-- aur abhi kya implement karna zaruri hai.
+Is file me website ke pure functions, systems, aur capabilities simple Hinglish me diye gaye hain.
 
 ---
 
-## 1) Product Summary
+## 1) Website Kya Hai
 
-ViralBoost AI ek creator-focused SaaS platform hai jo video creators, agencies, aur teams ko content planning, analysis, optimization, publishing insights, aur growth strategy me help karta hai.
+ViralBoost AI ek creator + agency focused SaaS platform hai jo video content ko analyze, optimize, plan, aur monitor karne me help karta hai.
 
-Main objective:
-- better content decisions,
-- faster production workflow,
-- higher engagement aur growth probability.
+Primary goal:
+- better content decisions
+- higher viral potential
+- faster workflow
+- data-driven growth
 
 ---
 
-## 2) Implemented Core Systems (Working)
+## 2) Core User Functions (Website Kya Kar Sakti Hai)
 
-## A. Authentication + Access
-- Email/password login
+### A) User Authentication and Account
+- Email/password signup-login
 - Unique ID + PIN login
-- OTP based signup flow
-- Password reset flow
-- JWT token based session
+- OTP based verification
+- Forgot/reset password
+- JWT based sessions
 - Role-based access (user, manager, admin, super-admin)
-- Protected APIs + protected admin/dashboard access
 
-User value:
-- secure onboarding
-- fast login options
-- role-wise correct feature access
+### B) Video Input and Analysis
+- Direct video upload
+- YouTube/Facebook/Instagram/TikTok URL analysis
+- Viral probability score
+- Hook score, thumbnail score, title score
+- Optimized title suggestions
+- SEO description generation
+- Tags and hashtags generation
+- Best posting time recommendation
 
-## B. Plans, Billing, Subscription
-- **Manage Plans (Super Admin → Billing & Config):** `priceMonthly` / `priceYearly` MongoDB `Plan` docs — **single source of truth** for marketing + Razorpay (`GET /api/subscriptions/plans`, `lib/planPricing.ts`)
-- Tiers: **Free**, **Starter** (default **$3/mo**), **Pro** (default **$15/mo**), **Enterprise**, **Custom** — display amounts admin-configurable
-- Checkout + payment verification uses **DB plan prices** (not hardcoded constants only; fallback if plan row missing)
-- **Currency correctness:** DB plan prices are stored/treated as **USD**; signup/checkout now converts **USD → selected locale currency** (from `LocaleContext`) and sends Razorpay order with the correct `amount` + `currency` (minor units handling: paise/cents; JPY/JR-style 0-decimals supported)
-- **Signup billing consistency:** `prepare-signup` stores `PendingUser.currency` + country; `verify-and-pay` creates Razorpay order using that currency and stores USD + Razorpay metadata on `PendingUser`, so **billingHistory + receipt** use the charged amount/currency (no USD/INR mismatch)
-- Subscription status and usage APIs; plan → role mapping (e.g. Pro → manager, Enterprise → admin; Starter → user)
-- Invoice/receipt related flows
+### C) YouTube Upload System
+- Video upload to YouTube from dashboard
+- Privacy selection (public/unlisted/private)
+- Thumbnail upload
+- SEO description + tags autofill (title based)
+- Modeled viral-fit copy generation (SEO-oriented)
+- Channel selection support:
+  - default Google connected account
+  - linked YouTube channels me se select karke upload
 
-User value:
-- same prices on landing, `/pricing`, signup, and checkout (and the charged amount matches the selected currency)
-- clear plan upgrade path; controlled usage by plan
+### D) YouTube Authentication and Channel Management
+- Google OAuth connect
+- Multiple channel connect flow
+- Connected channels list
+- Channel-wise token usage for upload
+- Token refresh and save
+- Channel disconnect support
 
-## C. Video Analysis System
-- Multi-source analysis flows:
-  - YouTube
-  - Facebook
-  - Instagram
-  - TikTok
-  - direct upload pipeline
-- Viral score, performance insight, keyword/title/hashtag support
-- Saved analysis data + retrieval APIs
+### E) SEO + Discovery Tools
+- YouTube SEO tools
+- Keyword ideas
+- Title score tools
+- Description suggestions
+- Hashtag tools
+- Trending topic support
+- Competitor context based optimization
 
-User value:
-- actionable content feedback
-- one place for multiple platform analysis
-- faster optimization before publishing
+### F) Analytics and Insights
+- Dashboard analytics overview
+- Growth and performance trends
+- Engagement style insights
+- Heatmap/best-time style outputs
+- Analysis history and video-level details
 
-## D. Analytics System
-- Overview analytics APIs
-- Growth/retention/benchmark/heatmap style APIs
-- Admin analytics panels
-- Super admin dashboard data modules
+### G) Calendar and Scheduling
+- Content planning and schedule endpoints
+- Calendar-based posting workflow
 
-User value:
-- data-driven decisions
-- visibility into performance trends
-- easier content strategy planning
+### H) Export and Reporting
+- Analytics export support (CSV/Excel/PDF routes)
+- White-label ready report inputs (company name/logo fields)
 
-## E. Super Admin System
-- Dedicated super-admin section with sidebar navigation
-- Dashboard, users, revenue, sessions, live tracking, support, analytics pages
-- Plan and feature controls
-- User management controls (role/plan level admin operations)
+### I) Support and Communication
+- Support tickets
+- AI-assisted support response paths
+- Chat session + message history
 
-User value (for business owner/admin):
-- centralized control
-- system-level visibility
-- operations + monitoring from one place
+### J) API and Integrations
+- API key management
+- Public usage endpoint
+- Webhook support for analysis events
 
-## F. Live Tracking + Activity
-- Tracking APIs implemented
-- Session/activity models
-- Super admin live analytics endpoints
-- Tracking events integrated into app flow
+---
 
-User value:
-- real-time behavior visibility (admin side)
-- better operational monitoring
+## 3) Admin and Super Admin Systems
 
-## G. API Platform Coverage
-Implemented route groups include:
+### Admin Controls
+- User management
+- Plan/subscription operations
+- Notifications and operations controls
+- Data monitoring views
+
+### Super Admin Controls
+- Full platform visibility
+- Revenue/usage/control dashboards
+- Plan and feature configuration
+- AI monitoring modules
+- System-level management routes
+
+---
+
+## 4) Plans, Billing, and Access Logic
+
+- Free/Starter/Pro/Enterprise/Custom style tiers
+- Plan-based feature limits (analysis counts, suggestions, hashtags, etc.)
+- Role mapping by plan
+- Subscription and usage tracking
+- Payment/order verification flows
+- Invoice/receipt related APIs
+
+---
+
+## 5) AI and Prediction Stack
+
+- Viral prediction service integration (with fallback behavior)
+- Outcome/label capture support (`/api/ai/outcome`)
+- Metrics endpoint for model quality tracking
+- Retrain/cron-oriented endpoints
+- Queue/worker support paths for async processing
+
+---
+
+## 6) API Surface (High-Level)
+
+Major route groups:
 - `/api/auth/*`
 - `/api/admin/*`
 - `/api/analytics/*`
 - `/api/subscriptions/*`
 - `/api/user/*`
 - `/api/youtube/*`
-- `/api/trending/*`
-- `/api/trends/*`
+- `/api/videos/*`
+- `/api/trending/*` and `/api/trends/*`
+- `/api/posting-time/*`
 - `/api/export/*`
 - `/api/schedule/*`
-- `/api/videos/*`
-- `/api/posting-time/*`
-
-Also dynamic behavior hardened for server-side data usage routes.
-
-**Cron jobs (middleware):** `/api/cron/daily`, `/api/cron/ai-retrain`, `/api/cron/sync-prediction-outcomes` — JWT ke bina call ho sakte hain; har route **andar** `Authorization: Bearer CRON_SECRET` verify karti hai (agar `CRON_SECRET` set ho).
-
-## H. Mobile App (PWA + Native Shell)
-- **PWA install:** `public/manifest.webmanifest` + `public/sw.js`, and `components/PWARegister.tsx` registers the service worker for “Add to Home Screen” / standalone feel
-- **Native mobile shell (Android):** `mobile/` uses **Capacitor** to wrap the existing website inside a WebView (no separate React Native rewrite). Server URL is controlled by `CAPACITOR_SERVER_URL`
-- **Dev/run from terminal:** `npm run mobile:run:android` / `cd mobile && npm run run:android` (uses `cap run android`); Android Studio Snap JBR is auto-detected for Gradle
-
-## I. Production AI, Queue, Monitoring (add-on stack)
-- **Python FastAPI** viral ML service (`ai-services/viral_prediction/`) — embeddings + classifier; Node calls it first, **internal ensemble fallback** if down
-- **Ground truth / validation (real labels — not fake metrics):**
-  - Har prediction par `engagement` = **prediction ke waqt ka snapshot** (inputs)
-  - **`outcome`** subdocument = **baad me verify** hua asli result: `viralScore0to100`, views/likes/comments, `capturedAt`, `source` (`youtube_api` | `user_submitted` | `admin` | `cron_sync`)
-  - **`POST /api/ai/outcome`** — user/admin apne prediction par actual stats ya score submit karke label banata hai
-  - **`POST /api/cron/sync-prediction-outcomes`** — `CRON_SECRET` + YouTube Data API se jin `ViralPrediction` me `videoId` hai aur `outcome` khali hai, un par auto-label (`services/youtubeVideoStats.ts`, `lib/predictionOutcomeSync.ts`)
-  - **`GET /api/ai/metrics`** — MAE/RMSE **sirf** jahan `outcome.viralScore0to100` set hai; kam labels par `null` + `insufficientGroundTruth`; `?scope=global` sirf super-admin (warna sirf apne predictions)
-  - **Training:** Python/ worker training samples me **pehle** `getLabeledPredictionTrainingSamples()` (verified outcomes), phir `ViralDataset` — true labels pipeline retrain ke liye
-  - Helpers: `lib/viralOutcome.ts` (score formula, YouTube id extract), predict API me `videoId` / `videoUrl` save for sync
-- **Super Admin AI Monitoring:** UI `/admin/super/ai-monitoring` + `GET /api/admin/super/ai-monitoring` (models, **labeledPredictions** count, total predictions, support AI, queue)
-- **Background jobs:** Redis + **BullMQ** queue (`lib/queue.ts`), worker `workers/aiWorker.ts` — optional async **prediction / training / support_ai** when env flags on; `AIJobLog` model
-- **Auto-retrain cron hook:** `POST /api/cron/ai-retrain` + scheduler wiring; model **rollback** API for admins
-- **Support AI:** OpenAI-based classification/replies (`services/ai/supportAI.ts`), embeddings helper; routes e.g. `/api/support/ai-reply`, enriched `/api/support/tickets`
-- **Chat memory:** `ChatSession` / `ChatMessage` — `/api/support/chat`, `/api/support/chat/history`
-- **Observability hooks:** structured logging (`lib/observability.ts`); Sentry dependency present for errors
-
-User value:
-- more reliable AI at scale; admin visibility into model health; optional offload of heavy work to workers
+- `/api/support/*`
+- `/api/ai/*`
 
 ---
 
-## 3) User Benefits (Direct)
+## 7) Website Se End User Ko Kya Value Milti Hai
 
-## Creator / End User Benefits
-- Better titles, hashtags, video positioning inputs
-- Platform-specific analysis in one product
-- Faster decision making before and after posting
-- Growth-oriented dashboard view
-- structured subscription and upgrade flow
-
-## Team / Agency Benefits
-- Shared operational workflows
-- Better reporting and analytics visibility
-- centralized content intelligence
-
-## Admin / Business Benefits
-- Full super-admin command center
-- user + subscription + analytics visibility
-- live tracking and system control capabilities
+- Upload/analyze/publish workflow ek jagah
+- Title, description, hashtags, tags auto-optimization
+- Viral probability based decision support
+- Better posting-time selection
+- Multi-platform analysis
+- Better growth strategy through trend + competitor + analytics
 
 ---
 
-## 4) What Is Missing / Incomplete
+## 8) Agency/Team Value
 
-Ye section important hai. System strong hai, lekin kuch areas abhi complete nahi hain:
-
-1. **Consistency and hardening in all modules**
-   - kuch legacy routes aur new routes parallel chal rahe hain
-   - behavior consistency aur routing cleanup abhi aur chahiye
-
-2. **Tracking reliability edge cases**
-   - race conditions mostly addressed, but high concurrency scenarios par additional hardening useful rahega
-
-3. **Warning cleanup**
-   - build pass ho raha hai, lekin hooks deps and image warnings remain
-   - production hygiene ke liye cleanup pending
-
-4. **Cross-page UX consistency**
-   - legacy super-admin panel and new super dashboard dono available hain
-   - navigation and intent clarity improve karni hai (clear switch labels, unified controls)
-
-5. **Monitoring depth**
-   - Sentry/alerts fully wired for all failure classes; payment/queue dashboards end-to-end — kuch wiring baaki ho sakti hai
-
-6. **Testing depth**
-   - `tests/ai-systems.test.js` jaise starter tests hain; auth/payments/tracking ke liye broader coverage
-
-7. **Plan discounts vs display**
-   - marketing cards ab **list price** (Manage Plans) dikhate hain; agar checkout par discount apply karna ho to alag explicit wiring
-
-8. **Non-YouTube platforms ke liye auto outcome sync**
-   - TikTok/Instagram/Facebook par public stats se auto-label abhi YouTube jaisa centralized nahi — manual `POST /api/ai/outcome` ya future connectors
+- Reusable workflow
+- Multi-client optimization process
+- Reporting/export convenience
+- Centralized data and planning
 
 ---
 
-## 5) What Must Be Implemented Next (Priority Roadmap)
+## 9) Business/Admin Value
 
-## Priority 1 (Immediate)
-1. **Auth + routing consistency audit**
-   - protected routes / APIs double-check; stale cookie/token edge cases
-
-2. **Tracking stabilization**
-   - high-concurrency session writes; full idempotency review
-
-3. **Super admin UX**
-   - legacy `/dashboard/super` vs `/admin/super/*` labels aur cross-links clear rakho
-
-## Priority 2 (Short term)
-4. **Build warnings cleanup**
-   - `react-hooks/exhaustive-deps`, `next/image` where high-traffic pages
-
-5. **Analytics / revenue accuracy**
-   - DB plan prices ke saath revenue estimates align (`lib/revenueCalc` etc. vs live `Plan`)
-
-6. **Operational runbooks**
-   - Redis, Python AI service, `npm run start:worker` production checklist
-
-## Priority 3 (System quality)
-7. **Test expansion**
-   - payments (Razorpay amounts match DB plan), `/api/subscriptions/plans`, AI worker job types
-
-8. **Performance**
-   - heavy admin queries; cache TTL tuning
+- Single control center for users/plans/features
+- Better monitoring and governance
+- AI + billing + ops visibility
+- Scalable architecture with API and webhook integration
 
 ---
 
-## 6) Current Final Status
+## 10) Current Capability Snapshot (Simple)
 
-- Core SaaS + super-admin + **unified plan pricing** + **production AI stack** + **verified ground-truth loop** (outcome fields, `/api/ai/outcome`, YouTube sync cron, metrics sirf labeled par) implemented.
-- API routes `force-dynamic` where needed; build passes (ESLint warnings only).
-- Long-term: multi-platform outcome sync, test coverage, ops/alerting.
-
----
-
-## 7) Plain Summary
-
-ViralBoost AI me auth, plans (admin-driven prices), payments, analysis, viral AI (Python + fallback), **labeled accuracy metrics**, tracking, analytics, super-admin (AI monitoring), support AI + chat memory — integrated.  
-Ab priority: IG/FB/TT outcome automation, consistency audits, warnings cleanup, deeper tests.
-
----
-
-Last updated: 2026-03-25 — AI ground truth (`outcome`), metrics-only-on-labeled, cron sync, training merge.
-# ViralBoost AI – Website Systems, Kaise Kaam Karta Hai, aur Fayde (Full Detail)
-
-Is file mein website ke saare systems, unka kaam karne ka tareeka, aur users ko kis cheez se kya fayda hota hai – sab detail mein diya gaya hai.
+Website currently can:
+- authenticate users securely
+- analyze videos across major social sources
+- generate SEO-focused metadata
+- estimate viral potential
+- upload to YouTube with channel selection
+- track usage/subscription behavior
+- provide analytics + optimization insights
+- support admin/super-admin operational control
 
 ---
 
-## 1. WEBSITE KYA HAI AUR KISKE LIYE HAI
-
-**ViralBoost AI** ek SaaS platform hai jisse content creators, YouTubers, aur agencies apne videos ka viral potential analyze kar sakte hain. Ye website:
-
-- Video analysis (YouTube, Facebook, Instagram, TikTok, direct upload) karti hai
-- Viral score, title suggestions, hashtags, best posting time deti hai
-- Trends, competitor analysis, analytics dashboard provide karti hai
-- **Free**, **Starter**, **Pro**, **Enterprise** (aur custom) plans — **monthly/yearly amounts Super Admin “Manage Plans” se**; marketing/signup/checkout sab **same DB prices** follow karte hain (default reference: Starter **~$3/mo**, Pro **~$15/mo** — admin change kar sakta hai)
-
-**Fayda:** Creators ko data-driven decisions; pricing ek jagah manage, har page par mismatch nahi.
-
----
-
-## 2. LOGIN AUR AUTHENTICATION SYSTEM
-
-### Kaise kaam karta hai
-- **Do tarah se login:** (1) **Unique ID (6 digit) + PIN** – jaldi login ke liye (2) **Email + Password** – full account access
-- Signup par email verify OTP bhejta hai; OTP verify hone ke baad user banta hai
-- Password **Forgot Password** se reset ho sakta hai (link email par aata hai)
-- JWT token se session maintain hota hai; sidebar se **Logout** kar sakte hain
-
-### APIs
-- `POST /api/auth/login` – Email + password login
-- `POST /api/auth/login-pin` – Unique ID + PIN login
-- `POST /api/auth/register` – Naya user
-- `POST /api/auth/send-otp` – OTP bhejna
-- `POST /api/auth/verify-otp` – OTP verify
-- `GET /api/auth/me` – Current user details (role, plan, expiry, account manager, etc.)
-- `POST /api/auth/password-reset` – Reset link request
-- `PUT /api/auth/password-reset` – Naya password set (token ke sath)
-
-### Fayde
-- Secure login; PIN se fast access; password reset se account recover; har user ko apna 6-digit ID milta hai.
-
----
-
-## 3. PLAN AUR ROLE SYSTEM
-
-### Kaise kaam karta hai
-- **Free** → **user** | **Starter** → **user** | **Pro** → **manager** | **Enterprise** → **admin** (custom/owner alag rules)
-- **Super-admin** role plan se change nahi hota (manual set)
-- Login ya payment verify hone par role plan ke hisaab se set ho jata hai
-- Sidebar aur profile mein **Plan** aur **Expires: X days left** dikhta hai
-
-### Fayde
-- Plan ke hisaab se sahi access; Pro/Enterprise ko zyada features; expiry clear dikhti hai.
-
----
-
-## 4. VIDEO ANALYSIS SYSTEM
-
-### Kaise kaam karta hai
-- User video **URL** de sakta hai (YouTube, Facebook, Instagram, TikTok) ya **file upload** kar sakta hai
-- Har video par: **hook analysis** (shuruat attract karti hai?), **thumbnail analysis**, **title analysis**, **viral prediction**, **hashtags**, **trending score**, **best posting time** nikala jata hai
-- **Title optimization:** Free = 3 suggestions, Pro/Enterprise = 10 suggestions
-- **Hashtag generator:** 10–20 hashtags (plan ke hisaab)
-- Result **Viral Optimizer** page par dikhta hai; copy kar sakte ho
-- Analysis DB mein save hota hai; **My Videos** se list dekhi ja sakti hai
-
-### APIs
-- `POST /api/videos/youtube` – YouTube URL analyze
-- `POST /api/videos/facebook` – Facebook URL
-- `POST /api/videos/instagram` – Instagram URL
-- `POST /api/videos/tiktok` – TikTok URL
-- `POST /api/videos/upload` – File upload analyze
-- `POST /api/videos/bulk-analyze` – Ek saath multiple URLs (Pro/Enterprise, max 10)
-
-### Fayde
-- Har video ke liye viral score, better titles, hashtags, posting time – content zyada engage kare; bulk se time bachta hai.
-
----
-
-## 5. VIRAL PREDICTION AUR AI
-
-### Kaise kaam karta hai (API: `/api/ai/predict`, `/api/ai/train`, `/api/ai/outcome`)
-- Hook, thumbnail, title, text, engagement snapshot se **viral probability** aur **confidence**; body me **`videoId`** ya **`videoUrl`** bhejo taaki baad me YouTube sync se **outcome** bharkar **sahi labels** milen
-- **Python FastAPI** service (embeddings + sklearn pipeline) — primary; **internal ensemble** fallback
-- Training: dataset + **verified predictions** (`outcome` wale rows) merge ho kar Python/ worker train call
-- **MAE / RMSE:** `GET /api/ai/metrics` — **ground truth only** (`outcome.viralScore0to100`); 5+ labeled samples ke baad hi numbers; super-admin `?scope=global`
-- **Feedback loop:** manually `POST /api/ai/outcome` (views/likes/comments ya seedha `viralScore0to100`); cron `POST /api/cron/sync-prediction-outcomes` (YouTube API + `CRON_SECRET`)
-
-### APIs (short)
-- `POST /api/ai/predict` — save + optional `videoId`/`videoUrl`
-- `POST /api/ai/outcome` — label ek prediction (owner ya super-admin)
-- `GET /api/ai/metrics` — labeled-only accuracy; `POST /api/ai/train` — Enterprise training (labeled samples pref)
-
-### Fayde
-- Model accuracy ab **approx input-vs-input** nahi, **prediction vs verified outcome** se measure hoti hai; retraining ko **true labels** mil sakte hain.
-
----
-
-## 6. TRENDING AUR REAL-TIME TREND ANALYSIS
-
-### Kaise kaam karta hai
-- **Trending** page: hashtag/keyword trends, growth velocity, opportunity score
-- **Discover trends** API se rising/peak/declining trends milte hain
-- Hashtag generator trending topics use karta hai taaki suggestions relevant rahein
-
-### APIs
-- `GET /api/trends/discover` – Trends list
-- `GET /api/trending` – Trending topics
-
-### Fayde
-- Trending topics use karke content zyada discover ho sakta hai; hashtags up-to-date rehte hain.
-
----
-
-## 7. BEST POSTING TIME PREDICTIONS
-
-### Kaise kaam karta hai
-- **Posting Time** page par platform (YouTube, Facebook, Instagram, TikTok) ke hisaab se **heatmap** (day × hour) aur **best day + hour** dikhta hai
-- Category (comedy, education, music, etc.) ke hisaab se time adjust ho sakta hai
-
-### APIs
-- `GET /api/posting-time` – Heatmap + best time
-
-### Fayde
-- Sahi time post karke views aur engagement badhane mein madad.
-
----
-
-## 8. COMPETITOR ANALYSIS
-
-### Kaise kaam karta hai
-- Competitor channel ID daalne par unke successful patterns (titles, hashtags, video length, posting times) analyze hote hain
-- **Channel Audit** / **Facebook Audit** pages par multiple videos analyze karke insights milte hain
-- Competitor limit plan ke hisaab se: Free = 3, Pro = 50, Enterprise = unlimited
-
-### APIs
-- `POST /api/competitor/analyze` – Competitor insights
-- `GET /api/channel/videos` – Channel se video list (RSS/API)
-
-### Fayde
-- Competitors se seekh kar apna content strategy improve kiya ja sakta hai.
-
----
-
-## 9. ANALYTICS DASHBOARD
-
-### Kaise kaam karta hai
-- **Analytics** page: total videos, total analyses, average viral score, engagement rate
-- Top performing videos, growth, retention, heatmap, benchmark APIs se data aata hai
-- **Export:** CSV / Excel / PDF (white-label option: company name + logo URL se branded report)
-
-### APIs
-- `GET /api/analytics/overview`
-- `GET /api/analytics/growth`, `/api/analytics/retention`, `/api/analytics/heatmap`, `/api/analytics/benchmark`
-- `GET /api/export/analytics?format=pdf|csv|excel` – Report download
-
-### Fayde
-- Performance ek jagah; reports share karne/white-label se branding strong hoti hai.
-
----
-
-## 10. CONTENT CALENDAR AUR SCHEDULING
-
-### Kaise kaam karta hai
-- **Content Calendar** page par din aur platform ke hisaab se posts plan kiye ja sakte hain
-- Schedule APIs se calendar data aur post schedule manage hota hai
-
-### APIs
-- `GET /api/schedule/calendar`
-- `POST /api/schedule/post`
-
-### Fayde
-- Planning se consistent posting; content calendar se discipline badhti hai.
-
----
-
-## 11. SUBSCRIPTION AUR PAYMENT
-
-### Kaise kaam karta hai
-- **Pricing / home / signup:** plans **`GET /api/subscriptions/plans`** se — amounts **Mongo `Plan` collection** se (Manage Plans)
-- **Subscribe / signup payment:** active plan ki DB price **USD** me treat hoti hai (`lib/planPricing.ts`)
-- **Currency correctness:** signup/checkout me `LocaleContext` se selected `country/currency` li jati hai; server **USD → selected currency** convert karta hai aur Razorpay order **correct `amount` + `currency`** ke saath banata hai (minor units handling)
-- **Early-bird parity:** yearly early-bird rules server-side (USD base) same as DB reference ke hisaab se apply
-- Payment verify hone par plan activate; **role** plan mapping ke hisaab
-- **Subscription** page: current plan, usage, payment history, PDF receipt jahan available
-
-### APIs
-- `GET /api/subscriptions/plans` – Public active plans (sorted by price); optional `?withDiscounts=1` ab mainly metadata (display list price unchanged on cards)
-- `POST /api/payments/create-order` – Razorpay order (USD base from DB → convert to selected currency)
-- `POST /api/payments/verify-payment` – Verify + activate + record **DB-matched** price snapshot
-- `POST /api/payments/verify-signup-payment` – Signup flow verify
-- `GET /api/subscriptions/usage`, `GET /api/subscriptions/invoices`
-
-### Fayde
-- Safe payment; clear plan/usage/receipts; charged amount selected currency ke hisaab se record hota hai; PDF se record rakhna easy.
-
----
-
-## 12. SUPPORT SYSTEM (EMAIL / 24/7 PRIORITY)
-
-### Kaise kaam karta hai
-- **Support** / tickets: subject + message; **AI classification** + optional auto-reply flow (OpenAI) jab policies allow
-- **Chatbot memory:** sessions + messages DB mein — conversational context
-- Plan ke hisaab priority / escalation rules configurable
-
-### APIs (mukhya)
-- `GET/POST /api/support/tickets` – List/create tickets (pagination, rate limits)
-- `POST /api/support/ai-reply` – Manual/admin style AI reply trigger
-- `POST /api/support/chat`, `GET /api/support/chat/history` – Chat with memory
-
-### Fayde
-- Faster first response; tickets structured; chat history se behtar follow-up.
-
----
-
-## 13. TEAM COLLABORATION (ENTERPRISE)
-
-### Kaise kaam karta hai
-- Enterprise user **team** bana sakta hai (max 10 members)
-- Owner **invite link** generate karta hai; doosre users link se **join** karte hain
-- Team list: `GET /api/team`; create: `POST /api/team`; join: `POST /api/team/join` (token)
-
-### Fayde
-- Agencies/teams ek hi plan ke under collaborate kar sakte hain.
-
----
-
-## 14. WHITE-LABEL REPORTS
-
-### Kaise kaam karta hai
-- User **Settings** se **Company name** aur **Logo URL** set karta hai
-- Analytics **export** (PDF/HTML report) par ye branding use hoti hai – report apne brand ke saath dikhta hai
-
-### Fayde
-- Reports client ko apne brand ke saath de sakte ho; professional look.
-
----
-
-## 15. API ACCESS (PUBLIC API)
-
-### Kaise kaam karta hai
-- **Settings** se user **API key** create karta hai (vb_xxx…); key sirf ek baar dikhai deti hai
-- Kisi bhi request mein header: **X-API-Key: your_key**
-- **Public endpoint:** `GET /api/public/v1/usage` – usage + subscription (API key se auth)
-
-### APIs
-- `GET /api/settings/api-keys` – List keys
-- `POST /api/settings/api-keys` – Create key
-- `DELETE /api/settings/api-keys?id=...` – Delete key
-- `GET /api/public/v1/usage` – Usage (X-API-Key)
-
-### Fayde
-- Apne tools/apps se usage aur plan check kar sakte ho; automation possible.
-
----
-
-## 16. CUSTOM INTEGRATIONS (WEBHOOKS)
-
-### Kaise kaam karta hai
-- **Settings** mein **Webhook URL** save karte ho
-- Jab bhi koi video **analysis complete** hoti hai, tumhari URL par **POST** request jati hai – event name + payload (videoId, title, viralProbability, platform, etc.)
-
-### APIs
-- `GET /api/settings/webhook` – Current webhook
-- `POST /api/settings/webhook` – Save URL
-
-### Fayde
-- External systems (CRM, Slack, custom dashboard) ko real-time event mil sakte hain; integrations easy.
-
----
-
-## 17. PRIORITY PROCESSING
-
-### Kaise kaam karta hai
-- Pro/Enterprise users ke analyses DB mein **priority: 'high'** ke sath save hote hain
-- Future mein agar queue-based processing aayi to inko pehle process kiya ja sakta hai
-
-### Fayde
-- Pro/Enterprise ko better response time / priority milega jab queue implement ho.
-
----
-
-## 18. DEDICATED ACCOUNT MANAGER (ENTERPRISE)
-
-### Kaise kaam karta hai
-- Super-admin kisi Enterprise user ke liye **account manager email** set karta hai (admin panel: user → Set account manager)
-- Ye email **Settings** aur **/api/auth/me** mein dikhta hai – “Contact: manager@company.com”
-
-### Fayde
-- Enterprise users ko direct contact; personalized support.
-
----
-
-## 19. SUPER ADMIN PANEL
-
-### Kaise kaam karta hai
-- **Super-admin** `/dashboard/super` (legacy full control) **aur** `/admin/super/*` (new analytics-style dashboard, AI monitoring, etc.)
-- **Billing & Config:** Manage Plans, plan discounts, user plans — **yahi prices pure site par drive** karte hain
-- **Users:** list, create, role/plan ops, PIN, passwords
-- **AI Monitoring:** model versions, **total vs ground-truth labeled** prediction counts, support AI stats, queue snapshot
-- **Database Tables:** collections grid, search, pagination
-- Sidebars: operational tools + link to newer global dashboards where applicable
-
-### APIs
-- `GET/POST /api/admin/users`
-- `PATCH/DELETE /api/admin/users/[id]` (set-role, reset-password, set-pin, set-account-manager, update, etc.)
-- `POST /api/admin/send-plan-receipts`
-- `POST /api/admin/notifications/send`
-- `GET /api/admin/data/collections`
-- `GET /api/admin/data/collections/[name]` (pagination, search)
-
-### Fayde
-- Pura user management, notifications, receipts, aur data ek jagah se control.
-
----
-
-## 20. USER PROFILE AUR SETTINGS
-
-### Kaise kaam karta hai
-- **Profile:** name, bio, profile picture, social links, preferences (notifications, email updates, dark mode)
-- **Settings** page: Account manager (read-only), White-label (company name, logo URL), API keys, Webhook URL
-- **Subscription** page: plan, usage, payment history, PDF download
-
-### APIs
-- `GET /api/user/profile` – Profile
-- `PUT /api/user/profile` – Update (name, bio, white-label, webhook, etc.)
-- `GET /api/user/usage` – Usage + limits
-
-### Fayde
-- Sab kuch ek jagah; branding, API, webhook control; usage clear.
-
----
-
-## 21. PAGES LIST (USER FLOW)
-
-| Page | Purpose |
-|------|--------|
-| `/` | Landing – features, pricing preview, CTA |
-| `/auth` | Login / Signup (ID+PIN ya Email+Password), plan select, payment |
-| `/forgot-password` | Forgot password – email bhejna |
-| `/reset-password` | Token se naya password set karna |
-| `/dashboard` | Main dashboard (upload/connect videos) |
-| `/user/[uniqueId]` | User home (same dashboard style) |
-| `/videos` | My Videos list |
-| `/videos/[id]` | Single video detail + analysis |
-| `/viral-optimizer` | Analyze karke result: titles, hashtags, viral score, posting time |
-| `/channel-audit` | YouTube channel audit – multiple videos |
-| `/facebook-audit` | Facebook page audit |
-| `/trending` | Trending topics |
-| `/hashtags` | Hashtag tools |
-| `/posting-time` | Best posting time heatmap |
-| `/analytics` | Analytics dashboard |
-| `/calendar` | Content calendar |
-| `/pricing` | Plans + subscribe (DB-driven prices) |
-| `/subscription` | Current plan, usage, payment history, PDF receipt |
-| `/support` | Support tickets – create + list |
-| `/settings` | White-label, API keys, webhook, account manager display |
-| `/dashboard/super` | Legacy Super Admin (full roll system) |
-| `/admin/super/dashboard` | New super analytics / global dashboard |
-| `/admin/super/ai-monitoring` | AI metrics, models, support AI & queue overview |
-
----
-
-## 22. PLAN-WISE LIMITS (SUMMARY)
-
-Rough **roll defaults** (`lib/planLimits` / seeded `Plan` docs); Super Admin limits tweak kar sakta hai.
-
-| Feature | Free | Starter | Pro | Enterprise |
-|--------|------|---------|-----|------------|
-| Role | user | user | manager | admin |
-| Analyses | 5/month | 10/day | 30/day (roll default) | 100/day (roll default) |
-| Competitors | 3 | 10 | 50 | Unlimited (typ.) |
-| Title suggestions | 3 | 5 | 10 | 10 |
-| Hashtags | 10 | 15 | 20 | 20 |
-| Support | Community | Email | Priority email | 24/7 (priority) |
-| Team | – | – | – | Up to 10 users |
-| White-label | – | – | – | Yes |
-| API access | – | – | Yes | Yes |
-| Advanced AI / train (as per flags) | Limited | Yes | Yes | Yes |
-| Bulk video analysis | – | Yes (cap) | Yes (10/request) | Yes (10/request) |
-| Account manager | – | – | – | Optional (admin) |
-
----
-
-## 23. OVERALL FAYDE (SUMMARY)
-
-1. **Creators:** Viral score, titles, hashtags, posting time se content better banata hai; time bachta hai.
-2. **Agencies/Teams:** Enterprise se team collaboration, white-label, account manager – clients ko branded reports aur dedicated support.
-3. **Data-driven decisions:** Trends, competitor analysis, analytics se strategy clear hoti hai.
-4. **Automation:** API + webhooks se apne tools se integrate karke workflows automate ho sakte hain.
-5. **Support:** Ticket system se har plan user ko help; Enterprise ko priority.
-6. **Admin:** Super admin se users, notifications, receipts, DB sab control; plan ke hisaab role automatically set.
-
----
-
-## 24. MISSING YA INCOMPLETE FUNCTIONS / SYSTEMS (KAM KYA BAAKI HAI)
-
-1. **SmartGuru AI / LMS**
-   - Course/notes/video-progress product layer abhi models/UI ke hisaab se incomplete ho sakta hai — verify roadmap.
-
-2. **Facebook Page Videos auto-fetch**
-   - Meta / Graph restrictions ki wajah se kuch flows stub ya limited ho sakte hain — `/api/facebook/page/videos` real data ke liye app review + permissions.
-
-3. **Instagram & TikTok direct posting**
-   - YouTube upload/OAuth zyada mature; IG/TT direct post integrations platform policy ke hisaab se partial.
-
-4. **Discount-at-checkout parity**
-   - Agar `PlanDiscount` se checkout amount bhi kam karna ho to create-order/verify flow me explicit discount math (ab UI list price dikhaata hai).
-
-5. **Multi-platform outcome automation**
-   - YouTube ke ilawa TikTok/IG/FB par bina manual `outcome` ke auto-label abhi poora nahi.
-
-6. **Warnings & tests**
-   - ESLint hook/image warnings; end-to-end tests payments + worker + Python service health.
-
-7. **Chrome DevTools noise**
-   - Local dev me `GET /.well-known/appspecific/com.chrome.devtools.json` **404** — Chrome debugger request; ignore.
-
----
-
-Last updated: 2026-03-25 — ground-truth `outcome`, `/api/ai/outcome`, cron sync, metrics-on-labeled-only, training merge; see section H & §5.
+Last updated: 2026-03-29

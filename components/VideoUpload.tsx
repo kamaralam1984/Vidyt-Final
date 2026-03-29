@@ -57,6 +57,9 @@ export default function VideoUpload({
   const [ytTitle, setYtTitle] = useState('');
   const [ytDescription, setYtDescription] = useState('');
   const [ytTags, setYtTags] = useState('');
+  const [ytHashtags, setYtHashtags] = useState('');
+  const [seoRankScore, setSeoRankScore] = useState<number | null>(null);
+  const [rank1Mode, setRank1Mode] = useState(true);
   const [ytPrivacy, setYtPrivacy] = useState<'public' | 'private' | 'unlisted'>('public');
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -139,7 +142,7 @@ export default function VideoUpload({
         const token = getToken();
         const { data } = await axios.post(
           '/api/youtube/title-seo',
-          { title: ytTitle.trim() },
+          { title: ytTitle.trim(), rank1Mode },
           {
             headers: { Authorization: `Bearer ${token}` },
             signal: ac.signal,
@@ -151,6 +154,14 @@ export default function VideoUpload({
         }
         if (typeof data?.tags === 'string') {
           setYtTags(data.tags);
+        }
+        if (typeof data?.hashtagsText === 'string') {
+          setYtHashtags(data.hashtagsText);
+        } else if (Array.isArray(data?.hashtags)) {
+          setYtHashtags(data.hashtags.map((h: string) => `#${String(h).replace(/^#/, '')}`).join(' '));
+        }
+        if (typeof data?.seoRankScore === 'number') {
+          setSeoRankScore(data.seoRankScore);
         }
       } catch (err: unknown) {
         if (axios.isAxiosError(err) && err.code === 'ERR_CANCELED') return;
@@ -164,7 +175,7 @@ export default function VideoUpload({
       if (titleSeoDebounceRef.current) clearTimeout(titleSeoDebounceRef.current);
       titleSeoAbortRef.current?.abort();
     };
-  }, [ytTitle, selectedVideoFile, canUseYoutubeUpload]);
+  }, [ytTitle, selectedVideoFile, canUseYoutubeUpload, rank1Mode]);
 
   const handleFileUpload = async (file: File) => {
     setSelectedVideoFile(file);
@@ -209,6 +220,9 @@ export default function VideoUpload({
           ...(seo.trendingTags || []).map((t: { keyword: string }) => t.keyword).filter(Boolean),
         ];
         setYtTags(tagParts.join(', '));
+      }
+      if (Array.isArray(seo?.hashtags)) {
+        setYtHashtags(seo.hashtags.map((h: string) => `#${String(h).replace(/^#/, '')}`).join(' '));
       }
       if (analysis?.optimizedTitles?.[0]) {
         setYtTitle(clampYoutubeTitle(analysis.optimizedTitles[0]));
@@ -329,10 +343,15 @@ export default function VideoUpload({
     setYoutubeUploadError(null);
     setYoutubeUploadSuccess(null);
 
+    const hashtagsLine = ytHashtags.trim();
+    const finalDescription = hashtagsLine && !ytDescription.includes(hashtagsLine)
+      ? `${ytDescription}\n\n${hashtagsLine}`.trim()
+      : ytDescription;
+
     const formData = new FormData();
     formData.append('video', selectedVideoFile);
     formData.append('title', ytTitle);
-    formData.append('description', ytDescription);
+    formData.append('description', finalDescription);
     formData.append('tags', ytTags);
     formData.append('privacyStatus', ytPrivacy);
     if (thumbnailFile && thumbnailFile.size > 0) {
@@ -667,6 +686,25 @@ export default function VideoUpload({
                       {countWords(ytDescription)} / {SEO_DESCRIPTION_MAX_WORDS} words
                     </span>
                   </div>
+                  <div className="flex items-center justify-between rounded-lg border border-[#2A2A2A] bg-[#111] px-3 py-2">
+                    <p className="text-[11px] text-[#BDBDBD]">
+                      SEO Rank 1 mode (aggressive keywords + tags)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setRank1Mode((v) => !v)}
+                      className={`px-2.5 py-1 text-[11px] rounded ${
+                        rank1Mode ? 'bg-[#FF0000] text-white' : 'bg-[#212121] text-[#AAAAAA]'
+                      }`}
+                    >
+                      {rank1Mode ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                  {seoRankScore !== null && (
+                    <p className="text-[11px] text-[#8FD48F]">
+                      SEO rank score (estimated): {seoRankScore}/100
+                    </p>
+                  )}
                   <textarea 
                     value={ytDescription}
                     onChange={(e) =>
@@ -722,6 +760,16 @@ export default function VideoUpload({
                     onChange={(e) => setYtTags(e.target.value)}
                     className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000]"
                     placeholder="viral, ai, nextjs..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">Hashtags (auto-filled)</label>
+                  <textarea
+                    value={ytHashtags}
+                    onChange={(e) => setYtHashtags(e.target.value)}
+                    className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000] min-h-[70px]"
+                    placeholder="#viral #shorts #youtube"
                   />
                 </div>
 

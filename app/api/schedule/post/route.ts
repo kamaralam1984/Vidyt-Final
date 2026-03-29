@@ -3,6 +3,10 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import { schedulePost, cancelScheduledPost, bulkSchedulePosts } from '@/services/scheduler/contentCalendar';
+import connectDB from '@/lib/mongodb';
+import User from '@/models/User';
+import ScheduledPost from '@/models/ScheduledPost';
+import { getBulkSchedulingLimit, getSchedulePostsLimit } from '@/lib/usageDisplayLimits';
 
 /**
  * Schedule a post
@@ -18,10 +22,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await connectDB();
+
+    const dbUser = await User.findById(authUser.id).select('subscription');
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const planId = String(dbUser.subscription || 'free');
+    const activeScheduleLimit = getSchedulePostsLimit(planId);
+    const bulkLimit = getBulkSchedulingLimit(planId);
+
+    const activeScheduledCount = await ScheduledPost.countDocuments({
+      userId: authUser.id,
+      status: 'scheduled',
+    });
+
     const body = await request.json();
     const { posts, bulk } = body;
 
     if (bulk && Array.isArray(posts)) {
+      if (bulkLimit === 0) {
+        return NextResponse.json(
+          { error: 'Your current plan does not include bulk scheduling.' },
+          { status: 403 }
+        );
+      }
+      if (bulkLimit !== -1 && posts.length > bulkLimit) {
+        return NextResponse.json(
+          { error: `Bulk scheduling limit exceeded. Max ${bulkLimit} posts allowed.` },
+          { status: 403 }
+        );
+      }
+      if (activeScheduleLimit !== -1 && (activeScheduledCount + posts.length) > activeScheduleLimit) {
+        return NextResponse.json(
+          { error: `Schedule limit reached. You can keep up to ${activeScheduleLimit} active scheduled posts.` },
+          { status: 403 }
+        );
+      }
+
       // Bulk scheduling
       const scheduled = await bulkSchedulePosts(authUser.id, posts);
       return NextResponse.json({
@@ -37,6 +76,19 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'title, platform, and scheduledAt are required' },
           { status: 400 }
+        );
+      }
+
+      if (activeScheduleLimit === 0) {
+        return NextResponse.json(
+          { error: 'Your current plan does not include post scheduling.' },
+          { status: 403 }
+        );
+      }
+      if (activeScheduleLimit !== -1 && activeScheduledCount >= activeScheduleLimit) {
+        return NextResponse.json(
+          { error: `Schedule limit reached. You can keep up to ${activeScheduleLimit} active scheduled posts.` },
+          { status: 403 }
         );
       }
 

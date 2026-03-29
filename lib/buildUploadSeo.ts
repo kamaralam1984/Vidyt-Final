@@ -141,6 +141,14 @@ export function modeledHookStrengthForTitleSeo(titleScore: number): number {
   return Math.min(100, Math.max(88, Math.round(80 + (t / 100) * 18)));
 }
 
+/** SEO rank-style score shown in UI (higher is better, not guaranteed SERP position). */
+export function estimateSeoRankScore(titleScore: number, trendingScore: number, viralProbability: number): number {
+  const t = Math.min(100, Math.max(0, Number(titleScore) || 0));
+  const tr = Math.min(100, Math.max(0, Number(trendingScore) || 0));
+  const vp = Math.min(100, Math.max(0, Number(viralProbability) || 0));
+  return Math.min(99, Math.max(75, Math.round((t * 0.46) + (tr * 0.24) + (vp * 0.30))));
+}
+
 /** Comma-separated YouTube tags from SEO pack (deduped, capped). */
 export function commaSeparatedYoutubeTags(pack: UploadSeoPack, maxTags = 30): string {
   const parts = [...pack.hashtags, ...pack.trendingTags.map((x) => x.keyword)];
@@ -158,4 +166,32 @@ export function commaSeparatedYoutubeTags(pack: UploadSeoPack, maxTags = 30): st
     if (out.length >= maxTags) break;
   }
   return out.join(', ');
+}
+
+/** Aggressive SEO mode for broader discoverability coverage. */
+export function enhanceForRankMode(pack: UploadSeoPack): UploadSeoPack {
+  const boostedHashtags = takeFiveHashtags([
+    ...pack.hashtags,
+    ...pack.trendingTags.map((t) => t.keyword),
+    'viral',
+    'trending',
+    'shorts',
+    'youtube',
+    'fyp',
+  ]);
+
+  const trendingTags = takeTenTrending(pack.trendingTags, [
+    ...pack.trendingTags.map((t) => t.keyword),
+    ...boostedHashtags,
+  ]);
+
+  const rankHint =
+    '\n\nSEO focus: primary keyword in title + first lines, high-intent long-tail tags, and trend-aligned hashtags.';
+  const description = truncateToWordCount(`${pack.description}${rankHint}`, SEO_DESCRIPTION_MAX_WORDS);
+
+  return {
+    description,
+    hashtags: boostedHashtags,
+    trendingTags,
+  };
 }

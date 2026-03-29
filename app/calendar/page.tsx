@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
-import { Calendar as CalendarIcon, Plus, X, Clock, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { getAuthHeaders } from '@/utils/auth';
 
 interface ScheduledPost {
   id: string;
@@ -12,44 +13,85 @@ interface ScheduledPost {
   platform: string;
   scheduledAt: string;
   status: string;
+  description?: string;
+  videoUrl?: string;
   thumbnailUrl?: string;
 }
 
+interface CalendarData {
+  events: ScheduledPost[];
+  totalScheduled: number;
+  totalPosted: number;
+  upcomingPosts: ScheduledPost[];
+}
+
 export default function CalendarPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [posts, setPosts] = useState<ScheduledPost[]>([]);
+  const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     platform: 'youtube' as 'youtube' | 'facebook' | 'instagram' | 'tiktok',
     scheduledAt: '',
     description: '',
     hashtags: '',
+    videoUrl: '',
   });
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    return { daysInMonth: lastDay.getDate(), startingDayOfWeek: firstDay.getDay(), year, month };
+  };
+
+  const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentDate);
 
   useEffect(() => {
-    loadCalendar();
-  }, []);
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    void loadCalendar(monthStart, monthEnd);
+  }, [year, month]);
 
-  const loadCalendar = async () => {
+  const loadCalendar = async (startDate?: Date, endDate?: Date) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        alert('Please login to view calendar');
-        return;
-      }
+      setError(null);
+
+      const params: Record<string, string> = {};
+      if (startDate) params.startDate = startDate.toISOString();
+      if (endDate) params.endDate = endDate.toISOString();
 
       const response = await axios.get('/api/schedule/calendar', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
+        params,
       });
 
-      setPosts(response.data.calendar?.events || response.data.posts || []);
+      if (response.data?.calendar) {
+        const cal = response.data.calendar;
+        setCalendarData({
+          events: cal.events || [],
+          totalScheduled: cal.totalScheduled || 0,
+          totalPosted: cal.totalPosted || 0,
+          upcomingPosts: cal.upcomingPosts || [],
+        });
+        setPosts(cal.events || []);
+      } else {
+        setPosts(response.data.posts || []);
+        setCalendarData(null);
+      }
     } catch (error: any) {
       console.error('Calendar load error:', error);
-      alert('Failed to load calendar');
+      setError(error?.response?.data?.error || 'Failed to load calendar.');
     } finally {
       setLoading(false);
     }
@@ -58,35 +100,38 @@ export default function CalendarPage() {
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Please login');
-        return;
-      }
+      setSubmitting(true);
+      setError(null);
 
       await axios.post('/api/schedule/post', {
         title: formData.title,
         platform: formData.platform,
         scheduledAt: formData.scheduledAt,
         description: formData.description,
-        hashtags: formData.hashtags.split(',').map(t => t.trim()),
+        videoUrl: formData.videoUrl.trim() || undefined,
+        hashtags: formData.hashtags.split(',').map(t => t.trim()).filter(Boolean),
       }, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: getAuthHeaders(),
       });
 
-      alert('Post scheduled successfully!');
       setShowScheduleForm(false);
+      setSelectedDay(null);
       setFormData({
         title: '',
         platform: 'youtube',
         scheduledAt: '',
         description: '',
         hashtags: '',
+        videoUrl: '',
       });
-      loadCalendar();
+      const monthStart = new Date(year, month, 1);
+      const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+      await loadCalendar(monthStart, monthEnd);
     } catch (error: any) {
       console.error('Schedule error:', error);
-      alert(error.response?.data?.error || 'Failed to schedule post');
+      setError(error?.response?.data?.error || 'Failed to schedule post.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -94,32 +139,19 @@ export default function CalendarPage() {
     if (!confirm('Are you sure you want to cancel this scheduled post?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`/api/schedule/post?postId=${postId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      setError(null);
+      await axios.delete('/api/schedule/post', {
+        headers: getAuthHeaders(),
+        params: { postId },
       });
-
-      alert('Post cancelled successfully');
-      loadCalendar();
+      const monthStart = new Date(year, month, 1);
+      const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+      await loadCalendar(monthStart, monthEnd);
     } catch (error: any) {
       console.error('Cancel error:', error);
-      alert('Failed to cancel post');
+      setError(error?.response?.data?.error || 'Failed to cancel post.');
     }
   };
-
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
-
-    return { daysInMonth, startingDayOfWeek, year, month };
-  };
-
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentDate);
 
   const getPostsForDate = (day: number) => {
     const date = new Date(year, month, day);
@@ -129,8 +161,19 @@ export default function CalendarPage() {
     });
   };
 
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const selectedDayPosts = selectedDay ? getPostsForDate(selectedDay) : [];
+
+  const openScheduleForDay = (day?: number) => {
+    let scheduledAt = '';
+    if (day) {
+      const dt = new Date(year, month, day, 10, 0, 0);
+      const offset = dt.getTimezoneOffset() * 60000;
+      scheduledAt = new Date(dt.getTime() - offset).toISOString().slice(0, 16);
+      setSelectedDay(day);
+    }
+    setFormData((prev) => ({ ...prev, scheduledAt }));
+    setShowScheduleForm(true);
+  };
 
   if (loading) {
     return (
@@ -160,7 +203,7 @@ export default function CalendarPage() {
               </p>
             </div>
             <motion.button
-              onClick={() => setShowScheduleForm(true)}
+              onClick={() => openScheduleForDay()}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="flex items-center gap-2 px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold"
@@ -168,6 +211,28 @@ export default function CalendarPage() {
               <Plus className="w-5 h-5" />
               Schedule Post
             </motion.button>
+          </div>
+
+          {error && (
+            <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wider text-[#888]">Scheduled</p>
+              <p className="text-2xl font-bold text-white mt-1">{calendarData?.totalScheduled ?? posts.filter((p) => p.status === 'scheduled').length}</p>
+            </div>
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wider text-[#888]">Posted</p>
+              <p className="text-2xl font-bold text-white mt-1">{calendarData?.totalPosted ?? posts.filter((p) => p.status === 'posted').length}</p>
+            </div>
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wider text-[#888]">This Month Total</p>
+              <p className="text-2xl font-bold text-white mt-1">{posts.length}</p>
+            </div>
           </div>
 
           {/* Calendar View */}
@@ -179,7 +244,7 @@ export default function CalendarPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="px-4 py-2 rounded-lg bg-[#212121] text-[#DDD] hover:bg-[#2A2A2A]"
                 >
                   Previous
                 </button>
@@ -191,7 +256,7 @@ export default function CalendarPage() {
                 </button>
                 <button
                   onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="px-4 py-2 rounded-lg bg-[#212121] text-[#DDD] hover:bg-[#2A2A2A]"
                 >
                   Next
                 </button>
@@ -200,7 +265,7 @@ export default function CalendarPage() {
 
             <div className="grid grid-cols-7 gap-2">
               {dayNames.map(day => (
-                <div key={day} className="text-center font-semibold text-gray-600 dark:text-gray-400 py-2">
+                <div key={day} className="text-center font-semibold text-[#777] py-2">
                   {day}
                 </div>
               ))}
@@ -217,7 +282,10 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={day}
-                    className={`min-h-24 p-2 border border-[#212121] rounded-lg ${
+                    onClick={() => setSelectedDay(day)}
+                    className={`min-h-24 p-2 border border-[#212121] rounded-lg cursor-pointer transition-all ${
+                      selectedDay === day ? 'ring-1 ring-[#FF0000]/60' : ''
+                    } ${
                       isToday ? 'bg-[#212121] border-[#FF0000]' : ''
                     }`}
                   >
@@ -249,6 +317,46 @@ export default function CalendarPage() {
               })}
             </div>
           </div>
+
+          {selectedDay !== null && (
+            <div className="bg-[#181818] border border-[#212121] rounded-xl shadow-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white">
+                  {monthNames[month]} {selectedDay}, {year}
+                </h2>
+                <button
+                  onClick={() => openScheduleForDay(selectedDay)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FF0000] text-white hover:bg-[#CC0000]"
+                >
+                  <Plus className="w-4 h-4" />
+                  Schedule on this day
+                </button>
+              </div>
+              {selectedDayPosts.length === 0 ? (
+                <p className="text-[#AAAAAA] text-sm">No posts on this date.</p>
+              ) : (
+                <div className="space-y-3">
+                  {selectedDayPosts
+                    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+                    .map((post) => (
+                      <div key={post.id} className="p-3 bg-[#121212] border border-[#222] rounded-lg flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-white font-medium">{post.title}</p>
+                          <p className="text-xs text-[#999] mt-1">
+                            <span className="capitalize">{post.platform}</span> · {new Date(post.scheduledAt).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        {post.status === 'scheduled' && (
+                          <button onClick={() => handleCancel(post.id)} className="text-sm text-red-400 hover:text-red-300">
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Scheduled Posts List */}
           <div className="bg-[#181818] border border-[#212121] rounded-xl shadow-lg p-6">
@@ -346,6 +454,7 @@ export default function CalendarPage() {
                     <input
                       type="datetime-local"
                       required
+                      min={new Date().toISOString().slice(0, 16)}
                       value={formData.scheduledAt}
                       onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
                       className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
@@ -364,6 +473,18 @@ export default function CalendarPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
+                      Video URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.videoUrl}
+                      onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                      placeholder="https://youtube.com/watch?v=..."
+                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
                       Hashtags (comma-separated)
                     </label>
                     <input
@@ -377,9 +498,10 @@ export default function CalendarPage() {
                   <div className="flex gap-2">
                     <button
                       type="submit"
+                      disabled={submitting}
                       className="flex-1 px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold"
                     >
-                      Schedule
+                      {submitting ? 'Scheduling...' : 'Schedule'}
                     </button>
                     <button
                       type="button"

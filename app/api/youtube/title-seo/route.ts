@@ -12,6 +12,8 @@ import {
   buildUploadSeoPack,
   clampYoutubeTitle,
   commaSeparatedYoutubeTags,
+  enhanceForRankMode,
+  estimateSeoRankScore,
   modeledHookStrengthForTitleSeo,
   modeledViralFitForTitleSeo,
 } from '@/lib/buildUploadSeo';
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const title = clampYoutubeTitle(String(body.title ?? '').trim());
+    const rank1Mode = Boolean(body.rank1Mode);
     if (title.length < 2) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
@@ -41,7 +44,7 @@ export async function POST(request: NextRequest) {
     const viralProbability = modeledViralFitForTitleSeo(titleAnalysis.score, trendingScore);
     const hookScore = modeledHookStrengthForTitleSeo(titleAnalysis.score);
 
-    const seoPack = buildUploadSeoPack({
+    const basePack = buildUploadSeoPack({
       title,
       keywords: titleAnalysis.keywords,
       hookScore,
@@ -49,13 +52,21 @@ export async function POST(request: NextRequest) {
       rawHashtags: hashtags.map((h) => h.replace(/^#/, '')),
       trendingTopics,
     });
+    const seoPack = rank1Mode ? enhanceForRankMode(basePack) : basePack;
 
-    const tags = commaSeparatedYoutubeTags(seoPack);
+    const tags = commaSeparatedYoutubeTags(seoPack, rank1Mode ? 40 : 30);
+    const hashtagsText = seoPack.hashtags.map((h) => `#${h}`).join(' ');
+    const seoRankScoreBase = estimateSeoRankScore(titleAnalysis.score, trendingScore, viralProbability);
+    const seoRankScore = rank1Mode ? Math.min(99, Math.max(90, seoRankScoreBase + 4)) : seoRankScoreBase;
 
     return NextResponse.json({
       description: seoPack.description,
       tags,
       hashtags: seoPack.hashtags,
+      hashtagsText,
+      seoRankScore,
+      rank1Mode,
+      recommendedTitle: titleAnalysis.optimizedTitles?.[0] || title,
       viralProbability,
       hookScore,
     });
