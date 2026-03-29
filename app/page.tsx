@@ -1,13 +1,10 @@
 import connectDB from '@/lib/mongodb';
 import Plan from '@/models/Plan';
 import User from '@/models/User';
-import { SUBSCRIPTION_PLANS } from '@/services/payments/stripe';
 import { yearlyUsdFromMonthly } from '@/lib/planPricing';
 import { getPlanRoll } from '@/lib/planLimits';
-import { getAnalysisUsageCount } from '@/lib/usageCheck';
 import { headers, cookies } from 'next/headers';
 import HomeClient, { type MarketingPlan } from '@/components/HomeClient';
-import { normalizePlan } from '@/lib/auth';
 import { verifyTokenSync } from '@/lib/auth-jwt';
 
 async function getPlans(): Promise<MarketingPlan[]> {
