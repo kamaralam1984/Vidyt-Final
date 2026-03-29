@@ -1,4 +1,4 @@
-import { normalizePlan } from '@/lib/auth';
+import { normalizePlan } from '@/lib/normalizePlan';
 import { ALL_FEATURES } from '@/utils/features';
 
 export interface FeatureAccessDoc {

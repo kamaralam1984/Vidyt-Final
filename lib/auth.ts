@@ -8,14 +8,8 @@ import User from '@/models/User';
 import connectDB from '@/lib/mongodb';
 import { generateToken, type AuthUser } from './auth-jwt';
 import { getPlanLimits } from '@/lib/planLimits';
-
-export const VALID_PLANS = ['free', 'starter', 'pro', 'enterprise', 'custom', 'owner'] as const;
-
-export function normalizePlan(plan: string | undefined | null): typeof VALID_PLANS[number] {
-  if (!plan) return 'free';
-  const normalized = plan.toLowerCase().trim();
-  return VALID_PLANS.includes(normalized as any) ? normalized as any : 'free';
-}
+import { normalizePlan } from './normalizePlan';
+export { VALID_PLANS, normalizePlan } from './normalizePlan';
 
 /**
  * Generate a unique 6-digit numeric ID for user login

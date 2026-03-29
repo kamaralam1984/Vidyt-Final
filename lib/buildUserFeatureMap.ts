@@ -1,4 +1,4 @@
-import { normalizePlan } from '@/lib/auth';
+import { normalizePlan } from '@/lib/normalizePlan';
 import connectDB from '@/lib/mongodb';
 import FeatureAccess from '@/models/FeatureAccess';
 import Plan from '@/models/Plan';
@@ -33,7 +33,11 @@ export async function buildUserFeatureMap(authUser: AuthUserLike): Promise<Recor
   return computeUserFeatureAccess({
     role: authUser.role,
     subscription: authUser.subscription || 'free',
-    featureAccessDocs: existingFeatures as { feature: string; enabled?: boolean; allowedRoles?: string[] }[],
+    featureAccessDocs: existingFeatures as unknown as {
+      feature: string;
+      enabled?: boolean;
+      allowedRoles?: string[];
+    }[],
     plan: p
       ? {
           planId: p.planId,
