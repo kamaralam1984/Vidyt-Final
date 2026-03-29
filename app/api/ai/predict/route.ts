@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { requireAIToolAccess } from '@/lib/aiStudioAccess';
+
 import connectDB from '@/lib/mongodb';
 import Analysis from '@/models/Analysis';
 import Video from '@/models/Video';
@@ -31,14 +32,19 @@ function generatePredictionInsights(features: ViralFeatures, viralProbability: n
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await getUserFromRequest(request);
-    if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const access = await requireAIToolAccess(request, 'advancedAiViralPrediction');
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+    const authUser = { id: access.userId, role: access.role };
+
     await connectDB();
     const ip = getClientIP(request);
     const limiter = rateLimit(`ai-predict:${authUser.id}:${ip}`, 40, 60 * 1000);
     if (!limiter.allowed) {
       return NextResponse.json({ error: 'Rate limit exceeded. Please retry in a minute.' }, { status: 429 });
     }
+
 
     const body = await request.json().catch(() => ({}));
     const features = parseFeaturesFromBody(body);

@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     // Analyze thumbnail with real computer vision
     let thumbnailAnalysis;
     try {
-      thumbnailAnalysis = await analyzeThumbnailReal(metadata.thumbnailUrl);
+      thumbnailAnalysis = await analyzeThumbnailReal(metadata.thumbnailUrl, 'instagram');
     } catch (error: any) {
       console.error('Real thumbnail analysis error, trying fallback:', error);
       try {
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     // Get trending score
     let trendingScore = 50;
     try {
-      trendingScore = await getTrendingScore(titleAnalysis.keywords);
+      trendingScore = await getTrendingScore(titleAnalysis.keywords, 'instagram');
     } catch (error: any) {
       console.error('Trending score error:', error);
     }
@@ -135,7 +135,10 @@ export async function POST(request: NextRequest) {
     try {
       hookAnalysis = await analyzeVideoHookReal(
         instagramUrl, // Use original URL since metadata doesn't have videoUrl
-        metadata.thumbnailUrl
+        metadata.thumbnailUrl,
+        undefined,
+        'instagram',
+        metadata.duration
       );
     } catch (error: any) {
       console.error('Video hook analysis error:', error);
@@ -218,7 +221,7 @@ export async function POST(request: NextRequest) {
     let trendingTopics: Array<{ keyword: string; score: number }> = [];
     try {
       const { getTrendingTopics } = await import('@/services/trendingEngine');
-      trendingTopics = await getTrendingTopics(titleAnalysis.keywords);
+      trendingTopics = await getTrendingTopics(titleAnalysis.keywords, 'instagram');
     } catch (error: any) {
       console.error('Trending topics error:', error);
     }

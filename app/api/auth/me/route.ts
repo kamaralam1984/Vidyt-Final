@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
         whiteLabelCompanyName: user.whiteLabelCompanyName,
         whiteLabelLogoUrl: user.whiteLabelLogoUrl,
         webhookUrl: user.webhookUrl,
+        isYoutubeConnected: !!user.youtube?.refresh_token,
         computedLimits: {
           analyses: user.subscription === 'owner' ? Number.MAX_SAFE_INTEGER : 
                    user.subscription === 'custom' ? ((user.customLimits as any)?.get ? (user.customLimits as any).get('analyses') : (user.customLimits as any)?.analyses || 0) :

@@ -26,6 +26,7 @@ export async function GET(request: Request) {
       activeSessions,
       allPayments,
       planDistribution,
+      subscribedUsers,
     ] = await Promise.all([
       User.countDocuments({}),
       User.countDocuments({ createdAt: { $gte: startOfToday } }),
@@ -34,14 +35,37 @@ export async function GET(request: Request) {
       User.aggregate([
         { $group: { _id: '$subscription', count: { $sum: 1 } } },
       ]),
+      User.find({ subscription: { $ne: 'free' } }, { subscription: 1, subscriptionPlan: 1 }).lean(),
     ]);
 
-    const revenue = calculateTotalRevenue(allPayments as any);
+    let revenue = calculateTotalRevenue(allPayments as any);
+
+    // If no successful payments, calculate projected revenue from active subscriptions
+    if (revenue.total === 0 && subscribedUsers.length > 0) {
+      const PLAN_PRICES_INR: Record<string, number> = {
+        starter: 249,
+        pro: 1299,
+        enterprise: 2499,
+        custom: 4999,
+        owner: 0,
+      };
+
+      let projectedMonthly = 0;
+      subscribedUsers.forEach(u => {
+        const sub = u.subscription as string;
+        const price = PLAN_PRICES_INR[sub] || 0;
+        projectedMonthly += price;
+      });
+
+      revenue.monthly = projectedMonthly;
+      revenue.total = projectedMonthly; // Fallback for display
+    }
+
 
     // Growth data: last 30 days new users per day
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     
-    const [growthData, activeUsersTrend] = await Promise.all([
+    const [growthData, activeUsersTrend, weekdayActivity] = await Promise.all([
       User.aggregate([
         { $match: { createdAt: { $gte: thirtyDaysAgo } } },
         {
@@ -63,7 +87,18 @@ export async function GET(request: Request) {
         { $project: { _id: 1, count: { $size: '$count' } } },
         { $sort: { _id: 1 } },
       ]),
+      UserSession.aggregate([
+        { $match: { loginTime: { $gte: thirtyDaysAgo } } },
+        {
+          $project: {
+            dayOfWeek: { $dayOfWeek: '$loginTime' }, // 1 (Sun) to 7 (Sat)
+          }
+        },
+        { $group: { _id: '$dayOfWeek', count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ])
     ]);
+
 
     return NextResponse.json({
       totalUsers,
@@ -91,7 +126,12 @@ export async function GET(request: Request) {
         date: a._id,
         count: a.count,
       })),
+      weekdayActivity: weekdayActivity.map((w: any) => ({
+        day: w._id,
+        count: w.count,
+      })),
     });
+
   } catch (error) {
     console.error('[Admin Analytics Overview Error]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

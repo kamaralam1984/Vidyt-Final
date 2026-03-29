@@ -235,9 +235,11 @@ export default function LivePage() {
       {/* Live Tracker Table */}
       <LiveTracker
         users={liveData?.liveUsers || []}
+        recentHistory={liveData?.recentHistory || []}
         loading={loading}
         isLive={isSocketLive}
       />
+
     </div>
   );
 }

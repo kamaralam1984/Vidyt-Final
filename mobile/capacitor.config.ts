@@ -8,7 +8,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * Local device (same Wi‑Fi): http://YOUR_PC_LAN_IP:3000
  */
 /** Override when syncing: `CAPACITOR_SERVER_URL=https://yourdomain.com npx cap sync` */
-const serverUrl = process.env.CAPACITOR_SERVER_URL || 'http://localhost:3000';
+const serverUrl = process.env.CAPACITOR_SERVER_URL || 'http://192.168.0.197:3000';
 
 const config: CapacitorConfig = {
   appId: 'com.viralboostai.app',

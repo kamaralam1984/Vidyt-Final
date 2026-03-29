@@ -40,6 +40,36 @@ export interface ViralPredictionOutput {
 }
 
 /**
+ * Platform-specific weights and factors for viral prediction
+ */
+const PLATFORM_CONFIGS: Record<string, {
+  weights: { hook: number; thumbnail: number; title: number; trending: number; timing: number };
+  viewMultiplier: number;
+  engagementBase: number;
+}> = {
+  youtube: {
+    weights: { hook: 0.2, thumbnail: 0.35, title: 0.25, trending: 0.1, timing: 0.1 },
+    viewMultiplier: 5000,
+    engagementBase: 0.08,
+  },
+  facebook: {
+    weights: { hook: 0.4, thumbnail: 0.2, title: 0.15, trending: 0.15, timing: 0.1 },
+    viewMultiplier: 3000,
+    engagementBase: 0.12,
+  },
+  instagram: {
+    weights: { hook: 0.5, thumbnail: 0.25, title: 0.05, trending: 0.1, timing: 0.1 },
+    viewMultiplier: 2500,
+    engagementBase: 0.18,
+  },
+  tiktok: {
+    weights: { hook: 0.6, thumbnail: 0.15, title: 0.05, trending: 0.15, timing: 0.05 },
+    viewMultiplier: 10000,
+    engagementBase: 0.22,
+  }
+};
+
+/**
  * Predict viral potential using ML model trained on viral dataset
  * Now enhanced with TensorFlow.js model integration
  */
@@ -139,27 +169,31 @@ export async function predictViralPotential(
     confidence = Math.min(100, similarViralVideos.length * 2);
   }
 
-  // Adjust based on individual factors
+  // Get platform config (default to youtube)
+  const platformConfig = PLATFORM_CONFIGS[input.platform] || PLATFORM_CONFIGS.youtube;
+  const weights = platformConfig.weights;
+
+  // Adjust based on individual factors using platform weights
   const factors = {
     hook: {
       score: input.hookScore,
-      impact: input.hookScore * 0.25, // 25% weight
+      impact: input.hookScore * weights.hook,
     },
     thumbnail: {
       score: input.thumbnailScore,
-      impact: input.thumbnailScore * 0.25, // 25% weight
+      impact: input.thumbnailScore * weights.thumbnail,
     },
     title: {
       score: input.titleScore,
-      impact: input.titleScore * 0.20, // 20% weight
+      impact: input.titleScore * weights.title,
     },
     trending: {
       score: input.trendingScore,
-      impact: input.trendingScore * 0.15, // 15% weight
+      impact: input.trendingScore * weights.trending,
     },
     timing: {
       score: timingScore,
-      impact: timingScore * 0.15, // 15% weight
+      impact: timingScore * weights.timing,
     },
   };
 
@@ -181,11 +215,11 @@ export async function predictViralPotential(
     viralProbability = Math.round(ruleBasedProbability);
   }
 
-  // Adjust predicted views based on probability
-  predictedViews = Math.round(predictedViews * (viralProbability / 50));
+  // Adjust predicted views based on platform reach and probability
+  predictedViews = Math.round(platformConfig.viewMultiplier * (viralProbability / 30));
 
-  // Calculate engagement forecast
-  const engagementRate = viralProbability * 0.8; // Simplified
+  // Calculate engagement forecast based on platform standards
+  const engagementRate = Math.min(25, (viralProbability * platformConfig.engagementBase));
   const engagementForecast = {
     likes: Math.round(predictedViews * (engagementRate / 100) * 0.6),
     comments: Math.round(predictedViews * (engagementRate / 100) * 0.3),

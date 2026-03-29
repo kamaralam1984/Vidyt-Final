@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
-import { getUserFromRequest } from '@/lib/auth';
+import { requireAIToolAccess } from '@/lib/aiStudioAccess';
+
 import ViralPrediction from '@/models/ViralPrediction';
 import { getCacheJSON, setCacheJSON } from '@/lib/cache';
 import { getClientIP, rateLimit } from '@/lib/rateLimiter';
@@ -16,11 +17,16 @@ const MIN_LABELED_FOR_AGGREGATE = 5;
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getUserFromRequest(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const access = await requireAIToolAccess(req, 'advancedAnalyticsDashboard');
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+    const user = { id: access.userId, role: access.role };
+
     const ip = getClientIP(req);
     const limiter = rateLimit(`ai-metrics:${user.id}:${ip}`, 60, 60 * 1000);
     if (!limiter.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+
 
     await connectDB();
     const url = new URL(req.url);

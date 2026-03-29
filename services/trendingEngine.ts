@@ -135,8 +135,11 @@ export async function getTrendingTopics(
   }
 }
 
-export async function getTrendingScore(keywords: string[]): Promise<number> {
-  const topics = await getTrendingTopics(keywords);
+export async function getTrendingScore(
+  keywords: string[],
+  platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok' = 'youtube'
+): Promise<number> {
+  const topics = await getTrendingTopics(keywords, platform);
   if (topics.length === 0) return 50;
   
   const avgScore = topics.reduce((sum, topic) => sum + topic.score, 0) / topics.length;

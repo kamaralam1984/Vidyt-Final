@@ -33,13 +33,20 @@ interface UserData {
 export default function UserHomePage() {
   const params = useParams();
   const router = useRouter();
-  const uniqueId = params.uniqueId as string;
+  const rawId = params?.uniqueId;
+  const uniqueId =
+    typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] ?? '' : '';
   
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!uniqueId) {
+      setLoading(false);
+      setError('Invalid user link');
+      return;
+    }
     const fetchUserData = async () => {
       try {
         const response = await axios.get(`/api/user/${uniqueId}`, {
@@ -49,7 +56,7 @@ export default function UserHomePage() {
         if (response.data.success) {
           const user = response.data.user;
           if (user?.role === 'super-admin') {
-            router.replace('/dashboard/super');
+            router.replace('/admin/super');
             return;
           }
           setUserData(user);

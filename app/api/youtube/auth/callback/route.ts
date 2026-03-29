@@ -23,9 +23,11 @@ export async function GET(request: NextRequest) {
 
         // Store tokens in user document
         await User.findByIdAndUpdate(user.id, {
-            googleAccessToken: tokens.access_token,
-            googleRefreshToken: tokens.refresh_token,
-            googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined
+            youtube: {
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                expiry_date: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined
+            }
         });
 
         // Redirect back to the dashboard with a success message

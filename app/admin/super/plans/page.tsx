@@ -1,6 +1,13 @@
-import { redirect } from 'next/navigation';
+'use client';
 
-/** Legacy URL — sab control ab `/admin/super` par hai. */
-export default function PlansPageRedirect() {
-  redirect('/admin/super');
+import UnifiedControlPanel from '@/components/admin/UnifiedControlPanel';
+
+export const dynamic = 'force-dynamic';
+
+export default function ControlsPage() {
+  return (
+    <div className="min-h-screen bg-gray-950">
+      <UnifiedControlPanel />
+    </div>
+  );
 }

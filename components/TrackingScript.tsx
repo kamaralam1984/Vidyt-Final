@@ -47,12 +47,12 @@ export default function TrackingScript() {
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true;
-      track('login', pathname);
+      track('login', pathname || '');
     }
 
     // Heartbeat every 30 seconds to keep session alive
     heartbeatRef.current = setInterval(() => {
-      track('heartbeat', pathname);
+      track('heartbeat', pathname || '');
     }, 30000);
 
     // Logout tracking
@@ -85,7 +85,7 @@ export default function TrackingScript() {
   // Page change tracking
   useEffect(() => {
     if (initialized.current) {
-      track('page', pathname);
+      track('page', pathname || '');
     }
   }, [pathname]);
 

@@ -18,15 +18,19 @@ interface LiveUser {
   distanceFromAdmin?: number;
   sessionStart: string;
   lastSeen: string;
+  isActive: boolean;
   sessionDurationMinutes: number;
   pageTimeSpentSeconds?: number;
 }
 
+
 interface LiveTrackerProps {
   users: LiveUser[];
+  recentHistory?: LiveUser[];
   loading?: boolean;
   isLive?: boolean; // true = socket mode, false = polling
 }
+
 
 const PLAN_DOT: Record<string, string> = {
   free: 'bg-white/30',
@@ -81,12 +85,19 @@ function PageTimer({ initialSeconds }: { initialSeconds: number }) {
 type DistanceFilter = 'all' | '0-500' | '500-1000' | '1000-4000';
 type SortMode = 'none' | 'nearest' | 'farthest';
 
-export default function LiveTracker({ users, loading, isLive = false }: LiveTrackerProps) {
+export default function LiveTracker({ users, recentHistory = [], loading, isLive = false }: LiveTrackerProps) {
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>('all');
   const [sortMode, setSortMode] = useState<SortMode>('none');
 
+  const allUsers = useMemo(() => {
+    // Merge live users and recent history, prioritizing live
+    const liveIds = new Set(users.map(u => u.sessionId));
+    const combined = [...users, ...recentHistory.filter(r => !liveIds.has(r.sessionId))];
+    return combined;
+  }, [users, recentHistory]);
+
   const filtered = useMemo(() => {
-    let list = [...users];
+    let list = [...allUsers];
 
     // Distance filter
     if (distanceFilter !== 'all') {
@@ -105,7 +116,7 @@ export default function LiveTracker({ users, loading, isLive = false }: LiveTrac
     }
 
     return list;
-  }, [users, distanceFilter, sortMode]);
+  }, [allUsers, distanceFilter, sortMode]);
 
   return (
     <div className="bg-[#141414] border border-white/5 rounded-2xl overflow-hidden">
@@ -113,24 +124,27 @@ export default function LiveTracker({ users, loading, isLive = false }: LiveTrac
       <div className="px-6 py-4 border-b border-white/5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Radio className="w-5 h-5 text-red-400" />
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping" />
+            <Radio className={`w-5 h-5 ${users.length > 0 ? 'text-red-400' : 'text-white/20'}`} />
+            {users.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping" />}
           </div>
           <div>
-            <h2 className="text-base font-semibold text-white">Live Users</h2>
+            <h2 className="text-base font-semibold text-white">Activity Tracking</h2>
             <p className="text-xs text-white/40 flex items-center gap-1.5">
-              {users.length} online
+              <span className="text-white/60 font-medium">{users.length} live</span>
+              <span className="text-white/20">·</span>
+              <span>{recentHistory.length} recent</span>
               {isLive ? (
                 <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block ml-1" />
                   <span className="text-emerald-400">WebSocket</span>
                 </>
               ) : (
-                <span>· polling</span>
+                <span className="ml-1 opacity-50 tabular-nums">· polling</span>
               )}
             </p>
           </div>
         </div>
+
 
         {/* Controls */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -199,16 +213,20 @@ export default function LiveTracker({ users, loading, isLive = false }: LiveTrac
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600/40 to-red-800/40 border border-red-500/20 flex items-center justify-center text-white font-bold text-sm">
                     {(user.name || 'U')[0].toUpperCase()}
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-[#141414] rounded-full" />
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-[#141414] rounded-full ${
+                    user.isActive ? 'bg-emerald-500' : 'bg-white/20'
+                  }`} />
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-white">{user.name}</span>
-                    <span className={`w-1.5 h-1.5 rounded-full ${PLAN_DOT[user.plan] || 'bg-white/30'}`} title={user.plan} />
+                    <span className={`text-sm font-medium ${user.isActive ? 'text-white' : 'text-white/40'}`}>{user.name}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${PLAN_DOT[user.plan] || 'bg-white/30'} ${!user.isActive && 'opacity-30'}`} title={user.plan} />
                     <span className="text-xs text-white/30">{user.plan}</span>
+                    {!user.isActive && <span className="text-[10px] bg-white/5 text-white/30 px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Recent</span>}
                   </div>
+
                   <p className="text-xs text-white/40 truncate">{user.email}</p>
                   <p className="text-[11px] text-white/35 mt-1">
                     User ID: <span className="font-mono">{user.uniqueId || user.userId || '—'}</span>

@@ -1,16 +1,17 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAIStudioAccess } from '@/lib/aiStudioAccess';
+import { requireAIToolAccess } from '@/lib/aiStudioAccess';
 import connectDB from '@/lib/mongodb';
 import AIHook from '@/models/AIHook';
 import { generateHooks } from '@/services/ai/aiStudio';
 
 export async function POST(request: NextRequest) {
-  const access = await requireAIStudioAccess(request);
+  const access = await requireAIToolAccess(request, 'hook_generator');
   if (!access.allowed) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
   try {
     const body = await request.json();
     const { topic, niche, platform } = body;

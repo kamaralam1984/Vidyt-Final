@@ -17,6 +17,9 @@ import PostingTimeHeatmap from '@/components/PostingTimeHeatmap';
 
 export default function VideoDetailPage() {
   const params = useParams();
+  const rawId = params?.id;
+  const videoId =
+    typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] ?? '' : '';
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [video, setVideo] = useState<any>(null);
@@ -25,10 +28,10 @@ export default function VideoDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (params.id) {
-      fetchVideoData(params.id as string);
+    if (videoId) {
+      fetchVideoData(videoId);
     }
-  }, [params.id]);
+  }, [videoId]);
 
   const fetchVideoData = async (videoId: string) => {
     try {

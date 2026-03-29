@@ -10,6 +10,7 @@ const ROLES = [
   { id: 'manager', label: 'Manager' },
   { id: 'admin', label: 'Admin' },
   { id: 'super-admin', label: 'Super Admin' },
+  { id: 'custom', label: 'Custom' },
 ];
 
 export default function SystemAccessMatrix() {

@@ -4,12 +4,12 @@
  */
 
 export const PLAN_PRICES: Record<string, { month: number; year: number; currency: string }> = {
-  free: { month: 0, year: 0, currency: 'INR' },
-  starter: { month: 499, year: 4999, currency: 'INR' },
-  pro: { month: 999, year: 9999, currency: 'INR' },
-  enterprise: { month: 2999, year: 29999, currency: 'INR' },
-  custom: { month: 4999, year: 49999, currency: 'INR' },
-  owner: { month: 0, year: 0, currency: 'INR' },
+  free: { month: 0, year: 0, currency: 'USD' },
+  starter: { month: 9, year: 99, currency: 'USD' },
+  pro: { month: 29, year: 299, currency: 'USD' },
+  enterprise: { month: 99, year: 999, currency: 'USD' },
+  custom: { month: 149, year: 1499, currency: 'USD' },
+  owner: { month: 0, year: 0, currency: 'USD' },
 };
 
 export interface UserRevenueEstimate {
@@ -25,7 +25,7 @@ export function estimateUserRevenue(
   subscriptionStatus?: string
 ): UserRevenueEstimate {
   if (!plan || plan === 'free' || plan === 'owner' || subscriptionStatus === 'cancelled') {
-    return { daily: 0, weekly: 0, monthly: 0, currency: 'INR' };
+    return { daily: 0, weekly: 0, monthly: 0, currency: 'USD' };
   }
 
   const planData = PLAN_PRICES[plan] || PLAN_PRICES.free;

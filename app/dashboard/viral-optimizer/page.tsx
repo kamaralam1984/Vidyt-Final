@@ -75,9 +75,8 @@ export default function ViralOptimizerPage() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
-        const role = res.data?.user?.role;
-        setAllowed(role === 'super-admin');
+        const res = await axios.get('/api/features/all', { headers: getAuthHeaders() });
+        setAllowed(res.data?.features?.viral_optimizer === true);
       } catch {
         setAllowed(false);
       }
@@ -186,7 +185,9 @@ export default function ViralOptimizerPage() {
           <div className="p-6 max-w-lg mx-auto text-center">
             <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
             <h1 className="text-xl font-bold text-white mb-2">Access restricted</h1>
-            <p className="text-[#AAAAAA] mb-4">AI Viral Optimization Engine is available only for Super Admin.</p>
+            <p className="text-[#AAAAAA] mb-4">
+              Your current plan or role does not include the AI Viral Optimization Engine. Upgrade or ask an admin to enable it in the Feature Matrix.
+            </p>
             <button
               onClick={() => router.push('/dashboard')}
               className="px-4 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000]"

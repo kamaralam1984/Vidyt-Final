@@ -19,7 +19,7 @@ const getSecretKey = () => {
   return new TextEncoder().encode(JWT_SECRET);
 };
 
-export type UserRole = 'user' | 'manager' | 'admin' | 'super-admin';
+export type UserRole = 'user' | 'manager' | 'admin' | 'super-admin' | 'enterprise';
 
 export interface AuthUser {
   id: string;

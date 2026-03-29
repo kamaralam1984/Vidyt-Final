@@ -40,7 +40,8 @@ function AuthPageContent() {
 
   // Redirect /auth?mode=login to clean URL /login
   useEffect(() => {
-    if (pathname === '/auth' && searchParams.get('mode') === 'login') {
+    // `useSearchParams()` can be `null` during some SSR/build phases.
+    if (pathname === '/auth' && searchParams?.get('mode') === 'login') {
       router.replace('/login');
       return;
     }
@@ -52,7 +53,7 @@ function AuthPageContent() {
       setIsLogin(true);
       return;
     }
-    const mode = searchParams.get('mode');
+    const mode = searchParams?.get('mode');
     if (mode === 'login') {
       setIsLogin(true);
     } else if (mode === 'signup') {
@@ -99,7 +100,7 @@ function AuthPageContent() {
     if (pathname === '/login') {
       setIsLogin(true);
     } else {
-      const mode = searchParams.get('mode');
+      const mode = searchParams?.get('mode');
       if (mode === 'login') setIsLogin(true);
       else if (mode === 'signup') setIsLogin(false);
     }
@@ -287,7 +288,7 @@ function AuthPageContent() {
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('uniqueId', response.data.user.uniqueId);
             if (response.data.user?.role === 'super-admin') {
-              router.push('/dashboard/super');
+              router.push('/admin/super');
             } else {
               router.push(`/user/${response.data.user.uniqueId}`);
             }
@@ -313,7 +314,7 @@ function AuthPageContent() {
               localStorage.setItem('uniqueId', response.data.user.uniqueId);
             }
             if (response.data.user?.role === 'super-admin') {
-              router.push('/dashboard/super');
+              router.push('/admin/super');
             } else if (response.data.user?.uniqueId) {
               router.push(`/user/${response.data.user.uniqueId}`);
             } else {

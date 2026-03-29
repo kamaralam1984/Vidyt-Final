@@ -10,7 +10,7 @@ import { ThumbnailAnalysis } from '../thumbnailAnalyzer';
 /**
  * Analyze thumbnail with real computer vision
  */
-export async function analyzeThumbnailReal(thumbnailUrl: string): Promise<ThumbnailAnalysis> {
+export async function analyzeThumbnailReal(thumbnailUrl: string, platform: 'youtube' | 'facebook' | 'instagram' = 'youtube'): Promise<ThumbnailAnalysis> {
   try {
     if (thumbnailUrl.includes('placeholder')) {
       return {
@@ -52,6 +52,7 @@ export async function analyzeThumbnailReal(thumbnailUrl: string): Promise<Thumbn
       colorContrast,
       textReadability,
       emotion,
+      platform,
     });
 
     // Calculate score
@@ -59,6 +60,7 @@ export async function analyzeThumbnailReal(thumbnailUrl: string): Promise<Thumbn
       facesDetected,
       colorContrast,
       textReadability,
+      platform,
     });
 
     return {
@@ -236,29 +238,48 @@ function generateSuggestionsReal(analysis: {
   colorContrast: number;
   textReadability: number;
   emotion?: string;
+  platform?: string;
 }): string[] {
   const suggestions: string[] = [];
 
-  if (analysis.facesDetected === 0) {
-    suggestions.push('Add a face in the thumbnail - videos with faces get 2x more engagement');
-  } else if (analysis.facesDetected === 1) {
-    suggestions.push('Good! Single face thumbnails perform well');
+  // YouTube Specific Suggestions
+  if (analysis.platform === 'youtube') {
+    if (analysis.facesDetected === 0) {
+      suggestions.push('YouTube thumbnails with expressive faces get 40% higher CTR - add a face!');
+    }
+    if (analysis.textReadability < 70) {
+      suggestions.push('Bold, high-contrast text is crucial for YouTube mobile users.');
+    }
   }
 
-  if (analysis.colorContrast < 60) {
-    suggestions.push('Increase color contrast by 20-30% for better visibility');
+  // Instagram Specific Suggestions
+  if (analysis.platform === 'instagram') {
+    if (analysis.colorContrast < 70) {
+      suggestions.push('Enhance the aesthetic appeal with more vibrant color contrast for the Feed.');
+    }
+    if (analysis.emotion === 'neutral') {
+      suggestions.push('Instagram favors high-emotion previews - try showing more excitement/surprise.');
+    }
   }
 
-  if (analysis.textReadability < 70) {
-    suggestions.push('Improve text readability - use larger fonts and higher contrast');
+  // Facebook Specific Suggestions
+  if (analysis.platform === 'facebook') {
+    if (analysis.textReadability > 80) {
+      suggestions.push('Keep text minimal (under 20%) to avoid "ad-like" appearance on Facebook feeds.');
+    }
+    if (analysis.facesDetected > 1) {
+      suggestions.push('Focus on a single clear subject for better mobile viewing on Facebook.');
+    }
   }
 
-  if (analysis.emotion === 'neutral' || !analysis.emotion) {
-    suggestions.push('Add emotional expression - excited/happy faces perform better');
-  }
-
-  if (suggestions.length === 0) {
-    suggestions.push('Thumbnail looks great! Consider A/B testing different versions');
+  // General Suggestions (if not enough platform-specific ones)
+  if (suggestions.length < 2) {
+    if (analysis.facesDetected === 0) {
+      suggestions.push('Consider adding a human element to increase trust and engagement.');
+    }
+    if (analysis.colorContrast < 50) {
+      suggestions.push('Increase visual pop with higher saturation or contrast.');
+    }
   }
 
   return suggestions;
@@ -271,17 +292,32 @@ function calculateThumbnailScoreReal(analysis: {
   facesDetected: number;
   colorContrast: number;
   textReadability: number;
+  platform?: string;
 }): number {
   let score = 0;
 
-  // Faces boost score (up to 40 points)
-  score += Math.min(40, analysis.facesDetected * 20);
-
-  // Color contrast (up to 30 points)
-  score += (analysis.colorContrast / 100) * 30;
-
-  // Text readability (up to 30 points)
-  score += (analysis.textReadability / 100) * 30;
+  // Platform-specific scoring weights
+  if (analysis.platform === 'youtube') {
+    // YouTube: CTR focused (Faces + Text)
+    score += Math.min(45, analysis.facesDetected * 22.5);
+    score += (analysis.textReadability / 100) * 35;
+    score += (analysis.colorContrast / 100) * 20;
+  } else if (analysis.platform === 'instagram') {
+    // Instagram: Aesthetic focused (Contrast + Faces)
+    score += Math.min(30, analysis.facesDetected * 15);
+    score += (analysis.colorContrast / 100) * 50;
+    score += (analysis.textReadability / 100) * 20;
+  } else if (analysis.platform === 'facebook') {
+    // Facebook: Balance (Trust + Subject)
+    score += Math.min(40, analysis.facesDetected * 20);
+    score += (analysis.colorContrast / 100) * 30;
+    score += (analysis.textReadability / 100) * 30;
+  } else {
+    // Default fallback
+    score += Math.min(40, analysis.facesDetected * 20);
+    score += (analysis.colorContrast / 100) * 30;
+    score += (analysis.textReadability / 100) * 30;
+  }
 
   return Math.min(100, Math.round(score));
 }

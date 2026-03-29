@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { youtubeUrl, userId } = body;
 
+    console.log('API: Processing YouTube video. Input URL:', youtubeUrl);
+
     if (!youtubeUrl) {
       return NextResponse.json({ error: 'YouTube URL is required' }, { status: 400 });
     }
@@ -93,15 +95,19 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Extract video ID
-    const videoIdMatch = youtubeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    // Extract video ID (for database storage)
+    const videoIdMatch = youtubeUrl.match(/[?&]v=([a-zA-Z0-9_-]{11})/) || 
+                         youtubeUrl.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/) ||
+                         youtubeUrl.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/) ||
+                         youtubeUrl.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
     const youtubeId = videoIdMatch ? videoIdMatch[1] : null;
+    console.log('API: Resolved YouTube ID for database:', youtubeId);
     
     // Analyze thumbnail with real computer vision
     let thumbnailAnalysis;
     try {
       // Try real analysis first, fallback to basic if it fails
-      thumbnailAnalysis = await analyzeThumbnailReal(metadata.thumbnailUrl);
+      thumbnailAnalysis = await analyzeThumbnailReal(metadata.thumbnailUrl, 'youtube');
     } catch (error: any) {
       console.error('Real thumbnail analysis error, trying fallback:', error);
       try {
@@ -139,7 +145,7 @@ export async function POST(request: NextRequest) {
     // Get trending score
     let trendingScore = 50;
     try {
-      trendingScore = await getTrendingScore(titleAnalysis.keywords);
+      trendingScore = await getTrendingScore(titleAnalysis.keywords, 'youtube');
     } catch (error: any) {
       console.error('Trending score error:', error);
     }
@@ -150,7 +156,10 @@ export async function POST(request: NextRequest) {
     try {
       hookAnalysis = await analyzeVideoHookReal(
         youtubeUrl, // Use original URL since metadata doesn't have videoUrl
-        metadata.thumbnailUrl
+        metadata.thumbnailUrl,
+        undefined,
+        'youtube',
+        metadata.duration
       );
     } catch (error: any) {
       console.error('Video hook analysis error:', error);

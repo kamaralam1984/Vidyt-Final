@@ -68,6 +68,57 @@ export interface YouTubeMetadata {
   hashtags: string[];
 }
 
+/**
+ * Resolves a channel handle or ID to its most recent video ID.
+ */
+async function fetchLatestVideoIdFromChannel(channelIdentifier: string, apiKey: string): Promise<string> {
+  try {
+    let channelId = channelIdentifier;
+
+    // 1. Resolve handle to channel ID if needed
+    if (channelIdentifier.startsWith('@')) {
+      console.log(`Resolving handle ${channelIdentifier} to channel ID...`);
+      const searchRes = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+        params: {
+          part: 'snippet',
+          q: channelIdentifier,
+          type: 'channel',
+          key: apiKey,
+          maxResults: 1
+        }
+      });
+      const channelItem = searchRes.data?.items?.[0];
+      if (!channelItem) throw new Error(`Could not find channel for handle: ${channelIdentifier}`);
+      channelId = channelItem.id.channelId;
+      console.log(`Resolved ${channelIdentifier} to channel ID: ${channelId}`);
+    }
+
+    // 2. Fetch latest video from channel
+    console.log(`Fetching latest video for channel ID: ${channelId}...`);
+    const videoRes = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+      params: {
+        part: 'snippet',
+        channelId: channelId,
+        order: 'date',
+        type: 'video',
+        key: apiKey,
+        maxResults: 1
+      }
+    });
+
+    const videoItem = videoRes.data?.items?.[0];
+    if (!videoItem) throw new Error('No videos found for this channel');
+    
+    const videoId = videoItem.id.videoId;
+    console.log(`Found latest video ID: ${videoId}`);
+    return videoId;
+  } catch (error: any) {
+    const apiError = error.response?.data?.error?.message || error.message;
+    console.error('Error fetching latest video from channel:', apiError);
+    throw new Error(`Failed to resolve channel to latest video: ${apiError}`);
+  }
+}
+
 export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetadata> {
   if (!url || typeof url !== 'string' || url.trim().length === 0) {
     throw new Error('Please provide a valid YouTube URL.\n\nSupported formats:\n' +
@@ -75,26 +126,46 @@ export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetada
       '- youtu.be/VIDEO_ID\n' +
       '- youtube.com/shorts/VIDEO_ID\n' +
       '- youtube.com/embed/VIDEO_ID\n' +
-      '- m.youtube.com/watch?v=VIDEO_ID');
+      '- m.youtube.com/watch?v=VIDEO_ID\n' +
+      '- youtube.com/@handle (latest video)');
   }
 
-  const videoId = extractVideoId(url);
+  // Get API Config early to handle channel resolution if needed
+  const config = await getApiConfig();
+  const apiKey = config.youtubeDataApiKey?.trim();
+
+  let videoId = extractVideoId(url);
+  
+  // Check if it looks like a channel URL/handle
+  if (!videoId) {
+    const handleMatch = url.match(/youtube\.com\/(@[a-zA-Z0-9._-]+)/);
+    const channelMatch = url.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/);
+    const channelId = handleMatch ? handleMatch[1] : (channelMatch ? channelMatch[1] : null);
+
+    if (channelId) {
+      if (!apiKey) {
+        throw new Error('Channel URL detected. Please configure a YouTube Data API Key in Super Admin settings to analyze the latest video from a channel.');
+      }
+      console.log(`Channel URL detected: ${channelId}. Resolving to latest video...`);
+      videoId = await fetchLatestVideoIdFromChannel(channelId, apiKey);
+    }
+  }
+
   if (!videoId) {
     throw new Error('Invalid YouTube URL format.\n\nPlease use one of these formats:\n' +
       '- youtube.com/watch?v=VIDEO_ID\n' +
       '- youtu.be/VIDEO_ID\n' +
       '- youtube.com/shorts/VIDEO_ID\n' +
       '- youtube.com/embed/VIDEO_ID\n' +
-      '- m.youtube.com/watch?v=VIDEO_ID\n\n' +
+      '- m.youtube.com/watch?v=VIDEO_ID\n' +
+      '- youtube.com/@handle (latest video)\n\n' +
       `You entered: ${url.substring(0, 100)}${url.length > 100 ? '...' : ''}`);
   }
 
   console.log(`Extracting metadata for video ID: ${videoId}`);
 
-  // Try YouTube Data API v3 first if key is set (Super Admin API Config or env)
+  // Try YouTube Data API v3 first if key is set
   try {
-    const config = await getApiConfig();
-    const apiKey = config.youtubeDataApiKey?.trim();
     if (apiKey) {
       const metadata = await fetchViaYouTubeDataAPI(videoId, apiKey);
       console.log('Successfully extracted metadata via YouTube Data API v3:', metadata.title);
@@ -282,7 +353,7 @@ export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetada
   throw new Error(`Failed to extract YouTube metadata\n\nError: ${errorMsg}\n\nPlease try:\n1. A different video\n2. Checking the URL is correct\n3. Waiting a few minutes`);
 }
 
-function extractVideoId(url: string): string | null {
+export function extractVideoId(url: string): string | null {
   if (!url || typeof url !== 'string') {
     return null;
   }
@@ -293,31 +364,16 @@ function extractVideoId(url: string): string | null {
   // Remove any trailing spaces or newlines
   cleanUrl = cleanUrl.replace(/\s+$/, '');
   
-  // Support multiple YouTube URL formats:
-  // - https://www.youtube.com/watch?v=VIDEO_ID
-  // - https://youtube.com/watch?v=VIDEO_ID
-  // - www.youtube.com/watch?v=VIDEO_ID
-  // - youtube.com/watch?v=VIDEO_ID
-  // - youtu.be/VIDEO_ID
-  // - youtube.com/embed/VIDEO_ID
-  // - youtube.com/shorts/VIDEO_ID
-  // - youtube.com/watch?feature=share&v=VIDEO_ID
-  // - m.youtube.com/watch?v=VIDEO_ID (mobile)
-  // - youtube.com/watch?v=VIDEO_ID&t=123s (with timestamp)
-  
-  // Video ID regex pattern (11 characters, alphanumeric, hyphens, underscores)
-  const videoIdPattern = /[a-zA-Z0-9_-]{11}/;
-  
-  // Try multiple extraction patterns
+  // Regular expressions to extract video ID from various YouTube URL formats
   const patterns = [
-    // Standard watch URLs: youtube.com/watch?v=VIDEO_ID
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/watch\?.*[&?]v=)([a-zA-Z0-9_-]{11})/,
+    // Standard watch URLs or mobile: youtube.com/watch?v=VIDEO_ID
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    // Shortened URLs: youtu.be/VIDEO_ID
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
     // Embed URLs: youtube.com/embed/VIDEO_ID
     /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
     // Shorts URLs: youtube.com/shorts/VIDEO_ID
     /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
-    // Mobile URLs: m.youtube.com/watch?v=VIDEO_ID
-    /m\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
     // Just video ID (if someone pastes just the ID)
     /^([a-zA-Z0-9_-]{11})$/,
   ];
@@ -325,25 +381,14 @@ function extractVideoId(url: string): string | null {
   // Try each pattern
   for (const pattern of patterns) {
     const match = cleanUrl.match(pattern);
-    if (match && match[1] && videoIdPattern.test(match[1])) {
+    if (match && match[1]) {
       const videoId = match[1];
       console.log('Extracted video ID:', videoId, 'from URL:', cleanUrl);
       return videoId;
     }
   }
 
-  // If no pattern matched, try to find a valid video ID anywhere in the string
-  const fallbackMatch = cleanUrl.match(/([a-zA-Z0-9_-]{11})/);
-  if (fallbackMatch && fallbackMatch[1]) {
-    const potentialId = fallbackMatch[1];
-    // Validate it's likely a YouTube video ID (starts with common characters)
-    if (/^[a-zA-Z0-9_-]{11}$/.test(potentialId)) {
-      console.log('Extracted video ID (fallback):', potentialId, 'from URL:', cleanUrl);
-      return potentialId;
-    }
-  }
-
-  console.log('Could not extract video ID from URL:', cleanUrl);
+  console.log('Could not extract direct video ID from URL:', cleanUrl);
   return null;
 }
 

@@ -19,9 +19,9 @@ import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
   { href: '/admin/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/super', label: 'Control Center', icon: Package },
   { href: '/admin/super/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/admin/super/users', label: 'Users', icon: Users },
+  { href: '/admin/super/plans', label: 'Control Center', icon: Package },
   { href: '/admin/super/revenue', label: 'Revenue', icon: DollarSign },
   { href: '/admin/super/live', label: 'Live Tracking', icon: Radio },
   { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
@@ -50,11 +50,7 @@ export default function SuperSidebar() {
       {/* Nav */}
       <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const p = pathname || '';
-          const isActive =
-            href === '/admin/super'
-              ? p === '/admin/super' || p === '/admin/super/'
-              : p.startsWith(href);
+          const isActive = (pathname || '').startsWith(href);
           return (
             <motion.div key={href} whileHover={{ x: 2 }} whileTap={{ scale: 0.98 }}>
               <Link

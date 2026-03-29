@@ -35,8 +35,10 @@ const ICON_MAP: Record<string, any> = {
 };
 
 export default function ToolMarketingPage() {
-  const { slug } = useParams();
-  const tool = MARKETING_TOOLS[slug as string];
+  const params = useParams();
+  const raw = params?.slug;
+  const slug = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : '';
+  const tool = slug ? MARKETING_TOOLS[slug] : undefined;
   const { authenticated, loading } = useUser();
 
   if (!tool) {

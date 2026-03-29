@@ -6,6 +6,7 @@ const nextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
+      allowedDevOrigins: ["192.168.0.197:3000", "localhost:3000"],
     },
     serverComponentsExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg', 'natural'],
   },

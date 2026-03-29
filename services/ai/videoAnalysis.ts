@@ -15,7 +15,9 @@ import { HookAnalysis } from '../hookAnalyzer';
 export async function analyzeVideoHookReal(
   videoUrl?: string,
   thumbnailUrl?: string,
-  videoBuffer?: Buffer
+  videoBuffer?: Buffer,
+  platform: 'youtube' | 'facebook' | 'instagram' = 'youtube',
+  duration: number = 0
 ): Promise<HookAnalysis> {
   try {
     let frames: Buffer[] = [];
@@ -42,7 +44,11 @@ export async function analyzeVideoHookReal(
     }
 
     // Analyze frames or thumbnail
-    const analysis = await analyzeFrames(frames.length > 0 ? frames : thumbnailBuffer ? [thumbnailBuffer] : []);
+    const analysis = await analyzeFrames(
+      frames.length > 0 ? frames : thumbnailBuffer ? [thumbnailBuffer] : [],
+      platform,
+      duration
+    );
 
     return analysis;
   } catch (error) {
@@ -70,7 +76,11 @@ async function extractVideoFrames(videoBuffer: Buffer): Promise<Buffer[]> {
 /**
  * Analyze frames using computer vision
  */
-async function analyzeFrames(frames: Buffer[]): Promise<HookAnalysis> {
+async function analyzeFrames(
+  frames: Buffer[],
+  platform: string,
+  duration: number
+): Promise<HookAnalysis> {
   if (frames.length === 0) {
     return {
       facesDetected: 0,
@@ -96,6 +106,8 @@ async function analyzeFrames(frames: Buffer[]): Promise<HookAnalysis> {
     motionIntensity,
     sceneChanges,
     brightness,
+    platform,
+    duration,
   });
 
   return {
@@ -259,23 +271,29 @@ function detectSceneChanges(analyses: Array<{ brightness: number; contrast: numb
 /**
  * Calculate hook score from analysis
  */
-function calculateHookScore(analysis: Omit<HookAnalysis, 'score'>): number {
+function calculateHookScore(analysis: Omit<HookAnalysis, 'score'> & { platform?: string; duration?: number }): number {
   let score = 0;
+  const isShortForm = analysis.platform === 'instagram' || analysis.platform === 'facebook' || (analysis.platform === 'youtube' && analysis.duration && analysis.duration < 60);
+
+  // Platform-specific hook scoring
+  if (isShortForm) {
+    // Short-form: High motion and faces are critical in the first 1-2 seconds
+    score += Math.min(40, analysis.facesDetected * 20);
+    score += (analysis.motionIntensity / 100) * 40;
+    score += Math.min(20, analysis.sceneChanges * 10);
+  } else {
+    // Long-form (YouTube): Scene changes and brightness/quality matter more for retention
+    score += Math.min(25, analysis.facesDetected * 12.5);
+    score += (analysis.motionIntensity / 100) * 25;
+    score += Math.min(30, analysis.sceneChanges * 15);
+    
+    // Quality/Brightness (up to 20 points)
+    const brightnessScore = analysis.brightness >= 60 && analysis.brightness <= 80 
+      ? 20 
+      : 20 - Math.abs(analysis.brightness - 70) / 2;
+    score += Math.max(0, brightnessScore);
+  }
   
-  // Faces boost score (up to 30 points)
-  score += Math.min(30, analysis.facesDetected * 15);
-  
-  // Motion intensity (up to 30 points)
-  score += (analysis.motionIntensity / 100) * 30;
-  
-  // Scene changes (up to 20 points)
-  score += Math.min(20, analysis.sceneChanges * 10);
-  
-  // Brightness (up to 20 points) - optimal around 60-80
-  const brightnessScore = analysis.brightness >= 60 && analysis.brightness <= 80 
-    ? 20 
-    : 20 - Math.abs(analysis.brightness - 70) / 2;
-  score += Math.max(0, brightnessScore);
-  
+  // Final normalization
   return Math.min(100, Math.round(score));
 }

@@ -10,7 +10,7 @@ import { Sparkles, Lock, Loader2, AlertCircle, Check, ArrowRight } from 'lucide-
 export default function ResetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams?.get('token');
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
