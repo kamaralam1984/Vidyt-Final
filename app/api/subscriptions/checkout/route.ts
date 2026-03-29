@@ -2,10 +2,17 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { createCheckoutSession, SUBSCRIPTION_PLANS } from '@/services/payments/stripe';
+import { createCheckoutSession, SUBSCRIPTION_PLANS, stripeConfigured } from '@/services/payments/stripe';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!stripeConfigured()) {
+      return NextResponse.json(
+        { error: 'Stripe is not configured. Set STRIPE_SECRET_KEY on the server.' },
+        { status: 503 }
+      );
+    }
+
     const authUser = await getUserFromRequest(request);
     
     if (!authUser) {
@@ -48,15 +55,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (planId === 'free') {
+      return NextResponse.json({ error: 'Free plan does not require checkout' }, { status: 400 });
+    }
+
+    const billingPeriod = body.billingPeriod === 'year' ? 'year' : 'month';
+
     const origin = request.headers.get('origin') || 'http://localhost:3000';
-    const successUrl = `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}&gateway=stripe`;
     const cancelUrl = `${origin}/subscription/cancel`;
 
     const session = await createCheckoutSession(
       authUser.id,
       planId,
       successUrl,
-      cancelUrl
+      cancelUrl,
+      billingPeriod
     );
 
     return NextResponse.json({

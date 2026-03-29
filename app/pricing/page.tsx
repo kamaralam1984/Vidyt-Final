@@ -35,6 +35,8 @@ interface Plan {
   popular?: boolean;
   icon: any;
   color: string;
+  role?: string;
+  level?: number;
   limits: {
     videos: string;
     analyses: string;
@@ -47,6 +49,8 @@ const PLAN_UI_PRESETS: Record<string, any> = {
   free: {
     icon: Sparkles,
     color: '#AAAAAA',
+    role: 'user',
+    level: 1,
     limits: {
       videos: '5/month',
       analyses: 'Basic',
@@ -57,6 +61,8 @@ const PLAN_UI_PRESETS: Record<string, any> = {
   starter: {
     icon: Rocket,
     color: '#3b82f6',
+    role: 'user',
+    level: 1,
     limits: {
       videos: '10/day',
       analyses: 'Standard',
@@ -68,6 +74,8 @@ const PLAN_UI_PRESETS: Record<string, any> = {
     icon: Zap,
     color: '#FF0000',
     popular: true,
+    role: 'manager',
+    level: 2,
     limits: {
       videos: '30/days',
       analyses: 'Advanced AI',
@@ -78,11 +86,25 @@ const PLAN_UI_PRESETS: Record<string, any> = {
   enterprise: {
     icon: Crown,
     color: '#FFD700',
+    role: 'admin',
+    level: 3,
     limits: {
       videos: '100 Videos/Days',
       analyses: 'Custom AI',
       storage: '—',
       support: '24/7 Priority',
+    },
+  },
+  custom: {
+    icon: Globe,
+    color: '#FF0000',
+    role: 'admin',
+    level: 3,
+    limits: {
+      videos: 'Unlimited',
+      analyses: 'Unlimited Custom AI',
+      storage: 'Unlimited',
+      support: 'Dedicated Support',
     },
   },
 };
@@ -126,6 +148,8 @@ export default function PricingPage() {
           const preset = PLAN_UI_PRESETS[p.id] || {
             icon: Star,
             color: '#3b82f6',
+            role: 'user',
+            level: 1,
             limits: {
               videos: p.limits?.videos === -1 ? 'Unlimited' : `${p.limits?.videos || 'Custom'}/month`,
               analyses: p.limits?.analyses === -1 ? 'Unlimited' : (typeof p.limits?.analyses === 'number' ? `${p.limits.analyses}/month` : 'Standard'),
@@ -149,6 +173,8 @@ export default function PricingPage() {
             popular: p.id === 'pro' || preset.popular || false,
             icon: preset.icon,
             color: preset.color,
+            role: preset.role,
+            level: preset.level,
             limits: preset.limits,
           };
         });
@@ -175,13 +201,51 @@ export default function PricingPage() {
     };
   }, []);
 
+  const payBusy = (planId: string) =>
+    loading === `rzp:${planId}` || loading === `stripe:${planId}`;
+
+  const handleSubscribeStripe = async (plan: Plan) => {
+    if (plan.price === 0) {
+      window.location.href = '/dashboard';
+      return;
+    }
+
+    setLoading(`stripe:${plan.id}`);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please login to subscribe');
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await axios.post(
+        '/api/payments/stripe/create-checkout',
+        { plan: plan.id, billingPeriod },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data?.url) {
+        window.location.href = response.data.url;
+        return;
+      }
+
+      alert(response.data?.error || 'Failed to start Stripe checkout.');
+    } catch (error: any) {
+      console.error('Stripe checkout error:', error);
+      alert(error.response?.data?.error || 'Failed to start Stripe checkout.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const handleSubscribe = async (plan: Plan) => {
     if (plan.price === 0) {
       window.location.href = '/dashboard';
       return;
     }
 
-    setLoading(plan.id);
+    setLoading(`rzp:${plan.id}`);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -208,6 +272,7 @@ export default function PricingPage() {
       alert(error.response?.data?.error || 'Failed to initiate payment. Please try again.');
       setLoading(null);
     }
+    // openRazorpay clears loading in handler finally
   };
 
   const openRazorpay = (order: any, planId: string) => {
@@ -220,7 +285,7 @@ export default function PricingPage() {
       order_id: order.id,
       handler: async function (response: any) {
         try {
-          setLoading(planId);
+          setLoading(`rzp:${planId}`);
           await axios.post('/api/payments/verify-payment', {
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -395,6 +460,22 @@ export default function PricingPage() {
                           <Icon className="w-8 h-8" style={{ color: plan.color }} />
                         </motion.div>
                         <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                        
+                        {/* Role Badge */}
+                        {plan.role && (
+                          <div className="flex items-center justify-center gap-2 mb-3">
+                            <span 
+                              className="px-3 py-1 rounded-full text-xs font-semibold text-white"
+                              style={{ backgroundColor: plan.color }}
+                            >
+                              {plan.role.charAt(0).toUpperCase() + plan.role.slice(1)} Role
+                            </span>
+                            <span className="text-xs text-[#AAAAAA] font-medium">
+                              Level {plan.level}
+                            </span>
+                          </div>
+                        )}
+                        
                         <p className="text-[#AAAAAA] text-sm mb-4">{plan.description}</p>
                         <div className="mb-2 space-y-1">
                           <div className="flex items-baseline justify-center gap-2">
@@ -457,29 +538,51 @@ export default function PricingPage() {
                           Current Plan
                         </motion.button>
                       ) : (
-                        <motion.button
-                          onClick={() => handleSubscribe(plan)}
-                          disabled={loading === plan.id}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-all ${
-                            plan.popular
-                              ? 'bg-gradient-to-r from-[#FF0000] to-[#CC0000] hover:from-[#CC0000] hover:to-[#AA0000]'
-                              : 'bg-[#212121] hover:bg-[#333333]'
-                          } flex items-center justify-center gap-2`}
-                        >
-                          {loading === plan.id ? (
-                            <>
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              {plan.price === 0 ? 'Get Started' : 'Subscribe Now'}
-                              <ArrowRight className="w-5 h-5" />
-                            </>
+                        <div className="space-y-2 w-full">
+                          <motion.button
+                            type="button"
+                            onClick={() => handleSubscribe(plan)}
+                            disabled={payBusy(plan.id)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-all ${
+                              plan.popular
+                                ? 'bg-gradient-to-r from-[#FF0000] to-[#CC0000] hover:from-[#CC0000] hover:to-[#AA0000]'
+                                : 'bg-[#212121] hover:bg-[#333333]'
+                            } flex items-center justify-center gap-2`}
+                          >
+                            {loading === `rzp:${plan.id}` ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                {plan.price === 0 ? 'Get Started' : 'Pay with Razorpay'}
+                                <ArrowRight className="w-5 h-5" />
+                              </>
+                            )}
+                          </motion.button>
+                          {plan.price > 0 && (
+                            <motion.button
+                              type="button"
+                              onClick={() => handleSubscribeStripe(plan)}
+                              disabled={payBusy(plan.id)}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              className="w-full py-2.5 px-6 rounded-lg font-medium text-white border border-[#635bff] bg-[#635bff]/15 hover:bg-[#635bff]/25 flex items-center justify-center gap-2 text-sm"
+                            >
+                              {loading === `stripe:${plan.id}` ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Opening Stripe…
+                                </>
+                              ) : (
+                                <>Pay with Stripe (card)</>
+                              )}
+                            </motion.button>
                           )}
-                        </motion.button>
+                        </div>
                       )}
                     </motion.div>
                   </motion.div>
@@ -526,6 +629,82 @@ export default function PricingPage() {
                     </motion.div>
                   );
                 })}
+              </div>
+            </motion.div>
+
+            {/* Role Information Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="mt-16"
+            >
+              <h2 className="text-3xl font-bold text-white mb-8 text-center">
+                Role Capabilities
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+                {[
+                  {
+                    role: 'User',
+                    level: 1,
+                    color: '#AAAAAA',
+                    features: ['Upload Videos', 'Analyze Videos', 'View Analytics', 'AI Studio Access'],
+                    plans: ['Free', 'Starter'],
+                  },
+                  {
+                    role: 'Manager',
+                    level: 2,
+                    color: '#FF0000',
+                    features: ['All User Features', 'Create Teams', 'Invite Members', 'Team Analytics'],
+                    plans: ['Pro'],
+                  },
+                  {
+                    role: 'Admin',
+                    level: 3,
+                    color: '#FFD700',
+                    features: ['All Manager Features', 'Use API', 'API Keys', 'White-Label', 'Custom Models'],
+                    plans: ['Enterprise', 'Custom'],
+                  },
+                ].map((roleInfo, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 + index * 0.1 }}
+                    className="bg-[#181818] border-2 rounded-xl p-6"
+                    style={{ borderColor: roleInfo.color }}
+                  >
+                    <div className="mb-4">
+                      <div className="inline-block px-3 py-1 rounded-full text-sm font-semibold text-white mb-2" style={{ backgroundColor: roleInfo.color }}>
+                        Level {roleInfo.level}
+                      </div>
+                      <h3 className="text-xl font-bold text-white">{roleInfo.role}</h3>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <p className="text-[#AAAAAA] text-xs font-semibold mb-2">Plans:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {roleInfo.plans.map((plan) => (
+                          <span key={plan} className="text-xs bg-[#212121] text-[#AAAAAA] px-2 py-1 rounded">
+                            {plan}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[#AAAAAA] text-xs font-semibold mb-3">Features:</p>
+                      <ul className="space-y-2">
+                        {roleInfo.features.map((feature, fIdx) => (
+                          <li key={fIdx} className="flex items-start gap-2">
+                            <Check className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: roleInfo.color }} />
+                            <span className="text-[#AAAAAA] text-sm">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </motion.div>
 

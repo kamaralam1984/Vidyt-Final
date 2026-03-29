@@ -6,20 +6,53 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import axios from 'axios';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const sessionId = searchParams.get('session_id');
+  const sessionId = searchParams?.get('session_id');
+  const gateway = searchParams?.get('gateway');
   const [loading, setLoading] = useState(true);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate verifying the session
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
+    const isStripeSession =
+      Boolean(sessionId) &&
+      (gateway === 'stripe' || (sessionId as string).startsWith('cs_'));
+
+    if (isStripeSession && sessionId) {
+      (async () => {
+        try {
+          const token =
+            typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+          if (!token) {
+            setVerifyError('Please log in again if your plan does not update automatically.');
+            setLoading(false);
+            return;
+          }
+          await axios.post(
+            '/api/payments/stripe/verify-session',
+            { sessionId },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setVerifyError(null);
+        } catch (e: any) {
+          console.error('Stripe verify-session:', e);
+          setVerifyError(
+            e.response?.data?.error ||
+              'We could not confirm the payment immediately. If you were charged, your plan usually activates within a minute (webhook).'
+          );
+        } finally {
+          setLoading(false);
+        }
+      })();
+      return;
+    }
+
+    const timer = setTimeout(() => setLoading(false), 1500);
     return () => clearTimeout(timer);
-  }, [sessionId]);
+  }, [sessionId, gateway]);
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-6">
@@ -49,6 +82,11 @@ function SuccessContent() {
             <p className="text-[#AAAAAA]">
               Your subscription is now active. Welcome to the premium club of ViralBoost AI!
             </p>
+            {verifyError && (
+              <p className="text-amber-400/90 text-sm border border-amber-500/30 rounded-lg px-3 py-2 bg-amber-500/10">
+                {verifyError}
+              </p>
+            )}
             <div className="pt-6 space-y-3">
               <Link
                 href="/dashboard"

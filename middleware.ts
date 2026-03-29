@@ -32,6 +32,7 @@ export async function middleware(request: NextRequest) {
     '/api/subscriptions/plans',
     '/api/health/db', // Database health check
     '/api/payments/webhook', // Razorpay webhook (public, verified by signature)
+    '/api/payments/stripe/webhook', // Stripe webhook (public, verified by signature)
     '/api/posting-time', // Posting time heatmap (public, general data)
     '/api/channel/videos', // Channel videos (public, uses RSS feeds)
     '/api/facebook/page/videos', // Facebook page videos (public, returns empty array - Facebook doesn't support automatic fetching)

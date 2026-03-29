@@ -1,16 +1,14 @@
 /**
- * Stripe Payment Integration
- * Handles subscriptions, payments, and billing
+ * Stripe Checkout (one-time plan payments), alongside Razorpay.
+ * Configure STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in production.
  */
 
-// Note: Install stripe package: npm install stripe
-// import Stripe from 'stripe';
-
-// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-//   apiVersion: '2024-06-20',
-// });
-
+import Stripe from 'stripe';
+import connectDB from '@/lib/mongodb';
+import User from '@/models/User';
 import { getPlanRoll, getSubscriptionLimitsForApi } from '@/lib/planLimits';
+import { getActivePlanPricing, usdAmountForBilling } from '@/lib/planPricing';
+import { isValidPlan } from '@/utils/currency';
 
 export interface SubscriptionPlan {
   id: string;
@@ -43,7 +41,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    price: 3, // $3/month (adjust if needed)
+    price: 3,
     currency: 'USD',
     interval: 'month',
     features: getPlanRoll('starter').featureList,
@@ -79,7 +77,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   custom: {
     id: 'custom',
     name: 'Custom',
-    price: 50, // $50/month (adjust if needed)
+    price: 50,
     currency: 'USD',
     interval: 'month',
     features: getPlanRoll('custom').featureList,
@@ -90,68 +88,95 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   },
 };
 
+let stripeSingleton: Stripe | null = null;
+
+export function stripeConfigured(): boolean {
+  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+}
+
+export function getStripe(): Stripe | null {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key) return null;
+  if (!stripeSingleton) {
+    stripeSingleton = new Stripe(key, {
+      apiVersion: '2025-02-24.acacia',
+      typescript: true,
+    });
+  }
+  return stripeSingleton;
+}
+
 /**
- * Create Stripe checkout session
+ * Stripe Checkout Session (mode=payment) — same access window as Razorpay (month/year).
  */
 export async function createCheckoutSession(
   userId: string,
   planId: string,
   successUrl: string,
-  cancelUrl: string
+  cancelUrl: string,
+  billingPeriod: 'month' | 'year' = 'month'
 ): Promise<{ sessionId: string; url: string }> {
-  // TODO: Implement Stripe checkout session creation
-  // const session = await stripe.checkout.sessions.create({
-  //   customer_email: userEmail,
-  //   payment_method_types: ['card'],
-  //   line_items: [{
-  //     price_data: {
-  //       currency: 'usd',
-  //       product_data: { name: plan.name },
-  //       unit_amount: plan.price * 100,
-  //       recurring: { interval: plan.interval },
-  //     },
-  //     quantity: 1,
-  //   }],
-  //   mode: 'subscription',
-  //   success_url: successUrl,
-  //   cancel_url: cancelUrl,
-  //   metadata: { userId, planId },
-  // });
-  
-  // For now, return mock data
-  return {
-    sessionId: 'mock_session_id',
-    url: `${successUrl}?session_id=mock_session_id`,
-  };
+  const stripe = getStripe();
+  if (!stripe) {
+    throw new Error('STRIPE_SECRET_KEY is not configured');
+  }
+
+  if (!isValidPlan(planId) || planId === 'free' || planId === 'owner') {
+    throw new Error('Invalid plan for checkout');
+  }
+
+  await connectDB();
+  const user = await User.findById(userId).select('email name');
+  const planPricing = await getActivePlanPricing(planId);
+  if (!planPricing) {
+    throw new Error('Plan pricing not found');
+  }
+
+  const usd = usdAmountForBilling(planPricing, billingPeriod === 'year' ? 'year' : 'month');
+  const cents = Math.round(usd * 100);
+  if (!Number.isFinite(cents) || cents <= 0) {
+    throw new Error('Invalid plan amount');
+  }
+
+  const label = planPricing.label || planPricing.name || planId;
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    customer_email: user?.email || undefined,
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `ViralBoost AI — ${label} (${billingPeriod === 'year' ? 'Annual' : 'Monthly'})`,
+          },
+          unit_amount: cents,
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: {
+      userId,
+      planId,
+      billingPeriod: billingPeriod === 'year' ? 'year' : 'month',
+    },
+    payment_intent_data: {
+      metadata: {
+        userId,
+        planId,
+        billingPeriod: billingPeriod === 'year' ? 'year' : 'month',
+      },
+    },
+  });
+
+  if (!session.url) {
+    throw new Error('Stripe did not return a checkout URL');
+  }
+
+  return { sessionId: session.id, url: session.url };
 }
 
-/**
- * Handle Stripe webhook
- */
-export async function handleStripeWebhook(event: any): Promise<void> {
-  // TODO: Implement webhook handling
-  // switch (event.type) {
-  //   case 'checkout.session.completed':
-  //     await handleSubscriptionCreated(event.data.object);
-  //     break;
-  //   case 'customer.subscription.updated':
-  //     await handleSubscriptionUpdated(event.data.object);
-  //     break;
-  //   case 'customer.subscription.deleted':
-  //     await handleSubscriptionCancelled(event.data.object);
-  //     break;
-  //   case 'invoice.payment_succeeded':
-  //     await handlePaymentSucceeded(event.data.object);
-  //     break;
-  //   case 'invoice.payment_failed':
-  //     await handlePaymentFailed(event.data.object);
-  //     break;
-  // }
-}
-
-/**
- * Get subscription limits for user (from plan roll).
- */
 export function getSubscriptionLimits(planId: string): SubscriptionPlan['limits'] {
   const api = getSubscriptionLimitsForApi(planId || 'free');
   return {
@@ -161,13 +186,7 @@ export function getSubscriptionLimits(planId: string): SubscriptionPlan['limits'
   };
 }
 
-/**
- * Check if user can perform action based on subscription
- */
-export function canPerformAction(
-  currentUsage: number,
-  limit: number
-): boolean {
-  if (limit === -1) return true; // Unlimited
+export function canPerformAction(currentUsage: number, limit: number): boolean {
+  if (limit === -1) return true;
   return currentUsage < limit;
 }

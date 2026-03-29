@@ -8,7 +8,7 @@ export interface IUser extends Document {
   companyName?: string;
   phone?: string;
   loginPin?: string;
-  role: 'user' | 'admin' | 'manager' | 'super-admin' | 'superadmin';
+  role: 'user' | 'admin' | 'manager' | 'super-admin' | 'superadmin' | 'enterprise';
   subscription: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'owner';
   subscriptionExpiresAt?: Date;
   subscriptionPlan?: {
@@ -23,6 +23,8 @@ export interface IUser extends Document {
     paymentId?: string;
     razorpayOrderId?: string;
     razorpayPaymentId?: string;
+    stripeCheckoutSessionId?: string;
+    stripePaymentIntentId?: string;
     earlyBirdDiscount?: boolean;
   };
   profilePicture?: string;
@@ -79,7 +81,7 @@ const UserSchema = new Schema<IUser>({
   companyName: { type: String },
   phone: { type: String },
   loginPin: { type: String },
-  role: { type: String, enum: ['user', 'admin', 'manager', 'super-admin', 'superadmin'], default: 'user' },
+  role: { type: String, enum: ['user', 'admin', 'manager', 'super-admin', 'superadmin', 'enterprise'], default: 'user' },
   subscription: { type: String, enum: ['free', 'starter', 'pro', 'enterprise', 'custom', 'owner'], default: 'free' },
   subscriptionExpiresAt: { type: Date },
   subscriptionPlan: {
@@ -94,6 +96,8 @@ const UserSchema = new Schema<IUser>({
     paymentId: { type: String },
     razorpayOrderId: { type: String },
     razorpayPaymentId: { type: String },
+    stripeCheckoutSessionId: { type: String },
+    stripePaymentIntentId: { type: String },
     earlyBirdDiscount: { type: Boolean, default: false },
   },
   profilePicture: { type: String },
