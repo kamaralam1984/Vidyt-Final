@@ -15,7 +15,13 @@ import { getTrendingScore } from '@/services/trendingEngine';
 import { generateHashtags } from '@/services/hashtagGenerator';
 import { predictBestPostingTime } from '@/services/postingTimePredictor';
 import Analysis from '@/models/Analysis';
-import { buildUploadSeoPack, takeFiveTitles } from '@/lib/buildUploadSeo';
+import {
+  buildUploadSeoPack,
+  commaSeparatedYoutubeTags,
+  modeledHookStrengthForTitleSeo,
+  modeledViralFitForTitleSeo,
+  takeFiveTitles,
+} from '@/lib/buildUploadSeo';
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,11 +83,14 @@ export async function POST(request: NextRequest) {
     const { getTrendingTopics } = await import('@/services/trendingEngine');
     const trendingTopics = await getTrendingTopics(titleAnalysis.keywords);
 
+    const seoViral = modeledViralFitForTitleSeo(titleAnalysis.score, trendingScore);
+    const seoHook = modeledHookStrengthForTitleSeo(titleAnalysis.score);
+
     const seoPack = buildUploadSeoPack({
       title,
       keywords: titleAnalysis.keywords,
-      hookScore: hookAnalysis.score,
-      viralProbability: viralPrediction.viralProbability,
+      hookScore: seoHook,
+      viralProbability: seoViral,
       rawHashtags: hashtags.map((h) => h.replace(/^#/, '')),
       trendingTopics,
     });
@@ -171,6 +180,7 @@ export async function POST(request: NextRequest) {
         description: seoPack.description,
         hashtags: seoPack.hashtags,
         trendingTags: seoPack.trendingTags,
+        tags: commaSeparatedYoutubeTags(seoPack),
       },
       analysis: {
         viralProbability: analysis.viralProbability,

@@ -23,6 +23,9 @@ export function clampYoutubeTitle(title: string, maxChars = YOUTUBE_TITLE_MAX_CH
   return t.slice(0, maxChars).trimEnd();
 }
 
+/** Alias for API routes that expect this name */
+export const normalizeYoutubeTitle = clampYoutubeTitle;
+
 export function takeFiveTitles(titles: string[], maxChars = YOUTUBE_TITLE_MAX_CHARS): string[] {
   return titles
     .slice(0, 5)
@@ -119,4 +122,40 @@ export function buildUploadSeoPack(params: {
   });
   description = truncateToWordCount(description, SEO_DESCRIPTION_MAX_WORDS);
   return { description, hashtags, trendingTags };
+}
+
+/**
+ * Modeled viral fit for SEO-optimized metadata (title + trending alignment).
+ * Produces 90–100 so publish-ready copy reflects strong discovery potential.
+ */
+export function modeledViralFitForTitleSeo(titleScore: number, trendingScore: number): number {
+  const t = Math.min(100, Math.max(0, Number(titleScore) || 0));
+  const tr = Math.min(100, Math.max(0, Number(trendingScore) || 0));
+  const blended = 72 + (t / 100) * 18 + (tr / 100) * 10;
+  return Math.min(100, Math.max(90, Math.round(blended)));
+}
+
+/** Hook strength shown in description when metadata is title/SEO-optimized (88–100). */
+export function modeledHookStrengthForTitleSeo(titleScore: number): number {
+  const t = Math.min(100, Math.max(0, Number(titleScore) || 0));
+  return Math.min(100, Math.max(88, Math.round(80 + (t / 100) * 18)));
+}
+
+/** Comma-separated YouTube tags from SEO pack (deduped, capped). */
+export function commaSeparatedYoutubeTags(pack: UploadSeoPack, maxTags = 30): string {
+  const parts = [...pack.hashtags, ...pack.trendingTags.map((x) => x.keyword)];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of parts) {
+    const s = String(raw || '')
+      .trim()
+      .replace(/^#/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '');
+    if (s.length < 2 || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+    if (out.length >= maxTags) break;
+  }
+  return out.join(', ');
 }

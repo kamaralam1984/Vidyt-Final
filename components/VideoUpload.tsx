@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, Youtube, Facebook, Instagram, Music, Loader2, CheckCircle2, Globe, Lock, EyeOff, Share2, Copy, X, ImageIcon } from 'lucide-react';
 import axios from 'axios';
@@ -44,6 +44,10 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [titleSeoLoading, setTitleSeoLoading] = useState(false);
+  const titleSeoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleSeoAbortRef = useRef<AbortController | null>(null);
+  const titleSeoGenRef = useRef(0);
 
   useEffect(() => {
     if (!thumbnailFile) {
@@ -54,6 +58,51 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
     setThumbnailPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [thumbnailFile]);
+
+  useEffect(() => {
+    if (!selectedVideoFile || !isYoutubeConnected || !ytTitle.trim() || ytTitle.trim().length < 2) {
+      return;
+    }
+    if (!isAuthenticated()) return;
+
+    if (titleSeoDebounceRef.current) clearTimeout(titleSeoDebounceRef.current);
+    titleSeoAbortRef.current?.abort();
+
+    titleSeoDebounceRef.current = setTimeout(async () => {
+      const myGen = ++titleSeoGenRef.current;
+      const ac = new AbortController();
+      titleSeoAbortRef.current = ac;
+      setTitleSeoLoading(true);
+      try {
+        const token = getToken();
+        const { data } = await axios.post(
+          '/api/youtube/title-seo',
+          { title: ytTitle.trim() },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: ac.signal,
+          }
+        );
+        if (ac.signal.aborted || myGen !== titleSeoGenRef.current) return;
+        if (data?.description) {
+          setYtDescription(truncateToWordCount(data.description, SEO_DESCRIPTION_MAX_WORDS));
+        }
+        if (typeof data?.tags === 'string') {
+          setYtTags(data.tags);
+        }
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err) && err.code === 'ERR_CANCELED') return;
+        console.error('Title SEO:', err);
+      } finally {
+        if (myGen === titleSeoGenRef.current) setTitleSeoLoading(false);
+      }
+    }, 480);
+
+    return () => {
+      if (titleSeoDebounceRef.current) clearTimeout(titleSeoDebounceRef.current);
+      titleSeoAbortRef.current?.abort();
+    };
+  }, [ytTitle, selectedVideoFile, isYoutubeConnected]);
 
   const handleFileUpload = async (file: File) => {
     setSelectedVideoFile(file);
@@ -90,7 +139,9 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
       if (seo?.description) {
         setYtDescription(truncateToWordCount(seo.description, SEO_DESCRIPTION_MAX_WORDS));
       }
-      if (seo?.hashtags?.length || seo?.trendingTags?.length) {
+      if (typeof seo?.tags === 'string' && seo.tags.length > 0) {
+        setYtTags(seo.tags);
+      } else if (seo?.hashtags?.length || seo?.trendingTags?.length) {
         const tagParts: string[] = [
           ...(seo.hashtags || []),
           ...(seo.trendingTags || []).map((t: { keyword: string }) => t.keyword).filter(Boolean),
@@ -433,7 +484,14 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center gap-2">
-                    <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">SEO description</label>
+                    <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider flex items-center gap-2">
+                      SEO description
+                      {titleSeoLoading && (
+                        <span className="text-[10px] font-normal normal-case text-[#888] tabular-nums">
+                          Updating from title…
+                        </span>
+                      )}
+                    </label>
                     <span className="text-[10px] text-[#666] tabular-nums">
                       {countWords(ytDescription)} / {SEO_DESCRIPTION_MAX_WORDS} words
                     </span>
