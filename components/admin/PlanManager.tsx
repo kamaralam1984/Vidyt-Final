@@ -19,9 +19,14 @@ interface Plan {
   billingPeriod: string;
 }
 
-interface RoleAccessSummary {
-  role: string;
-  featureCount: number;
+/** One row from GET /api/admin/unified-feature-matrix */
+interface MatrixFeatureRow {
+  id: string;
+  label: string;
+  group: string;
+  enabled: boolean;
+  allowedRoles: string[];
+  planAccess: Record<string, boolean> | null;
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -41,6 +46,38 @@ const ROLE_LABELS: Record<string, string> = {
   'enterprise':  'Enterprise Plan',
   'custom':      'Custom',
 };
+
+const MATRIX_GROUP_ORDER = ['sidebar', 'dashboard', 'ai_studio', 'platform', 'yt_seo_sections', 'other'];
+
+/**
+ * Labels to show on Manage Plans — aligned with Unified Feature Matrix:
+ * globally enabled, at least one allowed role, and (if the row has plan columns) this plan is on.
+ */
+function matrixFeatureLabelsForPlan(rows: MatrixFeatureRow[], planId: string): string[] {
+  const picked: { label: string; group: string }[] = [];
+  for (const f of rows) {
+    if (!f.enabled) continue;
+    if (!f.allowedRoles || f.allowedRoles.length === 0) continue;
+    if (f.planAccess != null && !f.planAccess[planId]) continue;
+    picked.push({ label: f.label, group: f.group || 'other' });
+  }
+  picked.sort((a, b) => {
+    const ga = MATRIX_GROUP_ORDER.indexOf(a.group);
+    const gb = MATRIX_GROUP_ORDER.indexOf(b.group);
+    const oa = ga === -1 ? 99 : ga;
+    const ob = gb === -1 ? 99 : gb;
+    if (oa !== ob) return oa - ob;
+    return a.label.localeCompare(b.label);
+  });
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const p of picked) {
+    if (seen.has(p.label)) continue;
+    seen.add(p.label);
+    unique.push(p.label);
+  }
+  return unique;
+}
 
 export default function PlanManager() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -63,9 +100,27 @@ export default function PlanManager() {
   // Role access data: planId -> list of roles with feature access
   const [planRoles, setPlanRoles] = useState<Record<string, string[]>>({});
 
+  /** Matrix rows — used to derive per-plan Features list (synced with Unified Feature Matrix) */
+  const [matrixFeatures, setMatrixFeatures] = useState<MatrixFeatureRow[]>([]);
+
   useEffect(() => {
     fetchPlans();
     fetchRoleData();
+  }, []);
+
+  useEffect(() => {
+    const onFocus = () => {
+      fetchRoleData();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') fetchRoleData();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   const fetchPlans = async () => {
@@ -99,6 +154,8 @@ export default function PlanManager() {
         timeout: 30_000,
       });
       if (res.data.features && res.data.plans) {
+        setMatrixFeatures(res.data.features as MatrixFeatureRow[]);
+
         // For each plan, collect all unique roles that have access to any enabled feature
         const planRoleMap: Record<string, Set<string>> = {};
 
@@ -173,6 +230,7 @@ export default function PlanManager() {
       if (response.data.success) {
         setSuccess(editingId ? 'Plan updated successfully' : 'Plan created successfully');
         fetchPlans();
+        fetchRoleData();
         resetForm();
         setTimeout(() => setSuccess(''), 3000);
       }
@@ -209,6 +267,7 @@ export default function PlanManager() {
       if (response.data.success) {
         setSuccess('Plan deleted successfully');
         fetchPlans();
+        fetchRoleData();
         setTimeout(() => setSuccess(''), 3000);
       }
     } catch (err: any) {
@@ -407,6 +466,10 @@ export default function PlanManager() {
         ) : (
           plans.map((plan) => {
             const rolesForPlan = planRoles[plan.planId] || [];
+            const derivedFeatures =
+              matrixFeatures.length > 0
+                ? matrixFeatureLabelsForPlan(matrixFeatures, plan.planId)
+                : plan.features;
             return (
               <div key={plan.id} className="bg-gray-900 border border-gray-700 rounded-lg p-6">
                 <div className="flex justify-between items-start mb-4">
@@ -468,16 +531,29 @@ export default function PlanManager() {
                   )}
                 </div>
 
-                {plan.features.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-gray-400 text-sm mb-2">Features:</p>
+                <div className="mb-4">
+                  <p className="text-gray-400 text-sm mb-2">
+                    Features:
+                    {matrixFeatures.length > 0 && (
+                      <span className="ml-2 text-xs font-normal text-emerald-500/90">(from Feature Matrix)</span>
+                    )}
+                  </p>
+                  {derivedFeatures.length > 0 ? (
                     <ul className="list-disc list-inside text-sm space-y-1">
-                      {plan.features.map((feature, idx) => (
-                        <li key={idx}>{feature}</li>
+                      {derivedFeatures.map((feature, idx) => (
+                        <li key={`${feature}-${idx}`}>{feature}</li>
                       ))}
                     </ul>
-                  </div>
-                )}
+                  ) : matrixFeatures.length > 0 ? (
+                    <p className="text-xs text-gray-600 italic">
+                      No features enabled for this plan in the matrix — toggle plan access or roles in Unified Feature Matrix.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-600 italic">
+                      No features listed — save lines under Edit Plan, or open Unified Feature Matrix after it loads.
+                    </p>
+                  )}
+                </div>
 
                 <div className="flex gap-2">
                   <button
