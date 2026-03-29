@@ -15,6 +15,7 @@ import {
   Zap,
   Settings,
 } from 'lucide-react';
+import { navPlanAllowsFeature, type PlatformControlLean } from '@/lib/computeUserFeatureAccess';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,8 @@ interface PlanConfig {
   limits: PlanLimits;
   featureFlags: FeatureFlags;
   limitsDisplay: LimitsDisplay;
+  /** Per-plan sidebar/dashboard visibility (same as Unified Feature Matrix → Plans columns). */
+  navFeatureAccess?: Record<string, boolean>;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -103,7 +106,9 @@ const ROLE_OPTIONS = [
   { value: 'user', label: 'User', color: '#888' },
   { value: 'manager', label: 'Manager', color: '#3B82F6' },
   { value: 'admin', label: 'Admin', color: '#F59E0B' },
+  { value: 'enterprise', label: 'Enterprise Plan', color: '#10B981' },
   { value: 'super-admin', label: 'Super Admin', color: '#EF4444' },
+  { value: 'custom', label: 'Custom', color: '#7C3AED' },
 ];
 
 const PLAN_COLORS: Record<string, string> = {
@@ -113,6 +118,25 @@ const PLAN_COLORS: Record<string, string> = {
   enterprise: '#F59E0B',
   custom: '#EF4444',
 };
+
+function sidebarItemEffectiveForPlan(
+  sys: { id: string; label: string; group: string; enabled: boolean; allowedRoles: string[] },
+  cfg: PlanConfig,
+  platformRows: PlatformControlLean[]
+): boolean {
+  if (!sys.enabled) return false;
+  if (!cfg.role || !sys.allowedRoles.includes(cfg.role)) return false;
+  return navPlanAllowsFeature(
+    { id: sys.id, group: sys.group },
+    {
+      planId: cfg.planId,
+      featureFlags: {},
+      navFeatureAccess: cfg.navFeatureAccess || {},
+    },
+    cfg.planId,
+    platformRows
+  );
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -126,6 +150,7 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
   const [localConfigs, setLocalConfigs] = useState<Record<string, PlanConfig>>({});
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [openSection, setOpenSection] = useState<string>('role');
+  const [platformRows, setPlatformRows] = useState<PlatformControlLean[]>([]);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -142,8 +167,14 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
       const data = await res.json();
       if (data.success) {
         setPlans(data.plans);
+        if (Array.isArray(data.platformRows)) {
+          setPlatformRows(data.platformRows);
+        }
         const cfg: Record<string, PlanConfig> = {};
-        data.plans.forEach((p: PlanConfig) => { cfg[p.planId] = JSON.parse(JSON.stringify(p)); });
+        data.plans.forEach((p: PlanConfig) => {
+          cfg[p.planId] = JSON.parse(JSON.stringify(p));
+          if (!cfg[p.planId].navFeatureAccess) cfg[p.planId].navFeatureAccess = {};
+        });
         setLocalConfigs(cfg);
         // If propPlanId is passed, use it, otherwise use first plan
         if (propPlanId) {
@@ -232,6 +263,7 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
           featureFlags: cfg.featureFlags,
           limitsDisplay: cfg.limitsDisplay,
           label: cfg.label,
+          navFeatureAccess: cfg.navFeatureAccess || {},
         }),
       });
       const data = await res.json();
@@ -373,7 +405,7 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
               {openSection === 'role' && (
                 <div className="px-5 pb-5 border-t border-[#252525] animate-in fade-in slide-in-from-top-2 duration-200">
                   <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mt-5 mb-3">Available Roles</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {ROLE_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
@@ -534,7 +566,7 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] text-[#666] font-mono bg-black/50 px-2 py-0.5 rounded border border-[#212121]">
-                    ROLE::{activeCfg.role.toUpperCase()}
+                    PLAN::{activeCfg.planId.toUpperCase()} · ROLE::{activeCfg.role.toUpperCase()}
                   </span>
                   {openSection === 'system-access' ? <ChevronUp className="w-4 h-4 text-[#555]" /> : <ChevronDown className="w-4 h-4 text-[#555]" />}
                 </div>
@@ -548,14 +580,12 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
                        <div className="bg-blue-900/10 border border-blue-900/30 rounded-xl p-4 flex gap-3 text-xs">
                         <ShieldCheck className="w-6 h-6 text-blue-400 flex-shrink-0" />
                         <div>
-                          <p className="text-blue-100 font-semibold mb-1">Role-Based Integration</p>
+                          <p className="text-blue-100 font-semibold mb-1">Plan + role (user sidebar)</p>
                           <p className="text-[#888] leading-relaxed">
-                            These settings apply to the <strong>{activeCfg.role}</strong> role. 
-                            {plans.filter(p => p.role === activeCfg.role && p.planId !== activeCfg.planId).length > 0 && (
-                              <span className="text-yellow-500/80 block mt-1 font-medium italic">
-                                Note: Modifying these will also affect users on {plans.filter(p => p.role === activeCfg.role && p.planId !== activeCfg.planId).map(p => p.name).join(', ')}.
-                              </span>
-                            )}
+                            Toggles here update <strong>this plan only</strong> (<code className="text-[#aaa]">{activeCfg.planId}</code>) via{' '}
+                            <code className="text-[#aaa]">navFeatureAccess</code> — same data as{' '}
+                            <strong>Unified Feature Matrix → blue “Plans” columns</strong>.<br />
+                            The user must also have role <strong>{activeCfg.role}</strong> allowed on that row (red role checkboxes in the Matrix, or System Control).
                           </p>
                         </div>
                       </div>
@@ -567,24 +597,47 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
                           </p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {systems.filter(s => s.group === group).map(sys => {
-                              const hasAccess = sys.allowedRoles.includes(activeCfg.role);
+                              const hasAccess = sidebarItemEffectiveForPlan(sys, activeCfg, platformRows);
                               return (
                                 <button
                                   key={sys.id}
                                   onClick={async () => {
                                     const token = localStorage.getItem('token');
                                     if (!token) return;
-                                    const newRoles = hasAccess 
-                                      ? sys.allowedRoles.filter(r => r !== activeCfg.role)
-                                      : [...sys.allowedRoles, activeCfg.role];
-                                    setSystems(prev => prev.map(s => s.id === sys.id ? { ...s, allowedRoles: newRoles } : s));
+                                    if (!sys.allowedRoles.includes(activeCfg.role)) {
+                                      showToast(
+                                        'error',
+                                        `Pehle Unified Feature Matrix (ya System Control) mein "${activeCfg.role}" role is row par allow karein — phir plan toggle kaam karega.`
+                                      );
+                                      return;
+                                    }
+                                    const prevNav = { ...(localConfigs[activeCfg.planId]?.navFeatureAccess || {}) };
+                                    const nextVal = !hasAccess;
+                                    const newNav = { ...prevNav, [sys.id]: nextVal };
+                                    setLocalConfigs(prev => ({
+                                      ...prev,
+                                      [activeCfg.planId]: {
+                                        ...prev[activeCfg.planId],
+                                        navFeatureAccess: newNav,
+                                      },
+                                    }));
                                     try {
-                                      await fetch('/api/admin/features', {
+                                      const res = await fetch('/api/admin/plan-config', {
                                         method: 'PATCH',
                                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                        body: JSON.stringify({ features: [{ ...sys, allowedRoles: newRoles }] }),
+                                        body: JSON.stringify({
+                                          planId: activeCfg.planId,
+                                          navFeatureAccess: newNav,
+                                        }),
                                       });
-                                    } catch (err) { console.error('Error updating access:', err); }
+                                      const data = await res.json();
+                                      if (!data.success) {
+                                        showToast('error', data.error || 'Failed to update menu for this plan');
+                                      }
+                                    } catch (err) {
+                                      console.error('Error updating nav:', err);
+                                      showToast('error', 'Network error');
+                                    }
                                   }}
                                   className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-xs text-left transition-all
                                     ${hasAccess

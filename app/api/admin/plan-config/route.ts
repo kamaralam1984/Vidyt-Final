@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Plan from '@/models/Plan';
+import PlatformControl from '@/models/PlatformControl';
 import { getUserFromRequest } from '@/lib/auth';
 import { refreshPlanCache } from '@/lib/planLimits';
 
@@ -18,10 +19,20 @@ export async function GET(request: NextRequest) {
     }
 
     await connectDB();
-    const plans = await Plan.find({}).sort({ priceMonthly: 1 }).lean();
+    const [plans, platforms] = await Promise.all([
+      Plan.find({}).sort({ priceMonthly: 1 }).lean(),
+      PlatformControl.find({}).lean(),
+    ]);
+
+    const platformRows = (platforms || []).map((p: { platform?: string; isEnabled?: boolean; allowedPlans?: string[] }) => ({
+      platform: String(p.platform || ''),
+      isEnabled: !!p.isEnabled,
+      allowedPlans: Array.isArray(p.allowedPlans) ? p.allowedPlans : [],
+    }));
 
     return NextResponse.json({
       success: true,
+      platformRows,
       plans: plans.map((p: any) => ({
         id: String(p._id),
         planId: p.planId,
@@ -32,6 +43,7 @@ export async function GET(request: NextRequest) {
         featureFlags: p.featureFlags || {},
         limitsDisplay: p.limitsDisplay || {},
         priceMonthly: p.priceMonthly,
+        navFeatureAccess: (p.navFeatureAccess && typeof p.navFeatureAccess === 'object' ? p.navFeatureAccess : {}) as Record<string, boolean>,
       })),
     });
   } catch (error: any) {
@@ -52,7 +64,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { planId, role, limits, featureFlags, limitsDisplay, label } = body;
+    const { planId, role, limits, featureFlags, limitsDisplay, label, navFeatureAccess } = body;
 
     if (!planId) {
       return NextResponse.json({ error: 'planId is required' }, { status: 400 });
@@ -66,6 +78,9 @@ export async function PATCH(request: NextRequest) {
     if (featureFlags) updateData.featureFlags = featureFlags;
     if (limitsDisplay) updateData.limitsDisplay = limitsDisplay;
     if (label !== undefined) updateData.label = label;
+    if (navFeatureAccess !== undefined && navFeatureAccess !== null && typeof navFeatureAccess === 'object') {
+      updateData.navFeatureAccess = navFeatureAccess;
+    }
 
     const plan = await Plan.findOneAndUpdate(
       { planId },
@@ -89,6 +104,7 @@ export async function PATCH(request: NextRequest) {
         limits: plan.limits,
         featureFlags: plan.featureFlags,
         limitsDisplay: plan.limitsDisplay,
+        navFeatureAccess: (plan as any).navFeatureAccess || {},
       },
     });
   } catch (error: any) {

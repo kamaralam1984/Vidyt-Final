@@ -9,7 +9,7 @@ import { ALL_FEATURES } from '@/utils/features';
 export async function GET(request: NextRequest) {
   try {
     const authUser = await getUserFromRequest(request);
-    if (!authUser || authUser.role !== 'super-admin') {
+    if (!authUser || !['super-admin', 'superadmin', 'admin'].includes(authUser.role as string)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
