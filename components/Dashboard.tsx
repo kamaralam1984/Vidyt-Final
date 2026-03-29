@@ -13,7 +13,7 @@ import PostingTimeHeatmap from './PostingTimeHeatmap';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useSearchParams } from 'next/navigation';
-import { CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, X, Copy } from 'lucide-react';
 
 interface AnalysisData {
   viralProbability: number;
@@ -24,6 +24,8 @@ interface AnalysisData {
   optimizedTitles?: string[];
   hashtags?: string[];
   trendingTopics?: Array<{ keyword: string; score: number }>;
+  /** Full YouTube-style description generated on upload */
+  seoDescription?: string;
   postingTime?: { day: string; hour: number; confidence: number };
   bestPostingTime?: { day: string; hour: number; confidence: number };
 }
@@ -40,7 +42,7 @@ export default function Dashboard() {
       try {
         const res = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
         if (res.data.user) {
-          setIsYoutubeConnected(!!res.data.user.googleRefreshToken);
+          setIsYoutubeConnected(!!res.data.user.isYoutubeConnected);
         }
       } catch (_) {}
     };
@@ -48,7 +50,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get('youtube') === 'connected') {
+    if (searchParams?.get('youtube') === 'connected') {
       setShowYoutubeSuccess(true);
       // Automatically hide after 5 seconds
       const timer = setTimeout(() => setShowYoutubeSuccess(false), 5000);
@@ -161,6 +163,32 @@ export default function Dashboard() {
 
             {analysis.optimizedTitles && allowedSystems['title_suggestions'] !== false && (
               <TitleSuggestions titles={analysis.optimizedTitles} />
+            )}
+
+            {analysis.seoDescription && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#181818] border border-[#212121] rounded-xl shadow-lg p-6"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xl font-bold text-white">SEO description (CTR‑focused)</h2>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(analysis.seoDescription || '');
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#212121] text-white rounded-lg hover:bg-[#2A2A2A] text-sm font-medium border border-[#333]"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy
+                  </button>
+                </div>
+                <p className="text-xs text-[#888] mb-2">Fills automatically after upload — paste into YouTube or Shorts.</p>
+                <pre className="text-sm text-[#CCCCCC] whitespace-pre-wrap font-sans leading-relaxed max-h-64 overflow-y-auto">
+                  {analysis.seoDescription}
+                </pre>
+              </motion.div>
             )}
 
             {analysis.hashtags && allowedSystems['hashtag_recommendations'] !== false && (

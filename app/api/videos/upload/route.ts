@@ -15,6 +15,7 @@ import { getTrendingScore } from '@/services/trendingEngine';
 import { generateHashtags } from '@/services/hashtagGenerator';
 import { predictBestPostingTime } from '@/services/postingTimePredictor';
 import Analysis from '@/models/Analysis';
+import { buildUploadSeoPack } from '@/lib/buildUploadSeo';
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,6 +76,15 @@ export async function POST(request: NextRequest) {
     // Get trending topics
     const { getTrendingTopics } = await import('@/services/trendingEngine');
     const trendingTopics = await getTrendingTopics(titleAnalysis.keywords);
+
+    const seoPack = buildUploadSeoPack({
+      title,
+      keywords: titleAnalysis.keywords,
+      hookScore: hookAnalysis.score,
+      viralProbability: viralPrediction.viralProbability,
+      rawHashtags: hashtags.map((h) => h.replace(/^#/, '')),
+      trendingTopics,
+    });
     
     // Predict best posting time
     const bestPostingTime = predictBestPostingTime();
@@ -83,12 +93,12 @@ export async function POST(request: NextRequest) {
     const video = new Video({
       userId,
       title,
-      description,
+      description: seoPack.description,
       videoUrl: `/uploads/${file.name}`, // In production, upload to cloud storage
       thumbnailUrl,
       platform: 'upload',
       duration: 60, // Would extract from video
-      hashtags: hashtags.map(tag => tag.replace('#', '')),
+      hashtags: seoPack.hashtags,
     });
     
     await video.save();
@@ -122,8 +132,8 @@ export async function POST(request: NextRequest) {
         clickPotential: titleAnalysis.clickPotential,
         optimizedTitles: titleAnalysis.optimizedTitles,
       },
-      hashtags: hashtags.map(tag => tag.replace('#', '')),
-      trendingTopics: trendingTopics.map(topic => ({
+      hashtags: seoPack.hashtags,
+      trendingTopics: seoPack.trendingTags.map((topic) => ({
         keyword: topic.keyword,
         score: topic.score,
       })),
@@ -157,12 +167,26 @@ export async function POST(request: NextRequest) {
         title: video.title,
         thumbnailUrl: video.thumbnailUrl,
       },
+      seo: {
+        description: seoPack.description,
+        hashtags: seoPack.hashtags,
+        trendingTags: seoPack.trendingTags,
+      },
       analysis: {
         viralProbability: analysis.viralProbability,
         hookScore: analysis.hookScore,
         thumbnailScore: analysis.thumbnailScore,
         titleScore: analysis.titleScore,
         confidenceLevel: analysis.confidenceLevel,
+        optimizedTitles: titleAnalysis.optimizedTitles,
+        hashtags: seoPack.hashtags.map((h) => `#${h}`),
+        trendingTopics: seoPack.trendingTags,
+        seoDescription: seoPack.description,
+        bestPostingTime: {
+          day: bestPostingTime.day,
+          hour: bestPostingTime.hour,
+          confidence: bestPostingTime.confidence,
+        },
       },
     });
   } catch (error) {

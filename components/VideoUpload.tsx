@@ -67,7 +67,21 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
           Authorization: `Bearer ${token}`,
         },
       });
-      onAnalysisComplete(response.data.analysis);
+      const { analysis, seo } = response.data;
+      if (seo?.description) {
+        setYtDescription(seo.description);
+      }
+      if (seo?.hashtags?.length || seo?.trendingTags?.length) {
+        const tagParts: string[] = [
+          ...(seo.hashtags || []),
+          ...(seo.trendingTags || []).map((t: { keyword: string }) => t.keyword).filter(Boolean),
+        ];
+        setYtTags(tagParts.join(', '));
+      }
+      if (analysis?.optimizedTitles?.[0]) {
+        setYtTitle(analysis.optimizedTitles[0]);
+      }
+      onAnalysisComplete(analysis);
     } catch (error: any) {
       console.error('Upload error:', error);
       if (error?.response?.status === 401) {
