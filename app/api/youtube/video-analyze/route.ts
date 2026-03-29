@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { denyIfNoFeature } from '@/lib/assertUserFeature';
 import { getApiConfig } from '@/lib/apiConfig';
 
 const WHISPER_SUPPORTED_EXT = /\.(mp3|mp4|m4a|wav|webm|mpeg|mpga|m4v)$/i;
@@ -124,9 +124,8 @@ function getFallbackSuggestions(topicHint: string): { title: string; description
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'super-admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const denied = await denyIfNoFeature(request, 'youtube_seo');
+    if (denied) return denied;
 
     const formData = await request.formData();
     const file = formData.get('video') as File | null;

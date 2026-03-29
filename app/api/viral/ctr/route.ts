@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { denyIfNoAnyFeature } from '@/lib/assertUserFeature';
 
 function scoreTitleCuriosity(title: string): number {
   if (!title?.trim()) return 40;
@@ -32,9 +32,8 @@ function scoreKeywordRelevance(title: string, keywords: string[]): number {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getUserFromRequest(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (user.role !== 'super-admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const denied = await denyIfNoAnyFeature(request, ['youtube_seo', 'viral_optimizer']);
+  if (denied) return denied;
 
   try {
     const body = await request.json().catch(() => ({}));

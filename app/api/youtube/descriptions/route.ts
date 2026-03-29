@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { denyIfNoFeature } from '@/lib/assertUserFeature';
 
 type ContentType = 'video' | 'short' | 'live';
 
@@ -28,9 +28,8 @@ function generateDescriptions(title: string, keywords: string[], category: strin
 }
 
 export async function GET(request: NextRequest) {
-  const user = await getUserFromRequest(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (user.role !== 'super-admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const denied = await denyIfNoFeature(request, 'youtube_seo');
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const title = (searchParams.get('title') || '').trim();

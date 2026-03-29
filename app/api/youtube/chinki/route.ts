@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { denyIfNoFeature } from '@/lib/assertUserFeature';
 import { getApiConfig } from '@/lib/apiConfig';
 
 const CHINKI_SYSTEM = `You are Chinki, a 24-year-old female AI assistant for ViralBoost AI. You analyze the user's YouTube upload form and their LINKED CHANNEL in REAL TIME.
@@ -53,10 +53,8 @@ async function callGemini(apiKey: string, system: string, userContent: string): 
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getUserFromRequest(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const allowedRoles = ['super-admin', 'admin', 'manager', 'user'];
-  if (!allowedRoles.includes(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const denied = await denyIfNoFeature(request, 'youtube_seo');
+  if (denied) return denied;
 
   try {
     const body = await request.json().catch(() => ({}));

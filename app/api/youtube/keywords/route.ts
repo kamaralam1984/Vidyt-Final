@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { denyIfNoFeature } from '@/lib/assertUserFeature';
 
 function extractBasesFromTitleAndKeyword(title: string, keyword: string): string[] {
   const bases: string[] = [];
@@ -99,25 +99,8 @@ function mockKeywordAnalysis(keyword: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const user = await getUserFromRequest(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  // per-tool feature flag: Keyword Research
-  try {
-    const { default: FeatureAccess } = await import('@/models/FeatureAccess');
-    const doc = (await FeatureAccess.findOne({ feature: 'keyword_research' }).lean()) as
-      | { allowedRoles?: string[] }
-      | null;
-    const roles = doc?.allowedRoles?.length ? doc.allowedRoles : ['manager', 'admin', 'super-admin'];
-    if (!roles.includes(user.role)) {
-      return NextResponse.json(
-        { error: 'Keyword Research tool is not enabled for your role. Contact Super Admin.' },
-        { status: 403 }
-      );
-    }
-  } catch {
-    // if check fails, fall back to existing behavior (no extra block)
-  }
-  if (user.role !== 'super-admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const denied = await denyIfNoFeature(request, 'youtube_seo');
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const keyword = (searchParams.get('keyword') || '').trim();

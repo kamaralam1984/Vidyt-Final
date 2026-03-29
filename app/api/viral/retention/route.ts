@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { denyIfNoFeature } from '@/lib/assertUserFeature';
 
 function detectDropPoints(script: string): string[] {
   if (!script?.trim()) return ['00:12', '00:45', '01:30'];
@@ -39,9 +39,8 @@ function predictRetention(script: string, title?: string): number {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getUserFromRequest(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (user.role !== 'super-admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const denied = await denyIfNoFeature(request, 'viral_optimizer');
+  if (denied) return denied;
 
   try {
     const body = await request.json().catch(() => ({}));

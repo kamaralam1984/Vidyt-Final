@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { denyIfNoFeature } from '@/lib/assertUserFeature';
 import { getApiConfig } from '@/lib/apiConfig';
 
 function scoreTitle(title: string): number {
@@ -43,23 +43,8 @@ function generateImprovedTitles(title: string, keyword: string): { title: string
 }
 
 export async function GET(request: NextRequest) {
-  const user = await getUserFromRequest(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  try {
-    const { default: FeatureAccess } = await import('@/models/FeatureAccess');
-    const doc = (await FeatureAccess.findOne({ feature: 'title_generator' }).lean()) as
-      | { allowedRoles?: string[] }
-      | null;
-    const roles = doc?.allowedRoles?.length ? doc.allowedRoles : ['manager', 'admin', 'super-admin'];
-    if (!roles.includes(user.role)) {
-      return NextResponse.json(
-        { error: 'Title Generator tool is not enabled for your role. Contact Super Admin.' },
-        { status: 403 }
-      );
-    }
-  } catch {
-    if (user.role !== 'super-admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const denied = await denyIfNoFeature(request, 'youtube_seo');
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const title = (searchParams.get('title') || '').trim();
@@ -73,23 +58,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getUserFromRequest(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  try {
-    const { default: FeatureAccess } = await import('@/models/FeatureAccess');
-    const doc = (await FeatureAccess.findOne({ feature: 'title_generator' }).lean()) as
-      | { allowedRoles?: string[] }
-      | null;
-    const roles = doc?.allowedRoles?.length ? doc.allowedRoles : ['manager', 'admin', 'super-admin'];
-    if (!roles.includes(user.role)) {
-      return NextResponse.json(
-        { error: 'Title Generator tool is not enabled for your role. Contact Super Admin.' },
-        { status: 403 }
-      );
-    }
-  } catch {
-    if (user.role !== 'super-admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const denied = await denyIfNoFeature(request, 'youtube_seo');
+  if (denied) return denied;
 
   const body = await request.json().catch(() => ({}));
   const title = (body.title || '').trim();
