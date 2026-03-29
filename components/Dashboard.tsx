@@ -162,7 +162,7 @@ export default function Dashboard() {
             </div>
 
             {analysis.optimizedTitles && allowedSystems['title_suggestions'] !== false && (
-              <TitleSuggestions titles={analysis.optimizedTitles} />
+              <TitleSuggestions titles={analysis.optimizedTitles.slice(0, 5)} />
             )}
 
             {analysis.seoDescription && (
@@ -184,7 +184,9 @@ export default function Dashboard() {
                     Copy
                   </button>
                 </div>
-                <p className="text-xs text-[#888] mb-2">Fills automatically after upload — paste into YouTube or Shorts.</p>
+                <p className="text-xs text-[#888] mb-2">
+                  Auto-generated after upload (max 200 words). Paste into YouTube or Shorts.
+                </p>
                 <pre className="text-sm text-[#CCCCCC] whitespace-pre-wrap font-sans leading-relaxed max-h-64 overflow-y-auto">
                   {analysis.seoDescription}
                 </pre>

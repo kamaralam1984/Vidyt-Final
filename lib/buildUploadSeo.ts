@@ -1,5 +1,33 @@
 import type { TrendingTopic } from '@/services/trendingEngine';
 
+/** YouTube title cap used across dashboard + upload form */
+export const YOUTUBE_TITLE_MAX_CHARS = 70;
+
+/** SEO / description word cap */
+export const SEO_DESCRIPTION_MAX_WORDS = 200;
+
+export function truncateToWordCount(text: string, maxWords: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text.trim();
+  return words.slice(0, maxWords).join(' ');
+}
+
+export function countWords(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+}
+
+export function clampYoutubeTitle(title: string, maxChars = YOUTUBE_TITLE_MAX_CHARS): string {
+  const t = title.trim();
+  if (t.length <= maxChars) return t;
+  return t.slice(0, maxChars).trimEnd();
+}
+
+export function takeFiveTitles(titles: string[], maxChars = YOUTUBE_TITLE_MAX_CHARS): string[] {
+  return titles
+    .slice(0, 5)
+    .map((t) => clampYoutubeTitle(t, maxChars));
+}
+
 export interface UploadSeoPack {
   description: string;
   /** Plain hashtags without # — exactly 5 for YouTube / UI */
@@ -80,7 +108,7 @@ export function buildUploadSeoPack(params: {
 }): UploadSeoPack {
   const hashtags = takeFiveHashtags(params.rawHashtags.map((h) => h.replace(/^#/, '')));
   const trendingTags = takeTenTrending(params.trendingTopics, params.keywords);
-  const description = buildHighCtrDescription({
+  let description = buildHighCtrDescription({
     title: params.title,
     keywords: params.keywords,
     hookScore: params.hookScore,
@@ -88,5 +116,6 @@ export function buildUploadSeoPack(params: {
     hashtags,
     trendingTags,
   });
+  description = truncateToWordCount(description, SEO_DESCRIPTION_MAX_WORDS);
   return { description, hashtags, trendingTags };
 }

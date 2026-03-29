@@ -15,7 +15,7 @@ import { getTrendingScore } from '@/services/trendingEngine';
 import { generateHashtags } from '@/services/hashtagGenerator';
 import { predictBestPostingTime } from '@/services/postingTimePredictor';
 import Analysis from '@/models/Analysis';
-import { buildUploadSeoPack } from '@/lib/buildUploadSeo';
+import { buildUploadSeoPack, takeFiveTitles } from '@/lib/buildUploadSeo';
 
 export async function POST(request: NextRequest) {
   try {
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
         emotionalTriggers: titleAnalysis.emotionalTriggers,
         length: titleAnalysis.length,
         clickPotential: titleAnalysis.clickPotential,
-        optimizedTitles: titleAnalysis.optimizedTitles,
+        optimizedTitles: takeFiveTitles(titleAnalysis.optimizedTitles),
       },
       hashtags: seoPack.hashtags,
       trendingTopics: seoPack.trendingTags.map((topic) => ({
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
         thumbnailScore: analysis.thumbnailScore,
         titleScore: analysis.titleScore,
         confidenceLevel: analysis.confidenceLevel,
-        optimizedTitles: titleAnalysis.optimizedTitles,
+        optimizedTitles: takeFiveTitles(titleAnalysis.optimizedTitles),
         hashtags: seoPack.hashtags.map((h) => `#${h}`),
         trendingTopics: seoPack.trendingTags,
         seoDescription: seoPack.description,

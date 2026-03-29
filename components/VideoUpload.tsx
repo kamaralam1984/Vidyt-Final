@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, Youtube, Facebook, Instagram, Music, Loader2, CheckCircle2, Globe, Lock, EyeOff, Share2, Copy, X } from 'lucide-react';
+import { Upload, Youtube, Facebook, Instagram, Music, Loader2, CheckCircle2, Globe, Lock, EyeOff, Share2, Copy, X, ImageIcon } from 'lucide-react';
 import axios from 'axios';
 import { getToken, isAuthenticated, getAuthHeaders } from '@/utils/auth';
 import type { AxiosProgressEvent } from 'axios';
+import {
+  clampYoutubeTitle,
+  truncateToWordCount,
+  SEO_DESCRIPTION_MAX_WORDS,
+  YOUTUBE_TITLE_MAX_CHARS,
+  countWords,
+} from '@/lib/buildUploadSeo';
 
 interface VideoUploadProps {
   onAnalysisComplete: (data: any) => void;
@@ -35,10 +42,22 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
   const [ytTags, setYtTags] = useState('');
   const [ytPrivacy, setYtPrivacy] = useState<'public' | 'private' | 'unlisted'>('public');
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!thumbnailFile) {
+      setThumbnailPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(thumbnailFile);
+    setThumbnailPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [thumbnailFile]);
 
   const handleFileUpload = async (file: File) => {
     setSelectedVideoFile(file);
-    setYtTitle(file.name.split('.').slice(0, -1).join('.'));
+    setYtTitle(clampYoutubeTitle(file.name.split('.').slice(0, -1).join('.')));
     if (!file.type.startsWith('video/')) {
       alert('Please upload a video file');
       return;
@@ -69,7 +88,7 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
       });
       const { analysis, seo } = response.data;
       if (seo?.description) {
-        setYtDescription(seo.description);
+        setYtDescription(truncateToWordCount(seo.description, SEO_DESCRIPTION_MAX_WORDS));
       }
       if (seo?.hashtags?.length || seo?.trendingTags?.length) {
         const tagParts: string[] = [
@@ -79,7 +98,7 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
         setYtTags(tagParts.join(', '));
       }
       if (analysis?.optimizedTitles?.[0]) {
-        setYtTitle(analysis.optimizedTitles[0]);
+        setYtTitle(clampYoutubeTitle(analysis.optimizedTitles[0]));
       }
       onAnalysisComplete(analysis);
     } catch (error: any) {
@@ -203,6 +222,9 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
     formData.append('description', ytDescription);
     formData.append('tags', ytTags);
     formData.append('privacyStatus', ytPrivacy);
+    if (thumbnailFile && thumbnailFile.size > 0) {
+      formData.append('thumbnail', thumbnailFile);
+    }
 
     try {
       const token = getToken();
@@ -220,10 +242,12 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
       });
 
       if (response.data.success) {
+        const watchUrl = response.data.url || response.data.videoUrl;
         setYoutubeUploadSuccess({
           videoId: response.data.videoId,
-          url: response.data.url
+          url: watchUrl,
         });
+        setThumbnailFile(null);
       }
     } catch (err: any) {
       console.error('YouTube upload error:', err);
@@ -367,11 +391,17 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
               <form onSubmit={handleYoutubeUpload} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">Video Title</label>
+                    <div className="flex justify-between items-center gap-2">
+                      <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">Video Title</label>
+                      <span className="text-[10px] text-[#666] tabular-nums">
+                        {ytTitle.length}/{YOUTUBE_TITLE_MAX_CHARS}
+                      </span>
+                    </div>
                     <input 
                       type="text" 
                       value={ytTitle}
-                      onChange={(e) => setYtTitle(e.target.value)}
+                      maxLength={YOUTUBE_TITLE_MAX_CHARS}
+                      onChange={(e) => setYtTitle(clampYoutubeTitle(e.target.value))}
                       className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000]"
                       placeholder="Enter catch title..."
                       required
@@ -402,13 +432,57 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">Description</label>
+                  <div className="flex justify-between items-center gap-2">
+                    <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">SEO description</label>
+                    <span className="text-[10px] text-[#666] tabular-nums">
+                      {countWords(ytDescription)} / {SEO_DESCRIPTION_MAX_WORDS} words
+                    </span>
+                  </div>
                   <textarea 
                     value={ytDescription}
-                    onChange={(e) => setYtDescription(e.target.value)}
-                    className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000] min-h-[100px]"
-                    placeholder="Tell your viewers about your video..."
+                    onChange={(e) =>
+                      setYtDescription(truncateToWordCount(e.target.value, SEO_DESCRIPTION_MAX_WORDS))
+                    }
+                    className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000] min-h-[120px]"
+                    placeholder="Auto-filled after analyze — edit up to 200 words for SEO..."
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider flex items-center gap-2">
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    Thumbnail (optional)
+                  </label>
+                  <p className="text-[11px] text-[#666]">JPG or PNG — applied on YouTube after the video uploads.</p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0F0F0F] border border-[#212121] text-sm text-white hover:border-[#333]">
+                      <Upload className="w-4 h-4" />
+                      Choose image
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          setThumbnailFile(f || null);
+                        }}
+                      />
+                    </label>
+                    {thumbnailPreview && (
+                      <div className="relative w-28 h-16 rounded border border-[#212121] overflow-hidden bg-black">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={thumbnailPreview} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setThumbnailFile(null)}
+                          className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/70 text-white text-[10px]"
+                          aria-label="Remove thumbnail"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -497,6 +571,7 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
                 onClick={() => {
                   setYoutubeUploadSuccess(null);
                   setSelectedVideoFile(null);
+                  setThumbnailFile(null);
                 }}
                 className="mt-8 text-sm text-[#AAAAAA] hover:text-white"
               >

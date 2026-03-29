@@ -6,6 +6,7 @@ import User from '@/models/User';
 import { google } from 'googleapis';
 import { Readable } from 'stream';
 import connectDB from '@/lib/mongodb';
+import { clampYoutubeTitle, SEO_DESCRIPTION_MAX_WORDS, truncateToWordCount } from '@/lib/buildUploadSeo';
 
 
 
@@ -28,9 +29,11 @@ export async function POST(request: NextRequest) {
 
         const formData = await request.formData();
         const videoFile = formData.get('video') as File;
-        const title = formData.get('title') as string;
-        const description = formData.get('description') as string;
+        const title = clampYoutubeTitle((formData.get('title') as string) || '');
+        const descriptionRaw = (formData.get('description') as string) || '';
+        const description = truncateToWordCount(descriptionRaw, SEO_DESCRIPTION_MAX_WORDS);
         const tags = formData.get('tags') as string || '';
+        const thumbnailFile = formData.get('thumbnail') as File | null;
         const privacyStatus = formData.get('privacyStatus') as 'public' | 'private' | 'unlisted' || 'public';
         const categoryId = formData.get('category') as string || '22';
 
@@ -99,12 +102,30 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        console.log(`YouTube API: Upload complete. Video ID: ${res.data.id}`);
+        const videoId = res.data.id;
+        console.log(`YouTube API: Upload complete. Video ID: ${videoId}`);
 
+        if (videoId && thumbnailFile && typeof thumbnailFile === 'object' && thumbnailFile.size > 0) {
+            try {
+                const ab = await thumbnailFile.arrayBuffer();
+                const buf = Buffer.from(ab);
+                await youtube.thumbnails.set({
+                    videoId,
+                    media: {
+                        body: Readable.from(buf),
+                    },
+                });
+            } catch (thumbErr) {
+                console.error('YouTube thumbnail set failed:', thumbErr);
+            }
+        }
+
+        const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
         return NextResponse.json({
             success: true,
-            videoId: res.data.id,
-            videoUrl: `https://youtube.com/watch?v=${res.data.id}`
+            videoId,
+            videoUrl: watchUrl,
+            url: watchUrl,
         });
 
     } catch (error: any) {
