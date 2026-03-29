@@ -50,9 +50,13 @@ async function connectDB() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 10_000, // Timeout after 10s
-      socketTimeoutMS: 45_000, // Close sockets after 45s of inactivity
-      connectTimeoutMS: 10_000, // Give up initial connection after 10s
+      /** Atlas / slow networks: default 10s often fails with TLS handshake timeouts */
+      serverSelectionTimeoutMS: 30_000,
+      socketTimeoutMS: 45_000,
+      connectTimeoutMS: 30_000,
+      /** Prefer IPv4 when IPv6 routes are broken (common on some LANs) */
+      family: 4 as const,
+      maxPoolSize: 10,
     };
 
     cached.promise = (async () => {
