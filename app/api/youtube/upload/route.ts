@@ -7,6 +7,7 @@ import { google } from 'googleapis';
 import { Readable } from 'stream';
 import connectDB from '@/lib/mongodb';
 import { normalizeYoutubeTitle, SEO_DESCRIPTION_MAX_WORDS, truncateToWordCount } from '@/lib/buildUploadSeo';
+import Channel, { type IChannel } from '@/models/Channel';
 
 
 
@@ -18,13 +19,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Fetch the user to get the latest tokens
         const dbUser = await User.findById(user.id);
-        if (!dbUser || !dbUser.youtube || !dbUser.youtube.access_token) {
-            return NextResponse.json({
-                error: 'YouTube not connected',
-                needsAuth: true
-            }, { status: 400 });
+        if (!dbUser) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
         const formData = await request.formData();
@@ -41,34 +38,77 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
         }
 
-        console.log("USER TOKENS:", dbUser.youtube);
-        console.log("Uploading video...");
+        const channelIdParam = ((formData.get('channelId') as string) || '').trim();
 
-        // Setup YouTube client with token refresh listener
+        let channelDoc: IChannel | null = null;
+        if (channelIdParam && channelIdParam !== '__default__') {
+            channelDoc = await Channel.findOne({
+                userId: user.id,
+                channelId: channelIdParam,
+            });
+            if (!channelDoc) {
+                return NextResponse.json(
+                    { error: 'Selected channel not found. Connect it again from the dashboard.' },
+                    { status: 400 }
+                );
+            }
+        }
+
+        const useUserYoutube = !channelDoc;
+        if (useUserYoutube && (!dbUser.youtube?.access_token || !dbUser.youtube?.refresh_token)) {
+            return NextResponse.json(
+                {
+                    error: 'YouTube not connected',
+                    needsAuth: true,
+                },
+                { status: 400 }
+            );
+        }
+        if (!useUserYoutube && channelDoc && (!channelDoc.accessToken || !channelDoc.refreshToken)) {
+            return NextResponse.json(
+                {
+                    error: 'This channel has incomplete credentials. Reconnect it from My Channels.',
+                    needsAuth: true,
+                },
+                { status: 400 }
+            );
+        }
+
         const clientId = process.env.CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
         const clientSecret = process.env.CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
         const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/youtube/callback';
-        
-        const oauth2Client = new google.auth.OAuth2(
-            clientId,
-            clientSecret,
-            redirectUri
-        );
+
+        const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+
+        const accessToken = channelDoc ? channelDoc.accessToken : dbUser.youtube!.access_token!;
+        const refreshToken = channelDoc ? channelDoc.refreshToken : dbUser.youtube!.refresh_token!;
 
         oauth2Client.setCredentials({
-            access_token: dbUser.youtube.access_token,
-            refresh_token: dbUser.youtube.refresh_token
+            access_token: accessToken,
+            refresh_token: refreshToken,
         });
 
+        const channelMongoId = channelDoc?._id ?? null;
+
         oauth2Client.on('tokens', async (tokens) => {
-            const updateData: any = {};
-            if (tokens.access_token) updateData['youtube.access_token'] = tokens.access_token;
-            if (tokens.refresh_token) updateData['youtube.refresh_token'] = tokens.refresh_token;
-            if (tokens.expiry_date) updateData['youtube.expiry_date'] = new Date(tokens.expiry_date);
-            
-            if (Object.keys(updateData).length > 0) {
-                await User.findByIdAndUpdate(dbUser._id, { $set: updateData });
-                console.log('YouTube API: Automatic token refresh saved to MongoDB');
+            if (channelMongoId) {
+                const updateCh: Record<string, unknown> = {};
+                if (tokens.access_token) updateCh.accessToken = tokens.access_token;
+                if (tokens.refresh_token) updateCh.refreshToken = tokens.refresh_token;
+                if (Object.keys(updateCh).length > 0) {
+                    await Channel.findByIdAndUpdate(channelMongoId, { $set: updateCh });
+                    console.log('YouTube API: Channel tokens refreshed in MongoDB');
+                }
+            } else {
+                const updateData: Record<string, unknown> = {};
+                if (tokens.access_token) updateData['youtube.access_token'] = tokens.access_token;
+                if (tokens.refresh_token) updateData['youtube.refresh_token'] = tokens.refresh_token;
+                if (tokens.expiry_date) updateData['youtube.expiry_date'] = new Date(tokens.expiry_date);
+
+                if (Object.keys(updateData).length > 0) {
+                    await User.findByIdAndUpdate(dbUser._id, { $set: updateData });
+                    console.log('YouTube API: Automatic token refresh saved to MongoDB');
+                }
             }
         });
 

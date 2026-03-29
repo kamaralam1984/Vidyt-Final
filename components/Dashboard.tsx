@@ -34,8 +34,10 @@ export default function Dashboard() {
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
+  const youtubeQuery = searchParams?.get('youtube');
   const [showYoutubeSuccess, setShowYoutubeSuccess] = useState(false);
   const [isYoutubeConnected, setIsYoutubeConnected] = useState(false);
+  const [youtubeGoogleConnected, setYoutubeGoogleConnected] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -43,11 +45,12 @@ export default function Dashboard() {
         const res = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
         if (res.data.user) {
           setIsYoutubeConnected(!!res.data.user.isYoutubeConnected);
+          setYoutubeGoogleConnected(!!res.data.user.youtubeGoogleConnected);
         }
       } catch (_) {}
     };
     fetchUser();
-  }, []);
+  }, [youtubeQuery]);
 
   useEffect(() => {
     if (searchParams?.get('youtube') === 'connected') {
@@ -135,6 +138,7 @@ export default function Dashboard() {
             loading={loading} 
             setLoading={setLoading} 
             isYoutubeConnected={isYoutubeConnected}
+            youtubeGoogleConnected={youtubeGoogleConnected}
             allowedSystems={allowedSystems}
           />
         )}

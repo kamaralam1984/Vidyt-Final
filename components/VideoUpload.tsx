@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, Youtube, Facebook, Instagram, Music, Loader2, CheckCircle2, Globe, Lock, EyeOff, Share2, Copy, X, ImageIcon } from 'lucide-react';
+import { Upload, Youtube, Facebook, Instagram, Music, Loader2, CheckCircle2, Globe, Lock, EyeOff, Share2, Copy, X, ImageIcon, Link2 } from 'lucide-react';
 import axios from 'axios';
 import { getToken, isAuthenticated, getAuthHeaders } from '@/utils/auth';
 import type { AxiosProgressEvent } from 'axios';
@@ -14,15 +14,32 @@ import {
   countWords,
 } from '@/lib/buildUploadSeo';
 
+interface YoutubeChannelOption {
+  channelId: string;
+  channelTitle: string;
+  channelThumbnail?: string;
+}
+
 interface VideoUploadProps {
   onAnalysisComplete: (data: any) => void;
   loading: boolean;
   setLoading: (loading: boolean) => void;
+  /** User can use YouTube upload (Google OAuth on user and/or linked channel rows). */
   isYoutubeConnected?: boolean;
+  /** User has OAuth tokens on the User document (main Google connect). */
+  youtubeGoogleConnected?: boolean;
   allowedSystems?: Record<string, boolean>;
 }
 
-export default function VideoUpload({ onAnalysisComplete, loading, setLoading, isYoutubeConnected }: VideoUploadProps) {
+const YT_UPLOAD_CHANNEL_STORAGE = 'youtube-upload-channel-id';
+
+export default function VideoUpload({
+  onAnalysisComplete,
+  loading,
+  setLoading,
+  isYoutubeConnected,
+  youtubeGoogleConnected = false,
+}: VideoUploadProps) {
   const [uploadType, setUploadType] = useState<'file' | 'youtube' | 'facebook' | 'instagram' | 'tiktok'>('file');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [facebookUrl, setFacebookUrl] = useState('');
@@ -49,6 +66,51 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
   const titleSeoAbortRef = useRef<AbortController | null>(null);
   const titleSeoGenRef = useRef(0);
 
+  const [youtubeChannels, setYoutubeChannels] = useState<YoutubeChannelOption[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<string>('__default__');
+  const [channelsLoaded, setChannelsLoaded] = useState(false);
+
+  const canUseYoutubeUpload = !!isYoutubeConnected || youtubeChannels.length > 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadChannels() {
+      if (!isAuthenticated()) {
+        setChannelsLoaded(true);
+        return;
+      }
+      try {
+        const res = await axios.get<{ channels: YoutubeChannelOption[] }>('/api/youtube/channels', {
+          headers: getAuthHeaders(),
+        });
+        if (cancelled) return;
+        const list = res.data.channels || [];
+        setYoutubeChannels(list);
+
+        const saved = typeof window !== 'undefined' ? localStorage.getItem(YT_UPLOAD_CHANNEL_STORAGE) : null;
+        if (saved === '__default__' && youtubeGoogleConnected) {
+          setSelectedChannelId('__default__');
+        } else if (saved && list.some((c) => c.channelId === saved)) {
+          setSelectedChannelId(saved);
+        } else if (youtubeGoogleConnected && list.length === 0) {
+          setSelectedChannelId('__default__');
+        } else if (list.length >= 1) {
+          setSelectedChannelId(list[0].channelId);
+        } else {
+          setSelectedChannelId('__default__');
+        }
+      } catch {
+        if (!cancelled) setYoutubeChannels([]);
+      } finally {
+        if (!cancelled) setChannelsLoaded(true);
+      }
+    }
+    void loadChannels();
+    return () => {
+      cancelled = true;
+    };
+  }, [isYoutubeConnected, youtubeGoogleConnected]);
+
   useEffect(() => {
     if (!thumbnailFile) {
       setThumbnailPreview(null);
@@ -60,7 +122,7 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
   }, [thumbnailFile]);
 
   useEffect(() => {
-    if (!selectedVideoFile || !isYoutubeConnected || !ytTitle.trim() || ytTitle.trim().length < 2) {
+    if (!selectedVideoFile || !canUseYoutubeUpload || !ytTitle.trim() || ytTitle.trim().length < 2) {
       return;
     }
     if (!isAuthenticated()) return;
@@ -102,7 +164,7 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
       if (titleSeoDebounceRef.current) clearTimeout(titleSeoDebounceRef.current);
       titleSeoAbortRef.current?.abort();
     };
-  }, [ytTitle, selectedVideoFile, isYoutubeConnected]);
+  }, [ytTitle, selectedVideoFile, canUseYoutubeUpload]);
 
   const handleFileUpload = async (file: File) => {
     setSelectedVideoFile(file);
@@ -276,6 +338,9 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
     if (thumbnailFile && thumbnailFile.size > 0) {
       formData.append('thumbnail', thumbnailFile);
     }
+    if (selectedChannelId && selectedChannelId !== '__default__') {
+      formData.append('channelId', selectedChannelId);
+    }
 
     try {
       const token = getToken();
@@ -428,16 +493,122 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
             )}
           </div>
 
-          {selectedVideoFile && isYoutubeConnected && !youtubeUploadSuccess && (
+          {selectedVideoFile && canUseYoutubeUpload && !youtubeUploadSuccess && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               className="mt-8 pt-8 border-t border-[#212121]"
             >
-              <div className="flex items-center gap-2 mb-6">
-                <Youtube className="w-6 h-6 text-[#FF0000]" />
-                <h3 className="text-lg font-bold text-white">Upload to YouTube</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <Youtube className="w-6 h-6 text-[#FF0000]" />
+                  <h3 className="text-lg font-bold text-white">Upload to YouTube</h3>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <a
+                    href="/dashboard/channels"
+                    className="text-[#AAAAAA] hover:text-white inline-flex items-center gap-1"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    Manage channels
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = '/api/youtube/channels/connect';
+                    }}
+                    className="text-[#FF0000] hover:underline"
+                  >
+                    Add channel
+                  </button>
+                </div>
               </div>
+
+              {channelsLoaded && (youtubeGoogleConnected || youtubeChannels.length > 0) && (
+                <div className="mb-4 p-4 rounded-lg bg-[#0F0F0F] border border-[#212121] space-y-2">
+                  <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">
+                    Upload to channel
+                  </label>
+                  {youtubeGoogleConnected && youtubeChannels.length === 0 && (
+                    <p className="text-sm text-[#CCCCCC]">
+                      Using the YouTube channel linked to your Google account (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href = '/api/youtube/channels/connect';
+                        }}
+                        className="text-[#FF0000] hover:underline"
+                      >
+                        add another channel
+                      </button>
+                      ).
+                    </p>
+                  )}
+                  {!youtubeGoogleConnected && youtubeChannels.length >= 1 && (
+                    <select
+                      value={
+                        selectedChannelId === '__default__'
+                          ? youtubeChannels[0]?.channelId
+                          : selectedChannelId
+                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setSelectedChannelId(v);
+                        localStorage.setItem(YT_UPLOAD_CHANNEL_STORAGE, v);
+                      }}
+                      className="w-full bg-[#181818] border border-[#333] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000]"
+                    >
+                      {youtubeChannels.map((c) => (
+                        <option key={c.channelId} value={c.channelId}>
+                          {c.channelTitle}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {youtubeGoogleConnected && youtubeChannels.length >= 1 && (
+                    <select
+                      value={selectedChannelId}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setSelectedChannelId(v);
+                        localStorage.setItem(YT_UPLOAD_CHANNEL_STORAGE, v);
+                      }}
+                      className="w-full bg-[#181818] border border-[#333] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000]"
+                    >
+                      <option value="__default__">Default (Google login account)</option>
+                      {youtubeChannels.map((c) => (
+                        <option key={c.channelId} value={c.channelId}>
+                          {c.channelTitle}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-[11px] text-[#666] leading-relaxed">
+                    First time?{' '}
+                    <button
+                      type="button"
+                      className="text-[#FF0000] hover:underline"
+                      onClick={() => {
+                        window.location.href = '/api/youtube/auth';
+                      }}
+                    >
+                      Connect Google (YouTube)
+                    </button>
+                    {' · '}
+                    Multiple accounts: use{' '}
+                    <button
+                      type="button"
+                      className="text-[#FF0000] hover:underline"
+                      onClick={() => {
+                        window.location.href = '/api/youtube/channels/connect';
+                      }}
+                    >
+                      Add channel
+                    </button>
+                    .
+                  </p>
+                </div>
+              )}
 
               <form onSubmit={handleYoutubeUpload} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -638,7 +809,7 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
             </motion.div>
           )}
 
-          {(!selectedVideoFile || !isYoutubeConnected) && (
+          {(!selectedVideoFile || !canUseYoutubeUpload) && (
             <div className="flex flex-col gap-4 mt-8">
               <button
                 onClick={() => selectedVideoFile && handleFileUpload(selectedVideoFile)}
@@ -659,7 +830,7 @@ export default function VideoUpload({ onAnalysisComplete, loading, setLoading, i
             </div>
           )}
         </div>
-      ) : uploadType === 'youtube' && !isYoutubeConnected ? (
+      ) : uploadType === 'youtube' && !canUseYoutubeUpload ? (
         <div className="border-2 border-dashed border-[#212121] rounded-lg p-12 text-center">
           <Youtube className="w-12 h-12 mx-auto mb-4 text-[#FF0000]" />
           <h3 className="text-xl font-bold text-white mb-2">Connect Your YouTube Channel</h3>

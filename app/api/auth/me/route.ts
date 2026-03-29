@@ -5,6 +5,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import User from '@/models/User';
 import connectDB from '@/lib/mongodb';
 import { PLAN_LIMITS } from '@/lib/limitChecker';
+import Channel from '@/models/Channel';
 
 export async function GET(request: NextRequest) {
   try {
@@ -67,6 +68,8 @@ export async function GET(request: NextRequest) {
         }
     }
 
+    const linkedYoutubeChannels = await Channel.countDocuments({ userId: authUser.id });
+
     return NextResponse.json({
       success: true,
       user: {
@@ -90,7 +93,12 @@ export async function GET(request: NextRequest) {
         whiteLabelCompanyName: user.whiteLabelCompanyName,
         whiteLabelLogoUrl: user.whiteLabelLogoUrl,
         webhookUrl: user.webhookUrl,
-        isYoutubeConnected: !!user.youtube?.refresh_token,
+        /** True when this user has OAuth tokens stored on the User document (dashboard Google connect). */
+        youtubeGoogleConnected: !!(user.youtube?.refresh_token || user.youtube?.access_token),
+        /** True when user can use YouTube features: Google account linked and/or at least one linked channel row. */
+        isYoutubeConnected:
+          !!(user.youtube?.refresh_token || user.youtube?.access_token) || linkedYoutubeChannels > 0,
+        linkedYoutubeChannelCount: linkedYoutubeChannels,
         computedLimits: {
           analyses: user.subscription === 'owner' ? Number.MAX_SAFE_INTEGER : 
                    user.subscription === 'custom' ? ((user.customLimits as any)?.get ? (user.customLimits as any).get('analyses') : (user.customLimits as any)?.analyses || 0) :
