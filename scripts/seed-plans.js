@@ -39,6 +39,7 @@ const PlanSchema = new mongoose.Schema({
     hashtagCount:      { type: Number, default: 10 },
     competitorsTracked:{ type: Number, default: 3 },
   },
+  navFeatureAccess: { type: mongoose.Schema.Types.Mixed, default: {} },
   featureFlags: {
     advancedAiViralPrediction:  { type: Boolean, default: false },
     realTimeTrendAnalysis:      { type: Boolean, default: false },
@@ -75,7 +76,34 @@ const PLANS = [
     billingPeriod: 'both',
     features: ['5 video analyses per month', 'Basic viral score prediction', 'Hashtag generator (10)', 'Community support'],
     limits: { analysesLimit: 5, analysesPeriod: 'month', titleSuggestions: 3, hashtagCount: 10, competitorsTracked: 3 },
-    featureFlags: { emailSupport: false, realTimeTrendAnalysis: false, competitorAnalysis: false },
+    featureFlags: { 
+      emailSupport: false, realTimeTrendAnalysis: false, competitorAnalysis: false,
+      daily_ideas: false, ai_coach: false, keyword_research: false, script_writer: false,
+      title_generator: false, channel_audit_tool: false, ai_shorts_clipping: false,
+      ai_thumbnail_maker: false, optimize: false
+    },
+    navFeatureAccess: {
+      dashboard: true,
+      videos: true,
+      youtube_seo: false,
+      facebook_seo: false,
+      instagram_seo: false,
+      viral_optimizer: false,
+      channel_audit: false,
+      facebook_audit: false,
+      trending: true,
+      hashtags: true,
+      posting_time: true,
+      analytics: true,
+      calendar: false,
+      script_generator: false,
+      ai_coach: false,
+      thumbnail_generator: false,
+      hook_generator: false,
+      shorts_creator: false,
+      youtube_growth: false,
+    },
+
     limitsDisplay: { videos: '5/month', analyses: 'Basic', storage: '—', support: 'Community' },
   },
   {
@@ -89,7 +117,13 @@ const PLANS = [
     billingPeriod: 'both',
     features: ['10 video analyses per day', 'Standard viral prediction', 'Real-time trends', 'Email support'],
     limits: { analysesLimit: 10, analysesPeriod: 'day', titleSuggestions: 5, hashtagCount: 15, competitorsTracked: 10 },
-    featureFlags: { advancedAiViralPrediction: true, realTimeTrendAnalysis: true, emailSupport: true, competitorAnalysis: true },
+    featureFlags: { 
+      advancedAiViralPrediction: true, realTimeTrendAnalysis: true, emailSupport: true, competitorAnalysis: true,
+      daily_ideas: true, ai_coach: false, keyword_research: true, script_writer: true,
+      title_generator: true, channel_audit_tool: false, ai_shorts_clipping: false,
+      ai_thumbnail_maker: true, optimize: false
+    },
+
     limitsDisplay: { videos: '10/days', analyses: 'Standard', storage: '—', support: 'Email' },
   },
   {
@@ -103,7 +137,14 @@ const PLANS = [
     billingPeriod: 'both',
     features: ['30 video analyses per day', 'Advanced AI prediction', 'Best posting times', 'Priority email support'],
     limits: { analysesLimit: 30, analysesPeriod: 'day', titleSuggestions: 10, hashtagCount: 20, competitorsTracked: 50 },
-    featureFlags: { advancedAiViralPrediction: true, realTimeTrendAnalysis: true, bestPostingTimePredictions: true, emailSupport: true, competitorAnalysis: true, priorityProcessing: true },
+    featureFlags: { 
+      advancedAiViralPrediction: true, realTimeTrendAnalysis: true, bestPostingTimePredictions: true, 
+      emailSupport: true, competitorAnalysis: true, priorityProcessing: true,
+      daily_ideas: true, ai_coach: true, keyword_research: true, script_writer: true,
+      title_generator: true, channel_audit_tool: true, ai_shorts_clipping: true,
+      ai_thumbnail_maker: true, optimize: true
+    },
+
     limitsDisplay: { videos: '30/days', analyses: 'Advanced', storage: '—', support: 'Priority Email' },
   },
   {
@@ -141,8 +182,12 @@ const PLANS = [
       advancedAiViralPrediction: true, realTimeTrendAnalysis: true, bestPostingTimePredictions: true, 
       emailSupport: true, competitorAnalysis: true, priorityProcessing: true, teamCollaboration: true,
       whiteLabelReports: true, customAiModelTraining: true, dedicatedAccountManager: true, prioritySupport24x7: true,
-      advancedAnalyticsDashboard: true, customIntegrations: true
+      advancedAnalyticsDashboard: true, customIntegrations: true,
+      daily_ideas: true, ai_coach: true, keyword_research: true, script_writer: true,
+      title_generator: true, channel_audit_tool: true, ai_shorts_clipping: true,
+      ai_thumbnail_maker: true, optimize: true
     },
+
     limitsDisplay: { videos: '500/days', analyses: 'Custom AI', storage: 'Unlimited', support: 'Dedicated' },
   },
 ];

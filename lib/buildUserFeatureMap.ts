@@ -24,14 +24,21 @@ export async function buildUserFeatureMap(authUser: AuthUserLike): Promise<Recor
     allowedPlans: Array.isArray(p.allowedPlans) ? p.allowedPlans : [],
   }));
 
+  const p = plan as {
+    planId: string;
+    featureFlags?: Record<string, boolean>;
+    navFeatureAccess?: Record<string, boolean>;
+  } | null;
+
   return computeUserFeatureAccess({
     role: authUser.role,
     subscription: authUser.subscription || 'free',
     featureAccessDocs: existingFeatures as { feature: string; enabled?: boolean; allowedRoles?: string[] }[],
-    plan: plan
+    plan: p
       ? {
-          planId: (plan as { planId: string }).planId,
-          featureFlags: (((plan as { featureFlags?: Record<string, boolean> }).featureFlags || {}) as Record<string, boolean>),
+          planId: p.planId,
+          featureFlags: (p.featureFlags || {}) as Record<string, boolean>,
+          navFeatureAccess: (p.navFeatureAccess || {}) as Record<string, boolean>,
         }
       : null,
     platforms: platformRows,

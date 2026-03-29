@@ -7,6 +7,7 @@ import FeatureAccess from '@/models/FeatureAccess';
 import Plan from '@/models/Plan';
 import PlatformControl from '@/models/PlatformControl';
 import { ALL_FEATURES } from '@/utils/features';
+import { navPlanAllowsFeature } from '@/lib/computeUserFeatureAccess';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,8 +26,14 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Roles and Plans lists
-    const roles = ['user', 'manager', 'admin', 'super-admin'];
+    const roles = ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'];
     const planIds = plans.map(p => p.planId);
+
+    const platformRows = platforms.map((p: { platform?: string; isEnabled?: boolean; allowedPlans?: string[] }) => ({
+      platform: String(p.platform || ''),
+      isEnabled: !!p.isEnabled,
+      allowedPlans: Array.isArray(p.allowedPlans) ? p.allowedPlans : [],
+    }));
 
     // Merge everything into a unified structure
     const unifiedFeatures = ALL_FEATURES.map(f => {
@@ -47,6 +54,15 @@ export async function GET(request: NextRequest) {
         planIds.forEach(pid => {
           // If no specific PlatformControl entry exists, assume all have access by default OR follow defaultPlatforms rules
           planAccess[pid] = pc ? pc.allowedPlans.includes(pid) : true;
+        });
+      } else if (['sidebar', 'dashboard', 'other', 'yt_seo_sections'].includes(f.group)) {
+        plans.forEach(p => {
+          const planLean = {
+            planId: p.planId,
+            featureFlags: (p.featureFlags || {}) as Record<string, boolean>,
+            navFeatureAccess: ((p as { navFeatureAccess?: Record<string, boolean> }).navFeatureAccess || {}) as Record<string, boolean>,
+          };
+          planAccess[p.planId] = navPlanAllowsFeature(f, planLean, p.planId, platformRows);
         });
       }
 
@@ -165,14 +181,19 @@ export async function PATCH(request: NextRequest) {
               { upsert: true }
             );
             results.push({ id, type, target, status: 'success' });
-          } else {
-            // If it's a plan-type update but the feature isn't plan-based group
-            // We could optionally allow setting it in Plan.featureFlags anyway
-            await Plan.updateMany(
+          } else if (['sidebar', 'dashboard', 'other', 'yt_seo_sections'].includes(featureDef.group)) {
+            const updatedPlan = await Plan.findOneAndUpdate(
               { planId: target },
-              { $set: { [`featureFlags.${id}`]: value } }
+              { $set: { [`navFeatureAccess.${id}`]: value } },
+              { new: true }
             );
-            results.push({ id, type, target, status: 'success', warning: 'Feature not in plan-based group but updated in Plan config' });
+            if (!updatedPlan) {
+              results.push({ id, type, target, status: 'error', message: `Plan ${target} not found` });
+            } else {
+              results.push({ id, type, target, status: 'success' });
+            }
+          } else {
+            results.push({ id, type, target, status: 'error', message: 'Plan toggle not supported for this feature group' });
           }
         }
       } catch (err: any) {

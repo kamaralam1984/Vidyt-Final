@@ -25,6 +25,9 @@ export interface IPlan extends Document {
     competitorsTracked: number;  // -1 = unlimited
   };
 
+  // Per-plan sidebar/dashboard nav (Unified Feature Matrix plan columns). Mixed so any feature id can be stored.
+  navFeatureAccess?: Record<string, boolean>;
+
   // ── Feature flags (super-admin configurable) ──────────────────────────
   featureFlags: {
     advancedAiViralPrediction: boolean;
@@ -103,6 +106,8 @@ const PlanSchema = new Schema<IPlan>(
       hashtagCount:      { type: Number, default: 10 },
       competitorsTracked:{ type: Number, default: 3 },
     },
+
+    navFeatureAccess: { type: Schema.Types.Mixed, default: {} },
 
     // Feature flags
     featureFlags: {
