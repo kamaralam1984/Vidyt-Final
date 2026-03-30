@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { ingestAllPlatforms } from '@/services/dataPipeline/ingestion';
 import { enqueueAiJob } from '@/lib/queue';
+import { processDueScheduledPosts, retryFailedPosts } from '@/services/scheduler/uploadScheduledPosts';
 
 /**
  * Job Scheduler for background tasks
@@ -54,6 +55,35 @@ class JobScheduler {
         console.log(`✅ AI retraining enqueued: ${String(job.id)}`);
       } catch (error) {
         console.error('❌ AI model retraining enqueue failed:', error);
+      }
+    });
+
+    // Process scheduled posts (every minute)
+    this.scheduleJob('scheduled-post-upload', '* * * * *', async () => {
+      console.log('📤 Checking for scheduled posts due for upload...');
+      try {
+        const result = await processDueScheduledPosts();
+        if (result.processed > 0) {
+          console.log(`✅ Processed ${result.processed} posts: ${result.successful} successful, ${result.failed} failed`);
+          if (result.errors.length > 0) {
+            console.error('⚠️ Upload errors:', result.errors);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Scheduled post upload job failed:', error);
+      }
+    });
+
+    // Retry failed posts (every 15 minutes)
+    this.scheduleJob('retry-failed-posts', '*/15 * * * *', async () => {
+      console.log('🔄 Retrying failed scheduled posts...');
+      try {
+        const result = await retryFailedPosts(3);
+        if (result.retried > 0) {
+          console.log(`✅ Retried ${result.retried} posts: ${result.successful} successful, ${result.failed} failed`);
+        }
+      } catch (error) {
+        console.error('❌ Retry failed posts job failed:', error);
       }
     });
 

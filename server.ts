@@ -1,9 +1,9 @@
 /**
- * Custom Next.js server with Socket.io integration.
+ * Custom Next.js server with Socket.io integration and Express for larger uploads.
  * Run with: npx ts-node --project tsconfig.server.json server.ts
  */
+import express, { Request, Response } from 'express';
 import { createServer } from 'http';
-import { parse } from 'url';
 import next from 'next';
 import { Server as SocketIOServer } from 'socket.io';
 import { initSocketServer } from './lib/socket-server';
@@ -16,9 +16,19 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
-  const httpServer = createServer((req, res) => {
-    const parsedUrl = parse(req.url!, true);
-    handle(req, res, parsedUrl);
+  // Create Express app for middleware support
+  const expressApp = express();
+  
+  // Configure body parser for large file uploads (500MB limit)
+  expressApp.use(express.json({ limit: '500mb' }));
+  expressApp.use(express.urlencoded({ limit: '500mb', extended: true }));
+  
+  // Create HTTP server from Express app
+  const httpServer = createServer(expressApp);
+
+  // Handler for all requests
+  expressApp.all('*', (req: Request, res: Response) => {
+    handle(req, res, req.url);
   });
 
   // Attach Socket.io to the HTTP server
@@ -29,6 +39,7 @@ app.prepare().then(() => {
       origin: process.env.NEXTAUTH_URL || '*',
       methods: ['GET', 'POST'],
     },
+    maxHttpBufferSize: 500 * 1024 * 1024, // 500MB for socket uploads
   });
 
   // Initialize the socket server with event handlers
@@ -37,6 +48,7 @@ app.prepare().then(() => {
   httpServer.listen(port, () => {
     console.log(`> ViralBoost AI ready on http://${hostname}:${port}`);
     console.log(`> Socket.io server attached on /api/socket`);
+    console.log(`> Request body size limit: 500MB`);
     console.log(`> Mode: ${dev ? 'development' : 'production'}`);
   });
 });

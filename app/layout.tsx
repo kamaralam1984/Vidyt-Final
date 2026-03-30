@@ -30,6 +30,9 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
     apple: '/logo.png',
   },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
   openGraph: {
     title: "ViralBoost AI - AI-Powered Video Analysis Platform",
     description: "Analyze and optimize your social media videos to predict viral potential",
