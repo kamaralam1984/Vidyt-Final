@@ -27,6 +27,8 @@
     "mobile:run:android": "cd mobile && npm run run:android"
   },
   "dependencies": {
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@sentry/nextjs": "^10.45.0",
     "@tensorflow/tfjs": "^4.22.0",

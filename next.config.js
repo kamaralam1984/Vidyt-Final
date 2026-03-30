@@ -10,12 +10,12 @@ const nextConfig = {
     },
     serverComponentsExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg', 'natural'],
   },
-  api: {
-    bodyParser: {
-      sizeLimit: '5gb',
-    },
-  },
   webpack: (config, { isServer }) => {
+    // Exclude mobile directory from webpack build
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/mobile/**', '**/node_modules/**'],
+    };
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
