@@ -83,7 +83,28 @@ Primary goal:
 - AI-assisted support response paths
 - Chat session + message history
 
-### J) API and Integrations
+### J) Shorts Creator Tool
+- Auto shorts generation from long-form videos
+- Manual shorts cutting with time range selection
+- Aspect ratio selection (16:9 landscape or 9:16 portrait)
+- YouTube URL and file upload support
+- Auto-generated captions and hashtags for clips
+- Direct download of cut clips
+- Viral moment detection for auto-shorts
+
+### L) Channel Intelligence Hub
+- Comprehensive YouTube channel analysis tool
+- Channel rank system (global, niche, growth-based)
+- Estimated revenue calculator with CPM ranges
+- Competitor comparison (up to 3 channels side-by-side)
+- AI-powered insights and recommendations
+- 30-day growth prediction and forecasting
+- Upload frequency and engagement analysis
+- Niche-based performance benchmarking
+- Export capability for analysis reports
+- Real-time channel metrics dashboard
+
+### M) API and Integrations
 - API key management
 - Public usage endpoint
 - Webhook support for analysis events
@@ -136,14 +157,14 @@ Major route groups:
 - `/api/analytics/*`
 - `/api/subscriptions/*`
 - `/api/user/*`
-- `/api/youtube/*`
+- `/api/youtube/*` (including `/api/youtube/channel-intelligence` for channel analysis, ranking, and predictions)
 - `/api/videos/*`
 - `/api/trending/*` and `/api/trends/*`
 - `/api/posting-time/*`
 - `/api/export/*`
 - `/api/schedule/*`
 - `/api/support/*`
-- `/api/ai/*`
+- `/api/ai/*` (including `/api/ai/shorts-creator` for clip generation and cutting)
 
 ---
 
@@ -187,7 +208,41 @@ Website currently can:
 - track usage/subscription behavior
 - provide analytics + optimization insights
 - support admin/super-admin operational control
+- create short-form video clips with aspect ratio selection
+- analyze YouTube channels with ranking and revenue estimates
+- predict channel growth and provide AI-powered recommendations
 
 ---
 
-Last updated: 2026-03-29
+Last updated: 2026-03-30
+
+## New Features
+
+### Shorts Creator - Aspect Ratio Selection (March 30, 2026)
+- Users can now choose between 16:9 (landscape/desktop) and 9:16 (portrait/mobile) formats
+- Real-time preview with selected aspect ratio
+- Automatic padding with black bars to maintain video integrity
+- Aspect ratio selection applies to both auto and manual shorts creation
+- Downloads are generated in selected format directly
+
+### Channel Intelligence Hub (March 30, 2026)
+A comprehensive SaaS-style dashboard for YouTube channel analysis:
+
+**Core Features:**
+- 📊 Channel Overview - Basic stats (subscribers, views, engagement rate, growth %)
+- 🏆 Channel Ranking System - Global rank, niche-based rank, growth momentum
+- 💰 Revenue Calculator - Daily/monthly/yearly revenue estimates with CPM ranges by niche
+- ⚔️ Competitor Comparison - Side-by-side comparison with up to 3 competitor channels
+- 🧠 AI Insights - Actionable recommendations on strengths, improvements, and content strategy
+- 📈 Growth Prediction - 30-day forecasts for subscribers, views, and revenue
+- 📱 Modern UI/UX - Dark mode, glassmorphism, smooth animations, mobile responsive
+
+**Ranking Formula:**
+Score = (Subs × 0.3) + (Avg Views × 0.3) + (Engagement × 0.2) + (Upload Consistency × 0.2)
+
+**User Benefits:**
+- Understand channel position in minutes
+- Compare against competition
+- Identify growth opportunities
+- Plan content strategy based on AI insights
+- Estimate revenue potential

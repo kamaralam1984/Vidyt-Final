@@ -273,6 +273,8 @@ export async function POST(request: NextRequest) {
           channelUrl,
           channelTitle: real.channelTitle,
           subscriberCount: real.subscriberCount,
+          totalWatchTime: real.totalWatchTime,
+          totalLikes: real.totalLikes,
           videos,
           subscriberGrowthData,
           viewsGrowthData,

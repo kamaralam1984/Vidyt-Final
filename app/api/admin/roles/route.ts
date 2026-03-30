@@ -93,10 +93,9 @@ export async function GET(request: NextRequest) {
     ];
 
     // Try to fetch custom roles from database
-    let customRoles: Record<string, unknown>[] = [];
+    let customRoles: any[] = [];
     try {
-      const rows = await RoleModel.find({ isCustom: true }).lean();
-      customRoles = rows as Record<string, unknown>[];
+      customRoles = await RoleModel.find({ isCustom: true }).lean();
     } catch (dbError: any) {
       console.error('Failed to fetch custom roles from DB:', dbError);
       // Continue with just built-in roles if DB fails
@@ -189,8 +188,8 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * PUT /api/admin/roles/[roleId]
- * Update role permissions and limits
+ * PUT /api/admin/roles
+ * Update role permissions and limits (roleId expected in request body)
  */
 export async function PUT(request: NextRequest) {
   const user = (request as any).user as AuthUser;
@@ -200,26 +199,105 @@ export async function PUT(request: NextRequest) {
   if (check.denied) return check.response;
 
   try {
+    await connectDB();
+    
     const body = await request.json();
-    const { roleId, permissions, limits } = body;
+    const { roleId, permissions, description, color, level } = body;
 
     if (!roleId) {
       return apiError('Missing roleId', 'MISSING_ROLE_ID', 400);
     }
 
-    // TODO: Update role in database
+    // Cannot edit built-in roles
+    if (typeof roleId === 'string' && roleId.startsWith('builtin_')) {
+      return apiError('Cannot edit built-in roles', 'BUILTIN_ROLE_ERROR', 403);
+    }
 
-    return apiSuccess(
-      {
+    // Update role in database
+    try {
+      const updateData: any = {};
+      if (permissions) updateData.permissions = permissions;
+      if (description) updateData.description = description;
+      if (color) updateData.color = color;
+      if (level) updateData.level = level;
+
+      const updatedRole = await RoleModel.findByIdAndUpdate(
         roleId,
-        permissions,
-        limits,
-        updatedAt: new Date(),
-      },
-      'Role updated successfully'
-    );
+        updateData,
+        { new: true }
+      );
+
+      if (!updatedRole) {
+        return apiError('Role not found', 'ROLE_NOT_FOUND', 404);
+      }
+
+      return apiSuccess(
+        {
+          _id: updatedRole._id,
+          name: updatedRole.name,
+          level: updatedRole.level,
+          description: updatedRole.description,
+          color: updatedRole.color,
+          permissions: updatedRole.permissions,
+          isCustom: updatedRole.isCustom,
+          updatedAt: new Date(),
+        },
+        'Role updated successfully'
+      );
+    } catch (dbError: any) {
+      console.error('Database error:', dbError);
+      return apiError('Failed to update role in database', 'DB_UPDATE_ERROR', 500);
+    }
   } catch (error: any) {
     console.error('Error updating role:', error);
     return apiError('Failed to update role', 'UPDATE_ROLE_ERROR', 500);
+  }
+}
+
+/**
+ * DELETE /api/admin/roles
+ * Delete a custom role (roleId expected in request body)
+ */
+export async function DELETE(request: NextRequest) {
+  const user = (request as any).user as AuthUser;
+
+  // Only super-admin can access
+  const check = requireRole(user, 'super-admin', 'deleteRole');
+  if (check.denied) return check.response;
+
+  try {
+    await connectDB();
+    
+    const body = await request.json();
+    const { roleId } = body;
+
+    if (!roleId) {
+      return apiError('Missing roleId', 'MISSING_ROLE_ID', 400);
+    }
+
+    // Cannot delete built-in roles
+    if (typeof roleId === 'string' && roleId.startsWith('builtin_')) {
+      return apiError('Cannot delete built-in roles', 'BUILTIN_ROLE_ERROR', 403);
+    }
+
+    // Delete role from database
+    try {
+      const deletedRole = await RoleModel.findByIdAndDelete(roleId);
+
+      if (!deletedRole) {
+        return apiError('Role not found', 'ROLE_NOT_FOUND', 404);
+      }
+
+      return apiSuccess(
+        { deletedRoleId: roleId },
+        'Role deleted successfully'
+      );
+    } catch (dbError: any) {
+      console.error('Database error:', dbError);
+      return apiError('Failed to delete role from database', 'DB_DELETE_ERROR', 500);
+    }
+  } catch (error: any) {
+    console.error('Error deleting role:', error);
+    return apiError('Failed to delete role', 'DELETE_ROLE_ERROR', 500);
   }
 }

@@ -17,10 +17,6 @@ import {
   Save,
   Loader2,
   Power,
-  Plus,
-  Trash2,
-  Edit2,
-  X,
 } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
@@ -42,14 +38,10 @@ interface PlatformControl {
   features: Record<string, boolean>;
 }
 
-interface RoleDefinition {
-  _id?: string;
-  name: string;
-  level: number;
-  description: string;
-  permissions: string[];
+interface RoleInfo {
   color: string;
-  isCustom?: boolean;
+  badgeColor: string;
+  level: number;
 }
 
 /**
@@ -82,7 +74,7 @@ export default function UnifiedControlPanel() {
     setError(null);
     try {
       const [plansRes, controlsRes] = await Promise.all([
-        fetch('/api/admin/plans', { headers: getAuthHeaders() }),
+        fetch('/api/admin/plans'),
         axios.get('/api/admin/super/controls', { headers: getAuthHeaders() }).catch(err => {
           console.error('Controls API error:', err);
           return { data: { controls: [] } };
@@ -147,7 +139,7 @@ export default function UnifiedControlPanel() {
       const plan = plans.find((p) => p.planId === planId);
       const res = await fetch(`/api/admin/plans/${planId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: plan?._id,
           role: newRole,
@@ -234,24 +226,22 @@ export default function UnifiedControlPanel() {
     }
   };
 
-  const roleInfo: Record<
-    string,
-    { color: string; badgeColor: string; level: number }
-  > = {
+  const roleInfo: Record<string, RoleInfo> = {
     user: { color: '#AAAAAA', badgeColor: 'bg-gray-500', level: 1 },
     manager: { color: '#FF0000', badgeColor: 'bg-red-500', level: 2 },
     admin: { color: '#FFD700', badgeColor: 'bg-amber-500', level: 3 },
   };
 
-  const planIcons: Record<string, any> = {
+  const planIcons: Record<string, React.ComponentType<any>> = {
     free: Sparkles,
     starter: Rocket,
     pro: Zap,
     enterprise: Crown,
     custom: Globe,
+    owner: Crown,
   };
 
-  const platformIcons = {
+  const platformIcons: Record<string, React.ComponentType<any>> = {
     youtube: Youtube,
     facebook: Facebook,
     instagram: Instagram,
@@ -312,8 +302,7 @@ export default function UnifiedControlPanel() {
             ) : (
               plans.map((plan) => {
                 const Icon = planIcons[plan.planId] || Globe;
-                const info =
-                  roleInfo[String(plan.role ?? 'user')] ?? roleInfo.user;
+                const info = roleInfo[plan.role] || roleInfo.user;
 
                 return (
                   <div key={plan.planId} className="bg-gray-800 border-2 border-gray-700 rounded-xl p-6 hover:border-gray-600 transition-all">
