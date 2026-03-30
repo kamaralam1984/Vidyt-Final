@@ -1,0 +1,68 @@
+# Git ignore for Docker setup directory
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.prod*
+
+# SSL certificates (keep self-signed, but not production certs)
+nginx/ssl/*.pem
+!nginx/ssl/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Docker
+.docker/
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+
+# Data backups (store elsewhere)
+backup/
+dumps/
+*.dump
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System
+.env.backup
+.env.old
+.vscode/settings.json
+
+# Database files (shouldn't be in git)
+*.db
+*.sqlite
+
+# Certificates & keys
+*.key
+*.crt
+*.pem
+!nginx/ssl/.gitkeep
