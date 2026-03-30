@@ -185,6 +185,40 @@ function ScriptGeneratorContent() {
 
           {!isIdeasMode && result && (
             <div className="space-y-6">
+              <div className="bg-gradient-to-r from-[#FF0000]/10 to-[#FF6600]/10 border border-[#FF0000]/20 rounded-xl p-6">
+                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#FF0000]" />
+                  Script Generation Details
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-[#AAAAAA] uppercase tracking-wider">Video Duration</p>
+                    <p className="text-lg font-bold text-white">{duration}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-[#AAAAAA] uppercase tracking-wider">Approx. Word Count</p>
+                    <p className="text-lg font-bold text-white">{duration === '30 sec' ? '66' : duration === '1 min' ? '130' : duration === '3 min' ? '390' : duration === '5 min' ? '650' : '1300'} words</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-[#AAAAAA] uppercase tracking-wider">Platform</p>
+                    <p className="text-lg font-bold text-white">{platform}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-[#AAAAAA] uppercase tracking-wider">Language</p>
+                    <p className="text-lg font-bold text-white">{language}</p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-[#333333]">
+                  <p className="text-xs text-[#888] mb-2">Script Optimization:</p>
+                  <ul className="text-xs text-[#AAAAAA] space-y-1">
+                    <li>✓ Duration-matched word count for natural pacing</li>
+                    <li>✓ SEO-optimized with primary keyword repeated 4-5 times</li>
+                    <li>✓ Platform-specific best practices applied</li>
+                    <li>✓ Viral hooks and CTA included for maximum engagement</li>
+                  </ul>
+                </div>
+              </div>
+
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-3">3 Viral Hooks</h2>
                 <ul className="space-y-2">
@@ -199,7 +233,33 @@ function ScriptGeneratorContent() {
                 </ul>
               </div>
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-3">Full Script</h2>
+                <h2 className="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                  <span>Full Script</span>
+                  <span className="text-xs font-normal text-[#888]">Based on {duration} duration</span>
+                </h2>
+                <div className="mb-3 p-3 bg-[#212121]/50 rounded-lg border border-[#333333]">
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="text-[#AAAAAA]">Recommended Structure:</p>
+                      <ul className="text-[#888] text-[11px] mt-1 space-y-0.5">
+                        <li>• Hook: 0-3 seconds</li>
+                        <li>• Intro: 3-10 seconds</li>
+                        <li>• Main Content: 50% of duration</li>
+                        <li>• Story/Example: 20% of duration</li>
+                        <li>• CTA: Last 5 seconds</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-[#AAAAAA]">Speech Pacing:</p>
+                      <ul className="text-[#888] text-[11px] mt-1 space-y-0.5">
+                        <li>• ~130 words/min (natural pace)</li>
+                        <li>• Primary keyword: 4-5 times</li>
+                        <li>• Avoid rushing or dragging</li>
+                        <li>• Add pauses for emphasis</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
                 <div className="flex justify-end mb-2">
                   <button onClick={() => copy(result.script, 'script')} className="flex items-center gap-1 text-sm text-[#AAAAAA] hover:text-white">
                     {copied === 'script' ? 'Copied' : <><Copy className="w-4 h-4" /> Copy</>}
@@ -208,7 +268,8 @@ function ScriptGeneratorContent() {
                 <pre className="whitespace-pre-wrap text-sm text-[#CCCCCC] bg-[#0F0F0F] p-4 rounded-lg overflow-x-auto">{result.script}</pre>
               </div>
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-3">5 Optimized Titles</h2>
+                <h2 className="text-lg font-semibold text-white mb-3">5 SEO-Optimized Titles</h2>
+                <p className="text-xs text-[#888] mb-3">✓ Titles generated for CTR (Click-Through Rate) with keyword optimization</p>
                 <ul className="space-y-2">
                   {result.titles.map((t, i) => (
                     <li key={i} className="flex items-center justify-between gap-2 p-3 bg-[#212121] rounded-lg">

@@ -103,18 +103,31 @@ export function buildClipSegments(sceneTimes: number[], durationSeconds: number)
 }
 
 /**
- * Cut one segment from input to output file.
+ * Cut one segment from input to output file with optional aspect ratio conversion.
+ * aspectRatio: '16:9' for landscape or '9:16' for portrait
  */
 export async function cutSegment(
   inputPath: string,
   startTime: number,
   endTime: number,
-  outputPath: string
+  outputPath: string,
+  aspectRatio: '16:9' | '9:16' = '9:16'
 ): Promise<void> {
   const ff = getFfmpegPath();
   const duration = endTime - startTime;
+  
+  // Build ffmpeg filter for aspect ratio conversion with padding
+  let filterChain = '';
+  if (aspectRatio === '16:9') {
+    // Landscape 16:9
+    filterChain = `-vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black@0"`;
+  } else {
+    // Portrait 9:16 (TikTok/YouTube Shorts standard)
+    filterChain = `-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black@0"`;
+  }
+  
   await execAsync(
-    `"${ff}" -y -i "${inputPath}" -ss ${startTime} -t ${duration} -c copy "${outputPath}"`,
+    `"${ff}" -y -i "${inputPath}" -ss ${startTime} -t ${duration} ${filterChain} -c:a aac "${outputPath}"`,
     { maxBuffer: 10 * 1024 * 1024 }
   );
 }

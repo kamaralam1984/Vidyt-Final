@@ -5,10 +5,15 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '50mb',
+      bodySizeLimit: '5gb',
       allowedDevOrigins: ["192.168.0.197:3000", "localhost:3000"],
     },
     serverComponentsExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg', 'natural'],
+  },
+  api: {
+    bodyParser: {
+      sizeLimit: '5gb',
+    },
   },
   webpack: (config, { isServer }) => {
     config.resolve.fallback = {

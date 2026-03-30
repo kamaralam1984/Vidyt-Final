@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
-import { Calendar as CalendarIcon, Plus, X, Clock, Loader2, AlertCircle } from 'lucide-react';
-import { getAuthHeaders } from '@/utils/auth';
+import { Calendar as CalendarIcon, Plus, X, Clock, Loader2, AlertCircle, Upload, Check, File, Trash2, Sparkles, TrendingUp } from 'lucide-react';
+import { getAuthHeaders, getToken } from '@/utils/auth';
 
 interface ScheduledPost {
   id: string;
@@ -40,7 +40,21 @@ export default function CalendarPage() {
     description: '',
     hashtags: '',
     videoUrl: '',
+    videoFile: null as File | null,
+    thumbnailFile: null as File | null,
   });
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [seoRankScore, setSeoRankScore] = useState<number | null>(null);
+  const [titleSeoLoading, setTitleSeoLoading] = useState(false);
+  const [rank1Mode, setRank1Mode] = useState(true);
+  const titleSeoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleSeoAbortRef = useRef<AbortController | null>(null);
+  const titleSeoGenRef = useRef(0);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -61,6 +75,80 @@ export default function CalendarPage() {
     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
     void loadCalendar(monthStart, monthEnd);
   }, [year, month]);
+
+  // Cleanup previews on unmount
+  useEffect(() => {
+    return () => {
+      if (videoPreview) URL.revokeObjectURL(videoPreview);
+      if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+    };
+  }, []);
+
+  // Auto-generate SEO when title changes
+  useEffect(() => {
+    if (!formData.videoFile || !formData.title.trim() || formData.title.trim().length < 2) {
+      return;
+    }
+
+    if (titleSeoDebounceRef.current) clearTimeout(titleSeoDebounceRef.current);
+    titleSeoAbortRef.current?.abort();
+
+    titleSeoDebounceRef.current = setTimeout(async () => {
+      const myGen = ++titleSeoGenRef.current;
+      const ac = new AbortController();
+      titleSeoAbortRef.current = ac;
+      setTitleSeoLoading(true);
+      setSeoRankScore(null);
+      
+      try {
+        const token = getToken();
+        const { data } = await axios.post(
+          '/api/youtube/title-seo',
+          { title: formData.title.trim(), rank1Mode },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            signal: ac.signal,
+          }
+        );
+
+        if (ac.signal.aborted || myGen !== titleSeoGenRef.current) return;
+
+        // Auto-fill description
+        if (data?.description) {
+          setFormData((prev) => ({
+            ...prev,
+            description: data.description,
+          }));
+        }
+
+        // Auto-fill hashtags
+        if (Array.isArray(data?.hashtags)) {
+          const hashtagsStr = data.hashtags
+            .map((h: string) => `#${String(h).replace(/^#/, '')}`)
+            .join(' ');
+          setFormData((prev) => ({
+            ...prev,
+            hashtags: hashtagsStr,
+          }));
+        }
+
+        // Show viral/SEO rank score
+        if (typeof data?.seoRankScore === 'number') {
+          setSeoRankScore(data.seoRankScore);
+        }
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err) && err.code === 'ERR_CANCELED') return;
+        console.error('Title SEO generation error:', err);
+      } finally {
+        if (myGen === titleSeoGenRef.current) setTitleSeoLoading(false);
+      }
+    }, 800);
+
+    return () => {
+      if (titleSeoDebounceRef.current) clearTimeout(titleSeoDebounceRef.current);
+      titleSeoAbortRef.current?.abort();
+    };
+  }, [formData.title, formData.videoFile, rank1Mode]);
 
   const loadCalendar = async (startDate?: Date, endDate?: Date) => {
     try {
@@ -103,19 +191,33 @@ export default function CalendarPage() {
       setSubmitting(true);
       setError(null);
 
-      await axios.post('/api/schedule/post', {
-        title: formData.title,
-        platform: formData.platform,
-        scheduledAt: formData.scheduledAt,
-        description: formData.description,
-        videoUrl: formData.videoUrl.trim() || undefined,
-        hashtags: formData.hashtags.split(',').map(t => t.trim()).filter(Boolean),
-      }, {
-        headers: getAuthHeaders(),
+      // Use FormData for file upload support
+      const uploadFormData = new FormData();
+      uploadFormData.append('title', formData.title);
+      uploadFormData.append('platform', formData.platform);
+      uploadFormData.append('scheduledAt', formData.scheduledAt);
+      if (formData.description) uploadFormData.append('description', formData.description);
+      if (formData.videoUrl) uploadFormData.append('videoUrl', formData.videoUrl);
+      if (formData.videoFile) uploadFormData.append('videoFile', formData.videoFile);
+      if (formData.thumbnailFile) uploadFormData.append('thumbnailFile', formData.thumbnailFile);
+      uploadFormData.append('hashtags', JSON.stringify(formData.hashtags.split(',').map(t => t.trim()).filter(Boolean)));
+
+      await axios.post('/api/schedule/post', uploadFormData, {
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'multipart/form-data',
+        },
+        onUploadProgress: (progressEvent: any) => {
+          const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+          setUploadProgress(progress);
+        },
       });
 
       setShowScheduleForm(false);
       setSelectedDay(null);
+      setUploadProgress(0);
+      setVideoPreview(null);
+      setThumbnailPreview(null);
       setFormData({
         title: '',
         platform: 'youtube',
@@ -123,6 +225,8 @@ export default function CalendarPage() {
         description: '',
         hashtags: '',
         videoUrl: '',
+        videoFile: null,
+        thumbnailFile: null,
       });
       const monthStart = new Date(year, month, 1);
       const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
@@ -132,6 +236,89 @@ export default function CalendarPage() {
       setError(error?.response?.data?.error || 'Failed to schedule post.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVideoFileSelect = (file: File | null) => {
+    if (!file) {
+      setFormData({ ...formData, videoFile: null });
+      if (videoPreview) URL.revokeObjectURL(videoPreview);
+      setVideoPreview(null);
+      setSeoRankScore(null);
+      return;
+    }
+
+    if (!file.type.startsWith('video/')) {
+      setError('Please select a valid video file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024 * 1024) { // 5GB limit
+      setError('Video file must be less than 5GB');
+      return;
+    }
+
+    // Extract filename and set as title
+    const filename = file.name.split('.').slice(0, -1).join('.');
+    setFormData((prev) => ({ 
+      ...prev, 
+      videoFile: file,
+      title: filename, // Auto-fill title from filename
+    }));
+    const preview = URL.createObjectURL(file);
+    setVideoPreview(preview);
+    setError(null);
+  };
+
+  const handleThumbnailFileSelect = (file: File | null) => {
+    if (!file) {
+      setFormData({ ...formData, thumbnailFile: null });
+      if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+      setThumbnailPreview(null);
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      setError('Thumbnail image must be less than 10MB');
+      return;
+    }
+
+    setFormData({ ...formData, thumbnailFile: file });
+    const preview = URL.createObjectURL(file);
+    setThumbnailPreview(preview);
+    setError(null);
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleVideoDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      handleVideoFileSelect(files[0]);
     }
   };
 
@@ -403,11 +590,11 @@ export default function CalendarPage() {
 
           {/* Schedule Form Modal */}
           {showScheduleForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 overflow-y-auto">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-[#181818] border border-[#212121] rounded-xl shadow-xl p-6 w-full max-w-md"
+                className="bg-[#181818] border border-[#212121] rounded-xl shadow-xl p-6 w-full max-w-2xl my-8"
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-white">Schedule Post</h2>
@@ -418,48 +605,128 @@ export default function CalendarPage() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <form onSubmit={handleSchedule} className="space-y-4">
+                <form onSubmit={handleSchedule} className="space-y-4 max-h-[80vh] overflow-y-auto pr-2">
                   <div>
-                    <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
-                      Title
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-[#AAAAAA]">
+                        Title
+                      </label>
+                      {titleSeoLoading && (
+                        <div className="flex items-center gap-1 text-xs text-[#FF0000]">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Generating SEO...
+                        </div>
+                      )}
+                    </div>
                     <input
                       type="text"
                       required
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
+                      placeholder="Video title (auto-filled from filename or SEO)"
+                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white placeholder-gray-600"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
-                      Platform
-                    </label>
-                    <select
-                      required
-                      value={formData.platform}
-                      onChange={(e) => setFormData({ ...formData, platform: e.target.value as any })}
-                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
+
+                  {/* Viral Score Display */}
+                  {seoRankScore !== null && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-3 rounded-lg border flex items-center gap-3 ${
+                        seoRankScore >= 90
+                          ? 'bg-green-500/10 border-green-500/30'
+                          : seoRankScore >= 70
+                          ? 'bg-yellow-500/10 border-yellow-500/30'
+                          : 'bg-red-500/10 border-red-500/30'
+                      }`}
                     >
-                      <option value="youtube">YouTube</option>
-                      <option value="facebook">Facebook</option>
-                      <option value="instagram">Instagram</option>
-                      <option value="tiktok">TikTok</option>
-                    </select>
+                      <TrendingUp
+                        className={`w-5 h-5 ${
+                          seoRankScore >= 90
+                            ? 'text-green-400'
+                            : seoRankScore >= 70
+                            ? 'text-yellow-400'
+                            : 'text-red-400'
+                        }`}
+                      />
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-[#AAAAAA]">Viral Score / SEO Rank</p>
+                        <p className={`text-lg font-bold ${
+                          seoRankScore >= 90
+                            ? 'text-green-400'
+                            : seoRankScore >= 70
+                            ? 'text-yellow-400'
+                            : 'text-red-400'
+                        }`}>
+                          {seoRankScore}/100
+                        </p>
+                      </div>
+                      <span className={`text-xs font-semibold px-2 py-1 rounded ${
+                        seoRankScore >= 90
+                          ? 'bg-green-500/20 text-green-300'
+                          : seoRankScore >= 70
+                          ? 'bg-yellow-500/20 text-yellow-300'
+                          : 'bg-red-500/20 text-red-300'
+                      }`}>
+                        {seoRankScore >= 90 ? '🔥 VIRAL' : seoRankScore >= 70 ? '⭐ GOOD' : '❌ LOW'}
+                      </span>
+                    </motion.div>
+                  )}
+
+                  {/* Rank Mode Toggle */}
+                  {formData.videoFile && (
+                    <div className="flex items-center gap-2 p-3 bg-[#212121] rounded-lg">
+                      <Sparkles className="w-4 h-4 text-[#FF0000]" />
+                      <button
+                        type="button"
+                        onClick={() => setRank1Mode(!rank1Mode)}
+                        className={`text-xs font-semibold px-3 py-1 rounded transition-all ${
+                          rank1Mode
+                            ? 'bg-[#FF0000] text-white'
+                            : 'bg-[#FF0000]/20 text-[#FF0000]'
+                        }`}
+                      >
+                        {rank1Mode ? '🎯 Rank 1 Mode' : '📊 Viral Mode'}
+                      </button>
+                      <p className="text-xs text-[#888] flex-1">
+                        {rank1Mode ? 'Optimized for #1 ranking' : 'Optimized for viral potential'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
+                        Platform
+                      </label>
+                      <select
+                        required
+                        value={formData.platform}
+                        onChange={(e) => setFormData({ ...formData, platform: e.target.value as any })}
+                        className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
+                      >
+                        <option value="youtube">YouTube</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="tiktok">TikTok</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
+                        Scheduled Date & Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        required
+                        min={new Date().toISOString().slice(0, 16)}
+                        value={formData.scheduledAt}
+                        onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                        className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
-                      Scheduled Date & Time
-                    </label>
-                    <input
-                      type="datetime-local"
-                      required
-                      min={new Date().toISOString().slice(0, 16)}
-                      value={formData.scheduledAt}
-                      onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
-                    />
-                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
                       Description (Optional)
@@ -468,40 +735,184 @@ export default function CalendarPage() {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={3}
-                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
+                      placeholder="Add description for your post... (auto-generated if SEO available)"
+                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white placeholder-gray-600"
                     />
+                    {formData.description && titleSeoLoading === false && seoRankScore !== null && (
+                      <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Auto-generated by AI SEO
+                      </p>
+                    )}
                   </div>
+
+                  {/* Video Upload Section */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-[#AAAAAA]">
+                      Video Upload (Optional)
+                    </label>
+                    <div
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDragOver={handleDragOver}
+                      onDrop={handleVideoDrop}
+                      onClick={() => videoInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
+                        dragActive
+                          ? 'border-[#FF0000] bg-[#FF0000]/5'
+                          : 'border-[#212121] hover:border-[#FF0000]/50'
+                      }`}
+                    >
+                      <input
+                        ref={videoInputRef}
+                        type="file"
+                        accept="video/*"
+                        onChange={(e) => handleVideoFileSelect(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      {videoPreview ? (
+                        <div className="space-y-2">
+                          <Check className="w-8 h-8 text-green-400 mx-auto" />
+                          <p className="text-sm text-green-400 font-medium">
+                            {formData.videoFile?.name}
+                          </p>
+                          <p className="text-xs text-[#888]">
+                            {(formData.videoFile!.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVideoFileSelect(null);
+                            }}
+                            className="text-xs text-[#FF0000] hover:text-[#CC0000] mt-1"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="w-8 h-8 text-[#FF0000] mx-auto" />
+                          <div className="text-sm text-[#AAAAAA]">
+                            Drag and drop your video here, or click to select
+                          </div>
+                          <p className="text-xs text-[#666]">MP4, WebM, MOV, etc. (Max 5GB)</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Alternative Video URL */}
                   <div>
                     <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
-                      Video URL (Optional)
+                      Or Video URL (Optional)
                     </label>
                     <input
                       type="url"
                       value={formData.videoUrl}
                       onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                      placeholder="https://youtube.com/watch?v=..."
+                      placeholder="https://youtube.com/watch?v=... or any video URL"
                       className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
                     />
                   </div>
+
+                  {/* Thumbnail Upload */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-[#AAAAAA]">
+                      Thumbnail (Optional)
+                    </label>
+                    <div className="flex gap-4 items-start">
+                      <div
+                        onClick={() => thumbnailInputRef.current?.click()}
+                        className="flex-1 border-2 border-dashed border-[#212121] rounded-lg p-4 text-center cursor-pointer hover:border-[#FF0000]/50 transition-all"
+                      >
+                        <input
+                          ref={thumbnailInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleThumbnailFileSelect(e.target.files?.[0] || null)}
+                          className="hidden"
+                        />
+                        {thumbnailPreview ? (
+                          <div className="space-y-2">
+                            <Check className="w-6 h-6 text-green-400 mx-auto" />
+                            <p className="text-xs text-green-400">Thumbnail selected</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <File className="w-6 h-6 text-[#888] mx-auto" />
+                            <p className="text-xs text-[#888]">Click to upload</p>
+                          </div>
+                        )}
+                      </div>
+                      {thumbnailPreview && (
+                        <div className="relative">
+                          <img
+                            src={thumbnailPreview}
+                            alt="Thumbnail preview"
+                            className="w-24 h-24 object-cover rounded-lg border border-[#212121]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleThumbnailFileSelect(null)}
+                            className="absolute top-1 right-1 bg-[#FF0000] text-white p-1 rounded"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Hashtags */}
                   <div>
                     <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
-                      Hashtags (comma-separated)
+                      Hashtags (comma-separated or auto-generated)
                     </label>
                     <input
                       type="text"
                       value={formData.hashtags}
                       onChange={(e) => setFormData({ ...formData, hashtags: e.target.value })}
-                      placeholder="viral, trending, fyp"
-                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white"
+                      placeholder="#viral #trending #fyp (auto-generated from SEO)"
+                      className="w-full p-3 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white placeholder-gray-600"
                     />
+                    {formData.hashtags && titleSeoLoading === false && seoRankScore !== null && (
+                      <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                        <Check className="w-3 h-3" /> SEO-optimized hashtags
+                      </p>
+                    )}
                   </div>
-                  <div className="flex gap-2">
+
+                  {/* Upload Progress */}
+                  {uploadProgress > 0 && uploadProgress < 100 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-[#888]">Uploading...</p>
+                        <p className="text-xs font-semibold text-[#FF0000]">{uploadProgress}%</p>
+                      </div>
+                      <div className="w-full bg-[#212121] rounded-full h-2">
+                        <div
+                          className="bg-[#FF0000] h-2 rounded-full transition-all"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submit Buttons */}
+                  <div className="flex gap-2 pt-4 border-t border-[#212121]">
                     <button
                       type="submit"
-                      disabled={submitting}
-                      className="flex-1 px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold"
+                      disabled={submitting || uploadProgress > 0}
+                      className="flex-1 px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold flex items-center justify-center gap-2"
                     >
-                      {submitting ? 'Scheduling...' : 'Schedule'}
+                      {submitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Scheduling...
+                        </>
+                      ) : (
+                        'Schedule Post'
+                      )}
                     </button>
                     <button
                       type="button"

@@ -7,11 +7,16 @@ import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import ScheduledPost from '@/models/ScheduledPost';
 import { getBulkSchedulingLimit, getSchedulePostsLimit } from '@/lib/usageDisplayLimits';
+import fs from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
 
 /**
- * Schedule a post
+ * Schedule a post with optional file uploads
  */
 export async function POST(request: NextRequest) {
+  let uploadedFilePaths: string[] = [];
+  
   try {
     const authUser = await getUserFromRequest(request);
     
@@ -38,8 +43,18 @@ export async function POST(request: NextRequest) {
       status: 'scheduled',
     });
 
-    const body = await request.json();
-    const { posts, bulk } = body;
+    // Parse FormData or JSON
+    let formData;
+    let body;
+    
+    const contentType = request.headers.get('content-type');
+    if (contentType?.includes('multipart/form-data')) {
+      formData = await request.formData();
+    } else {
+      body = await request.json();
+    }
+
+    const { posts, bulk } = formData ? {} : body;
 
     if (bulk && Array.isArray(posts)) {
       if (bulkLimit === 0) {
@@ -70,7 +85,43 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Single post scheduling
-      const { title, description, videoUrl, thumbnailUrl, platform, scheduledAt, hashtags } = body;
+      let title, description, videoUrl, thumbnailUrl, platform, scheduledAt, hashtags;
+
+      if (formData) {
+        // Handle FormData with file uploads
+        title = formData.get('title') as string;
+        description = formData.get('description') as string || undefined;
+        platform = formData.get('platform') as string;
+        scheduledAt = formData.get('scheduledAt') as string;
+        videoUrl = (formData.get('videoUrl') as string) || undefined;
+        const hashtagsStr = formData.get('hashtags');
+        hashtags = hashtagsStr ? JSON.parse(hashtagsStr as string) : [];
+
+        // Handle video file upload
+        const videoFile = formData.get('videoFile') as File | null;
+        if (videoFile) {
+          const uploadedPath = await saveUploadedFile(videoFile, 'videos', authUser.id);
+          uploadedFilePaths.push(uploadedPath);
+          videoUrl = uploadedPath;
+        }
+
+        // Handle thumbnail file upload
+        const thumbnailFile = formData.get('thumbnailFile') as File | null;
+        if (thumbnailFile) {
+          const uploadedPath = await saveUploadedFile(thumbnailFile, 'thumbnails', authUser.id);
+          uploadedFilePaths.push(uploadedPath);
+          thumbnailUrl = uploadedPath;
+        }
+      } else {
+        // Handle JSON body
+        title = body.title;
+        description = body.description;
+        videoUrl = body.videoUrl;
+        thumbnailUrl = body.thumbnailUrl;
+        platform = body.platform;
+        scheduledAt = body.scheduledAt;
+        hashtags = body.hashtags;
+      }
 
       if (!title || !platform || !scheduledAt) {
         return NextResponse.json(
@@ -99,7 +150,7 @@ export async function POST(request: NextRequest) {
         thumbnailUrl,
         platform,
         scheduledAt: new Date(scheduledAt),
-        hashtags,
+        hashtags: hashtags || [],
       });
 
       return NextResponse.json({
@@ -111,10 +162,21 @@ export async function POST(request: NextRequest) {
           platform: post.platform,
           scheduledAt: post.scheduledAt,
           status: post.status,
+          videoUrl: post.videoUrl,
+          thumbnailUrl: post.thumbnailUrl,
         },
       });
     }
   } catch (error: any) {
+    // Clean up uploaded files on error
+    for (const filePath of uploadedFilePaths) {
+      try {
+        await fs.unlink(filePath);
+      } catch (e) {
+        console.error('Error cleaning up file:', e);
+      }
+    }
+
     console.error('Schedule post error:', error);
     return NextResponse.json(
       { 
@@ -123,6 +185,32 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Save uploaded file to local storage
+ */
+async function saveUploadedFile(
+  file: File,
+  type: 'videos' | 'thumbnails',
+  userId: string
+): Promise<string> {
+  try {
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', type, userId);
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const filename = `${crypto.randomBytes(8).toString('hex')}-${Date.now()}-${file.name}`;
+    const filepath = path.join(uploadDir, filename);
+
+    const bytes = await file.arrayBuffer();
+    await fs.writeFile(filepath, Buffer.from(bytes));
+
+    // Return a relative path that can be used as a URL
+    return `/uploads/${type}/${userId}/${filename}`;
+  } catch (error) {
+    console.error('File upload error:', error);
+    throw new Error('Failed to upload file');
   }
 }
 

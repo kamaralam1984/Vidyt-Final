@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const youtubeUrl = (formData.get('youtubeUrl') as string)?.trim() || '';
     const startTime = parseFloat(String(formData.get('startTime') ?? ''));
     const endTime = parseFloat(String(formData.get('endTime') ?? ''));
+    const aspectRatio = ((formData.get('aspectRatio') as string) || '9:16') as '16:9' | '9:16';
 
     if (isNaN(startTime) || isNaN(endTime) || endTime <= startTime) {
       return NextResponse.json({ error: 'Valid startTime and endTime required' }, { status: 400 });
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     tmpOutput = path.join(os.tmpdir(), `cut-out-${Date.now()}.mp4`);
-    await cutSegment(tmpInput, startTime, endTime, tmpOutput);
+    await cutSegment(tmpInput, startTime, endTime, tmpOutput, aspectRatio);
 
     const clipBuffer = await fs.readFile(tmpOutput);
     await fs.unlink(tmpInput).catch(() => {});

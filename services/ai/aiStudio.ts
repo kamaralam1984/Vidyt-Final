@@ -33,8 +33,80 @@ function parseJsonFromText(text: string): Record<string, unknown> {
   }
 }
 
+/**
+ * Calculate word count based on video duration
+ * Average speaking rate: 130-150 words per minute
+ */
+function getWordCountForDuration(duration: string): number {
+  const match = duration.match(/(\d+)\s*(sec|min)/i);
+  if (!match) return 300; // default
+
+  const value = parseInt(match[1]);
+  const unit = match[2].toLowerCase();
+
+  if (unit === 'sec') {
+    // ~2.2 words per second (130 WPM)
+    return Math.max(50, Math.round(value * 2.2));
+  }
+  // ~130 words per minute
+  return value * 130;
+}
+
+/**
+ * Convert duration to seconds for easier calculation
+ */
+function getDurationInSeconds(duration: string): number {
+  const match = duration.match(/(\d+)\s*(sec|min)/i);
+  if (!match) return 300; // default 5 min
+
+  const value = parseInt(match[1]);
+  const unit = match[2].toLowerCase();
+
+  return unit === 'sec' ? value : value * 60;
+}
+
 function mockScript(topic: string, platform: string, duration: string, language: string) {
   const lang = (language || 'English').toLowerCase();
+  const wordCount = getWordCountForDuration(duration);
+  const durationSeconds = getDurationInSeconds(duration);
+  
+  // Base script structure with SEO optimization
+  const baseHooks = [
+    `Did you know ${topic} can change everything?`,
+    `Stop scrolling! This ${topic} tip will save you hours.`,
+    `I wish I knew this ${topic} secret earlier.`,
+  ];
+  
+  const baseScript = `[HOOK - 0-3 seconds]\nStart with curiosity: "Did you know that ${topic}?" or share an unexpected fact about ${topic}.\n\n[INTRO - 3-10 seconds]\nGreet viewers. Say: "In this ${duration} video, you'll learn everything about ${topic}. By the end, you'll understand how to apply ${topic} effectively."\n\n[MAIN VALUE - 50% of video]\nBreakdown 3-5 key points about ${topic}:\n1. First insight on ${topic} (explain with examples)\n2. Second strategy related to ${topic} (use real-world application)\n3. Third tip for ${topic} (show how it works)\n4. Common mistake with ${topic} (what people get wrong)\n5. How to implement ${topic} (actionable steps)\n\n[STORY/PROOF - 20% of video]\nShare: "Here's how I discovered ${topic} works best..." Tell a short personal story or case study proving ${topic}.\n\n[PROOF POINTS - 15% of video]\nShow results or testimonials related to ${topic}. Build credibility around ${topic}.\n\n[CALL TO ACTION - Last 5 seconds]\nEnd with: "If this ${topic} tip helped you, smash like, follow for more, and comment your biggest question about ${topic}!"\n\n[STRUCTURE NOTE]\nTotal word count: approximately ${wordCount} words (${durationSeconds} seconds at 130 WPM)\nPace: Speak naturally, ~130 words per minute for ${duration}.\nKeyword density: ${topic} appears 4-5 times throughout (SEO optimized)\nCTA placement: Last 5 seconds for maximum engagement`;
+
+  const baseTitles = [
+    `Complete Guide to ${topic} (${platform})`,
+    `How to Master ${topic} in ${duration}`,
+    `${topic}: The Secret Nobody Tells You`,
+    `5 Proven ${topic} Tips That Change Your Game`,
+    `${topic} Explained - Full Tutorial`,
+  ];
+
+  const baseHashtags = [
+    `#${topic.replace(/\s+/g, '')}`,
+    `#${platform}`,
+    '#viral',
+    '#tips',
+    '#trending',
+    '#learn',
+    '#hacks',
+    '#shorts',
+    '#fyp',
+    '#explore',
+    '#growth',
+    '#success',
+    '#motivation',
+    '#tutorial',
+    '#content'
+  ].slice(0, 15);
+
+  const baseCTA = `If you found this ${topic} tutorial valuable, hit that like button and subscribe for more! 🔥 Drop your biggest question about ${topic} in the comments below!`;
+
   if (lang === 'hindi') {
     return {
       hooks: [
@@ -42,18 +114,19 @@ function mockScript(topic: string, platform: string, duration: string, language:
         `स्क्रॉल मत कीजिए! यह ${topic} टिप आपके घंटे बचाएगी।`,
         `काश मुझे ${topic} के बारे में पहले पता होता।`,
       ],
-      script: `[हुक - पहले 3 सेकंड]\n${topic} पर एक तेज़ दावा या सवाल से ध्यान खींचें।\n\n[परिचय]\nखुद का परिचय दें और इस ${duration} वीडियो में ${platform} के लिए दर्शक क्या सीखेंगे, वो बताएं।\n\n[मुख्य बात]\n${topic} के अहम पॉइंट्स साफ सेक्शन में समझाएं।\n\n[कहानी/व्याख्या]\nअपनी बात समझाने के लिए एक छोटी कहानी या उदाहरण साझा करें।\n\n[कॉल टू एक्शन]\nदर्शकों से लाइक, सब्सक्राइब और ${topic} पर सवाल कमेंट करने को कहें।`,
+      script: `[हुक - 0-3 सेकंड]\n${topic} पर एक तेज़ सवाल या दावे से शुरुआत करें।\n\n[परिचय - 3-10 सेकंड]\nदर्शकों को स्वागत दें। कहें: "इस ${duration} वीडियो में, आप ${topic} के बारे में सब कुछ सीखेंगे।"\n\n[मुख्य मूल्य - 50% वीडियो]\n${topic} पर 5 मुख्य बातें:\n1. ${topic} पर पहला महत्वपूर्ण विचार\n2. ${topic} के लिए दूसरी रणनीति\n3. ${topic} पर तीसरी सलाह\n4. ${topic} के साथ आम गलतियाँ\n5. ${topic} को लागू करने का तरीका\n\n[कहानी/सबूत - 20% वीडियो]\nअपनी व्यक्तिगत कहानी साझा करें जो साबित करे कि ${topic} कैसे काम करता है।\n\n[कॉल टू एक्शन - आखिरी 5 सेकंड]\nकहें: "अगर यह ${topic} टिप मददगार लगी तो लाइक करें, फॉलो करें, और ${topic} पर अपना सवाल कमेंट करें!"\n\n[नोट]\nकुल शब्द: लगभग ${wordCount} शब्द (${durationSeconds} सेकंड)\nगति: प्रति मिनट 130 शब्द\nSEO: ${topic} 4-5 बार दोहराया गया`,
       titles: [
         `${topic} की पूरी गाइड (${platform})`,
         `${duration} में ${topic} कैसे मास्टर करें`,
         `${topic}: जो कोई नहीं बताता`,
         `${topic} के 5 ज़बरदस्त टिप्स`,
-        `${topic} समझाया (हिंदी)`,
+        `${topic} समझाया गया (हिंदी)`,
       ],
       hashtags: [`#${topic.replace(/\s+/g, '')}`, `#${platform}`, '#viral', '#tips', '#trending', '#hindi', '#explore', '#fyp', '#video', '#growth', '#strategy', '#learn', '#success', '#motivation', '#content'].slice(0, 15),
-      cta: `अगर यह मददगार लगा तो लाइक और फॉलो करें। ${topic} पर अपना सवाल कमेंट में लिखें!`,
+      cta: `अगर यह मददगार लगा तो लाइक और फॉलो करें। ${topic} पर अपना सवाल कमेंट में लिखें! 🔥`,
     };
   }
+
   if (lang === 'spanish') {
     return {
       hooks: [
@@ -61,7 +134,7 @@ function mockScript(topic: string, platform: string, duration: string, language:
         `¡Deja de scroll! Este tip de ${topic} te ahorrará horas.`,
         `Ojalá hubiera sabido esto sobre ${topic} antes.`,
       ],
-      script: `[GANCHO - Primeros 3 segundos]\nCapta la atención con una afirmación o pregunta sobre ${topic}.\n\n[INTRO]\nPreséntate y qué aprenderán en este video de ${duration} para ${platform}.\n\n[VALOR PRINCIPAL]\nExplica los puntos clave de ${topic} en secciones claras.\n\n[HISTORIA/EXPLICACIÓN]\nComparte una historia o ejemplo que ilustre tu punto.\n\n[LLAMADA A LA ACCIÓN]\nPide like, suscripción y que comenten su pregunta sobre ${topic}.`,
+      script: `[GANCHO - 0-3 segundos]\nCapta la atención con una pregunta sobre ${topic}.\n\n[INTRO - 3-10 segundos]\nSaluda y di: "En este video de ${duration}, aprenderás todo sobre ${topic}."\n\n[VALOR PRINCIPAL - 50% del video]\nExplica 5 puntos clave de ${topic}:\n1. Primera insight sobre ${topic}\n2. Segunda estrategia de ${topic}\n3. Tercer consejo sobre ${topic}\n4. Errores comunes con ${topic}\n5. Cómo implementar ${topic}\n\n[HISTORIA - 20% del video]\nComparte tu historia personal sobre ${topic}.\n\n[LLAMADA A LA ACCIÓN - Últimos 5 segundos]\n"Si te sirvió este tip de ${topic}, dale like, sigue y comenta tu pregunta sobre ${topic}!"\n\n[NOTA]\nPalabras: aproximadamente ${wordCount} palabras (${durationSeconds} segundos)\nVelocidad: 130 palabras por minuto`,
       titles: [
         `Guía completa de ${topic} (${platform})`,
         `Cómo dominar ${topic} en ${duration}`,
@@ -70,60 +143,16 @@ function mockScript(topic: string, platform: string, duration: string, language:
         `${topic} explicado (español)`,
       ],
       hashtags: [`#${topic.replace(/\s+/g, '')}`, `#${platform}`, '#viral', '#tips', '#trending', '#español', '#explore', '#fyp', '#video', '#growth', '#estrategia', '#aprende', '#éxito', '#motivación', '#contenido'].slice(0, 15),
-      cta: `Si te sirvió, dale like y sigue para más de ${topic}. ¡Comenta tu pregunta!`,
+      cta: `Si te sirvió, dale like y sigue para más de ${topic}. ¡Comenta tu pregunta! 🔥`,
     };
   }
-  if (lang === 'french') {
-    return {
-      hooks: [
-        `Saviez-vous que ${topic} peut tout changer ?`,
-        `Arrêtez de scroller ! Ce conseil sur ${topic} vous fera gagner des heures.`,
-        `J'aurais aimé savoir ça sur ${topic} plus tôt.`,
-      ],
-      script: `[ACCROCHE - 3 premières secondes]\nAttirez l'attention avec une affirmation ou question sur ${topic}.\n\n[INTRO]\nPrésentez-vous et ce que les viewers apprendront dans cette vidéo ${duration} pour ${platform}.\n\n[VALEUR PRINCIPALE]\nDétaillez les points clés sur ${topic} en sections claires.\n\n[HISTOIRE/EXPLICATION]\nPartagez une courte histoire ou exemple qui illustre votre propos.\n\n[APPEL À L'ACTION]\nDemandez like, abo et de commenter leur question sur ${topic}.`,
-      titles: [
-        `Guide complet de ${topic} (${platform})`,
-        `Comment maîtriser ${topic} en ${duration}`,
-        `${topic} : ce que personne ne dit`,
-        `5 conseils ${topic} qui changent la donne`,
-        `${topic} expliqué (français)`,
-      ],
-      hashtags: [`#${topic.replace(/\s+/g, '')}`, `#${platform}`, '#viral', '#conseils', '#tendance', '#français', '#explore', '#fyp', '#vidéo', '#croissance', '#stratégie', '#apprendre', '#succès', '#motivation', '#contenu'].slice(0, 15),
-      cta: `Si ça vous a aidé, likez et suivez pour plus de ${topic}. Commentez votre question !`,
-    };
-  }
+
   return {
-    hooks: [
-      `Did you know that ${topic} can change everything?`,
-      `Stop scrolling! This ${topic} tip will save you hours.`,
-      `I wish I knew this about ${topic} earlier.`,
-    ],
-    script: `[HOOK - First 3 seconds]\nGrab attention with a bold claim or question about ${topic}.\n\n[INTRO]\nIntroduce yourself and what viewers will learn in this ${duration} video for ${platform}.\n\n[MAIN VALUE]\nBreak down the key points about ${topic}. Use clear sections.\n\n[STORY/EXPLANATION]\nShare a short story or example that illustrates your point.\n\n[CALL TO ACTION]\nAsk viewers to like, subscribe, and comment their biggest question about ${topic}.`,
-    titles: [
-      `The Ultimate Guide to ${topic} (${platform})`,
-      `How to Master ${topic} in ${duration}`,
-      `${topic}: What Nobody Tells You`,
-      `5 Game-Changing ${topic} Tips`,
-      `${topic} Explained (${language})`,
-    ],
-    hashtags: [
-      `#${topic.replace(/\s+/g, '')}`,
-      `#${platform}`,
-      '#viral',
-      '#tips',
-      '#trending',
-      '#contentcreator',
-      '#explore',
-      '#fyp',
-      '#viralvideo',
-      '#growth',
-      '#strategy',
-      '#learn',
-      '#howto',
-      '#success',
-      '#motivation',
-    ].slice(0, 15),
-    cta: `If this helped you, hit like and follow for more ${topic} content. Drop a comment with your biggest question!`,
+    hooks: baseHooks,
+    script: baseScript,
+    titles: baseTitles,
+    hashtags: baseHashtags,
+    cta: baseCTA,
   };
 }
 
@@ -167,28 +196,78 @@ export async function generateScript(params: {
 }): Promise<{ hooks: string[]; script: string; titles: string[]; hashtags: string[]; cta: string }> {
   const config = await getApiConfig();
   const lang = params.language.trim() || 'English';
-  const prompt = `You are a viral content expert. Generate for topic "${params.topic}", platform ${params.platform}, duration ${params.duration}. Write ALL output in ${lang}. Return JSON only: hooks (array of 3), script (full video script), titles (array of 5), hashtags (array of 15), cta (string).`;
+  const wordCount = getWordCountForDuration(params.duration);
+  const durationInSeconds = getDurationInSeconds(params.duration);
+  
+  const seoPrompt = `You are a viral content expert specializing in SEO-optimized video scripts. Generate a script for topic "${params.topic}" that will be published on ${params.platform} with a duration of ${params.duration} (approximately ${wordCount} words for average ${durationInSeconds}-second speaking pace).
+
+REQUIREMENTS:
+1. Script length: Exactly ${wordCount} words (±10% tolerance)
+2. Platform: Optimize for ${params.platform} (YouTube/Reels/Shorts/TikTok best practices)
+3. SEO Optimization:
+   - Include the main keyword "${params.topic}" naturally 3-5 times
+   - Add related keywords and variations
+   - Write for CTR (click-through rate) - compelling hook in first 3 seconds
+   - Structure: Hook (0-3s) → Intro (3-10s) → Value (main content) → Story/Example → CTA
+4. Viral Elements:
+   - Include emotional triggers (curiosity, urgency, FOMO)
+   - Add pattern interrupt points to prevent scrolling away
+   - Include clear value proposition early
+5. Output in ${lang}
+
+Return ONLY valid JSON (no markdown/code blocks):
+{
+  "hooks": ["hook1", "hook2", "hook3"],
+  "script": "full video script with timing markers and exact word count",
+  "titles": ["title1", "title2", "title3", "title4", "title5"],
+  "hashtags": ["hashtag1", "hashtag2", ..., "hashtag15"],
+  "cta": "call to action string",
+  "wordCount": ${wordCount},
+  "estimatedDuration": "${params.duration}",
+  "seoKeywords": ["keyword1", "keyword2", "keyword3"],
+  "viralScore": 85
+}`;
+
   if (config.openaiApiKey?.trim()) {
     try {
       const OpenAI = (await import('openai')).default;
       const openai = new OpenAI({ apiKey: config.openaiApiKey });
-      const res = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], temperature: 0.8 });
+      const res = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: seoPrompt }],
+        temperature: 0.8,
+        max_tokens: 2500
+      });
       const text = res.choices[0]?.message?.content?.trim() || '{}';
       const json = parseJsonFromText(text) as any;
-      return { hooks: Array.isArray(json.hooks) ? json.hooks : [], script: json.script || '', titles: Array.isArray(json.titles) ? json.titles : [], hashtags: Array.isArray(json.hashtags) ? json.hashtags : [], cta: json.cta || '' };
+      return {
+        hooks: Array.isArray(json.hooks) ? json.hooks : [],
+        script: json.script || '',
+        titles: Array.isArray(json.titles) ? json.titles : [],
+        hashtags: Array.isArray(json.hashtags) ? json.hashtags : [],
+        cta: json.cta || ''
+      };
     } catch (e) {
       console.warn('OpenAI script failed:', e);
     }
   }
+  
   if (config.googleGeminiApiKey?.trim()) {
     try {
-      const text = await callGemini(prompt, config.googleGeminiApiKey);
+      const text = await callGemini(seoPrompt, config.googleGeminiApiKey);
       const json = parseJsonFromText(text) as any;
-      return { hooks: Array.isArray(json.hooks) ? json.hooks : [], script: json.script || '', titles: Array.isArray(json.titles) ? json.titles : [], hashtags: Array.isArray(json.hashtags) ? json.hashtags : [], cta: json.cta || '' };
+      return {
+        hooks: Array.isArray(json.hooks) ? json.hooks : [],
+        script: json.script || '',
+        titles: Array.isArray(json.titles) ? json.titles : [],
+        hashtags: Array.isArray(json.hashtags) ? json.hashtags : [],
+        cta: json.cta || ''
+      };
     } catch (e) {
       console.warn('Gemini script failed:', e);
     }
   }
+  
   return mockScript(params.topic, params.platform, params.duration, params.language);
 }
 
