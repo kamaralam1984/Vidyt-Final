@@ -12,7 +12,7 @@ import axios from 'axios';
 import {
   Mail, Lock, User, Loader2, AlertCircle, Check, ArrowRight,
   Wifi, WifiOff, CheckCircle, XCircle, Building, Phone, Hash,
-  Eye, EyeOff
+  Eye, EyeOff, Star
 } from 'lucide-react';
 import { useLocale } from '@/context/LocaleContext';
 import { computeSignupUsdCharge, convertUsdToCurrency } from '@/lib/paymentCurrencyShared';
@@ -666,7 +666,7 @@ function AuthPageContent() {
             {subscriptionType === 'paid' && (
               <div className="mb-6">
                 {/* Billing Toggle */}
-                <div className="flex items-center justify-center gap-4 mb-6">
+                <div className="flex items-center justify-center gap-4 mb-8">
                   <span className={`text-sm ${billingPeriod === 'month' ? 'text-white' : 'text-[#AAAAAA]'}`}>
                     Monthly
                   </span>
@@ -683,34 +683,84 @@ function AuthPageContent() {
                   </button>
                   <span className={`text-sm ${billingPeriod === 'year' ? 'text-white' : 'text-[#AAAAAA]'}`}>
                     Yearly
+                    {billingPeriod === 'year' && (
+                      <span className="ml-2 px-2 py-1 bg-[#FF0000]/20 text-[#FF0000] rounded text-xs font-semibold">
+                        Save up to 17%
+                      </span>
+                    )}
                   </span>
                 </div>
 
-                {/* Plan Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                  {paidPlansState.map((plan) => (
+                {/* Enhanced Plan Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                  {paidPlansState.map((plan, index) => (
                     <motion.button
                       type="button"
                       key={plan.id}
                       onClick={() => setSelectedPlan(plan)}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`relative p-4 rounded-lg border-2 transition-all ${selectedPlan?.id === plan.id
-                        ? 'border-[#FF0000] bg-[#FF0000]/20'
+                      className={`relative rounded-xl border-2 transition-all text-left ${selectedPlan?.id === plan.id
+                        ? 'border-[#FF0000] bg-[#FF0000]/10'
                         : 'border-[#333333] bg-[#212121] hover:border-[#FF0000]'
                         }`}
                     >
                       {plan.popular && (
-                        <div className="absolute -top-2 right-2 bg-[#FF0000] text-white text-xs px-2 py-1 rounded-full">
-                          Most Popular
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10"
+                        >
+                          <div className="bg-gradient-to-r from-[#FF0000] to-[#CC0000] text-white px-4 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
+                            <Star className="w-4 h-4 fill-white" />
+                            Most Popular
+                          </div>
+                        </motion.div>
+                      )}
+
+                      <div className={`p-6 ${plan.popular ? 'pt-8' : ''} flex flex-col h-full`}>
+                        {/* Header */}
+                        <div className="text-center mb-6">
+                          <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                          <p className="text-[#AAAAAA] text-sm mb-4">{plan.description}</p>
+                          <div className="flex items-baseline justify-center gap-2 mb-2">
+                            <span className="text-4xl font-bold text-white">
+                              {getPrice(plan)}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                      {selectedPlan?.id === plan.id && (
-                        <CheckCircle className="absolute top-2 right-2 w-5 h-5 text-[#FF0000]" />
-                      )}
-                      <h3 className="text-lg font-bold text-white mb-1">{plan.name}</h3>
-                      <p className="text-2xl font-bold text-white mb-2">{getPrice(plan)}</p>
-                      <p className="text-xs text-[#AAAAAA]">{plan.description}</p>
+
+                        {/* Features List */}
+                        {plan.features && plan.features.length > 0 && (
+                          <>
+                            <div className="text-xs text-[#AAAAAA] text-center mb-3 pb-3 border-b border-[#333333]">
+                              <span className="font-semibold text-white">{plan.features.length}</span> features included
+                            </div>
+                            <ul className="space-y-3 mb-6 max-h-80 overflow-y-auto flex-1">
+                              {plan.features.map((feature, featureIndex) => (
+                                <motion.li
+                                  key={featureIndex}
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: 0.05 * featureIndex }}
+                                  className="flex items-start gap-3"
+                                >
+                                  <Check className="w-5 h-5 text-[#10b981] flex-shrink-0 mt-0.5" />
+                                  <span className="text-[#AAAAAA] text-sm">{feature}</span>
+                                </motion.li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+
+                        {/* Selection Indicator */}
+                        {selectedPlan?.id === plan.id && (
+                          <div className="flex items-center justify-center gap-2 p-3 bg-[#FF0000]/20 rounded-lg border border-[#FF0000]">
+                            <CheckCircle className="w-5 h-5 text-[#FF0000]" />
+                            <span className="text-white text-sm font-semibold">Selected</span>
+                          </div>
+                        )}
+                      </div>
                     </motion.button>
                   ))}
                 </div>
