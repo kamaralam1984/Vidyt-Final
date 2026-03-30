@@ -4,6 +4,7 @@ import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
 import TrackingScript from "@/components/TrackingScript";
 import PWARegister from "@/components/PWARegister";
+import CookieConsent from "@/components/CookieConsent";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -51,6 +52,7 @@ export default function RootLayout({
         <LocaleProvider>
           <PWARegister />
           <TrackingScript />
+          <CookieConsent />
           {children}
         </LocaleProvider>
       </body>

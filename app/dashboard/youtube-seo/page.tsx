@@ -88,6 +88,7 @@ function YouTubeLiveSEOContent() {
   const [videoSuggestions, setVideoSuggestions] = useState<{ title: string; description: string; keywords: string[]; hashtags: string[] } | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoTranscript, setVideoTranscript] = useState<string>('');
   const [contentType, setContentType] = useState<'video' | 'short' | 'live'>('video');
 
   const [loadingSeo, setLoadingSeo] = useState(false);
@@ -611,6 +612,9 @@ function YouTubeLiveSEOContent() {
       const openAiKeyConfigured = res.data.openAiKeyConfigured === true;
       const transcriptText = res.data.transcript || '';
       const transcriptionError = res.data.transcriptionError as string | undefined;
+      
+      if (transcriptText) setVideoTranscript(transcriptText);
+      
       if (sug) {
         setVideoSuggestions(sug);
         setTitle(sug.title || title);
@@ -716,6 +720,7 @@ function YouTubeLiveSEOContent() {
             seoScore: seoData?.seoScore,
             thumbnailScore: thumbnailScore?.score,
             videoAnalyzed: !!videoSuggestions,
+            transcript: videoTranscript,
             channelUrl: channelUrl.trim() || undefined,
             channelSummary: channelSummary || undefined,
           },

@@ -12,9 +12,10 @@ import { loadModel, predictViralProbability } from '@/services/ml/viralModel';
 import { ruleBasedScore, historicalScore, ensembleViralScore } from '@/services/ml/ensemble';
 import { parseFeaturesFromBody, type ViralFeatures } from '@/services/ml/featureUtils';
 import { predictWithPythonService } from '@/services/ai/viralPredictionService';
-import { getClientIP, rateLimit } from '@/lib/rateLimiter';
+import { rateLimit } from '@/lib/rateLimiter';
 import { enqueueAiJob } from '@/lib/queue';
 import { extractYoutubeVideoId } from '@/lib/viralOutcome';
+import { withAnalysisRateLimit } from '@/middleware/rateLimitMiddleware';
 
 function generatePredictionInsights(features: ViralFeatures, viralProbability: number): string[] {
   const insights: string[] = [];
@@ -30,7 +31,7 @@ function generatePredictionInsights(features: ViralFeatures, viralProbability: n
   return insights.slice(0, 5);
 }
 
-export async function POST(request: NextRequest) {
+async function handlePredict(request: NextRequest) {
   try {
     const access = await requireAIToolAccess(request, 'advancedAiViralPrediction');
     if (!access.allowed) {
@@ -39,12 +40,18 @@ export async function POST(request: NextRequest) {
     const authUser = { id: access.userId, role: access.role };
 
     await connectDB();
-    const ip = getClientIP(request);
-    const limiter = rateLimit(`ai-predict:${authUser.id}:${ip}`, 40, 60 * 1000);
+    
+    // Additional per-user rate limiting (30 req/hour for analysis)
+    const limiter = rateLimit(`ai-predict:${authUser.id}`, { limit: 30, windowMs: 60 * 60 * 1000 });
     if (!limiter.allowed) {
-      return NextResponse.json({ error: 'Rate limit exceeded. Please retry in a minute.' }, { status: 429 });
+      return NextResponse.json(
+        { error: 'Analysis limit reached. Please try again later.' },
+        { 
+          status: 429,
+          headers: { 'Retry-After': String(limiter.retryAfter || 60) }
+        }
+      );
     }
-
 
     const body = await request.json().catch(() => ({}));
     const features = parseFeaturesFromBody(body);
@@ -176,3 +183,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+// Wrap with analysis rate limiting (30 req/hour)
+export const POST = withAnalysisRateLimit(
+  (req) => handlePredict(req),
+  { endpoint: '/api/ai/predict' }
+);

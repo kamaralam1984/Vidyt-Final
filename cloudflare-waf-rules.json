@@ -1,0 +1,250 @@
+{
+  "rules": [
+    {
+      "id": "sql-injection-protection",
+      "name": "SQL Injection Protection",
+      "description": "Block SQL injection attempts",
+      "expression": "(cf.threat_score > 50) or (http.request.uri.query contains \"union\") or (http.request.uri.query contains \"select\") or (http.request.body contains \"union\") or (http.request.body contains \"select\")",
+      "action": "block",
+      "priority": 1,
+      "enabled": true,
+      "categories": ["SQL Injection"]
+    },
+    {
+      "id": "xss-protection",
+      "name": "XSS (Cross-Site Scripting) Protection",
+      "description": "Block XSS attempts",
+      "expression": "(http.request.uri.query contains \"<script\") or (http.request.body contains \"<script\") or (http.request.uri.query contains \"javascript:\") or (http.request.body contains \"javascript:\") or (http.request.uri.query contains \"onerror=\") or (http.request.body contains \"onerror=\")",
+      "action": "block",
+      "priority": 2,
+      "enabled": true,
+      "categories": ["XSS"]
+    },
+    {
+      "id": "path-traversal-protection",
+      "name": "Path Traversal Protection",
+      "description": "Block path traversal attacks",
+      "expression": "(http.request.uri.path contains \"..\") or (http.request.uri.path contains \"//\") or (http.request.uri.path contains \"%2e%2e\") or (http.request.uri.path contains \"%2f%2f\")",
+      "action": "block",
+      "priority": 3,
+      "enabled": true,
+      "categories": ["Path Traversal"]
+    },
+    {
+      "id": "http-method-restriction",
+      "name": "HTTP Method Restriction",
+      "description": "Block dangerous HTTP methods on API endpoints",
+      "expression": "(http.request.method == \"TRACE\") or (http.request.method == \"CONNECT\") or ((http.request.method == \"DELETE\") and (http.request.uri.path contains \"/api/public\"))",
+      "action": "block",
+      "priority": 4,
+      "enabled": true,
+      "categories": ["HTTP Methods"]
+    },
+    {
+      "id": "rate-limit-api-auth",
+      "name": "Rate Limit - Auth Endpoints",
+      "description": "Enforce 5 requests per 60 seconds on auth endpoints",
+      "expression": "(http.request.uri.path contains \"/api/auth/\")",
+      "action": "challenge",
+      "priority": 5,
+      "enabled": true,
+      "rate_limit": {
+        "characteristics": ["cf.colo"],
+        "period": 60,
+        "threshold": 5,
+        "counting_expression": "(http.request.uri.path contains \"/api/auth/\")"
+      }
+    },
+    {
+      "id": "rate-limit-api-upload",
+      "name": "Rate Limit - Upload Endpoints",
+      "description": "Enforce 20 requests per 3600 seconds on upload endpoints",
+      "expression": "(http.request.uri.path contains \"/api/videos/upload\") or (http.request.uri.path contains \"/api/user/upload\")",
+      "action": "challenge",
+      "priority": 6,
+      "enabled": true,
+      "rate_limit": {
+        "characteristics": ["cf.colo"],
+        "period": 3600,
+        "threshold": 20,
+        "counting_expression": "(http.request.uri.path contains \"/api/videos/upload\") or (http.request.uri.path contains \"/api/user/upload\")"
+      }
+    },
+    {
+      "id": "rate-limit-api-analysis",
+      "name": "Rate Limit - Analysis Endpoints",
+      "description": "Enforce 30 requests per 3600 seconds on AI analysis",
+      "expression": "(http.request.uri.path contains \"/api/ai/\")",
+      "action": "challenge",
+      "priority": 7,
+      "enabled": true,
+      "rate_limit": {
+        "characteristics": ["cf.colo"],
+        "period": 3600,
+        "threshold": 30,
+        "counting_expression": "(http.request.uri.path contains \"/api/ai/\")"
+      }
+    },
+    {
+      "id": "rate-limit-general-api",
+      "name": "Rate Limit - General API",
+      "description": "Enforce 100 requests per 60 seconds on general API",
+      "expression": "(http.request.uri.path contains \"/api/\") and not (http.request.uri.path contains \"/api/auth/\") and not (http.request.uri.path contains \"/api/ai/\") and not (http.request.uri.path contains \"/api/user/upload\")",
+      "action": "challenge",
+      "priority": 8,
+      "enabled": true,
+      "rate_limit": {
+        "characteristics": ["cf.colo"],
+        "period": 60,
+        "threshold": 100,
+        "counting_expression": "(http.request.uri.path contains \"/api/\") and not (http.request.uri.path contains \"/api/auth/\") and not (http.request.uri.path contains \"/api/ai/\") and not (http.request.uri.path contains \"/api/user/upload\")"
+      }
+    },
+    {
+      "id": "bot-protection-high",
+      "name": "Bot Traffic Blocking (High Threat)",
+      "description": "Block traffic from high-threat bots",
+      "expression": "(cf.bot_management.score < 30) and (cf.verified_bot_category != \"Search Engine Crawler\")",
+      "action": "block",
+      "priority": 9,
+      "enabled": true,
+      "categories": ["Bot Management"]
+    },
+    {
+      "id": "block-suspicious-ua",
+      "name": "Block Suspicious User Agents",
+      "description": "Block requests with suspicious user agents",
+      "expression": "(http.user_agent contains \"curl\") or (http.user_agent contains \"wget\") or (http.user_agent contains \"python-requests\") or (http.user_agent == \"\")",
+      "action": "block",
+      "priority": 10,
+      "enabled": true,
+      "categories": ["Bot Management"]
+    },
+    {
+      "id": "geoblock-high-risk",
+      "name": "Geographic Blocking - High Risk Countries",
+      "description": "Block traffic from high-risk countries (optional - customize as needed)",
+      "expression": "(cf.country in {\"KP\" \"IR\" \"SY\"})",
+      "action": "block",
+      "priority": 11,
+      "enabled": false,
+      "categories": ["Geographic Restrictions"]
+    },
+    {
+      "id": "require-auth-admin",
+      "name": "Require Authentication for Admin",
+      "description": "Block unauthenticated access to admin endpoints",
+      "expression": "(http.request.uri.path contains \"/api/admin/\") and (http.request.headers[\"Authorization\"] == \"\")",
+      "action": "block",
+      "priority": 12,
+      "enabled": true,
+      "categories": ["Access Control"]
+    },
+    {
+      "id": "allow-cdn-bypass",
+      "name": "Allow CDN Bypass for Admin",
+      "description": "Allow admin to bypass CDN caching for critical updates",
+      "expression": "(http.request.headers[\"X-Admin-Token\"] != \"\")",
+      "action": "allow",
+      "priority": 0,
+      "enabled": true,
+      "categories": ["Cache Control"]
+    },
+    {
+      "id": "block-large-uploads",
+      "name": "Block Excessively Large Uploads",
+      "description": "Block POST/PUT requests larger than 100MB",
+      "expression": "(http.request.method in {\"POST\" \"PUT\"}) and (cf.http.request_size > 100000000)",
+      "action": "block",
+      "priority": 13,
+      "enabled": true,
+      "categories": ["Upload Control"]
+    },
+    {
+      "id": "require-post-content-type",
+      "name": "Require Content-Type for POST",
+      "description": "Block POST requests without proper Content-Type header",
+      "expression": "(http.request.method == \"POST\") and (http.request.headers[\"Content-Type\"] == \"\")",
+      "action": "challenge",
+      "priority": 14,
+      "enabled": true,
+      "categories": ["Content Type Validation"]
+    },
+    {
+      "id": "ddos-protection-proxy",
+      "name": "DDoS Protection - Connection Rate",
+      "description": "Block IPs with excessive connection attempts",
+      "expression": "(cf.threat_score > 80) or (cf.bot_management.score < 20)",
+      "action": "challenge",
+      "priority": 15,
+      "enabled": true,
+      "categories": ["DDoS Protection"]
+    },
+    {
+      "id": "allow-healthcheck",
+      "name": "Allow Health Checks",
+      "description": "Bypass WAF for healthcheck endpoints",
+      "expression": "(http.request.uri.path == \"/health\") or (http.request.uri.path == \"/api/health\")",
+      "action": "allow",
+      "priority": 1,
+      "enabled": true,
+      "categories": ["Monitoring"],
+      "skip_waf": true
+    }
+  ],
+  "page_rules": [
+    {
+      "targets": ["*.viralboost.app/api/*"],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "browser_cache_ttl",
+          "value": 300
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 3600
+        }
+      ],
+      "priority": 1,
+      "status": "enabled"
+    },
+    {
+      "targets": ["*.viralboost.app/static/*"],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "browser_cache_ttl",
+          "value": 31536000
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 31536000
+        }
+      ],
+      "priority": 2,
+      "status": "enabled"
+    },
+    {
+      "targets": ["*.viralboost.app/api/admin/*"],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "bypass"
+        },
+        {
+          "id": "security_level",
+          "value": "high"
+        }
+      ],
+      "priority": 3,
+      "status": "enabled"
+    }
+  ]
+}

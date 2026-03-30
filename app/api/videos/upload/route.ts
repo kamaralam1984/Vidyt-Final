@@ -15,6 +15,7 @@ import { getTrendingScore } from '@/services/trendingEngine';
 import { generateHashtags } from '@/services/hashtagGenerator';
 import { predictBestPostingTime } from '@/services/postingTimePredictor';
 import Analysis from '@/models/Analysis';
+import { withUploadRateLimit } from '@/middleware/rateLimitMiddleware';
 import {
   buildUploadSeoPack,
   commaSeparatedYoutubeTags,
@@ -23,7 +24,7 @@ import {
   takeFiveTitles,
 } from '@/lib/buildUploadSeo';
 
-export async function POST(request: NextRequest) {
+async function handleUpload(request: NextRequest) {
   try {
     await connectDB();
 
@@ -207,3 +208,9 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// Wrap with rate limiting (20 uploads per hour)
+export const POST = withUploadRateLimit(
+  (req) => handleUpload(req),
+  { endpoint: '/api/videos/upload' }
+);

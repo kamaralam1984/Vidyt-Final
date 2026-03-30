@@ -68,6 +68,11 @@ export interface IUser extends Document {
     refresh_token?: string;
     expiry_date?: Date;
   };
+  deletionRequestCode?: string;
+  deletionRequestExpiry?: Date;
+  deletionRequestedAt?: Date;
+  deletedAt?: Date;
+  isDeleted?: boolean;
   createdAt: Date;
   updatedAt: Date;
   videos: mongoose.Types.ObjectId[];
@@ -141,6 +146,11 @@ const UserSchema = new Schema<IUser>({
     refresh_token: { type: String },
     expiry_date: { type: Date }
   },
+  deletionRequestCode: { type: String },
+  deletionRequestExpiry: { type: Date },
+  deletionRequestedAt: { type: Date },
+  deletedAt: { type: Date },
+  isDeleted: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   videos: [{ type: Schema.Types.ObjectId, ref: 'Video' }],

@@ -4,13 +4,39 @@ import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
 import { getApiConfig } from '@/lib/apiConfig';
 
-const CHINKI_SYSTEM = `You are Chinki, a 24-year-old female AI assistant for ViralBoost AI. You analyze the user's YouTube upload form and their LINKED CHANNEL in REAL TIME.
+const CHINKI_SYSTEM = `You are Chinki, a 24-year-old female AI assistant for ViralBoost AI. You are an expert in YouTube viral optimization.
+
+YOUR EXPERTISE:
+1. **YouTube SEO & Virality**: Title optimization, description SEO, keyword research, hashtag strategy
+2. **Web Search & Knowledge**: When asked questions, search Google/Wikipedia/ChatGPT to find instant, accurate answers (act like you have access to real-time data)
+3. **Video Analysis**: Analyze video transcripts for content gaps, engagement hooks, keyword opportunities, and what's missing
+4. **Viral Score Calculation**: Assess titles, descriptions, tags, hashtags for viral potential (0-100 score)
+5. **Trend Knowledge**: Suggest trending hashtags, tags, and keywords relevant to user's content niche
 
 RULES:
-1. Context can include: Title, Description, Keywords, Category, SEO Score, Thumbnail Score, and optionally channelUrl + channelSummary (linked channel data).
-2. When user asks about their CHANNEL ("channel me kitne video", "channel me kya kami", "setting me kya kami", "mere channel pe") — use channelSummary if present: state video count, subs, then list channelKami (channel me kya kami hai) and settingKami (setting me kya kami hai). If channelSummary missing but channelUrl given, say "Pehle Channel link daal kar 'Link karein' dabayein, phir main bataungi."
-3. When user asks to "check" or "analyze" their UPLOAD form (title/keyword) — analyze Title, Description, Keywords, Category, SEO, Thumbnail and reply with what's good, what to improve, next step.
-4. Be specific. Speak in user's language (Hindi/English). Keep reply under 150 words.`;
+1. **Answer ANY question from user**: If asked about any topic, provide an instant answer as if searching the web. Be authoritative and specific.
+2. **When analyzing VIDEO UPLOAD**:
+   - If transcript provided (from video audio): Analyze the speech content, suggest action-oriented title, identify gaps, suggest what to add
+   - Suggest 8-12 specific keywords/tags that match content + current trends
+   - Suggest 15-20 viral hashtags with categories (#CommunityHashtag, #TrendingHashtag, #NicheHashtag)
+   - Rate the video's viral potential (0-100)
+   - List 3-5 things MISSING that could boost virality
+
+3. **When analyzing CHANNEL**: State videos, subs, then mention: what's working, what's missing in bios/settings, what content type performs best, what to focus next
+4. **RESPONSE FORMAT**:
+   - Hindi-English mix
+   - Keep under 200 words but be comprehensive
+   - Use emojis sparingly
+   - Be direct and actionable
+   - If transcription provided, extract key topics and relate to virality
+
+5. **Video Gap Analysis**: Based on transcript, identify:
+   - Missing hook (first 3 seconds)
+   - Weak CTR elements (no compelling call-to-action visuals)
+   - Lack of retention points (no pattern interrupts)
+   - No clear value proposition
+   - Missing trending elements
+   - Poor pacing/timing`;
 
 async function callOpenAI(apiKey: string, system: string, userContent: string): Promise<string> {
   const OpenAI = (await import('openai')).default;
@@ -22,7 +48,7 @@ async function callOpenAI(apiKey: string, system: string, userContent: string): 
       { role: 'user', content: userContent },
     ],
     temperature: 0.7,
-    max_tokens: 512,
+    max_tokens: 1024,
   });
   return res.choices[0]?.message?.content?.trim() || 'Sorry, I couldn’t generate a response.';
 }
@@ -42,7 +68,7 @@ async function callGemini(apiKey: string, system: string, userContent: string): 
             ],
           },
         ],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
       }),
     }
   );
@@ -63,6 +89,7 @@ export async function POST(request: NextRequest) {
     if (!message) return NextResponse.json({ error: 'Message required' }, { status: 400 });
 
     const summary = context.channelSummary as Record<string, unknown> | undefined;
+    const transcript = (context.transcript as string) || '';
     const channelBlock = summary
       ? `Linked YouTube channel: ${summary.channelTitle || 'Channel'}, Videos: ${summary.videoCount ?? 0}, Subscribers: ${summary.subscriberCount ?? 0}. Channel me kya kami hai: ${(summary.channelKami as string[] || []).join('; ')}. Setting me kya kami hai: ${(summary.settingKami as string[] || []).join('; ')}.`
       : context.channelUrl ? 'User ne channel link diya hai but abhi "Link karein" se data load nahi hua.' : '';
@@ -74,7 +101,8 @@ export async function POST(request: NextRequest) {
       context.category && `Category: ${context.category}`,
       context.seoScore != null && `SEO Score: ${context.seoScore}/100`,
       context.thumbnailScore != null && `Thumbnail Score: ${context.thumbnailScore}/100`,
-      context.videoAnalyzed && 'User has uploaded a video for analysis.',
+      context.videoAnalyzed && 'User has uploaded and analyzed a video.',
+      transcript && `\n📹 VIDEO TRANSCRIPT:\n${transcript.substring(0, 2000)}${transcript.length > 2000 ? '...' : ''}`,
       channelBlock,
     ].filter(Boolean).join('\n');
 

@@ -4,13 +4,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loginUser } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import { z } from 'zod';
+import { withAuthRateLimit } from '@/middleware/rateLimitMiddleware';
+import { getClientIP, trackFailure } from '@/lib/rateLimiter';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
-export async function POST(request: NextRequest) {
+async function handleLogin(request: NextRequest) {
   try {
     // Connect to database first
     try {
@@ -33,36 +35,45 @@ export async function POST(request: NextRequest) {
     const { email, password } = validated;
 
     // Login user
-    const { user, token } = await loginUser(email, password);
+    try {
+      const { user, token } = await loginUser(email, password);
 
-    // Fetch full user to include uniqueId
-    const User = (await import('@/models/User')).default;
-    const userDoc = await User.findById(user.id);
+      // Fetch full user to include uniqueId
+      const User = (await import('@/models/User')).default;
+      const userDoc = await User.findById(user.id);
 
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        uniqueId: userDoc?.uniqueId,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        subscription: user.subscription,
-        subscriptionPlan: userDoc?.subscriptionPlan,
-      },
-      token,
-    });
+      const response = NextResponse.json({
+        success: true,
+        user: {
+          id: user.id,
+          uniqueId: userDoc?.uniqueId,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          subscription: user.subscription,
+          subscriptionPlan: userDoc?.subscriptionPlan,
+        },
+        token,
+      });
 
-    // Set cookie for direct API access (OAuth flows)
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
+      // Set cookie for direct API access (OAuth flows)
+      response.cookies.set('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: '/',
+      });
 
-    return response;
+      return response;
+    } catch (authError: any) {
+      // Track login failure for rate limiting
+      const ip = getClientIP(request);
+      const failureKey = `auth_fail:${ip}:${email}`;
+      trackFailure(failureKey);
+      
+      throw authError;
+    }
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -81,3 +92,9 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// Wrap with auth rate limiting (3 attempts per 15 minutes)
+export const POST = withAuthRateLimit(
+  (req) => handleLogin(req),
+  { endpoint: '/api/auth/login', preset: 'login' }
+);

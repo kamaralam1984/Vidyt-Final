@@ -558,3 +558,89 @@ export async function sendUpsellEmail(
     return false;
   }
 }
+
+/**
+ * Send Account Deletion Verification Code
+ */
+export async function sendAccountDeletionVerificationEmail(
+  email: string,
+  verificationCode: string,
+  userName?: string
+): Promise<boolean> {
+  try {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #0F0F0F; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .code-box { background: #181818; color: #FF0000; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; font-size: 32px; font-weight: bold; letter-spacing: 8px; border: 2px solid #FF0000; }
+          .warning { background: #FFF3CD; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #FFC107; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div>
+          <div class="content">
+            <h2 style="color: #FF0000;">Account Deletion Request</h2>
+            <p>Hello ${userName || 'User'},</p>
+            <p>You have requested to permanently delete your ViralBoost AI account. To confirm this action, please use the verification code below:</p>
+            <div class="code-box">${verificationCode}</div>
+            <p><strong>Code expires in 24 hours.</strong></p>
+            
+            <div class="warning">
+              <strong>⚠️ Important Notice:</strong>
+              <p style="margin: 10px 0 0;">This action is <strong>permanent and cannot be undone</strong>. Once you confirm deletion:</p>
+              <ul style="margin: 5px 0;">
+                <li>All your videos, analytics, and account settings will be permanently deleted</li>
+                <li>Connected YouTube accounts will be disconnected</li>
+                <li>API keys and webhooks will be removed</li>
+                <li>Subscription data will be anonymized</li>
+              </ul>
+            </div>
+            
+            <p>If you did not request this, please ignore this email. Your account is safe.</p>
+            <p style="color: #666; font-size: 12px; margin-top: 20px;">
+              Contact us: <strong>support@viralboostai.com</strong>
+            </p>
+          </div>
+          <div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI. All rights reserved.</p></div>
+        </div>
+      </body>
+      </html>`;
+    
+    const ok = await sendMail({
+      to: email,
+      subject: '⚠️ Account Deletion Verification - ViralBoost AI',
+      html,
+      text: `Account Deletion Verification Code: ${verificationCode}\n\nThis code expires in 24 hours.\n\nThis action is permanent and cannot be undone.\n\nIf you did not request this, please ignore this email.\n\nContact us: support@viralboostai.com\n\n© ViralBoost AI`,
+    });
+    
+    if (ok) {
+      console.log('✅ Account deletion verification email sent to:', email);
+      return true;
+    }
+    
+    console.warn('⚠️ Account deletion verification email sending failed for:', email);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('\n' + '='.repeat(50));
+      console.log('📧 ACCOUNT DELETION VERIFICATION CODE (DEV MODE)');
+      console.log(`To: ${email}`);
+      console.log(`Code: ${verificationCode}`);
+      console.log('Expires: 24 hours');
+      console.log('='.repeat(50) + '\n');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('❌ Account deletion email error:', error);
+    if (process.env.NODE_ENV === 'development') return true;
+    return false;
+  }
+}

@@ -1,0 +1,195 @@
+/**
+ * Cloudflare Worker for ViralBoost AI
+ * Handles edge-level security, caching, and optimization
+ * 
+ * Deploy with: wrangler deploy
+ */
+
+interface Env {
+  ENVIRONMENT: 'production' | 'staging' | 'development';
+  RATE_LIMIT_SECRET: string;
+  ALLOWED_ORIGINS: string;
+}
+
+const BLOCKED_PATHS = ['/wp-admin', '/xmlrpc.php', '.env', 'config.php'];
+const SUSPICIOUS_PATTERNS = [
+  /union[\s]+select/i,
+  /exec\(/i,
+  /system\(/i,
+  /base64_decode/i,
+];
+
+/**
+ * Main request handler
+ */
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    // Skip logging requests to specific paths
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // 1. Check for obviously malicious paths
+    if (BLOCKED_PATHS.some((p) => path.includes(p))) {
+      return new Response('Access Denied', {
+        status: 403,
+        headers: { 'X-Blocked-Reason': 'path-traversal' },
+      });
+    }
+
+    // 2. Check request for suspicious patterns
+    const suspicious = await checkForSuspiciousActivity(request);
+    if (suspicious) {
+      console.warn(`[SUSPICIOUS] ${request.method} ${url.pathname}`);
+      return new Response('Access Denied', {
+        status: 403,
+        headers: { 'X-Blocked-Reason': 'suspicious-activity' },
+      });
+    }
+
+    // 3. Add security headers
+    const response = await fetch(request);
+    const newResponse = new Response(response.body, response);
+
+    // Add Cloudflare-specific security headers
+    newResponse.headers.set('X-Content-Type-Options', 'nosniff');
+    newResponse.headers.set('X-Frame-Options', 'DENY');
+    newResponse.headers.set('X-XSS-Protection', '1; mode=block');
+    newResponse.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+    newResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    newResponse.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+
+    // Content Security Policy
+    newResponse.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';"
+    );
+
+    // 4. Handle caching for specific paths
+    if (path.startsWith('/static/') || path.match(/\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2)$/)) {
+      // Cache static assets for 1 year
+      newResponse.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (path.startsWith('/api/')) {
+      // Don't cache API responses (or cache very short)
+      newResponse.headers.set('Cache-Control', 'public, max-age=60, must-revalidate');
+    }
+
+    // 5. Remove sensitive headers from response
+    newResponse.headers.delete('Server');
+    newResponse.headers.delete('X-Powered-By');
+    newResponse.headers.delete('X-AspNet-Version');
+
+    // 6. Add custom headers
+    newResponse.headers.set('X-Served-By', 'Cloudflare');
+
+    return newResponse;
+  },
+};
+
+/**
+ * Check request for suspicious patterns
+ */
+async function checkForSuspiciousActivity(request: Request): Promise<boolean> {
+  const url = new URL(request.url);
+
+  // Check URL parameters
+  for (const [key, value] of url.searchParams.entries()) {
+    if (SUSPICIOUS_PATTERNS.some((p) => p.test(value))) {
+      return true;
+    }
+  }
+
+  // Check request body for POST/PUT
+  if (request.method === 'POST' || request.method === 'PUT') {
+    try {
+      const contentType = request.headers.get('content-type');
+
+      // Only check JSON bodies
+      if (contentType?.includes('application/json')) {
+        const bodyText = await request.text();
+        if (SUSPICIOUS_PATTERNS.some((p) => p.test(bodyText))) {
+          return true;
+        }
+        // Clone request with body for downstream handling
+        return false;
+      }
+    } catch (e) {
+      // If we can't read body, let it through (origin will handle)
+      console.warn('Could not check request body:', e);
+    }
+  }
+
+  // Check user agent
+  const userAgent = request.headers.get('user-agent') || '';
+  const botSignatures = ['curl', 'wget', 'python', 'sqlmap', 'nikto', 'nmap'];
+
+  return botSignatures.some((sig) => userAgent.toLowerCase().includes(sig));
+}
+
+/**
+ * Rate limiting using Cloudflare KV (requires Cloudflare KV binding)
+ * Optional: Use if you have KV storage enabled
+ */
+async function checkRateLimit(request: Request, env: Env, key: string): Promise<boolean> {
+  // This would require KV binding in wrangler.toml
+  // For basic setup, use Cloudflare's native rate limiting instead
+  return true; // Allow by default
+}
+
+/**
+ * Validate API signature (if using authenticated requests)
+ */
+function validateSignature(request: Request, secret: string): boolean {
+  const signature = request.headers.get('X-Signature');
+  const timestamp = request.headers.get('X-Timestamp');
+
+  if (!signature || !timestamp) {
+    return false;
+  }
+
+  // Verify signature logic here
+  return true;
+}
+
+/**
+ * Track analytics (custom metrics)
+ */
+async function trackAnalytics(request: Request): Promise<void> {
+  const url = new URL(request.url);
+
+  // Send to analytics (e.g., Datadog, Mixpanel)
+  // This is a placeholder - implement based on your analytics provider
+  console.log({
+    timestamp: new Date().toISOString(),
+    method: request.method,
+    path: url.pathname,
+    country: request.headers.get('cf-ipcountry'),
+    ray: request.headers.get('cf-ray'),
+  });
+}
+
+/**
+ * Environment variables required in wrangler.toml:
+ * 
+ * [env.production]
+ * vars = { ENVIRONMENT = "production" }
+ * 
+ * [[kv_namespaces]]
+ * binding = "RATE_LIMIT_STORE"
+ * id = "your_kv_id"
+ * 
+ * [triggers.crons]
+ * crons = ["0 0 * * *"]  # Daily cleanup
+ */
+
+/**
+ * Scheduled handler for cleanup
+ */
+export const scheduled: ExportedHandler = {
+  async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
+    console.log('Running scheduled cleanup job');
+    // Clean up rate limit store or old analytics
+  },
+};

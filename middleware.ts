@@ -3,7 +3,85 @@ import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth-jwt';
 
 /**
- * Middleware to protect API routes
+ * Add Cloudflare & security headers to response
+ */
+function addSecurityHeaders(response: NextResponse, request?: NextRequest): NextResponse {
+  // Prevent MIME type sniffing
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+
+  // Prevent clickjacking/framing
+  response.headers.set('X-Frame-Options', 'DENY');
+
+  // Legacy XSS protection header
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+
+  // HSTS - Force HTTPS for 1 year
+  response.headers.set(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains; preload'
+  );
+
+  // Referrer policy
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Permissions policy (disable unnecessary permissions)
+  response.headers.set(
+    'Permissions-Policy',
+    'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+  );
+
+  // Content Security Policy (CSP)
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https: wss:; frame-src 'self' https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+  );
+
+  // Remove sensitive headers that reveal server info
+  response.headers.delete('Server');
+  response.headers.delete('X-Powered-By');
+  response.headers.delete('X-AspNet-Version');
+
+  // Add Cloudflare info if available (passthrough from upstream)
+  if (request) {
+    const cfRay = request.headers.get('cf-ray');
+    if (cfRay) {
+      response.headers.set('X-CF-Ray', cfRay);
+    }
+
+    const cfCountry = request.headers.get('cf-ipcountry');
+    if (cfCountry) {
+      response.headers.set('X-Client-Country', cfCountry);
+    }
+  }
+
+  return response;
+}
+
+/**
+ * Get response with headers added
+ */
+function withSecurityHeaders(response: NextResponse, request?: NextRequest): NextResponse {
+  return addSecurityHeaders(response, request);
+}
+
+/**
+ * Create next response with headers
+ */
+function nextWithHeaders(request: NextRequest, init?: ResponseInit): NextResponse {
+  const response = NextResponse.next(init);
+  return addSecurityHeaders(response, request);
+}
+
+/**
+ * JSON error response with headers
+ */
+function jsonError(request: NextRequest, message: string, status: number): NextResponse {
+  const response = NextResponse.json({ error: message }, { status });
+  return addSecurityHeaders(response, request);
+}
+
+/**
+ * Middleware to protect API routes & add Cloudflare security
  */
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -51,7 +129,7 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/')) {
-    return NextResponse.next();
+    return nextWithHeaders(request);
   }
 
   // Check authentication for protected routes
@@ -91,12 +169,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    if (!pathname.startsWith('/api')) return NextResponse.next();
+    if (!pathname.startsWith('/api')) return nextWithHeaders(request);
 
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    return jsonError(request, 'Unauthorized', 401);
   }
   const user = await verifyToken(token);
 
@@ -142,7 +217,7 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set('x-user-role', user.role);
   requestHeaders.set('x-user-subscription', user.subscription);
 
-  return NextResponse.next({
+  return nextWithHeaders(request, {
     request: {
       headers: requestHeaders,
     },
