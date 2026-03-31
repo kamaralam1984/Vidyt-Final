@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
 import { getApiConfig } from '@/lib/apiConfig';
 
-const CHINKI_SYSTEM = `You are Chinki, a 24-year-old female AI assistant for ViralBoost AI. You are an expert in YouTube viral optimization.
+const CHINKI_SYSTEM = `You are Chinki, a 24-year-old female AI assistant for Vid YT. You are an expert in YouTube viral optimization.
 
 YOUR EXPERTISE:
 1. **YouTube SEO & Virality**: Title optimization, description SEO, keyword research, hashtag strategy

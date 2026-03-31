@@ -173,7 +173,7 @@ export default function MarketingNavbar() {
           <div className="relative h-14 w-32 -my-2 mr-2">
             <Image
               src="/logo-navbar.png"
-              alt="ViralBoost AI logo"
+              alt="Vid YT logo"
               fill
               className="object-contain"
               priority
@@ -323,7 +323,7 @@ export default function MarketingNavbar() {
                     <ArrowRight className="h-3 w-3" />
                   </button>
                   <span className="hidden sm:inline text-white/40">
-                    Explore the full ViralBoost AI toolkit.
+                    Explore the full Vid YT toolkit.
                   </span>
                 </div>
                 <span className="text-[11px] text-white/30">
@@ -428,10 +428,10 @@ function IconBadge({ feature, isLocked }: { feature: Feature, isLocked?: boolean
 
 function FeatureCard({ feature }: { feature: Feature }) {
   const { authenticated, plan } = useUser();
-  
+
   const flag = FEATURE_TO_FLAG_MAP[feature.id];
   const isLocked = authenticated && plan && flag ? !(plan.features as any)[flag] : false;
-  
+
   // Always go to the marketing tool page first as requested by the user
   const href = `/tools/${feature.id}`;
 

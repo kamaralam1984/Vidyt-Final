@@ -39,7 +39,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
   const pathname = usePathname();
   const [allowedSystems, setAllowedSystems] = useState<Record<string, boolean>>({});
   const [loadingSystems, setLoadingSystems] = useState(true);
-  
+
   const [platformControls, setPlatformControls] = useState<Record<string, any>>({});
   const [loadingControls, setLoadingControls] = useState(true);
 
@@ -55,18 +55,18 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
         setLoadingSystems(false);
       }
     };
-    
+
     const fetchPlatformControls = async () => {
-        try {
-            const res = await axios.get('/api/user/controls', { headers: getAuthHeaders() });
-            if (res.data) {
-                setPlatformControls(res.data);
-            }
-        } catch (_) {
-            setPlatformControls({});
-        } finally {
-            setLoadingControls(false);
+      try {
+        const res = await axios.get('/api/user/controls', { headers: getAuthHeaders() });
+        if (res.data) {
+          setPlatformControls(res.data);
         }
+      } catch (_) {
+        setPlatformControls({});
+      } finally {
+        setLoadingControls(false);
+      }
     };
 
     fetchSystems();
@@ -121,7 +121,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
           >
             <div className="flex items-center justify-between p-4 border-b border-[#212121] flex-shrink-0">
               <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-                <img src="/logo.png" alt="ViralBoost AI" className="h-8 w-auto object-contain max-w-[140px]" />
+                <img src="/logo.png" alt="Vid YT" className="h-8 w-auto object-contain max-w-[140px]" />
               </Link>
               <button
                 onClick={onToggle}
@@ -144,62 +144,58 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                   </li>
                 ) : (
                   <>
-                {menuItems.map((item, index) => {
-                  const Icon = item.icon;
-                  return (
-                    <motion.li
-                      key={item.label}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Link
-                        href={item.href}
-                        className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${
-                          pathname === item.href
-                            ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20'
-                            : 'hover:bg-[#212121] text-[#AAAAAA]'
-                        }`}
-                      >
-                        <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${
-                          pathname === item.href
-                            ? 'text-white'
-                            : 'text-[#AAAAAA] group-hover:text-white'
-                        }`} />
-                        <span className={`${
-                          pathname === item.href
-                            ? 'text-white font-medium'
-                            : 'group-hover:text-white'
-                        }`}>
-                          {item.label}
-                        </span>
-                      </Link>
-                    </motion.li>
-                  );
-                })}
-                {aiStudioAllowed && (
-                  <>
-                    <li className="pt-2 mt-2 border-t border-[#212121]">
-                      <p className="px-3 py-1 text-xs font-semibold text-[#FF0000] uppercase tracking-wider">AI Studio</p>
-                    </li>
-                    {aiStudioItems.map((item, index) => {
+                    {menuItems.map((item, index) => {
                       const Icon = item.icon;
                       return (
-                        <motion.li key={item.href} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: (menuItems.length + index) * 0.05 }}>
+                        <motion.li
+                          key={item.label}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
                           <Link
                             href={item.href}
-                            className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${
-                              pathname === item.href ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20' : 'hover:bg-[#212121] text-[#AAAAAA]'
-                            }`}
+                            className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname === item.href
+                                ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20'
+                                : 'hover:bg-[#212121] text-[#AAAAAA]'
+                              }`}
                           >
-                            <Icon className={`w-5 h-5 ${pathname === item.href ? 'text-white' : 'text-[#AAAAAA] group-hover:text-white'}`} />
-                            <span className={pathname === item.href ? 'text-white font-medium' : 'group-hover:text-white'}>{item.label}</span>
+                            <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${pathname === item.href
+                                ? 'text-white'
+                                : 'text-[#AAAAAA] group-hover:text-white'
+                              }`} />
+                            <span className={`${pathname === item.href
+                                ? 'text-white font-medium'
+                                : 'group-hover:text-white'
+                              }`}>
+                              {item.label}
+                            </span>
                           </Link>
                         </motion.li>
                       );
                     })}
-                  </>
-                )}
+                    {aiStudioAllowed && (
+                      <>
+                        <li className="pt-2 mt-2 border-t border-[#212121]">
+                          <p className="px-3 py-1 text-xs font-semibold text-[#FF0000] uppercase tracking-wider">AI Studio</p>
+                        </li>
+                        {aiStudioItems.map((item, index) => {
+                          const Icon = item.icon;
+                          return (
+                            <motion.li key={item.href} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: (menuItems.length + index) * 0.05 }}>
+                              <Link
+                                href={item.href}
+                                className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname === item.href ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20' : 'hover:bg-[#212121] text-[#AAAAAA]'
+                                  }`}
+                              >
+                                <Icon className={`w-5 h-5 ${pathname === item.href ? 'text-white' : 'text-[#AAAAAA] group-hover:text-white'}`} />
+                                <span className={pathname === item.href ? 'text-white font-medium' : 'group-hover:text-white'}>{item.label}</span>
+                              </Link>
+                            </motion.li>
+                          );
+                        })}
+                      </>
+                    )}
                   </>
                 )}
               </ul>

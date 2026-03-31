@@ -114,7 +114,7 @@ if (check.denied) return check.response;
 ### Step 1: Verify Setup (5 minutes)
 ```bash
 # Check if permission system is working
-cd /home/server/Desktop/viralboost-ai
+cd /home/server/Desktop/vidyt
 
 # Verify files exist
 ls -la lib/permissions.ts

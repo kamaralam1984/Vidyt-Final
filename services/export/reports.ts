@@ -69,7 +69,7 @@ export async function generatePDFReport(
   data: any,
   whiteLabel?: { companyName?: string; logoUrl?: string }
 ): Promise<string> {
-  const brandName = whiteLabel?.companyName || 'ViralBoost AI';
+  const brandName = whiteLabel?.companyName || 'Vid YT';
   const logoHtml = whiteLabel?.logoUrl ? `<img src="${whiteLabel.logoUrl}" alt="Logo" style="max-height: 48px; margin-bottom: 12px;" />` : '';
   const html = `
     <!DOCTYPE html>

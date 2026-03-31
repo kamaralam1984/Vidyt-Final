@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
     // Verify SMTP configuration
     if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
       return NextResponse.json(
-        { 
-          error: 'SMTP configuration incomplete', 
+        {
+          error: 'SMTP configuration incomplete',
           details: results.configuration,
           required: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS']
         },
@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(results);
   } catch (error: any) {
     return NextResponse.json(
-      { 
-        error: 'Email test failed', 
+      {
+        error: 'Email test failed',
         message: error.message,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },

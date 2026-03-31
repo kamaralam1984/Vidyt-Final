@@ -32,10 +32,10 @@ export default function ThumbnailFrameworksPost() {
           <li>Use high‑contrast colours (e.g. red or yellow on dark, or white on coloured backgrounds).</li>
         </ul>
 
-        <h2 className="text-2xl font-semibold mt-8 mb-3">4. Implementation with ViralBoost AI</h2>
+        <h2 className="text-2xl font-semibold mt-8 mb-3">4. Implementation with Vid YT</h2>
         <ul className="list-disc list-inside text-[#DDDDDD] space-y-1">
           <li>Generate thumbnail ideas, then convert them into 2–3 different frameworks.</li>
-          <li>Use ViralBoost AI&apos;s thumbnail scoring and optimization tools to pick the strongest variant.</li>
+          <li>Use Vid YT&apos;s thumbnail scoring and optimization tools to pick the strongest variant.</li>
         </ul>
       </article>
     </main>

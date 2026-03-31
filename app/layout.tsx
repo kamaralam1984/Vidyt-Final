@@ -16,13 +16,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ViralBoost AI - AI-Powered Video Analysis Platform",
+  title: "Vid YT - AI-Powered Video Analysis Platform",
   description: "Analyze and optimize your social media videos to predict viral potential",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "ViralBoost AI",
+    title: "Vid YT",
   },
   formatDetection: {
     telephone: false,
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     'mobile-web-app-capable': 'yes',
   },
   openGraph: {
-    title: "ViralBoost AI - AI-Powered Video Analysis Platform",
+    title: "Vid YT - AI-Powered Video Analysis Platform",
     description: "Analyze and optimize your social media videos to predict viral potential",
     images: ['/logo.png'],
   },

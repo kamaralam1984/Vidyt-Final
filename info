@@ -24,7 +24,7 @@ Primary goal:
 - OTP based verification
 - Forgot/reset password
 - JWT based sessions
-- Role-based access (user, manager, admin, super-admin)
+- Role-based access (user, manager, admin, enterprise, super-admin)
 
 ### B) Video Input and Analysis
 - Direct video upload
@@ -55,7 +55,7 @@ Primary goal:
 - Channel disconnect support
 
 ### E) SEO + Discovery Tools
-- YouTube SEO tools
+- YouTube SEO tools (including Live SEO Analyzer with granular section controls)
 - Keyword ideas
 - Title score tools
 - Description suggestions
@@ -122,8 +122,8 @@ Primary goal:
 ### Super Admin Controls
 - Full platform visibility
 - Revenue/usage/control dashboards
-- Plan and feature configuration
-- AI monitoring modules
+- Plan and feature configuration (System Access Matrix, Unified Feature Matrix)
+- AI monitoring and YT SEO Section Control
 - System-level management routes
 
 ---
@@ -214,9 +214,19 @@ Website currently can:
 
 ---
 
-Last updated: 2026-03-30
+Last updated: 2026-03-31
 
 ## New Features
+
+### YouTube SEO Controls (March 31, 2026)
+- **Granular Visibility**: Super Admins can now toggle specific sections of the YouTube SEO Analyzer (Competitor Analytics, Title Optimization, Thumbnail Analysis, etc.) for different user roles.
+- **Role-Based Feature Flags**: Access logic is now driven by API-fetched feature flags, allowing precise control.
+- **Enhanced UI**: Improved section toggles and real-time access updates in the Super Admin panel.
+
+### Enterprise Role Integration (March 31, 2026)
+- **Enterprise Role**: A new "enterprise" role has been formally integrated into the User model and JWT authentication.
+- **Granular Access**: Enterprise users have dedicated access tiers and limits as configured in the Unified Feature Matrix.
+- **Dedicated Management**: Support for enterprise-specific features and dashboard views.
 
 ### Shorts Creator - Aspect Ratio Selection (March 30, 2026)
 - Users can now choose between 16:9 (landscape/desktop) and 9:16 (portrait/mobile) formats
@@ -363,4 +373,4 @@ These Terms of Use, Privacy Policy, and all related agreements are governed by a
 
 **✔ By using this platform, you agree to all the above terms.**
 
-Last updated: 2026-03-30
+Last updated: 2026-03-31

@@ -68,7 +68,7 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
             <li><strong>Functional Cookies:</strong> Essential for login, authentication, and site operation</li>
-            <li><strong>Analytics Cookies:</strong> Help us understand how you use ViralBoost (optional)</li>
+            <li><strong>Analytics Cookies:</strong> Help us understand how you use Vid YT (optional)</li>
             <li><strong>Marketing Cookies:</strong> Used for personalized content and campaigns (optional)</li>
           </ul>
           <p className="text-[#CCCCCC] mb-4">
@@ -85,7 +85,7 @@ export default function PrivacyPolicyPage() {
           <p className="text-[#CCCCCC] mb-4">
             You have the right to request deletion of your account and all associated data at any time:
           </p>
-          
+
           <h3 className="text-xl font-semibold text-white mb-3 mt-4">Deletion Process:</h3>
           <ol className="list-decimal list-inside text-[#CCCCCC] space-y-2 mb-6">
             <li><strong>Go to Settings → Delete My Account</strong></li>
@@ -100,7 +100,7 @@ export default function PrivacyPolicyPage() {
           </p>
           <div className="bg-[#181818] border border-[#333333] rounded-lg p-4 mb-6">
             <p className="text-[#AAAAAA]">
-              <strong>Email:</strong> <a href="mailto:support@viralboostai.com" className="text-[#FF0000] hover:underline">support@viralboostai.com</a>
+              <strong>Email:</strong> <a href="mailto:support@vidyt.com" className="text-[#FF0000] hover:underline">support@vidyt.com</a>
             </p>
             <p className="text-[#AAAAAA] text-sm mt-1">Subject: "Data Deletion Request"</p>
             <p className="text-[#888] text-sm mt-2">Include your account email and we'll process your request within 7 business days.</p>
@@ -200,7 +200,7 @@ export default function PrivacyPolicyPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mt-6 mb-3">11. International Data Transfers</h2>
           <p className="text-[#CCCCCC]">
-            Your data may be processed and stored in India and other countries. By using ViralBoost, you consent to the transfer and processing of your information in accordance with this privacy policy.
+            Your data may be processed and stored in India and other countries. By using Vid YT, you consent to the transfer and processing of your information in accordance with this privacy policy.
           </p>
         </section>
 
@@ -209,12 +209,12 @@ export default function PrivacyPolicyPage() {
           <p className="text-[#CCCCCC] mb-4">
             For privacy concerns, data access requests, deletion inquiries, or to exercise your rights:
           </p>
-          
+
           <div className="bg-[#181818] border border-[#333333] rounded-lg p-6 mb-6">
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-white mb-2">ViralBoost AI Privacy Team</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">Vid YT Privacy Team</h3>
               <p className="text-[#AAAAAA] mb-1">
-                <strong>Email:</strong> <a href="mailto:support@viralboostai.com" className="text-[#FF0000] hover:underline">support@viralboostai.com</a>
+                <strong>Email:</strong> <a href="mailto:support@vidyt.com" className="text-[#FF0000] hover:underline">support@vidyt.com</a>
               </p>
               <p className="text-[#AAAAAA] mb-1">
                 <strong>Subject Line:</strong> "Data Request" or "Privacy Inquiry"
@@ -223,7 +223,7 @@ export default function PrivacyPolicyPage() {
                 <strong>Response Time:</strong> Within 7 business days
               </p>
             </div>
-            
+
             <div className="border-t border-[#333333] pt-4">
               <h3 className="text-lg font-semibold text-white mb-2">Dashboard Options</h3>
               <ul className="text-[#AAAAAA] space-y-1 text-sm">
@@ -245,7 +245,7 @@ export default function PrivacyPolicyPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mt-6 mb-3">13. Policy Updates</h2>
           <p className="text-[#CCCCCC]">
-            We may update this policy occasionally. Significant changes will be announced via email or a prominent notice on the site. Continued use of ViralBoost after updates means you accept the new policy.
+            We may update this policy occasionally. Significant changes will be announced via email or a prominent notice on the site. Continued use of Vid YT after updates means you accept the new policy.
           </p>
         </section>
 

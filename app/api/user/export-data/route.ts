@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         status: 200,
         headers: {
           'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="viralboost-videos-${new Date().toISOString().split('T')[0]}.csv"`,
+          'Content-Disposition': `attachment; filename="vidyt-videos-${new Date().toISOString().split('T')[0]}.csv"`,
         },
       });
 

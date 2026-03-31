@@ -57,7 +57,7 @@ export default function Navbar() {
             } else setDaysLeft(null);
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     };
     fetchUserInfo();
   }, []);
@@ -84,20 +84,19 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between gap-4 px-4 bg-[#0F0F0F] border-b border-[#212121]">
       <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-        <img src={LOGO_SRC} alt="ViralBoost AI" className="h-[2.25rem] md:h-[3.375rem] w-auto object-contain" />
+        <img src={LOGO_SRC} alt="Vid YT" className="h-[2.25rem] md:h-[3.375rem] w-auto object-contain" />
       </Link>
       <div className="flex items-center gap-3">
         {/* User info: name, role, ID, plan */}
         {(userName || userRole || userUniqueId) && (
           <div className="hidden sm:flex items-center gap-3 text-sm">
             {userName && <span className="text-white font-medium truncate max-w-[120px]" title={userName}>{userName}</span>}
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
-              isSuperRoleNav
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${isSuperRoleNav
                 ? 'bg-[#FF0000]/20 text-[#FF0000]'
-              : userRole === 'admin' ? 'bg-[#FF0000]/20 text-[#FF0000]'
-              : userRole === 'manager' ? 'bg-yellow-400/20 text-yellow-400'
-              : 'bg-[#212121] text-[#AAAAAA]'
-            }`}>
+                : userRole === 'admin' ? 'bg-[#FF0000]/20 text-[#FF0000]'
+                  : userRole === 'manager' ? 'bg-yellow-400/20 text-yellow-400'
+                    : 'bg-[#212121] text-[#AAAAAA]'
+              }`}>
               <User className="w-3.5 h-3.5" />
               {userRole ? userRole.toUpperCase() : 'USER'}
             </span>
@@ -127,9 +126,8 @@ export default function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? 'bg-[#FF0000] text-white' : 'text-[#AAAAAA] hover:bg-[#212121] hover:text-white'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-[#FF0000] text-white' : 'text-[#AAAAAA] hover:bg-[#212121] hover:text-white'
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 <span>{item.label}</span>

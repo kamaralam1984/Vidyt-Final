@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
-import { 
-  Check, 
-  Zap, 
-  Crown, 
-  Rocket, 
+import {
+  Check,
+  Zap,
+  Crown,
+  Rocket,
   Sparkles,
   ArrowRight,
   Loader2,
@@ -128,8 +128,8 @@ export default function PricingPage() {
           });
           setUserPlan(
             response.data.user?.subscription ||
-              response.data.user?.subscriptionPlan?.planId ||
-              'free'
+            response.data.user?.subscriptionPlan?.planId ||
+            'free'
           );
         }
       } catch (error) {
@@ -143,7 +143,7 @@ export default function PricingPage() {
         setPlansLoading(true);
         const res = await axios.get('/api/subscriptions/plans');
         const apiPlans = res.data?.plans || [];
-        
+
         const formattedPlans = apiPlans.map((p: any) => {
           const preset = PLAN_UI_PRESETS[p.id] || {
             icon: Star,
@@ -280,7 +280,7 @@ export default function PricingPage() {
       key: order.key, // Use key from server order response
       amount: order.amount,
       currency: order.currency || 'INR',
-      name: 'ViralBoost AI',
+      name: 'Vid YT',
       description: `Upgrade to ${planId} Plan`,
       order_id: order.id,
       handler: async function (response: any) {
@@ -292,9 +292,9 @@ export default function PricingPage() {
             razorpay_signature: response.razorpay_signature,
             plan: planId,
             billingPeriod,
-              // Forward server-created order charge so backend can detect mismatches
-              amountMinor: order.amount,
-              currency: order.currency || 'INR',
+            // Forward server-created order charge so backend can detect mismatches
+            amountMinor: order.amount,
+            currency: order.currency || 'INR',
           }, {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });
@@ -353,64 +353,64 @@ export default function PricingPage() {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-gradient-to-b from-[#0F0F0F] via-[#181818] to-[#0F0F0F]">
-          {/* Hero Section */}
+        {/* Hero Section */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-16 px-6"
+        >
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16 px-6"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2 }}
           >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
-                Choose Your <span className="text-[#FF0000]">Plan</span>
-              </h1>
-              <p className="text-xl text-[#AAAAAA] mb-8 max-w-2xl mx-auto">
-                Unlock the power of AI-driven viral content optimization
-              </p>
-            </motion.div>
-
-            {/* Billing Toggle */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="flex items-center justify-center gap-4 mb-12"
-            >
-              <span className={`text-sm ${billingPeriod === 'month' ? 'text-white' : 'text-[#AAAAAA]'}`}>
-                Monthly
-              </span>
-              <button
-                onClick={() => setBillingPeriod(billingPeriod === 'month' ? 'year' : 'month')}
-                className="relative w-14 h-7 bg-[#212121] rounded-full p-1 transition-colors"
-              >
-                <motion.div
-                  animate={{
-                    x: billingPeriod === 'year' ? 28 : 0,
-                  }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                  className="w-5 h-5 bg-[#FF0000] rounded-full absolute"
-                />
-              </button>
-              <span className={`text-sm ${billingPeriod === 'year' ? 'text-white' : 'text-[#AAAAAA]'}`}>
-                Yearly
-                {billingPeriod === 'year' && (
-                  <span className="ml-2 px-2 py-1 bg-[#FF0000]/20 text-[#FF0000] rounded text-xs">
-                    Save up to 17%
-                  </span>
-                )}
-              </span>
-            </motion.div>
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+              Choose Your <span className="text-[#FF0000]">Plan</span>
+            </h1>
+            <p className="text-xl text-[#AAAAAA] mb-8 max-w-2xl mx-auto">
+              Unlock the power of AI-driven viral content optimization
+            </p>
           </motion.div>
 
-          {/* Plans Grid */}
-          <div className="max-w-7xl mx-auto px-6 pb-16">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {activePlans
-                .filter(p => !userPlan || (userPlan === 'free' ? p.id !== 'free' : true))
-                .map((plan, index) => {
+          {/* Billing Toggle */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="flex items-center justify-center gap-4 mb-12"
+          >
+            <span className={`text-sm ${billingPeriod === 'month' ? 'text-white' : 'text-[#AAAAAA]'}`}>
+              Monthly
+            </span>
+            <button
+              onClick={() => setBillingPeriod(billingPeriod === 'month' ? 'year' : 'month')}
+              className="relative w-14 h-7 bg-[#212121] rounded-full p-1 transition-colors"
+            >
+              <motion.div
+                animate={{
+                  x: billingPeriod === 'year' ? 28 : 0,
+                }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                className="w-5 h-5 bg-[#FF0000] rounded-full absolute"
+              />
+            </button>
+            <span className={`text-sm ${billingPeriod === 'year' ? 'text-white' : 'text-[#AAAAAA]'}`}>
+              Yearly
+              {billingPeriod === 'year' && (
+                <span className="ml-2 px-2 py-1 bg-[#FF0000]/20 text-[#FF0000] rounded text-xs">
+                  Save up to 17%
+                </span>
+              )}
+            </span>
+          </motion.div>
+        </motion.div>
+
+        {/* Plans Grid */}
+        <div className="max-w-7xl mx-auto px-6 pb-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {activePlans
+              .filter(p => !userPlan || (userPlan === 'free' ? p.id !== 'free' : true))
+              .map((plan, index) => {
                 const Icon = plan.icon;
                 const isCurrentPlan = userPlan === plan.id;
                 const savings = getSavings(plan);
@@ -421,11 +421,10 @@ export default function PricingPage() {
                     initial={{ opacity: 0, y: 50 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 * index }}
-                    className={`relative ${
-                      plan.popular
+                    className={`relative ${plan.popular
                         ? 'md:-mt-4 md:mb-4'
                         : ''
-                    }`}
+                      }`}
                   >
                     {plan.popular && (
                       <motion.div
@@ -443,11 +442,10 @@ export default function PricingPage() {
 
                     <motion.div
                       whileHover={{ y: -8, scale: 1.02 }}
-                      className={`relative bg-[#181818] border-2 rounded-2xl p-8 h-full ${
-                        plan.popular
+                      className={`relative bg-[#181818] border-2 rounded-2xl p-8 h-full ${plan.popular
                           ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20'
                           : 'border-[#212121] hover:border-[#333333]'
-                      } transition-all duration-300`}
+                        } transition-all duration-300`}
                     >
                       {/* Plan Header */}
                       <div className="text-center mb-8">
@@ -460,11 +458,11 @@ export default function PricingPage() {
                           <Icon className="w-8 h-8" style={{ color: plan.color }} />
                         </motion.div>
                         <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                        
+
                         {/* Role Badge */}
                         {plan.role && (
                           <div className="flex items-center justify-center gap-2 mb-3">
-                            <span 
+                            <span
                               className="px-3 py-1 rounded-full text-xs font-semibold text-white"
                               style={{ backgroundColor: plan.color }}
                             >
@@ -475,7 +473,7 @@ export default function PricingPage() {
                             </span>
                           </div>
                         )}
-                        
+
                         <p className="text-[#AAAAAA] text-sm mb-4">{plan.description}</p>
                         <div className="mb-2 space-y-1">
                           <div className="flex items-baseline justify-center gap-2">
@@ -545,11 +543,10 @@ export default function PricingPage() {
                             disabled={payBusy(plan.id)}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-all ${
-                              plan.popular
+                            className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-all ${plan.popular
                                 ? 'bg-gradient-to-r from-[#FF0000] to-[#CC0000] hover:from-[#CC0000] hover:to-[#AA0000]'
                                 : 'bg-[#212121] hover:bg-[#333333]'
-                            } flex items-center justify-center gap-2`}
+                              } flex items-center justify-center gap-2`}
                           >
                             {loading === `rzp:${plan.id}` ? (
                               <>
@@ -588,170 +585,170 @@ export default function PricingPage() {
                   </motion.div>
                 );
               })}
-            </div>
-
-            {/* Features Comparison */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="mt-16 bg-[#181818] border border-[#212121] rounded-2xl p-8"
-            >
-              <h2 className="text-3xl font-bold text-white mb-8 text-center">
-                Why Choose ViralBoost AI?
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { icon: TrendingUp, title: 'AI-Powered Predictions', desc: 'Advanced ML models for accurate viral potential' },
-                  { icon: Target, title: 'Real-Time Trends', desc: 'Stay ahead with trending topics and hashtags' },
-                  { icon: BarChart3, title: 'Advanced Analytics', desc: 'Deep insights into your content performance' },
-                  { icon: Calendar, title: 'Smart Scheduling', desc: 'Optimal posting times for maximum engagement' },
-                  { icon: Users, title: 'Competitor Analysis', desc: 'Learn from top-performing creators' },
-                  { icon: Shield, title: 'Secure & Private', desc: 'Your data is always protected' },
-                ].map((feature, index) => {
-                  const Icon = feature.icon;
-                  return (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.7 + index * 0.1 }}
-                      whileHover={{ scale: 1.05 }}
-                      className="flex items-start gap-4 p-4 rounded-lg bg-[#212121] hover:bg-[#2a2a2a] transition-colors"
-                    >
-                      <div className="p-2 bg-[#FF0000]/20 rounded-lg">
-                        <Icon className="w-6 h-6 text-[#FF0000]" />
-                      </div>
-                      <div>
-                        <h3 className="text-white font-semibold mb-1">{feature.title}</h3>
-                        <p className="text-[#AAAAAA] text-sm">{feature.desc}</p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-
-            {/* Role Information Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="mt-16"
-            >
-              <h2 className="text-3xl font-bold text-white mb-8 text-center">
-                Role Capabilities
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-                {[
-                  {
-                    role: 'User',
-                    level: 1,
-                    color: '#AAAAAA',
-                    features: ['Upload Videos', 'Analyze Videos', 'View Analytics', 'AI Studio Access'],
-                    plans: ['Free', 'Starter'],
-                  },
-                  {
-                    role: 'Manager',
-                    level: 2,
-                    color: '#FF0000',
-                    features: ['All User Features', 'Create Teams', 'Invite Members', 'Team Analytics'],
-                    plans: ['Pro'],
-                  },
-                  {
-                    role: 'Admin',
-                    level: 3,
-                    color: '#FFD700',
-                    features: ['All Manager Features', 'Use API', 'API Keys', 'White-Label', 'Custom Models'],
-                    plans: ['Enterprise', 'Custom'],
-                  },
-                ].map((roleInfo, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 + index * 0.1 }}
-                    className="bg-[#181818] border-2 rounded-xl p-6"
-                    style={{ borderColor: roleInfo.color }}
-                  >
-                    <div className="mb-4">
-                      <div className="inline-block px-3 py-1 rounded-full text-sm font-semibold text-white mb-2" style={{ backgroundColor: roleInfo.color }}>
-                        Level {roleInfo.level}
-                      </div>
-                      <h3 className="text-xl font-bold text-white">{roleInfo.role}</h3>
-                    </div>
-                    
-                    <div className="mb-4">
-                      <p className="text-[#AAAAAA] text-xs font-semibold mb-2">Plans:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {roleInfo.plans.map((plan) => (
-                          <span key={plan} className="text-xs bg-[#212121] text-[#AAAAAA] px-2 py-1 rounded">
-                            {plan}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-[#AAAAAA] text-xs font-semibold mb-3">Features:</p>
-                      <ul className="space-y-2">
-                        {roleInfo.features.map((feature, fIdx) => (
-                          <li key={fIdx} className="flex items-start gap-2">
-                            <Check className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: roleInfo.color }} />
-                            <span className="text-[#AAAAAA] text-sm">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* FAQ Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="mt-16"
-            >
-              <h2 className="text-3xl font-bold text-white mb-8 text-center">
-                Frequently Asked Questions
-              </h2>
-              <div className="space-y-4 max-w-3xl mx-auto">
-                {[
-                  {
-                    q: 'Can I change plans anytime?',
-                    a: 'Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately.',
-                  },
-                  {
-                    q: 'What payment methods do you accept?',
-                    a: 'We accept all major credit cards, PayPal, and bank transfers for Enterprise plans.',
-                  },
-                  {
-                    q: 'Is there a free trial?',
-                    a: 'Yes! All paid plans come with a 7-day free trial. No credit card required.',
-                  },
-                  {
-                    q: 'Can I cancel anytime?',
-                    a: 'Absolutely! Cancel anytime with no cancellation fees. Your access continues until the end of your billing period.',
-                  },
-                ].map((faq, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.9 + index * 0.1 }}
-                    className="bg-[#181818] border border-[#212121] rounded-lg p-6 hover:border-[#333333] transition-colors"
-                  >
-                    <h3 className="text-white font-semibold mb-2">{faq.q}</h3>
-                    <p className="text-[#AAAAAA]">{faq.a}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
           </div>
+
+          {/* Features Comparison */}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mt-16 bg-[#181818] border border-[#212121] rounded-2xl p-8"
+          >
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
+              Why Choose Vid YT?
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { icon: TrendingUp, title: 'AI-Powered Predictions', desc: 'Advanced ML models for accurate viral potential' },
+                { icon: Target, title: 'Real-Time Trends', desc: 'Stay ahead with trending topics and hashtags' },
+                { icon: BarChart3, title: 'Advanced Analytics', desc: 'Deep insights into your content performance' },
+                { icon: Calendar, title: 'Smart Scheduling', desc: 'Optimal posting times for maximum engagement' },
+                { icon: Users, title: 'Competitor Analysis', desc: 'Learn from top-performing creators' },
+                { icon: Shield, title: 'Secure & Private', desc: 'Your data is always protected' },
+              ].map((feature, index) => {
+                const Icon = feature.icon;
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.7 + index * 0.1 }}
+                    whileHover={{ scale: 1.05 }}
+                    className="flex items-start gap-4 p-4 rounded-lg bg-[#212121] hover:bg-[#2a2a2a] transition-colors"
+                  >
+                    <div className="p-2 bg-[#FF0000]/20 rounded-lg">
+                      <Icon className="w-6 h-6 text-[#FF0000]" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-semibold mb-1">{feature.title}</h3>
+                      <p className="text-[#AAAAAA] text-sm">{feature.desc}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+
+          {/* Role Information Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="mt-16"
+          >
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
+              Role Capabilities
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+              {[
+                {
+                  role: 'User',
+                  level: 1,
+                  color: '#AAAAAA',
+                  features: ['Upload Videos', 'Analyze Videos', 'View Analytics', 'AI Studio Access'],
+                  plans: ['Free', 'Starter'],
+                },
+                {
+                  role: 'Manager',
+                  level: 2,
+                  color: '#FF0000',
+                  features: ['All User Features', 'Create Teams', 'Invite Members', 'Team Analytics'],
+                  plans: ['Pro'],
+                },
+                {
+                  role: 'Admin',
+                  level: 3,
+                  color: '#FFD700',
+                  features: ['All Manager Features', 'Use API', 'API Keys', 'White-Label', 'Custom Models'],
+                  plans: ['Enterprise', 'Custom'],
+                },
+              ].map((roleInfo, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 + index * 0.1 }}
+                  className="bg-[#181818] border-2 rounded-xl p-6"
+                  style={{ borderColor: roleInfo.color }}
+                >
+                  <div className="mb-4">
+                    <div className="inline-block px-3 py-1 rounded-full text-sm font-semibold text-white mb-2" style={{ backgroundColor: roleInfo.color }}>
+                      Level {roleInfo.level}
+                    </div>
+                    <h3 className="text-xl font-bold text-white">{roleInfo.role}</h3>
+                  </div>
+
+                  <div className="mb-4">
+                    <p className="text-[#AAAAAA] text-xs font-semibold mb-2">Plans:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {roleInfo.plans.map((plan) => (
+                        <span key={plan} className="text-xs bg-[#212121] text-[#AAAAAA] px-2 py-1 rounded">
+                          {plan}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[#AAAAAA] text-xs font-semibold mb-3">Features:</p>
+                    <ul className="space-y-2">
+                      {roleInfo.features.map((feature, fIdx) => (
+                        <li key={fIdx} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: roleInfo.color }} />
+                          <span className="text-[#AAAAAA] text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* FAQ Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="mt-16"
+          >
+            <h2 className="text-3xl font-bold text-white mb-8 text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-4 max-w-3xl mx-auto">
+              {[
+                {
+                  q: 'Can I change plans anytime?',
+                  a: 'Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately.',
+                },
+                {
+                  q: 'What payment methods do you accept?',
+                  a: 'We accept all major credit cards, PayPal, and bank transfers for Enterprise plans.',
+                },
+                {
+                  q: 'Is there a free trial?',
+                  a: 'Yes! All paid plans come with a 7-day free trial. No credit card required.',
+                },
+                {
+                  q: 'Can I cancel anytime?',
+                  a: 'Absolutely! Cancel anytime with no cancellation fees. Your access continues until the end of your billing period.',
+                },
+              ].map((faq, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.9 + index * 0.1 }}
+                  className="bg-[#181818] border border-[#212121] rounded-lg p-6 hover:border-[#333333] transition-colors"
+                >
+                  <h3 className="text-white font-semibold mb-2">{faq.q}</h3>
+                  <p className="text-[#AAAAAA]">{faq.a}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
         </div>
-      </DashboardLayout>
+      </div>
+    </DashboardLayout>
   );
 }

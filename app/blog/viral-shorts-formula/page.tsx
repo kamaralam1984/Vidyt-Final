@@ -37,7 +37,7 @@ export default function ViralShortsFormulaPost() {
         <h2 className="text-2xl font-semibold mt-8 mb-3">4. Optimization</h2>
         <ul className="list-disc list-inside text-[#DDDDDD] space-y-1">
           <li>Make your Shorts titles scroll‑stopping using a primary keyword plus curiosity.</li>
-          <li>Use ViralBoost AI to generate hooks and ideas, then plan 10–20 Shorts in batches.</li>
+          <li>Use Vid YT to generate hooks and ideas, then plan 10–20 Shorts in batches.</li>
         </ul>
       </article>
     </main>

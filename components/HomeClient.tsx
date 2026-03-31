@@ -144,13 +144,13 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             >
               {/* Container 80% height = crop bottom 20% of logo */}
               <div className="relative overflow-hidden flex justify-center items-start h-[19rem] md:h-[26.8rem] w-full max-w-[30rem]">
-                <Image 
-                  src="/logo.png" 
-                  alt="ViralBoost AI" 
+                <Image
+                  src="/logo.png"
+                  alt="Vid YT"
                   width={600}
                   height={600}
                   priority
-                  className="h-96 md:h-[30rem] w-auto object-contain object-top" 
+                  className="h-96 md:h-[30rem] w-auto object-contain object-top"
                 />
               </div>
             </motion.div>
@@ -313,80 +313,80 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
           {initialPlans.length === 0 ? (
             <p className="text-center text-[#AAAAAA] py-12">Loading plans…</p>
           ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            {initialPlans.map((plan, index) => {
-              const basePrice = billingPeriod === 'year' ? plan.priceYear : plan.priceMonth;
-              const isFree = plan.priceMonth === 0 && plan.priceYear === 0;
-              // Simple static conversion for marketing display only
-              const rateMap: Record<string, number> = {
-                USD: 1,
-                INR: 83,
-                EUR: 0.92,
-                GBP: 0.79,
-                AED: 3.67,
-                SGD: 1.34,
-                AUD: 1.52,
-                CAD: 1.36,
-                MXN: 18.0,
-                IDR: 15500,
-                PKR: 278,
-              };
-              const rate = rateMap[locale.currency] ?? 1;
-              const converted = isFree ? 0 : Math.round(basePrice * rate * 100) / 100;
-              const format = (v: number) =>
-                Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2).replace(/\.00$/, '');
-              const priceLabel = isFree ? `${locale.currencySymbol}0` : `${locale.currencySymbol}${format(converted)}`;
-              const periodLabel = billingPeriod === 'year' ? '/year' : '/month';
-              return (
-                <motion.div
-                  key={plan.planId || plan.name}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`bg-[#181818] border-2 rounded-xl p-8 ${plan.popular ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20' : 'border-[#212121]'
-                    }`}
-                >
-                  {plan.popular && (
-                    <div className="bg-[#FF0000] text-white px-4 py-1 rounded-full text-sm font-semibold inline-block mb-4">
-                      {t('pricing.mostPopular')}
-                    </div>
-                  )}
-                  <h3 className="text-2xl font-bold text-white mb-2">
-                    {plan.name}
-                  </h3>
-                  <div className="mb-2 space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-white">
-                        {priceLabel}
-                        <span className="text-lg text-[#AAAAAA]">{periodLabel}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature, i) => {
-                      const translated = typeof feature === 'string' && feature.startsWith('pricing.') ? t(feature as any) : feature;
-                      return (
-                        <li key={i} className="flex items-center gap-2 text-[#AAAAAA]">
-                          <Check className="w-5 h-5 text-[#10b981]" />
-                          {translated}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <Link
-                    href="/register"
-                    className={`block w-full py-3 px-6 rounded-lg font-semibold text-center transition-all ${plan.popular
-                      ? 'bg-[#FF0000] text-white hover:bg-[#CC0000]'
-                      : 'bg-[#212121] text-white hover:bg-[#333333]'
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
+              {initialPlans.map((plan, index) => {
+                const basePrice = billingPeriod === 'year' ? plan.priceYear : plan.priceMonth;
+                const isFree = plan.priceMonth === 0 && plan.priceYear === 0;
+                // Simple static conversion for marketing display only
+                const rateMap: Record<string, number> = {
+                  USD: 1,
+                  INR: 83,
+                  EUR: 0.92,
+                  GBP: 0.79,
+                  AED: 3.67,
+                  SGD: 1.34,
+                  AUD: 1.52,
+                  CAD: 1.36,
+                  MXN: 18.0,
+                  IDR: 15500,
+                  PKR: 278,
+                };
+                const rate = rateMap[locale.currency] ?? 1;
+                const converted = isFree ? 0 : Math.round(basePrice * rate * 100) / 100;
+                const format = (v: number) =>
+                  Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2).replace(/\.00$/, '');
+                const priceLabel = isFree ? `${locale.currencySymbol}0` : `${locale.currencySymbol}${format(converted)}`;
+                const periodLabel = billingPeriod === 'year' ? '/year' : '/month';
+                return (
+                  <motion.div
+                    key={plan.planId || plan.name}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className={`bg-[#181818] border-2 rounded-xl p-8 ${plan.popular ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20' : 'border-[#212121]'
                       }`}
                   >
-                    {t('pricing.getStarted')}
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </div>
+                    {plan.popular && (
+                      <div className="bg-[#FF0000] text-white px-4 py-1 rounded-full text-sm font-semibold inline-block mb-4">
+                        {t('pricing.mostPopular')}
+                      </div>
+                    )}
+                    <h3 className="text-2xl font-bold text-white mb-2">
+                      {plan.name}
+                    </h3>
+                    <div className="mb-2 space-y-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-4xl font-bold text-white">
+                          {priceLabel}
+                          <span className="text-lg text-[#AAAAAA]">{periodLabel}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <ul className="space-y-3 mb-6">
+                      {plan.features.map((feature, i) => {
+                        const translated = typeof feature === 'string' && feature.startsWith('pricing.') ? t(feature as any) : feature;
+                        return (
+                          <li key={i} className="flex items-center gap-2 text-[#AAAAAA]">
+                            <Check className="w-5 h-5 text-[#10b981]" />
+                            {translated}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <Link
+                      href="/register"
+                      className={`block w-full py-3 px-6 rounded-lg font-semibold text-center transition-all ${plan.popular
+                        ? 'bg-[#FF0000] text-white hover:bg-[#CC0000]'
+                        : 'bg-[#212121] text-white hover:bg-[#333333]'
+                        }`}
+                    >
+                      {t('pricing.getStarted')}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
           )}
 
           <motion.div
@@ -418,7 +418,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               Grow on YouTube with Free AI Tools
             </h2>
             <p className="text-lg text-[#AAAAAA] max-w-3xl mx-auto">
-              Use ViralBoost AI&apos;s free YouTube tools to get ideas, scripts, thumbnails, titles and hashtags
+              Use Vid YT&apos;s free YouTube tools to get ideas, scripts, thumbnails, titles and hashtags
               in one place — without any complicated setup.
             </p>
           </motion.div>
@@ -496,7 +496,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-6 h-6 text-[#FF0000]" />
                 <span className="text-xl font-bold text-white">
-                  <span className="text-[#FF0000]">ViralBoost</span> AI
+                  <span className="text-[#FF0000]">Vid</span> YT
                 </span>
               </div>
               <p className="text-[#AAAAAA] text-sm">
@@ -529,7 +529,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             </div>
           </div>
           <div className="border-t border-[#212121] pt-8 text-center text-[#AAAAAA] text-sm">
-            © {new Date().getFullYear()} ViralBoost AI. All rights reserved.
+            © {new Date().getFullYear()} Vid YT. All rights reserved.
           </div>
         </div>
       </footer>

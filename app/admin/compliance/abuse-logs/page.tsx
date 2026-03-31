@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import AbuseMonitoringDashboard from '@/components/admin/AbuseMonitoringDashboard';
 
 export const metadata = {
-  title: 'Abuse Monitoring | ViralBoost Admin',
+  title: 'Abuse Monitoring | Vid YT Admin',
   description: 'Monitor and manage API abuse and suspicious activity',
 };
 

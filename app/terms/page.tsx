@@ -9,14 +9,14 @@ export default function TermsPage() {
         </h1>
         <p className="text-[#AAAAAA] mb-4">
           These terms are a simplified version that you can expand later with a full legal review. The main
-          purpose is to make it clear to both Google and users that ViralBoost AI is a serious product with
+          purpose is to make it clear to both Google and users that Vid YT is a serious product with
           real policies in place.
         </p>
         <h2 className="text-2xl font-semibold mt-6 mb-3">
           1. Use of the service
         </h2>
         <p className="text-[#CCCCCC] mb-2">
-          You may use ViralBoost AI to analyze, optimize and grow your channels and content. You may not misuse
+          You may use Vid YT to analyze, optimize and grow your channels and content. You may not misuse
           our tools (for spam, abuse, TOS violations, or any illegal activity).
         </p>
         <h2 className="text-2xl font-semibold mt-6 mb-3">
@@ -30,7 +30,7 @@ export default function TermsPage() {
           3. Content ownership
         </h2>
         <p className="text-[#CCCCCC] mb-2">
-          You remain the full owner of your content and channels. ViralBoost AI only processes your data
+          You remain the full owner of your content and channels. Vid YT only processes your data
           temporarily for analysis and recommendations.
         </p>
       </div>

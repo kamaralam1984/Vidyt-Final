@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const subject = (body.subject || 'Notification from ViralBoost AI').trim();
+    const subject = (body.subject || 'Notification from Vid YT').trim();
     const message = (body.message || '').trim();
 
     if (!message) {

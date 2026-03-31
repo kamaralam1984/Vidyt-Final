@@ -15,7 +15,7 @@ function getEmailBaseUrl(): string {
 
 function getEmailLogoHtml(): string {
   const base = getEmailBaseUrl();
-  return `<img src="${base}/logo.png" alt="ViralBoost AI" width="180" height="48" style="display:block;max-width:180px;height:auto;margin:0 auto;" />`;
+  return `<img src="${base}/logo.png" alt="Vid YT" width="180" height="48" style="display:block;max-width:180px;height:auto;margin:0 auto;" />`;
 }
 
 const emailConfig = {
@@ -38,7 +38,7 @@ function getTransporter() {
       secure: emailConfig.port === 465,
       auth: emailConfig.auth,
     });
-    
+
     // Verify SMTP connection in development
     if (process.env.NODE_ENV === 'development') {
       transporter.verify((error, success) => {
@@ -57,8 +57,8 @@ function getTransporter() {
 async function sendMail(options: { to: string; subject: string; html: string; text?: string; from?: string }): Promise<boolean> {
   try {
     const config = await getApiConfig();
-    const emailFrom = options.from || process.env.EMAIL_FROM || `"ViralBoost AI" <${emailConfig.auth.user}>`;
-    
+    const emailFrom = options.from || process.env.EMAIL_FROM || `"Vid YT" <${emailConfig.auth.user}>`;
+
     // Try Resend first if API key is configured
     if (config.resendApiKey?.trim()) {
       try {
@@ -80,14 +80,14 @@ async function sendMail(options: { to: string; subject: string; html: string; te
         console.warn('⚠️ Resend failed, attempting SMTP fallback:', e);
       }
     }
-    
+
     // Fallback to SMTP
     const trans = getTransporter();
     if (!trans) {
       console.error('❌ No email transporter available. Check SMTP_USER and SMTP_PASS in .env.local');
       return false;
     }
-    
+
     await trans.sendMail({
       from: emailFrom,
       to: options.to,
@@ -128,7 +128,7 @@ export async function sendPasswordResetEmail(
       </head>
       <body>
         <div class="container">
-          <div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div>
+          <div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div>
           <div class="content">
             <h2>Reset Your Password</h2>
             <p>Hello ${userName || 'User'},</p>
@@ -137,15 +137,15 @@ export async function sendPasswordResetEmail(
             <p style="word-break: break-all; color: #666; font-size: 12px;">${resetUrl}</p>
             <p><strong>This link will expire in 1 hour.</strong></p>
           </div>
-          <div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div>
+          <div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div>
         </div>
       </body>
       </html>`;
     const ok = await sendMail({
       to: email,
-      subject: 'Reset Your Password - ViralBoost AI',
+      subject: 'Reset Your Password - Vid YT',
       html,
-      text: `Reset your password: ${resetUrl}\n\nThis link expires in 1 hour.\n\n© ViralBoost AI`,
+      text: `Reset your password: ${resetUrl}\n\nThis link expires in 1 hour.\n\n© Vid YT`,
     });
     if (ok) return true;
     if (process.env.NODE_ENV === 'development') {
@@ -185,7 +185,7 @@ export async function sendPasswordResetOTP(
       </head>
       <body>
         <div class="container">
-          <div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div>
+          <div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div>
           <div class="content">
             <h2>Reset Your Password</h2>
             <p>Hello ${userName || 'User'},</p>
@@ -194,17 +194,17 @@ export async function sendPasswordResetOTP(
             <p><strong>This OTP will expire in 10 minutes.</strong></p>
             <p>If you did not request this, please ignore this email.</p>
           </div>
-          <div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div>
+          <div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div>
         </div>
       </body>
       </html>`;
     const ok = await sendMail({
       to: email,
-      subject: 'Password Reset OTP - ViralBoost AI',
+      subject: 'Password Reset OTP - Vid YT',
       html,
-      text: `Your password reset OTP is: ${otp}\n\nThis code expires in 10 minutes.\n\n© ViralBoost AI`,
+      text: `Your password reset OTP is: ${otp}\n\nThis code expires in 10 minutes.\n\n© Vid YT`,
     });
-    
+
     if (ok) return true;
     if (process.env.NODE_ENV === 'development') {
       console.log('\n' + '='.repeat(40));
@@ -231,20 +231,20 @@ export async function sendOTPEmail(
   userName?: string
 ): Promise<boolean> {
   try {
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.otp-box{background:#212121;color:white;padding:20px;text-align:center;border-radius:8px;margin:20px 0;font-size:32px;font-weight:bold;letter-spacing:8px}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div><div class="content"><h2>Verify Your Email</h2><p>Hello ${userName || 'User'},</p><p>Use this OTP to verify your email:</p><div class="otp-box">${otp}</div><p><strong>Expires in 10 minutes.</strong></p></div><div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div></div></body></html>`;
-    const ok = await sendMail({ to: email, subject: 'Verify Your Email - ViralBoost AI', html, text: `OTP: ${otp}\nExpires in 10 minutes.` });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.otp-box{background:#212121;color:white;padding:20px;text-align:center;border-radius:8px;margin:20px 0;font-size:32px;font-weight:bold;letter-spacing:8px}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div><div class="content"><h2>Verify Your Email</h2><p>Hello ${userName || 'User'},</p><p>Use this OTP to verify your email:</p><div class="otp-box">${otp}</div><p><strong>Expires in 10 minutes.</strong></p></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
+    const ok = await sendMail({ to: email, subject: 'Verify Your Email - Vid YT', html, text: `OTP: ${otp}\nExpires in 10 minutes.` });
     if (ok) {
       console.log('✅ OTP email sent successfully to:', email);
       return true;
     }
     console.warn('⚠️ OTP email sending failed for:', email);
-    if (process.env.NODE_ENV === 'development') { 
+    if (process.env.NODE_ENV === 'development') {
       console.log('\n' + '='.repeat(40));
       console.log('📧 OTP (DEV MODE)');
       console.log(`To: ${email}`);
       console.log(`Code: ${otp}`);
       console.log('='.repeat(40) + '\n');
-      return true; 
+      return true;
     }
     return false;
   } catch (error) {
@@ -263,8 +263,8 @@ export async function sendVerificationEmail(
   userName?: string
 ): Promise<boolean> {
   try {
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div><div class="content"><h2>Verify Your Email</h2><p>Hello ${userName || 'User'},</p><p><a href="${verificationUrl}" class="button">Verify Email</a></p><p>Or copy: ${verificationUrl}</p></div></div></body></html>`;
-    return await sendMail({ to: email, subject: 'Verify Your Email - ViralBoost AI', html, text: verificationUrl });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div><div class="content"><h2>Verify Your Email</h2><p>Hello ${userName || 'User'},</p><p><a href="${verificationUrl}" class="button">Verify Email</a></p><p>Or copy: ${verificationUrl}</p></div></div></body></html>`;
+    return await sendMail({ to: email, subject: 'Verify Your Email - Vid YT', html, text: verificationUrl });
   } catch (error) {
     console.error('Email verification error:', error);
     return false;
@@ -317,16 +317,16 @@ export async function sendPaymentReceiptEmail(
     const amountStr =
       receipt.currency && receipt.currency.length === 3
         ? new Intl.NumberFormat('en', {
-            style: 'currency',
-            currency: receipt.currency,
-            maximumFractionDigits: 2,
-          }).format(receipt.amount)
+          style: 'currency',
+          currency: receipt.currency,
+          maximumFractionDigits: 2,
+        }).format(receipt.amount)
         : `$${receipt.amount}`;
     const usdRef =
       receipt.amountUsd != null && Number.isFinite(receipt.amountUsd)
         ? new Intl.NumberFormat('en', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(
-            receipt.amountUsd
-          )
+          receipt.amountUsd
+        )
         : null;
     const periodLabel = receipt.billingPeriod === 'year' ? 'Yearly' : 'Monthly';
     const lineDescription = `${escapeHtml(receipt.planName)} plan (${periodLabel})`;
@@ -357,7 +357,7 @@ h1{font-size:20px;margin:0 0 8px}
 </style></head><body>
 <div class="wrap">
   <div class="hdr">${getEmailLogoHtml()}
-    <p style="margin:12px 0 0;font-size:15px;opacity:.95">ViralBoost AI</p>
+    <p style="margin:12px 0 0;font-size:15px;opacity:.95">Vid YT</p>
     <div class="badge">PAID — Payment confirmed</div>
   </div>
   <div class="body">
@@ -381,22 +381,21 @@ h1{font-size:20px;margin:0 0 8px}
       <div class="row"><span class="k">Starts</span><span>${escapeHtml(startStr)}</span></div>
       <div class="row"><span class="k">Renews / ends</span><span>${escapeHtml(endStr)}</span></div>
     </div>
-    ${
-      safeOrderId || receipt.paymentId
+    ${safeOrderId || receipt.paymentId
         ? `<div class="box"><h2>Payment reference (Razorpay)</h2>
       ${safeOrderId ? `<div class="row"><span class="k">Order ID</span><span style="word-break:break-all">${safeOrderId}</span></div>` : ''}
       ${receipt.paymentId ? `<div class="row"><span class="k">Payment ID</span><span style="word-break:break-all">${escapeHtml(receipt.paymentId)}</span></div>` : ''}
     </div>`
         : ''
-    }
+      }
     <p style="font-size:13px;color:#6b7280;margin:0">Keep this email for your records. For billing questions, reply to this thread or contact support from your dashboard.</p>
   </div>
-  <div class="foot">© ${new Date().getFullYear()} ViralBoost AI · Secure payment processed via Razorpay</div>
+  <div class="foot">© ${new Date().getFullYear()} Vid YT · Secure payment processed via Razorpay</div>
 </div>
 </body></html>`;
 
     const textLines = [
-      'ViralBoost AI — Payment confirmed (bill / receipt)',
+      'Vid YT — Payment confirmed (bill / receipt)',
       '',
       `Receipt #: ${receipt.paymentId || '—'}`,
       `Paid at: ${paidAtStr}`,
@@ -412,13 +411,13 @@ h1{font-size:20px;margin:0 0 8px}
       ...(receipt.razorpayOrderId ? [`Razorpay Order: ${receipt.razorpayOrderId}`] : []),
       ...(receipt.paymentId ? [`Razorpay Payment: ${receipt.paymentId}`] : []),
       '',
-      '© ViralBoost AI',
+      '© Vid YT',
     ];
     const text = textLines.join('\n');
 
     const ok = await sendMail({
       to: email,
-      subject: `Payment confirmed — Your ViralBoost AI bill & receipt [${receipt.planName}]`,
+      subject: `Payment confirmed — Your Vid YT bill & receipt [${receipt.planName}]`,
       html,
       text,
     });
@@ -446,8 +445,8 @@ export async function sendBroadcastNotificationEmail(
 ): Promise<boolean> {
   try {
     const htmlMessage = message.replace(/\n/g, '<br>');
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI · Notification</p></div><div class="content"><p>Hello ${userName || 'User'},</p><div>${htmlMessage}</div></div><div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div></div></body></html>`;
-    const ok = await sendMail({ to: email, subject: subject || 'Notification from ViralBoost AI', html, text: `Hello ${userName || 'User'},\n\n${message}` });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT · Notification</p></div><div class="content"><p>Hello ${userName || 'User'},</p><div>${htmlMessage}</div></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
+    const ok = await sendMail({ to: email, subject: subject || 'Notification from Vid YT', html, text: `Hello ${userName || 'User'},\n\n${message}` });
     if (!ok && process.env.NODE_ENV === 'development') return true;
     return ok;
   } catch (error) {
@@ -503,9 +502,9 @@ export async function sendUsageAlertEmail(
     const bodyText = type === 'near' ? lang.limitNearBody : lang.limitReachedBody;
     const upgradeUrl = `${getEmailBaseUrl()}/pricing`;
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div></div></body></html>`;
-    
-    return await sendMail({ to: email, subject: `${subject} - ViralBoost AI`, html, text: `${subject}\n\n${bodyText}\n\nUpgrade here: ${upgradeUrl}` });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
+
+    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nUpgrade here: ${upgradeUrl}` });
   } catch (error) {
     console.error('❌ Usage email error:', error);
     return false;
@@ -527,9 +526,9 @@ export async function sendExpiryAlertEmail(
     const bodyText = type === 'warning' ? lang.expiryBody : lang.expiredBody;
     const upgradeUrl = `${getEmailBaseUrl()}/pricing`;
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div></div></body></html>`;
-    
-    return await sendMail({ to: email, subject: `${subject} - ViralBoost AI`, html, text: `${subject}\n\n${bodyText}\n\nRenew/Upgrade here: ${upgradeUrl}` });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
+
+    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nRenew/Upgrade here: ${upgradeUrl}` });
   } catch (error) {
     console.error('❌ Expiry email error:', error);
     return false;
@@ -550,9 +549,9 @@ export async function sendUpsellEmail(
     const bodyText = lang.upsellBody;
     const upgradeUrl = `${getEmailBaseUrl()}/pricing`;
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI</p></div></div></body></html>`;
-    
-    return await sendMail({ to: email, subject: `${subject} - ViralBoost AI`, html, text: `${subject}\n\n${bodyText}\n\nUpgrade here: ${upgradeUrl}` });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
+
+    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nUpgrade here: ${upgradeUrl}` });
   } catch (error) {
     console.error('❌ Upsell email error:', error);
     return false;
@@ -585,11 +584,11 @@ export async function sendAccountDeletionVerificationEmail(
       </head>
       <body>
         <div class="container">
-          <div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">ViralBoost AI</p></div>
+          <div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div>
           <div class="content">
             <h2 style="color: #FF0000;">Account Deletion Request</h2>
             <p>Hello ${userName || 'User'},</p>
-            <p>You have requested to permanently delete your ViralBoost AI account. To confirm this action, please use the verification code below:</p>
+            <p>You have requested to permanently delete your Vid YT account. To confirm this action, please use the verification code below:</p>
             <div class="code-box">${verificationCode}</div>
             <p><strong>Code expires in 24 hours.</strong></p>
             
@@ -606,26 +605,26 @@ export async function sendAccountDeletionVerificationEmail(
             
             <p>If you did not request this, please ignore this email. Your account is safe.</p>
             <p style="color: #666; font-size: 12px; margin-top: 20px;">
-              Contact us: <strong>support@viralboostai.com</strong>
+              Contact us: <strong>support@vidyt.com</strong>
             </p>
           </div>
-          <div class="footer"><p>© ${new Date().getFullYear()} ViralBoost AI. All rights reserved.</p></div>
+          <div class="footer"><p>© ${new Date().getFullYear()} Vid YT. All rights reserved.</p></div>
         </div>
       </body>
       </html>`;
-    
+
     const ok = await sendMail({
       to: email,
-      subject: '⚠️ Account Deletion Verification - ViralBoost AI',
+      subject: '⚠️ Account Deletion Verification - Vid YT',
       html,
-      text: `Account Deletion Verification Code: ${verificationCode}\n\nThis code expires in 24 hours.\n\nThis action is permanent and cannot be undone.\n\nIf you did not request this, please ignore this email.\n\nContact us: support@viralboostai.com\n\n© ViralBoost AI`,
+      text: `Account Deletion Verification Code: ${verificationCode}\n\nThis code expires in 24 hours.\n\nThis action is permanent and cannot be undone.\n\nIf you did not request this, please ignore this email.\n\nContact us: support@vidyt.com\n\n© Vid YT`,
     });
-    
+
     if (ok) {
       console.log('✅ Account deletion verification email sent to:', email);
       return true;
     }
-    
+
     console.warn('⚠️ Account deletion verification email sending failed for:', email);
     if (process.env.NODE_ENV === 'development') {
       console.log('\n' + '='.repeat(50));
@@ -636,7 +635,7 @@ export async function sendAccountDeletionVerificationEmail(
       console.log('='.repeat(50) + '\n');
       return true;
     }
-    
+
     return false;
   } catch (error) {
     console.error('❌ Account deletion email error:', error);

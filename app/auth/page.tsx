@@ -108,22 +108,22 @@ function AuthPageContent() {
     axios.get('/api/subscriptions/plans').then(res => {
       const plans = res.data?.plans || [];
       const payPlans = plans.filter((p: any) => p.price > 0).map((p: any) => {
-         let rawId = (p.id || p.dbId || p.name).toLowerCase();
-         if (rawId.includes('starter')) rawId = 'starter';
-         else if (rawId.includes('pro')) rawId = 'pro';
-         else if (rawId.includes('enterprise')) rawId = 'enterprise';
-         else if (rawId.includes('custom')) rawId = 'custom';
-         else rawId = rawId.replace(/\s+/g, '-');
+        let rawId = (p.id || p.dbId || p.name).toLowerCase();
+        if (rawId.includes('starter')) rawId = 'starter';
+        else if (rawId.includes('pro')) rawId = 'pro';
+        else if (rawId.includes('enterprise')) rawId = 'enterprise';
+        else if (rawId.includes('custom')) rawId = 'custom';
+        else rawId = rawId.replace(/\s+/g, '-');
 
-         return {
-           id: rawId,
-           name: p.name,
-           price: p.price,
-           period: p.interval || 'month',
-           description: p.description || '',
-           features: p.features || [],
-           popular: rawId === 'pro'
-         };
+        return {
+          id: rawId,
+          name: p.name,
+          price: p.price,
+          period: p.interval || 'month',
+          description: p.description || '',
+          features: p.features || [],
+          popular: rawId === 'pro'
+        };
       });
       setPaidPlansState(payPlans);
     }).catch(err => console.error("Failed to load plans", err));
@@ -202,7 +202,7 @@ function AuthPageContent() {
       key,
       amount,
       currency,
-      name: 'ViralBoost AI',
+      name: 'Vid YT',
       description: `${selectedPlan?.name || ''} Plan - ${billingPeriod === 'month' ? 'Monthly' : 'Yearly'}`,
       order_id: orderId,
       handler: async function (response: any) {
@@ -230,14 +230,14 @@ function AuthPageContent() {
         } catch (err: any) {
           setError(err.response?.data?.error || 'Payment verification failed');
           setLoading(false);
-        } 
+        }
       },
       prefill: { email: formData.email, name: formData.name },
       theme: { color: '#8B5CF6' },
       modal: {
-        ondismiss: function() {
-           setLoading(false);
-           setError('Payment cancelled. You can retry by clicking Verify OTP & Pay again.');
+        ondismiss: function () {
+          setLoading(false);
+          setError('Payment cancelled. You can retry by clicking Verify OTP & Pay again.');
         }
       }
     };
@@ -396,7 +396,7 @@ function AuthPageContent() {
           className="text-center mb-8"
         >
           <Link href="/" className="inline-block mb-6">
-            <img src="/logo.png" alt="ViralBoost AI" className="h-72 w-auto object-contain mx-auto" />
+            <img src="/logo.png" alt="Vid YT" className="h-72 w-auto object-contain mx-auto" />
           </Link>
           <h1 className="text-4xl font-bold text-white mb-2">
             {isLogin ? 'Sign In' : 'Create your account'}
@@ -965,7 +965,7 @@ function AuthPageContent() {
                   (subscriptionType === 'paid' && !selectedPlan)
                 }
                 onClick={() =>
-                  void handleSubmit({ preventDefault: () => {} } as unknown as React.FormEvent)
+                  void handleSubmit({ preventDefault: () => { } } as unknown as React.FormEvent)
                 }
                 className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >

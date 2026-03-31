@@ -28,7 +28,7 @@ export default function BlogPage() {
     <main className="min-h-screen bg-[#0F0F0F] text-white px-6 py-16">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold mb-6">
-          ViralBoost AI Blog
+          Vid YT Blog
         </h1>
         <p className="text-lg text-[#AAAAAA] mb-10">
           Deep‑dive guides around YouTube SEO, thumbnails, titles and retention — so your videos grow on

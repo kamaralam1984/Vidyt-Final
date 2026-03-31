@@ -252,7 +252,7 @@ JWT_SECRET=your-super-secret-jwt-key-change-in-production
 ENCRYPTION_KEY=your-32-character-encryption-key
 
 # Database
-MONGODB_URI=mongodb://localhost:27017/viralboost
+MONGODB_URI=mongodb://localhost:27017/vidyt
 
 # Payment (Optional - for Stripe)
 STRIPE_SECRET_KEY=sk_test_...

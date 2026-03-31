@@ -14,7 +14,7 @@ export default function YoutubeSeoChecklistPost() {
 
         <h2 className="text-2xl font-semibold mt-8 mb-3">1. Topic & keyword research</h2>
         <ul className="list-disc list-inside text-[#DDDDDD] space-y-1">
-          <li>In the ViralBoost AI YouTube SEO dashboard, search for your main keyword.</li>
+          <li>In the Vid YT YouTube SEO dashboard, search for your main keyword.</li>
           <li>Pick low‑competition, high‑intent keywords (question style, how‑to, vs, best, etc.).</li>
           <li>Lock in one primary keyword plus 2–3 supporting keywords.</li>
         </ul>
@@ -22,7 +22,7 @@ export default function YoutubeSeoChecklistPost() {
         <h2 className="text-2xl font-semibold mt-8 mb-3">2. High-CTR title</h2>
         <ul className="list-disc list-inside text-[#DDDDDD] space-y-1">
           <li>Place your primary keyword as close to the beginning of the title as possible.</li>
-          <li>Use ViralBoost AI&apos;s title generator to test 5–10 variations.</li>
+          <li>Use Vid YT&apos;s title generator to test 5–10 variations.</li>
           <li>Add a number, time promise or outcome (e.g. “in 7 days”, “without burnout”).</li>
         </ul>
 
@@ -37,7 +37,7 @@ export default function YoutubeSeoChecklistPost() {
         <ul className="list-disc list-inside text-[#DDDDDD] space-y-1">
           <li>Keep thumbnail text to 3–4 words and avoid repeating the full title.</li>
           <li>Use faces, high‑contrast colours and a clear subject.</li>
-          <li>Use ViralBoost AI&apos;s thumbnail optimization tools to compare variants.</li>
+          <li>Use Vid YT&apos;s thumbnail optimization tools to compare variants.</li>
         </ul>
 
         <h2 className="text-2xl font-semibold mt-8 mb-3">5. Watch time & retention</h2>

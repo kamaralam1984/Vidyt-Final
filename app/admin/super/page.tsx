@@ -147,7 +147,7 @@ export default function SuperAdminPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          subject: notifySubject.trim() || 'Notification from ViralBoost AI',
+          subject: notifySubject.trim() || 'Notification from Vid YT',
           message: notifyMessage.trim(),
         }),
       });

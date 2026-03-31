@@ -7,10 +7,10 @@ export default function AboutPage() {
     <main className="min-h-screen bg-[#0F0F0F] text-white px-6 py-16">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold mb-6">
-          About ViralBoost AI
+          About Vid YT
         </h1>
         <p className="text-lg text-[#AAAAAA] mb-6">
-          ViralBoost AI is a creator‑focused growth platform for YouTube and social media that brings
+          Vid YT is a creator‑focused growth platform for YouTube and social media that brings
           AI‑powered ideas, scripts, thumbnails, titles, SEO and analytics into one place.
         </p>
         <p className="text-[#CCCCCC] mb-4">
@@ -28,7 +28,7 @@ export default function AboutPage() {
           Why we built this
         </h2>
         <p className="text-[#CCCCCC] mb-8">
-          Creators have ideas, but often lack the time and data tools. ViralBoost AI fills that gap by
+          Creators have ideas, but often lack the time and data tools. Vid YT fills that gap by
           combining AI and analytics so you can focus on creating content while we handle the optimization.
         </p>
 
@@ -37,7 +37,7 @@ export default function AboutPage() {
             href="/register"
             className="px-6 py-3 bg-[#FF0000] rounded-lg text-sm font-semibold hover:bg-[#CC0000] transition"
           >
-            Start free with ViralBoost AI
+            Start free with Vid YT
           </Link>
           <Link
             href="/contact"

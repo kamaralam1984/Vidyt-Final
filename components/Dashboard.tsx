@@ -47,7 +47,7 @@ export default function Dashboard() {
           setIsYoutubeConnected(!!res.data.user.isYoutubeConnected);
           setYoutubeGoogleConnected(!!res.data.user.youtubeGoogleConnected);
         }
-      } catch (_) {}
+      } catch (_) { }
     };
     fetchUser();
   }, [youtubeQuery]);
@@ -108,7 +108,7 @@ export default function Dashboard() {
         <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,2fr),minmax(0,1.3fr)]">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              Welcome to ViralBoost AI
+              Welcome to Vid YT
             </h1>
             <p className="text-[#AAAAAA]">
               Analyze and optimize your videos for maximum viral potential
@@ -133,10 +133,10 @@ export default function Dashboard() {
         </div>
 
         {allowedSystems['video_upload'] !== false && (
-          <VideoUpload 
-            onAnalysisComplete={handleAnalysisComplete} 
-            loading={loading} 
-            setLoading={setLoading} 
+          <VideoUpload
+            onAnalysisComplete={handleAnalysisComplete}
+            loading={loading}
+            setLoading={setLoading}
             isYoutubeConnected={isYoutubeConnected}
             youtubeGoogleConnected={youtubeGoogleConnected}
             allowedSystems={allowedSystems}
