@@ -22,6 +22,7 @@ import {
   Globe
 } from 'lucide-react';
 import { useLocale } from '@/context/LocaleContext';
+import { convertUsdToCurrency } from '@/lib/paymentCurrencyShared';
 
 interface Plan {
   id: string;
@@ -115,6 +116,7 @@ export default function PricingPage() {
   const [userPlan, setUserPlan] = useState<string | null>(null);
   const [activePlans, setActivePlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
+  const [fxRates, setFxRates] = useState<Record<string, number> | null>(null);
   const { locale } = useLocale();
 
   useEffect(() => {
@@ -187,8 +189,17 @@ export default function PricingPage() {
       }
     };
 
+    const fetchRates = async () => {
+      try {
+        const res = await fetch('/api/public/currency-rates');
+        const d = await res.json();
+        setFxRates(d.rates || null);
+      } catch (_) {}
+    };
+
     fetchUserPlan();
     fetchPlans();
+    fetchRates();
 
     // Load Razorpay script
     const script = document.createElement('script');
@@ -329,14 +340,11 @@ export default function PricingPage() {
     const format = (value: number) =>
       Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2).replace(/\.00$/, '');
 
-    const rateMap: Record<string, number> = {
-      USD: 1,
-      INR: 83,
-      EUR: 0.92,
-      GBP: 0.79,
-    };
-    const rate = rateMap[locale.currency] ?? 1;
-    const baseConverted = Math.round(base * rate * 100) / 100;
+    if (!fxRates || locale.currency === 'USD') {
+      return `$${format(base)}${suffix}`;
+    }
+
+    const baseConverted = convertUsdToCurrency(base, locale.currency, fxRates);
     return `${locale.currencySymbol}${format(baseConverted)}${suffix}`;
   };
 

@@ -12,9 +12,9 @@ import axios from 'axios';
 import {
   Mail, Lock, User, Loader2, AlertCircle, Check, ArrowRight,
   Wifi, WifiOff, CheckCircle, XCircle, Building, Phone, Hash,
-  Eye, EyeOff, Star
+  Eye, EyeOff, Star, ChevronDown
 } from 'lucide-react';
-import { useLocale } from '@/context/LocaleContext';
+import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 import { computeSignupUsdCharge, convertUsdToCurrency } from '@/lib/paymentCurrencyShared';
 
 interface Plan {
@@ -36,7 +36,7 @@ function AuthPageContent() {
   const searchParams = useSearchParams();
   const [isLogin, setIsLogin] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('uniqueIdPin');
-  const { locale } = useLocale();
+  const { locale, setLocale } = useLocale();
 
   // Redirect /auth?mode=login to clean URL /login
   useEffect(() => {
@@ -89,6 +89,8 @@ function AuthPageContent() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [fxRates, setFxRates] = useState<Record<string, number> | null>(null);
+  const [countryMenuOpen, setCountryMenuOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -155,6 +157,50 @@ function AuthPageContent() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
+    if (fieldErrors[field]) {
+      const newErrors = { ...fieldErrors };
+      delete newErrors[field];
+      setFieldErrors(newErrors);
+    }
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (!isLogin) {
+      if (!formData.name || formData.name.trim().length < 2) {
+        errors.name = 'Full name must be at least 2 characters.';
+      }
+      if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        errors.email = 'Please enter a valid work email address.';
+      }
+      if (!formData.password || formData.password.length < 8) {
+        errors.password = 'Password must be at least 8 characters.';
+      } else if (!/[A-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
+        errors.password = 'Include at least one uppercase letter and one number.';
+      }
+      if (subscriptionType === 'paid' && (!formData.companyName || formData.companyName.trim().length < 2)) {
+        errors.companyName = 'Company name is required for paid plans.';
+      }
+      if (formData.phone && (formData.phone.length < 7 || formData.phone.length > 15)) {
+        errors.phone = 'Please enter a valid phone number.';
+      }
+    } else {
+      if (loginMethod === 'uniqueIdPin') {
+        if (!formData.uniqueId || formData.uniqueId.length !== 6) {
+          errors.uniqueId = 'Enter your 6-digit Unique ID.';
+        }
+        if (!formData.loginPin || formData.loginPin.length < 4) {
+          errors.loginPin = 'Enter your 4-6 digit PIN.';
+        }
+      } else {
+        if (!formData.email) errors.email = 'Email is required.';
+        if (!formData.password) errors.password = 'Password is required.';
+      }
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const isFormValid = () => {
@@ -166,8 +212,8 @@ function AuthPageContent() {
   };
 
   const sendOTP = async () => {
-    if (!isFormValid()) {
-      setError('Please properly fill all required fields before sending OTP.');
+    if (!validateForm()) {
+      setError('Please fix the errors below before proceeding.');
       return;
     }
 
@@ -497,10 +543,15 @@ function AuthPageContent() {
                             e.target.value.replace(/\D/g, '').slice(0, 6)
                           )
                         }
-                        className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                        className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.uniqueId ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                         placeholder="e.g. 123456"
                       />
                     </div>
+                    {fieldErrors.uniqueId && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> {fieldErrors.uniqueId}
+                      </p>
+                    )}
                     <p className="text-xs text-[#AAAAAA] mt-1">
                       Enter the 6-digit Unique ID you received during signup.
                     </p>
@@ -522,10 +573,15 @@ function AuthPageContent() {
                           )
                         }
                         maxLength={6}
-                        className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                        className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.loginPin ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                         placeholder="••••"
                       />
                     </div>
+                    {fieldErrors.loginPin && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> {fieldErrors.loginPin}
+                      </p>
+                    )}
                     <p className="text-xs text-[#AAAAAA] mt-1">
                       PIN works only with your Unique ID (4-6 digits).
                     </p>
@@ -546,10 +602,15 @@ function AuthPageContent() {
                         type="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                        className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                         placeholder="you@example.com"
                       />
                     </div>
+                    {fieldErrors.email && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> {fieldErrors.email}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -562,7 +623,7 @@ function AuthPageContent() {
                         type={showPassword ? 'text' : 'password'}
                         value={formData.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
-                        className="w-full pl-10 pr-11 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                        className={`w-full pl-10 pr-11 py-3 bg-[#212121] border ${fieldErrors.password ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                         placeholder="••••••••"
                       />
                       <button
@@ -801,10 +862,15 @@ function AuthPageContent() {
                     value={formData.companyName}
                     onChange={(e) => handleInputChange('companyName', e.target.value)}
                     required={subscriptionType === 'paid'}
-                    className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                     placeholder="Acme Corp"
                   />
                 </div>
+                {fieldErrors.companyName && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {fieldErrors.companyName}
+                  </p>
+                )}
                 <p className="text-xs text-[#AAAAAA] mt-1">
                   {subscriptionType === 'paid' ? 'Required. 2-100 characters.' : 'Optional'}
                 </p>
@@ -821,10 +887,15 @@ function AuthPageContent() {
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.name ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                     placeholder="John Doe"
                   />
                 </div>
+                {fieldErrors.name && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {fieldErrors.name}
+                  </p>
+                )}
                 <p className="text-xs text-[#AAAAAA] mt-1">Required. 2-100 characters.</p>
               </div>
 
@@ -839,32 +910,90 @@ function AuthPageContent() {
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                     placeholder="you@example.com"
                   />
                 </div>
+                {fieldErrors.email && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {fieldErrors.email}
+                  </p>
+                )}
                 <p className="text-xs text-[#AAAAAA] mt-1">Required. Valid email address.</p>
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Phone (Optional)
+                  Country &amp; Phone (Optional)
                 </label>
-                <div className="relative flex">
-                  <div className="flex items-center gap-1 pl-3 pr-2 border-r border-[#333333] text-xs text-[#AAAAAA]">
-                    <span className="text-base leading-none">{locale.flag}</span>
-                    <span>{locale.phoneCode}</span>
+                <div className="flex gap-2">
+                  {/* Country Selector Button */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setCountryMenuOpen(!countryMenuOpen)}
+                      className="flex items-center gap-2 h-[50px] px-3 bg-[#212121] border border-[#333333] rounded-lg text-white hover:border-[#FF0000] transition-colors"
+                    >
+                      <span className="text-xl leading-none">{locale.flag}</span>
+                      <span className="text-xs font-medium text-[#AAAAAA]">{locale.phoneCode}</span>
+                      <ChevronDown className={`w-4 h-4 text-[#AAAAAA] transition-transform ${countryMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Country List Dropdown */}
+                    <AnimatePresence>
+                      {countryMenuOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className="absolute left-0 mt-2 w-64 max-h-64 overflow-y-auto bg-[#181818] border border-[#333333] rounded-xl shadow-2xl z-50 py-2 scrollbar-thin scrollbar-thumb-[#333333]"
+                        >
+                          {SUPPORTED_LOCALES.map((opt) => (
+                            <button
+                              key={opt.countryCode}
+                              type="button"
+                              onClick={() => {
+                                setLocale(opt);
+                                setCountryMenuOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#212121] transition-colors ${opt.countryCode === locale.countryCode ? 'bg-[#FF0000]/10' : ''
+                                }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="text-xl leading-none">{opt.flag}</span>
+                                <div className="text-left">
+                                  <div className="text-sm font-medium text-white">{opt.countryName}</div>
+                                  <div className="text-[10px] text-[#AAAAAA] uppercase">{opt.currency} · {opt.language}</div>
+                                </div>
+                              </div>
+                              <div className="text-xs font-mono text-[#AAAAAA]">{opt.phoneCode}</div>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className="w-full pl-3 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg rounded-l-none text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
-                    placeholder="9876543210"
-                  />
+
+                  {/* Phone Input */}
+                  <div className="relative flex-1">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
+                      className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.phone ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
+                      placeholder="9876543210"
+                    />
+                    {fieldErrors.phone && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> {fieldErrors.phone}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-[#AAAAAA] mt-1">
-                  Country code auto: {locale.phoneCode}. Sirf local number type karein.
+                <p className="text-xs text-[#AAAAAA] mt-1.5 flex items-center gap-1">
+                  <span className="w-1 h-1 bg-[#FF0000] rounded-full"></span>
+                  Selected: {locale.countryName} ({locale.currency}). Phone autofill: {locale.phoneCode}
                 </p>
               </div>
 
@@ -879,7 +1008,7 @@ function AuthPageContent() {
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     required
-                    className="w-full pl-10 pr-11 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    className={`w-full pl-10 pr-11 py-3 bg-[#212121] border ${fieldErrors.password ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                     placeholder="••••••••"
                   />
                   <button
@@ -891,6 +1020,11 @@ function AuthPageContent() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {fieldErrors.password}
+                  </p>
+                )}
                 <p className="text-xs text-[#AAAAAA] mt-1">
                   Required. Format: at least 8 characters, one uppercase letter, and one number.
                 </p>
@@ -967,7 +1101,7 @@ function AuthPageContent() {
                 onClick={() =>
                   void handleSubmit({ preventDefault: () => { } } as unknown as React.FormEvent)
                 }
-                className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               >
                 {loading ? (
                   <>

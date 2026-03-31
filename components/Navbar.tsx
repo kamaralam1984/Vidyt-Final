@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import axios from 'axios';
-import { Crown, CreditCard, MessageCircle, LogOut, User } from 'lucide-react';
+import { Crown, CreditCard, MessageCircle, LogOut, User, ChevronDown, Globe } from 'lucide-react';
 import { getAuthHeaders, removeToken } from '@/utils/auth';
+import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 
 const LOGO_SRC = '/logo.png';
 
@@ -17,6 +18,8 @@ export default function Navbar() {
   const [userUniqueId, setUserUniqueId] = useState<string>('');
   const [planName, setPlanName] = useState<string>('Free');
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const { locale, setLocale } = useLocale();
+  const [countryMenuOpen, setCountryMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -134,6 +137,48 @@ export default function Navbar() {
               </Link>
             );
           })}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setCountryMenuOpen(!countryMenuOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[#AAAAAA] hover:bg-[#212121] hover:text-white transition-colors"
+            >
+              <span className="text-xl leading-none">{locale.flag}</span>
+              <span className="hidden lg:inline">{locale.countryName}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${countryMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {countryMenuOpen && (
+              <div className="absolute right-0 mt-2 w-60 rounded-xl border border-[#212121] bg-[#181818] shadow-2xl z-50 py-2">
+                <div className="px-4 py-2 border-b border-[#212121] text-[10px] text-[#AAAAAA] uppercase tracking-wider">
+                  Select Country &amp; Currency
+                </div>
+                <div className="max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-[#212121]">
+                  {SUPPORTED_LOCALES.map((opt) => (
+                    <button
+                      key={opt.countryCode}
+                      type="button"
+                      onClick={() => {
+                        setLocale(opt);
+                        setCountryMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#212121] transition-colors ${opt.countryCode === locale.countryCode ? 'bg-[#FF0000]/10' : ''
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg leading-none">{opt.flag}</span>
+                        <div className="text-left">
+                          <div className="text-sm font-medium text-white">{opt.countryName}</div>
+                          <div className="text-[10px] text-[#AAAAAA] uppercase">{opt.currency}</div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-medium text-[#AAAAAA]">{opt.phoneCode}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={handleLogout}
