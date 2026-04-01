@@ -36,6 +36,17 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.stripe.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https: wss:; frame-src 'self' https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
   );
 
+  // CORS Headers - Allow cross-origin requests between apex and www domains
+  const origin = request?.headers.get('origin') || '';
+  if (origin.endsWith('vidyt.com') || origin.endsWith('localhost:3000')) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id, x-user-role, x-user-subscription, x-test-token');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+  } else {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+  }
+
   // Remove sensitive headers that reveal server info
   response.headers.delete('Server');
   response.headers.delete('X-Powered-By');
@@ -67,7 +78,7 @@ function withSecurityHeaders(response: NextResponse, request?: NextRequest): Nex
 /**
  * Create next response with headers
  */
-function nextWithHeaders(request: NextRequest, init?: ResponseInit): NextResponse {
+function nextWithHeaders(request: NextRequest, init?: any): NextResponse {
   const response = NextResponse.next(init);
   return addSecurityHeaders(response, request);
 }
@@ -99,6 +110,7 @@ export async function middleware(request: NextRequest) {
   // Public routes that don't need authentication
   const publicRoutes = [
     '/api/auth/login',
+    '/api/auth/login-pin',
     '/api/auth/register',
     '/api/auth/password-reset', // Password reset (public)
     '/api/auth/send-otp', // OTP sending (public)
@@ -127,6 +139,11 @@ export async function middleware(request: NextRequest) {
   const isProtectedPageRoute = protectedPageRoutes.some(route =>
     pathname.startsWith(route)
   );
+
+  // Handle OPTIONS request for CORS preflight
+  if (request.method === 'OPTIONS') {
+    return nextWithHeaders(request, { status: 200 });
+  }
 
   if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/')) {
     return nextWithHeaders(request);

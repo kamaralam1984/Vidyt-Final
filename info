@@ -1,4 +1,4 @@
-# ViralBoost AI - Website Functions and Systems (Web Info)
+# Vid YT - Website Functions and Systems (Web Info)
 
 Is file me website ke pure functions, systems, aur capabilities simple Hinglish me diye gaye hain.
 
@@ -6,7 +6,7 @@ Is file me website ke pure functions, systems, aur capabilities simple Hinglish 
 
 ## 1) Website Kya Hai
 
-ViralBoost AI ek creator + agency focused SaaS platform hai jo video content ko analyze, optimize, plan, aur monitor karne me help karta hai.
+Vid YT ek creator + agency focused SaaS platform hai jo video content ko analyze, optimize, plan, aur monitor karne me help karta hai.
 
 Primary goal:
 - better content decisions
@@ -214,9 +214,20 @@ Website currently can:
 
 ---
 
-Last updated: 2026-03-31
+Last updated: 2026-04-01
 
 ## New Features
+
+### Super Admin Analytics Dashboard (April 1, 2026)
+- **Enterprise-Grade Dashboard**: Comprehensive real-time data visualization for platform metrics.
+- **Revenue & User Tracking**: Track platform revenue, user activity metrics, and subscription statuses.
+- **Admin Role Management**: Enhanced role update mechanisms ensuring persistent administrative changes.
+
+### Security & UX Enhancements (April 1, 2026)
+- **Secure OTP Delivery**: OTPs are now exclusively delivered via email, with sensitive logs removed for enhanced security.
+- **Localized Form Validation**: Real-time, field-level validation including country-specific phone number constraints.
+- **Robust YouTube Auth**: Improved error parsing to reliably detect expired/invalid credentials and trigger OAuth re-linking flows.
+
 
 ### YouTube SEO Controls (March 31, 2026)
 - **Granular Visibility**: Super Admins can now toggle specific sections of the YouTube SEO Analyzer (Competitor Analytics, Title Optimization, Thumbnail Analysis, etc.) for different user roles.
@@ -262,10 +273,10 @@ Score = (Subs × 0.3) + (Avg Views × 0.3) + (Engagement × 0.2) + (Upload Consi
 ## 11) Legal & Compliance Policy
 
 ### 1. Terms of Use
-By accessing and using ViralBoost AI, you agree to comply with all applicable laws and platform policies. You are solely responsible for the content you upload, publish, or manage through this platform. We do not take responsibility for any misuse of the service.
+By accessing and using Vid YT, you agree to comply with all applicable laws and platform policies. You are solely responsible for the content you upload, publish, or manage through this platform. We do not take responsibility for any misuse of the service.
 
 ### 2. User Content Disclaimer
-ViralBoost AI does not own, control, or claim any rights over the content uploaded by users. All videos, media, and data belong to their respective owners. Users must ensure they have proper rights, permissions, or licenses before uploading or publishing any content.
+Vid YT does not own, control, or claim any rights over the content uploaded by users. All videos, media, and data belong to their respective owners. Users must ensure they have proper rights, permissions, or licenses before uploading or publishing any content.
 
 ### 3. YouTube API Compliance
 Our platform uses YouTube API Services to provide upload, analytics, and optimization features. By using our services, you also agree to be bound by:
@@ -281,7 +292,7 @@ We collect limited user data such as name, email, and connected account informat
 Our platform provides AI-based suggestions, analytics, and viral predictions. These are based on data models and do not guarantee actual performance, views, or revenue. Users should use these insights at their own discretion.
 
 ### 6. Limitation of Liability
-ViralBoost AI shall not be held responsible for:
+Vid YT shall not be held responsible for:
 - Content uploaded by users
 - Copyright violations by users
 - Account suspension by third-party platforms (YouTube, etc.)
@@ -299,10 +310,10 @@ Violation may result in account suspension or termination.
 We reserve the right to update or modify these policies at any time without prior notice.
 
 ### 9. Contact
-For any legal or compliance concerns, contact us at: [support@viralboostai.com](mailto:support@viralboostai.com)
+For any legal or compliance concerns, contact us at: [support@vidyt.com](mailto:support@vidyt.com)
 
 ### 10. Account Termination Rights
-ViralBoost AI reserves the right to suspend, restrict, or terminate any user account at any time, with or without prior notice, if:
+Vid YT reserves the right to suspend, restrict, or terminate any user account at any time, with or without prior notice, if:
 - User violates these Terms of Use or any other platform policies
 - User engages in illegal, fraudulent, or harmful activities
 - User abuses platform features or services (spam, automation misuse, etc.)
@@ -314,7 +325,7 @@ Upon termination:
 - All access to the platform will be immediately revoked
 - User's data may be retained for legal and compliance purposes
 - No refund will be issued for unused subscription period (unless required by law)
-- ViralBoost AI assumes no liability for any consequences of account termination
+- Vid YT assumes no liability for any consequences of account termination
 
 **Note:** Users may appeal termination decisions within 30 days by contacting support with detailed explanation.
 
@@ -334,12 +345,12 @@ All payments made for subscriptions, credits, or premium services are **non-refu
 
 **Legal Exceptions:**
 - Refunds may be issued only if required by applicable law (consumer protection laws, chargeback, etc.)
-- Refunds due to platform error or technical failure may be granted at ViralBoost AI's discretion
+- Refunds due to platform error or technical failure may be granted at Vid YT's discretion
 - Users subject to account termination due to their violation forfeit all refund eligibility
 
 **Payment Disputes:**
 - Users must report billing issues within 30 days of transaction
-- ViralBoost AI will investigate and resolve disputes in good faith
+- Vid YT will investigate and resolve disputes in good faith
 - Chargebacks or payment disputes may result in account suspension
 - International transactions follow their respective payment processor's refund policies
 
@@ -353,24 +364,24 @@ All payments made for subscriptions, credits, or premium services are **non-refu
 These Terms of Use, Privacy Policy, and all related agreements are governed by and construed in accordance with the **laws of India**, without regard to its conflict of law principles.
 
 **Jurisdiction:**
-- All disputes, claims, or legal proceedings arising out of or relating to ViralBoost AI shall be subject to the **exclusive jurisdiction of the courts located in India**
+- All disputes, claims, or legal proceedings arising out of or relating to Vid YT shall be subject to the **exclusive jurisdiction of the courts located in India**
 - Users irrevocably submitthemselves to the jurisdiction of Indian courts
 - Venue shall lie exclusively in the appropriate courts within India
 
 **Dispute Resolution:**
-- Before initiating any legal action, users agree to attempt resolution through good faith negotiation with ViralBoost AI support team (30-day period)
+- Before initiating any legal action, users agree to attempt resolution through good faith negotiation with Vid YT support team (30-day period)
 - If unresolved, disputes shall be escalated to arbitration or courts as per Indian legal procedures
 - Users waive any right to class action or jury trial
 
 **International Users:**
 - Users accessing this platform from outside India acknowledge that they are subject to Indian law
 - Users are responsible for ensuring compliance with their local laws and regulations
-- ViralBoost AI assumes no liability for users' non-compliance with local laws
+- Vid YT assumes no liability for users' non-compliance with local laws
 
-**Note:** Some jurisdictions may have mandatory consumer protections that cannot be waived. These terms shall be interpreted to comply with such mandatory local laws while maintaining the maximum protection for ViralBoost AI where permissible.
+**Note:** Some jurisdictions may have mandatory consumer protections that cannot be waived. These terms shall be interpreted to comply with such mandatory local laws while maintaining the maximum protection for Vid YT where permissible.
 
 ---
 
 **✔ By using this platform, you agree to all the above terms.**
 
-Last updated: 2026-03-31
+Last updated: 2026-04-01
