@@ -95,14 +95,14 @@ function AuthPageContent() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token && !loading) {
-      // If already has token, check if we're a super-admin (via uniqueId or localStorage flag)
-      // or just hit /api/auth/me to be sure. For now, simple dashboard, 
-      // but let's avoid the race during login by checking !loading.
+      console.log('[Auth] Token found on mount, checking redirect...');
       const uniqueId = localStorage.getItem('uniqueId');
-      if (uniqueId === '795752') { // Known Super Admin Unique ID from user check
-         router.push('/admin/super');
+      if (uniqueId === '795752') { 
+         console.log('[Auth] Super Admin detected on mount, force redirecting...');
+         window.location.href = '/admin/super';
       } else {
-         router.push('/dashboard');
+         console.log('[Auth] Regular user detected on mount, force redirecting...');
+         window.location.href = '/dashboard';
       }
     }
 
@@ -346,7 +346,7 @@ function AuthPageContent() {
             
             const target = response.data.user?.role === 'super-admin' ? '/admin/super' : `/user/${response.data.user.uniqueId}`;
             console.log('[Auth] Redirecting to:', target);
-            router.push(target);
+            window.location.href = target;
           } else {
             console.error('[Auth] PIN login failed: missing token or uniqueId');
             setError('Login failed. Please check your credentials.');
@@ -380,7 +380,7 @@ function AuthPageContent() {
             }
             
             console.log('[Auth] Redirecting to:', target);
-            router.push(target);
+            window.location.href = target;
           } else {
             console.error('[Auth] Email login failed: missing token');
             setError('Login failed. Please check your credentials.');
@@ -414,7 +414,7 @@ function AuthPageContent() {
           setSuccess(`Account created! Your Unique ID: ${response.data.uniqueId}. Please save this for login.`);
           setLoading(false);
           setTimeout(() => {
-            router.push(`/user/${response.data.uniqueId}`);
+            window.location.href = `/user/${response.data.uniqueId}`;
           }, 3000);
         } else {
           console.log('[Auth] Signup successful (Paid). Opening Razorpay...');
@@ -426,12 +426,11 @@ function AuthPageContent() {
       setError(err.response?.data?.error || `${isLogin ? 'Login' : 'Registration'} failed`);
       setLoading(false);
     } finally {
-      // In case of a hang in external calls (e.g. router.push never completing or throwing silently)
+      // In case of a hang in external calls (e.g. window.location.href never completing)
       // we add a safety timeout to reset loading if we're still on this page after 10 seconds.
-      const timer = setTimeout(() => {
+      setTimeout(() => {
         setLoading(false);
       }, 10000);
-      return () => clearTimeout(timer);
     }
   };
 
