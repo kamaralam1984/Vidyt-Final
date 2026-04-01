@@ -14,8 +14,25 @@ export async function POST(request: Request) {
   const ip = getClientIP(request);
 
   try {
-    const decoded = await getUserFromRequest(request);
-    if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Primary: read JWT from Authorization header.
+    // Fallback: use middleware-injected x-user-* headers (set by middleware after token verification).
+    let decoded = await getUserFromRequest(request);
+    if (!decoded) {
+      const xUserId = request.headers.get('x-user-id');
+      const xUserRole = request.headers.get('x-user-role');
+      const xUserSubscription = request.headers.get('x-user-subscription');
+      if (xUserId) {
+        decoded = {
+          id: xUserId,
+          email: '',
+          name: '',
+          role: (xUserRole as any) || 'user',
+          subscription: (xUserSubscription as any) || 'free',
+        };
+      }
+    }
+    // Tracking is best-effort — silently skip unauthenticated requests instead of returning 401.
+    if (!decoded) return NextResponse.json({ skipped: true }, { status: 200 });
 
     const body = await request.json();
     const {
