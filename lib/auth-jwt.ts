@@ -3,7 +3,7 @@
  * Fully compatible with Edge Runtime (middleware)
  * Uses 'jose' for both Edge and Node.js runtimes
  */
-import { SignJWT, jwtVerify, jwtDecrypt } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = '7d';
@@ -29,11 +29,11 @@ export interface AuthUser {
 }
 
 /**
- * Generate JWT token (Universal - uses jose)
+ * Generate JWT token
  */
 export async function generateToken(user: AuthUser): Promise<string> {
   const secretKey = getSecretKey();
-  
+
   return await new SignJWT({
     id: user.id,
     email: user.email,
@@ -48,22 +48,18 @@ export async function generateToken(user: AuthUser): Promise<string> {
 }
 
 /**
- * Verify JWT token (Edge Runtime compatible - uses jose)
+ * Verify JWT token (async - recommended)
  */
 export async function verifyToken(token: string): Promise<AuthUser | null> {
   try {
-    if (!token || token.trim() === '') {
-      return null;
-    }
+    if (!token || token.trim() === '') return null;
 
     const secretKey = getSecretKey();
     const { payload } = await jwtVerify(token, secretKey, {
       algorithms: ['HS256']
     });
-    
-    if (!payload || !payload.id) {
-      return null;
-    }
+
+    if (!payload || !payload.id) return null;
 
     return {
       id: payload.id as string,
@@ -72,23 +68,28 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
       role: (payload.role as UserRole) || 'user',
       subscription: (payload.subscription as 'free' | 'pro' | 'enterprise') || 'free',
     };
-  } catch (error: any) {
-    // Silent fail for expired/invalid tokens in standard verify flow
+  } catch {
     return null;
   }
 }
 
 /**
- * Get user from request (from Authorization header)
- * Edge Runtime compatible - no database calls
+ * Sync-compatible version (SAFE fallback)
+ * ⚠️ Returns null always in Edge (no blocking allowed)
+ * 👉 Use verifyToken (async) instead
+ */
+export function verifyTokenSync(token: string): AuthUser | null {
+  console.warn("⚠️ verifyTokenSync is deprecated. Use async verifyToken instead.");
+  return null;
+}
+
+/**
+ * Get user from request (Authorization header)
  */
 export async function getUserFromRequest(request: { headers: { get: (name: string) => string | null } }): Promise<AuthUser | null> {
   const authHeader = request.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
 
   const token = authHeader.substring(7);
   return await verifyToken(token);
 }
-
