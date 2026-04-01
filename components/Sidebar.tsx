@@ -121,7 +121,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
           >
             <div className="flex items-center justify-between p-4 border-b border-[#212121] flex-shrink-0">
               <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-                <img src="/logo.png" alt="Vid YT" className="h-8 w-auto object-contain max-w-[140px]" />
+                <img src="/Logo.png" alt="Vid YT" className="h-8 w-auto object-contain max-w-[140px]" />
               </Link>
               <button
                 onClick={onToggle}

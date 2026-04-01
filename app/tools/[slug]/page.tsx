@@ -164,7 +164,7 @@ export default function ToolMarketingPage() {
                 <div className="absolute top-0 left-0 w-full h-full bg-red-600/10 scale-0 group-hover:scale-100 transition-transform duration-700 rounded-full" />
                 <div className="relative z-10">
                   <Zap className="h-10 w-10 text-red-500 mx-auto mb-4 animate-bounce" />
-                  <h3 className="text-2xl font-bold mb-4">Stop relying on luck. Start using ViralBoost.</h3>
+                  <h3 className="text-2xl font-bold mb-4">Stop relying on luck. Start using Vid YT.</h3>
                   <p className="text-white/70 mb-8 max-w-lg mx-auto">
                     Take your content to the next level with full access to our complete AI toolkit. One subscription, unlimited potential.
                   </p>
@@ -188,7 +188,7 @@ export default function ToolMarketingPage() {
           <TrendingUp className="h-12 w-12 text-white/20 mx-auto mb-6" />
           <h2 className="text-3xl font-bold mb-6">Why settle for average views?</h2>
           <p className="text-white/60 mb-10 leading-relaxed italic">
-            &ldquo;ViralBoost AI isn&apos;t just a set of tools; it&apos;s a complete growth engine. After using these strategies for 3 months, my retention jumped by 42% and CTR doubled. It&apos;s the only sub I&apos;ll never cancel.&rdquo;
+            &ldquo;Vid YT isn&apos;t just a set of tools; it&apos;s a complete growth engine. After using these strategies for 3 months, my retention jumped by 42% and CTR doubled. It&apos;s the only sub I&apos;ll never cancel.&rdquo;
           </p>
           <div className="flex items-center justify-center gap-4">
             <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20" />

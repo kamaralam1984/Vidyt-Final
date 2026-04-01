@@ -34,7 +34,7 @@ export default function DataRequestsPage() {
         // Data export is returned as JSON
         const dataStr = JSON.stringify(response.data);
         const dataURI = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        const exportFileDefaultName = `viralboost-data-export-${new Date().toISOString().split('T')[0]}.json`;
+        const exportFileDefaultName = `vidyt-data-export-${new Date().toISOString().split('T')[0]}.json`;
         const linkElement = document.createElement('a');
         linkElement.setAttribute('href', dataURI);
         linkElement.setAttribute('download', exportFileDefaultName);
@@ -45,7 +45,7 @@ export default function DataRequestsPage() {
         // Create support ticket for manual data export
         const res = await axios.post('/api/support/send-email', {
           to: email,
-          subject: 'Data Export Request - ViralBoost AI',
+          subject: 'Data Export Request - Vid YT',
           type: 'data-export',
           message: 'Please send me a copy of all my data in JSON or CSV format.',
         });
@@ -72,7 +72,7 @@ export default function DataRequestsPage() {
     try {
       const res = await axios.post('/api/support/send-email', {
         to: email,
-        subject: 'Account Deletion Request - ViralBoost AI',
+        subject: 'Account Deletion Request - Vid YT',
         type: 'account-deletion',
         message: 'I would like to request permanent deletion of my account and all associated data.',
       });
@@ -163,8 +163,8 @@ export default function DataRequestsPage() {
                 <p className="text-green-300 mb-4">{message}</p>
                 <p className="text-[#888] text-sm">
                   If you don&apos;t receive your data within 24 hours, please contact us at{' '}
-                  <a href="mailto:support@viralboostai.com" className="text-[#FF0000] hover:underline">
-                    support@viralboostai.com
+                  <a href="mailto:support@vidyt.ai" className="text-[#FF0000] hover:underline">
+                    support@vidyt.ai
                   </a>
                 </p>
               </motion.div>
@@ -408,7 +408,7 @@ export default function DataRequestsPage() {
             </Link>
           </p>
           <p className="text-[#666] text-sm">
-            © {new Date().getFullYear()} ViralBoost AI. All rights reserved.
+            © {new Date().getFullYear()} Vid YT. All rights reserved.
           </p>
         </div>
       </div>

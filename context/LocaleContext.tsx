@@ -19,6 +19,7 @@ export interface LocaleState {
   currency: string; // ISO, e.g. INR
   currencySymbol: string; // e.g. ₹
   phoneCode: string; // e.g. +91
+  phoneLength: number; // standard mobile length, e.g. 10
 }
 
 const DEFAULT_LOCALE: LocaleState = {
@@ -29,6 +30,7 @@ const DEFAULT_LOCALE: LocaleState = {
   currency: 'USD',
   currencySymbol: '$',
   phoneCode: '+1',
+  phoneLength: 10,
 };
 
 export const SUPPORTED_LOCALES: LocaleState[] = [
@@ -41,6 +43,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'INR',
     currencySymbol: '₹',
     phoneCode: '+91',
+    phoneLength: 10,
   },
   {
     countryCode: 'IN-HINGLISH',
@@ -50,6 +53,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'INR',
     currencySymbol: '₹',
     phoneCode: '+91',
+    phoneLength: 10,
   },
   {
     countryCode: 'GB',
@@ -59,6 +63,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'GBP',
     currencySymbol: '£',
     phoneCode: '+44',
+    phoneLength: 10,
   },
   {
     countryCode: 'EU',
@@ -68,6 +73,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'EUR',
     currencySymbol: '€',
     phoneCode: '+49',
+    phoneLength: 11,
   },
   {
     countryCode: 'US-INTL',
@@ -77,6 +83,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'USD',
     currencySymbol: '$',
     phoneCode: '+1',
+    phoneLength: 10,
   },
   {
     countryCode: 'AE',
@@ -86,6 +93,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'AED',
     currencySymbol: 'د.إ',
     phoneCode: '+971',
+    phoneLength: 9,
   },
   {
     countryCode: 'SG',
@@ -95,6 +103,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'SGD',
     currencySymbol: 'S$',
     phoneCode: '+65',
+    phoneLength: 8,
   },
   {
     countryCode: 'AU',
@@ -104,6 +113,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'AUD',
     currencySymbol: 'A$',
     phoneCode: '+61',
+    phoneLength: 9,
   },
   {
     countryCode: 'CA',
@@ -113,6 +123,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'CAD',
     currencySymbol: 'C$',
     phoneCode: '+1',
+    phoneLength: 10,
   },
   {
     countryCode: 'ES',
@@ -122,6 +133,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'EUR',
     currencySymbol: '€',
     phoneCode: '+34',
+    phoneLength: 9,
   },
   {
     countryCode: 'MX',
@@ -131,6 +143,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'MXN',
     currencySymbol: '$',
     phoneCode: '+52',
+    phoneLength: 10,
   },
   {
     countryCode: 'ID',
@@ -140,6 +153,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'IDR',
     currencySymbol: 'Rp',
     phoneCode: '+62',
+    phoneLength: 11,
   },
   {
     countryCode: 'PK',
@@ -149,6 +163,7 @@ export const SUPPORTED_LOCALES: LocaleState[] = [
     currency: 'PKR',
     currencySymbol: '₨',
     phoneCode: '+92',
+    phoneLength: 10,
   },
 ];
 

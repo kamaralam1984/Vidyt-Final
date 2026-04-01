@@ -88,7 +88,7 @@ export default function ForgotPasswordPage() {
       <div className="max-w-md w-full">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
           <Link href="/" className="inline-block mb-4">
-            <img src="/logo.png" alt="ViralBoost AI" className="h-72 w-auto object-contain mx-auto" />
+            <img src="/Logo.png" alt="Vid YT" className="h-72 w-auto object-contain mx-auto" />
           </Link>
           <h1 className="text-2xl font-bold text-white mb-2">Reset Your Password</h1>
           <p className="text-[#AAAAAA]">

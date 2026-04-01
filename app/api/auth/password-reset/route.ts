@@ -64,14 +64,12 @@ export async function POST(request: NextRequest) {
     }
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('✅ OTP Code for', user.email, 'is:', otp);
+      console.log('✅ OTP Code sent for', user.email);
     }
 
     return NextResponse.json({
       success: true,
       message: 'OTP sent successfully',
-      // In development, return the OTP for testing
-      ...(process.env.NODE_ENV === 'development' && { otp }),
     });
   } catch (error: any) {
     console.error('OTP API ERROR:', error);

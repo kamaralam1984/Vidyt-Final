@@ -8,7 +8,7 @@ import { Crown, CreditCard, MessageCircle, LogOut, User, ChevronDown, Globe } fr
 import { getAuthHeaders, removeToken } from '@/utils/auth';
 import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 
-const LOGO_SRC = '/logo.png';
+const LOGO_SRC = '/Logo.png';
 
 export default function Navbar() {
   const pathname = usePathname();

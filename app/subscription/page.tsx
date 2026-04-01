@@ -68,7 +68,7 @@ export default function SubscriptionPage() {
 
       doc.setFontSize(22);
       doc.setTextColor(255, 0, 0);
-      doc.text('ViralBoost AI', 20, 25);
+      doc.text('Vid YT', 20, 25);
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
       doc.text('Payment Receipt', 20, 35);
@@ -87,10 +87,10 @@ export default function SubscriptionPage() {
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
       doc.text(`Generated on ${new Date().toLocaleString()}`, 20, 95);
-      doc.text('© ViralBoost AI. All rights reserved.', 20, 102);
+      doc.text('© Vid YT. All rights reserved.', 20, 102);
 
       const safeDate = new Date(invoice.date).toISOString().slice(0, 10);
-      doc.save(`ViralBoost-Receipt-${planName}-${safeDate}.pdf`);
+      doc.save(`Vid-YT-Receipt-${planName}-${safeDate}.pdf`);
     } catch (e) {
       console.error('PDF download failed:', e);
       alert('Failed to download PDF');

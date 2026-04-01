@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="viralboost-data-export-${new Date().toISOString().split('T')[0]}.json"`,
+        'Content-Disposition': `attachment; filename="vidyt-data-export-${new Date().toISOString().split('T')[0]}.json"`,
       },
     });
 
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="viralboost-data-export-${new Date().toISOString().split('T')[0]}.json"`,
+        'Content-Disposition': `attachment; filename="vidyt-data-export-${new Date().toISOString().split('T')[0]}.json"`,
       },
     });
 

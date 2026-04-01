@@ -15,7 +15,7 @@ function getEmailBaseUrl(): string {
 
 function getEmailLogoHtml(): string {
   const base = getEmailBaseUrl();
-  return `<img src="${base}/logo.png" alt="Vid YT" width="180" height="48" style="display:block;max-width:180px;height:auto;margin:0 auto;" />`;
+  return `<img src="${base}/Logo.png" alt="Vid YT" width="180" height="48" style="display:block;max-width:180px;height:auto;margin:0 auto;" />`;
 }
 
 const emailConfig = {
@@ -207,11 +207,7 @@ export async function sendPasswordResetOTP(
 
     if (ok) return true;
     if (process.env.NODE_ENV === 'development') {
-      console.log('\n' + '='.repeat(40));
-      console.log('📧 PASSWORD RESET OTP (DEV MODE)');
-      console.log(`To: ${email}`);
-      console.log(`Code: ${otp}`);
-      console.log('='.repeat(40) + '\n');
+      console.log('📧 PASSWORD RESET OTP (DEV MODE) - No email configured');
       return true;
     }
     return false;
@@ -239,11 +235,7 @@ export async function sendOTPEmail(
     }
     console.warn('⚠️ OTP email sending failed for:', email);
     if (process.env.NODE_ENV === 'development') {
-      console.log('\n' + '='.repeat(40));
-      console.log('📧 OTP (DEV MODE)');
-      console.log(`To: ${email}`);
-      console.log(`Code: ${otp}`);
-      console.log('='.repeat(40) + '\n');
+      console.log('📧 OTP (DEV MODE) - No email configured');
       return true;
     }
     return false;
@@ -627,12 +619,7 @@ export async function sendAccountDeletionVerificationEmail(
 
     console.warn('⚠️ Account deletion verification email sending failed for:', email);
     if (process.env.NODE_ENV === 'development') {
-      console.log('\n' + '='.repeat(50));
-      console.log('📧 ACCOUNT DELETION VERIFICATION CODE (DEV MODE)');
-      console.log(`To: ${email}`);
-      console.log(`Code: ${verificationCode}`);
-      console.log('Expires: 24 hours');
-      console.log('='.repeat(50) + '\n');
+      console.log('📧 ACCOUNT DELETION VERIFICATION CODE (DEV MODE) - No email configured');
       return true;
     }
 

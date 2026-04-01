@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
     // Send test email
     if (action === 'send' || action === 'test') {
       try {
-        const HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.otp-box{background:#212121;color:white;padding:20px;text-align:center;border-radius:8px;margin:20px 0;font-size:32px;font-weight:bold;letter-spacing:8px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0;font-size:20px;">ViralBoost AI</h1></div><div class="content"><h2>Verify Your Email</h2><p>Your OTP code:</p><div class="otp-box">${otp}</div><p><strong>Expires in 10 minutes.</strong></p></div></div></body></html>`;
+        const HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.otp-box{background:#212121;color:white;padding:20px;text-align:center;border-radius:8px;margin:20px 0;font-size:32px;font-weight:bold;letter-spacing:8px}</style></head><body><div class="container"><div class="header"><h1 style="margin:0;font-size:20px;">Vid YT</h1></div><div class="content"><h2>Verify Your Email</h2><p>Your OTP code:</p><div class="otp-box">${otp}</div><p><strong>Expires in 10 minutes.</strong></p></div></div></body></html>`;
 
         const info = await transporter.sendMail({
-          from: process.env.EMAIL_FROM || `"ViralBoost AI" <${process.env.SMTP_USER}>`,
+          from: process.env.EMAIL_FROM || `"Vid YT" <${process.env.SMTP_USER}>`,
           to: testEmail,
           subject: `[TEST] OTP Verification - ${new Date().toLocaleString()}`,
           html: HTML,

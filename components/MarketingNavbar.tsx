@@ -172,7 +172,7 @@ export default function MarketingNavbar() {
         <Link href="/" className="flex items-center group">
           <div className="relative h-14 w-32 -my-2 mr-2">
             <Image
-              src="/logo-navbar.png"
+              src="/Logo.png"
               alt="Vid YT logo"
               fill
               className="object-contain"

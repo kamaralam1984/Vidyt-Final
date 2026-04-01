@@ -42,7 +42,7 @@ export async function applyRateLimit(
 
   // Check if IP is blocked
   if (isIPBlocked(ip)) {
-    await logAbuseEvent(
+    logAbuseEvent(
       {
         ipAddress: ip,
         endpoint,
@@ -83,7 +83,7 @@ export async function applyRateLimit(
     const result = rateLimit(identifier, limiter);
 
     if (!result.allowed) {
-      await logAbuseEvent(
+      logAbuseEvent(
         {
           ipAddress: ip,
           endpoint,
@@ -119,7 +119,7 @@ export async function applyRateLimit(
     if (botDetection.isBot) {
       recordSuspiciousActivity(ip, `bot_detected:${endpoint}`, 'high');
 
-      await logAbuseEvent(
+      logAbuseEvent(
         {
           ipAddress: ip,
           endpoint,

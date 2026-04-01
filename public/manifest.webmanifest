@@ -1,6 +1,6 @@
 {
-  "name": "ViralBoost AI",
-  "short_name": "ViralBoost",
+  "name": "Vid YT",
+  "short_name": "Vid YT",
   "description": "AI-powered video analysis and viral content tools",
   "start_url": "/",
   "scope": "/",
@@ -10,13 +10,13 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/Logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo.png",
+      "src": "/Logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

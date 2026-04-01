@@ -5,7 +5,7 @@ export default function SecurityPage() {
     <main className="min-h-screen bg-[#0F0F0F] text-white px-6 py-16">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold mb-6">
-          Security at ViralBoost AI
+          Security at Vid YT
         </h1>
         <p className="text-[#AAAAAA] mb-4">
           Protecting creators&apos; data is a core part of how we design the product. This page outlines

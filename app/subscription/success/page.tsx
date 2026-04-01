@@ -80,7 +80,7 @@ function SuccessContent() {
             </div>
             <h1 className="text-3xl font-bold text-white">Payment Successful!</h1>
             <p className="text-[#AAAAAA]">
-              Your subscription is now active. Welcome to the premium club of ViralBoost AI!
+              Your subscription is now active. Welcome to the premium club of Vid YT!
             </p>
             {verifyError && (
               <p className="text-amber-400/90 text-sm border border-amber-500/30 rounded-lg px-3 py-2 bg-amber-500/10">

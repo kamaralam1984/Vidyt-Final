@@ -101,11 +101,8 @@ export default function ResetPasswordPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <Sparkles className="w-10 h-10 text-[#FF0000]" />
-            <span className="text-3xl font-bold text-white">
-              <span className="text-[#FF0000]">ViralBoost</span> AI
-            </span>
+          <Link href="/" className="inline-block mb-4">
+            <img src="/Logo.png" alt="Vid YT" className="h-72 w-auto object-contain mx-auto" />
           </Link>
           <h1 className="text-2xl font-bold text-white mb-2">Set New Password</h1>
           <p className="text-[#AAAAAA]">Enter your new password below</p>

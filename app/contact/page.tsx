@@ -5,7 +5,7 @@ export default function ContactPage() {
     <main className="min-h-screen bg-[#0F0F0F] text-white px-6 py-16">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold mb-6">
-          Contact ViralBoost AI
+          Contact Vid YT
         </h1>
         <p className="text-lg text-[#AAAAAA] mb-6">
           For any business, partnership or support questions, send us an email. We typically respond within
@@ -19,10 +19,10 @@ export default function ContactPage() {
           <p className="text-[#CCCCCC] mb-2">
             Email:{' '}
             <a
-              href="mailto:support@viralboost.ai"
+              href="mailto:support@vidyt.ai"
               className="text-[#FF6B6B] hover:text-[#FF0000]"
             >
-              support@viralboost.ai
+              support@vidyt.ai
             </a>
           </p>
           <p className="text-xs text-[#777777]">

@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: '/favicon.ico',
-    apple: '/logo.png',
+    icon: '/Logo.png',
+    apple: '/Logo.png',
   },
   other: {
     'mobile-web-app-capable': 'yes',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Vid YT - AI-Powered Video Analysis Platform",
     description: "Analyze and optimize your social media videos to predict viral potential",
-    images: ['/logo.png'],
+    images: ['/Logo.png'],
   },
 };
 

@@ -145,7 +145,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               {/* Container 80% height = crop bottom 20% of logo */}
               <div className="relative overflow-hidden flex justify-center items-start h-[19rem] md:h-[26.8rem] w-full max-w-[30rem]">
                 <Image
-                  src="/logo.png"
+                  src="/Logo.png"
                   alt="Vid YT"
                   width={600}
                   height={600}

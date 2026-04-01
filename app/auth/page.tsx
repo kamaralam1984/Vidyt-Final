@@ -182,8 +182,8 @@ function AuthPageContent() {
       if (subscriptionType === 'paid' && (!formData.companyName || formData.companyName.trim().length < 2)) {
         errors.companyName = 'Company name is required for paid plans.';
       }
-      if (formData.phone && (formData.phone.length < 7 || formData.phone.length > 15)) {
-        errors.phone = 'Please enter a valid phone number.';
+      if (formData.phone && formData.phone.length !== locale.phoneLength) {
+        errors.phone = `Phone number must be exactly ${locale.phoneLength} digits for ${locale.countryName}.`;
       }
     } else {
       if (loginMethod === 'uniqueIdPin') {
@@ -442,7 +442,7 @@ function AuthPageContent() {
           className="text-center mb-8"
         >
           <Link href="/" className="inline-block mb-6">
-            <img src="/logo.png" alt="Vid YT" className="h-72 w-auto object-contain mx-auto" />
+            <img src="/Logo.png" alt="Vid YT" className="h-72 w-auto object-contain mx-auto" />
           </Link>
           <h1 className="text-4xl font-bold text-white mb-2">
             {isLogin ? 'Sign In' : 'Create your account'}
@@ -981,8 +981,9 @@ function AuthPageContent() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
+                      maxLength={locale.phoneLength}
                       className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.phone ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
-                      placeholder="9876543210"
+                      placeholder={"X".repeat(locale.phoneLength)}
                     />
                     {fieldErrors.phone && (
                       <p className="text-xs text-red-500 mt-1 flex items-center gap-1">

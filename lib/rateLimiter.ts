@@ -298,10 +298,11 @@ export function getClientIP(request: Request | NextRequest): string {
   const cloudflareIP = request.headers.get('cf-connecting-ip');
 
   return (
+    (request as any).ip ||
     (forwarded ? forwarded.split(',')[0].trim() : null) ||
     realIP ||
     cloudflareIP ||
-    'unknown'
+    '127.0.0.1' // Fallback to localhost instead of unknown
   );
 }
 

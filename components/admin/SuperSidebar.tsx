@@ -37,11 +37,9 @@ export default function SuperSidebar() {
       {/* Brand */}
       <div className="h-16 flex items-center px-6 border-b border-white/5">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
+          <img src="/Logo.png" alt="Vid YT" className="h-8 w-auto object-contain" />
           <div>
-            <p className="text-sm font-bold text-white leading-none">ViralBoost</p>
+            <p className="text-sm font-bold text-white leading-none">Vid YT</p>
             <p className="text-[10px] text-red-400 uppercase tracking-widest font-medium">Super Admin</p>
           </div>
         </div>
