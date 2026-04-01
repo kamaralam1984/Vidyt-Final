@@ -325,20 +325,22 @@ function AuthPageContent() {
             return;
           }
 
+          console.log('[Auth] Attempting PIN login for Unique ID:', formData.uniqueId);
           const response = await axios.post('/api/auth/login-pin', {
             uniqueId: formData.uniqueId,
             loginPin: formData.loginPin,
           });
 
           if (response.data.token && response.data.user.uniqueId) {
+            console.log('[Auth] PIN login successful. Redirecting...');
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('uniqueId', response.data.user.uniqueId);
-            if (response.data.user?.role === 'super-admin') {
-              router.push('/admin/super');
-            } else {
-              router.push(`/user/${response.data.user.uniqueId}`);
-            }
+            
+            const target = response.data.user?.role === 'super-admin' ? '/admin/super' : `/user/${response.data.user.uniqueId}`;
+            console.log('[Auth] Redirecting to:', target);
+            router.push(target);
           } else {
+            console.error('[Auth] PIN login failed: missing token or uniqueId');
             setError('Login failed. Please check your credentials.');
             setLoading(false);
           }
@@ -349,24 +351,30 @@ function AuthPageContent() {
             return;
           }
 
+          console.log('[Auth] Attempting email login for:', formData.email);
           const response = await axios.post('/api/auth/login', {
             email: formData.email,
             password: formData.password,
           });
 
           if (response.data.token) {
+            console.log('[Auth] Email login successful. Redirecting...');
             localStorage.setItem('token', response.data.token);
             if (response.data.user?.uniqueId) {
               localStorage.setItem('uniqueId', response.data.user.uniqueId);
             }
+            
+            let target = '/dashboard';
             if (response.data.user?.role === 'super-admin') {
-              router.push('/admin/super');
+              target = '/admin/super';
             } else if (response.data.user?.uniqueId) {
-              router.push(`/user/${response.data.user.uniqueId}`);
-            } else {
-              router.push('/dashboard');
+              target = `/user/${response.data.user.uniqueId}`;
             }
+            
+            console.log('[Auth] Redirecting to:', target);
+            router.push(target);
           } else {
+            console.error('[Auth] Email login failed: missing token');
             setError('Login failed. Please check your credentials.');
             setLoading(false);
           }
@@ -379,20 +387,20 @@ function AuthPageContent() {
           return;
         }
 
-        // Do not gate on otpSent — it can desync after Resend/refresh; server validates PendingUser + OTP.
-
         if (otp.length !== 6) {
           setError('Please enter the 6-digit OTP to proceed.');
           setLoading(false);
           return;
         }
 
+        console.log('[Auth] Verifying OTP for:', formData.email);
         const response = await axios.post('/api/auth/verify-and-pay', {
           email: formData.email,
           otp,
         });
 
         if (response.data.isFree) {
+          console.log('[Auth] Signup successful (Free). Redirecting...');
           localStorage.setItem('token', response.data.token);
           if (response.data.uniqueId) localStorage.setItem('uniqueId', response.data.uniqueId);
           setSuccess(`Account created! Your Unique ID: ${response.data.uniqueId}. Please save this for login.`);
@@ -401,12 +409,21 @@ function AuthPageContent() {
             router.push(`/user/${response.data.uniqueId}`);
           }, 3000);
         } else {
+          console.log('[Auth] Signup successful (Paid). Opening Razorpay...');
           openRazorpay(response.data.orderId, response.data.amount, response.data.currency, response.data.key);
         }
       }
     } catch (err: any) {
+      console.error('[Auth] Submit error:', err);
       setError(err.response?.data?.error || `${isLogin ? 'Login' : 'Registration'} failed`);
       setLoading(false);
+    } finally {
+      // In case of a hang in external calls (e.g. router.push never completing or throwing silently)
+      // we add a safety timeout to reset loading if we're still on this page after 10 seconds.
+      const timer = setTimeout(() => {
+        if (loading) setLoading(false);
+      }, 10000);
+      return () => clearTimeout(timer);
     }
   };
 

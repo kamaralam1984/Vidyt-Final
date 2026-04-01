@@ -41,16 +41,23 @@ async function handleLogin(request: NextRequest) {
       const User = (await import('@/models/User')).default;
       const userDoc = await User.findById(user.id);
 
+      if (!userDoc) {
+        console.error(`[API:Login] User document not found in DB after auth for member: ${email}`);
+        return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+      }
+
+      console.log(`[API:Login] Success: ${email} (Role: ${user.role}, UniqueId: ${userDoc.uniqueId})`);
+
       const response = NextResponse.json({
         success: true,
         user: {
           id: user.id,
-          uniqueId: userDoc?.uniqueId,
+          uniqueId: userDoc.uniqueId,
           email: user.email,
           name: user.name,
           role: user.role,
           subscription: user.subscription,
-          subscriptionPlan: userDoc?.subscriptionPlan,
+          subscriptionPlan: userDoc.subscriptionPlan,
         },
         token,
       });
