@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loginUser } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import { z } from 'zod';
-import { withAuthRateLimit } from '@/middleware/rateLimitMiddleware';
 import { getClientIP, trackFailure } from '@/lib/rateLimiter';
 
 const loginSchema = z.object({
@@ -93,8 +92,6 @@ async function handleLogin(request: NextRequest) {
   }
 }
 
-// Wrap with auth rate limiting (3 attempts per 15 minutes)
-export const POST = withAuthRateLimit(
-  (req) => handleLogin(req),
-  { endpoint: '/api/auth/login', preset: 'login' }
-);
+export async function POST(request: NextRequest) {
+  return handleLogin(request);
+}
