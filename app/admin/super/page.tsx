@@ -13,7 +13,9 @@ import PlanConfigEditor from '@/components/admin/PlanConfigEditor';
 import SystemAccessMatrix from '@/components/admin/SystemAccessMatrix';
 import UnifiedFeatureMatrix from '@/components/admin/UnifiedFeatureMatrix';
 import YtSeoSectionControl from '@/components/admin/YtSeoSectionControl';
+import PlatformAnalytics from '@/components/admin/PlatformAnalytics';
 import {
+  Activity,
   Loader2,
   Shield,
   RefreshCw,
@@ -608,6 +610,13 @@ export default function SuperAdminPage() {
                     >
                       <Users className="w-4 h-4" />
                       <span>Users</span>
+                    </button>
+                    <button
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] ${viewMode === 'platformAnalytics' ? 'bg-[#212121] text-white' : ''}`}
+                      onClick={() => setViewMode('platformAnalytics')}
+                    >
+                      <Activity className="w-4 h-4 text-[#FF0000]" />
+                      <span>Platform Analytics</span>
                     </button>
                     <button
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]"
@@ -1456,6 +1465,8 @@ export default function SuperAdminPage() {
           <PlanManager />
         ) : viewMode === 'userPlans' ? (
           <UserPlanManager />
+        ) : viewMode === 'platformAnalytics' ? (
+          <PlatformAnalytics />
         ) : (
           <div id="users-main" className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
@@ -1602,7 +1613,7 @@ export default function SuperAdminPage() {
                         </select>
                         {roleChangingId === u.id && <Loader2 className="w-3 h-3 inline ml-1 animate-spin" />}
                       </td>
-                      <td className="px-4 py-3 capitalize">{u.subscription}</td>
+                      <td className="px-4 py-3 capitalize">{u.role === 'super-admin' ? 'Owner' : u.subscription}</td>
                       <td className="px-4 py-3">{u.hasPin ? 'Set' : '—'}</td>
                       <td className="px-4 py-3">{new Date(u.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>

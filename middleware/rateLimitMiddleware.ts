@@ -203,7 +203,7 @@ export function withRateLimit(
 /**
  * Middleware for verifying admin access and logging administrative actions
  */
-export async function withAdminRateLimit(
+export function withAdminRateLimit(
   handler: (req: NextRequest) => Promise<NextResponse>,
   options: Partial<RateLimitMiddlewareOptions> = {}
 ) {
@@ -217,7 +217,7 @@ export async function withAdminRateLimit(
 /**
  * Middleware for auth endpoints (stricter limits)
  */
-export async function withAuthRateLimit(
+export function withAuthRateLimit(
   handler: (req: NextRequest) => Promise<NextResponse>,
   options: Partial<RateLimitMiddlewareOptions> = {}
 ) {
@@ -233,7 +233,7 @@ export async function withAuthRateLimit(
 /**
  * Middleware for upload endpoints
  */
-export async function withUploadRateLimit(
+export function withUploadRateLimit(
   handler: (req: NextRequest) => Promise<NextResponse>,
   options: Partial<RateLimitMiddlewareOptions> = {}
 ) {
@@ -248,7 +248,7 @@ export async function withUploadRateLimit(
 /**
  * Middleware for AI analysis endpoints
  */
-export async function withAnalysisRateLimit(
+export function withAnalysisRateLimit(
   handler: (req: NextRequest) => Promise<NextResponse>,
   options: Partial<RateLimitMiddlewareOptions> = {}
 ) {
