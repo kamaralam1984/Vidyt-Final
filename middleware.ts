@@ -216,10 +216,15 @@ export async function middleware(request: NextRequest) {
     .replace(/_/g, '-');
   const isSuperAdminRole = roleNorm === 'super-admin' || roleNorm === 'superadmin';
 
+  if (pathname.startsWith('/admin/super')) {
+    console.log(`[Middleware] User: ${user.email}, Role: ${user.role}, Norm: ${roleNorm}, IsSuper: ${isSuperAdminRole}`);
+  }
+
   // Canonical URL: /dashboard/super → /admin/super (same UI, always use admin layout + sidebar)
   if (pathname === '/dashboard/super' || pathname.startsWith('/dashboard/super/')) {
     const url = request.nextUrl.clone();
     url.pathname = pathname.replace(/^\/dashboard\/super/, '/admin/super');
+    console.log(`[Middleware] Redirecting /dashboard/super to /admin/super`);
     return NextResponse.redirect(url);
   }
 
@@ -227,6 +232,7 @@ export async function middleware(request: NextRequest) {
   const isSuperAdminPanelRoute =
     pathname === '/admin/super' || pathname.startsWith('/admin/super/');
   if (isSuperAdminPanelRoute && !isSuperAdminRole) {
+    console.warn(`[Middleware] Access denied for /admin/super. Role: ${user.role}. Redirecting to /dashboard`);
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

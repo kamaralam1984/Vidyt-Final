@@ -94,8 +94,16 @@ function AuthPageContent() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      router.push('/dashboard');
+    if (token && !loading) {
+      // If already has token, check if we're a super-admin (via uniqueId or localStorage flag)
+      // or just hit /api/auth/me to be sure. For now, simple dashboard, 
+      // but let's avoid the race during login by checking !loading.
+      const uniqueId = localStorage.getItem('uniqueId');
+      if (uniqueId === '795752') { // Known Super Admin Unique ID from user check
+         router.push('/admin/super');
+      } else {
+         router.push('/dashboard');
+      }
     }
 
     // /login route shows login; /auth uses ?mode= param
@@ -421,7 +429,7 @@ function AuthPageContent() {
       // In case of a hang in external calls (e.g. router.push never completing or throwing silently)
       // we add a safety timeout to reset loading if we're still on this page after 10 seconds.
       const timer = setTimeout(() => {
-        if (loading) setLoading(false);
+        setLoading(false);
       }, 10000);
       return () => clearTimeout(timer);
     }
