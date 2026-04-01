@@ -639,12 +639,29 @@ function YouTubeLiveSEOContent() {
         setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: `OpenAI API: ${transcriptionError}` }]);
       }
     } catch (err: unknown) {
-      const ax = err as { response?: { data?: { transcriptionError?: string; message?: string } } };
+      const ax = err as { response?: { status?: number; data?: { transcriptionError?: string; message?: string } }; message?: string };
+      const status = ax.response?.status;
+      const isVercelLimit = status === 413 || status === 504 || ax.message?.includes('Network Error');
       const msg =
         ax.response?.data?.transcriptionError ||
         ax.response?.data?.message ||
-        'There was an error while analyzing the video. Please try again or type your topic manually.';
-      setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: msg }]);
+        (isVercelLimit ? 'Server restriction (likely video too large for immediate analysis).' : 'There was an error while analyzing the video. Please try again or type your topic manually.');
+      
+      setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: `${msg} I used your filename to generate standard viral suggestions anyway. Fill in the rest and upload!` }]);
+      
+      const topicHint = title || videoFile.name.replace(/\.[^.]*$/, '').replace(/[-_]/g, ' ').trim() || 'viral content';
+      const year = new Date().getFullYear();
+      const fallbackSug = {
+        title: `Best ${topicHint} Tips ${year} | Viral Guide`,
+        description: `In this video we cover ${topicHint}. Key points and tips inside.\n\nSubscribe for more. Like and comment. #${topicHint.replace(/\s+/g, '')} #shorts #viral #youtube #${year}`,
+        keywords: [topicHint, 'viral', 'youtube', 'tips', 'growth', 'shorts', 'trending', String(year)],
+        hashtags: ['#shorts', '#viral', '#youtube', '#trending', `#${topicHint.replace(/\s+/g, '')}`, '#tips', '#growth', '#content', '#creator', '#fyp', '#explore', '#subscribe', '#like', '#comment', `#${year}`],
+      };
+      
+      setVideoSuggestions(fallbackSug);
+      setTitle(fallbackSug.title || title);
+      setDescription(fallbackSug.description || description);
+      setKeywords(fallbackSug.keywords.join(', '));
     } finally {
       setVideoAnalyzing(false);
     }

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">ViralBoost AI</string>
-    <string name="title_activity_main">ViralBoost AI</string>
-    <string name="package_name">com.viralboostai.app</string>
-    <string name="custom_url_scheme">com.viralboostai.app</string>
+    <string name="app_name">Vid YT</string>
+    <string name="title_activity_main">Vid YT</string>
+    <string name="package_name">com.vidyt.app</string>
+    <string name="custom_url_scheme">com.vidyt.app</string>
 </resources>

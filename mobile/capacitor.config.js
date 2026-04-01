@@ -1,5 +1,3 @@
-import type { CapacitorConfig } from '@capacitor/cli';
-
 /**
  * Loads your live Next.js site inside the native WebView.
  * Set CAPACITOR_SERVER_URL before sync/build (production HTTPS URL recommended).
@@ -9,26 +7,24 @@ import type { CapacitorConfig } from '@capacitor/cli';
  */
 /** Override when syncing: `CAPACITOR_SERVER_URL=https://yourdomain.com npx cap sync` */
 const serverUrl = process.env.CAPACITOR_SERVER_URL || 'http://192.168.0.197:3000';
-
-const config: CapacitorConfig = {
-  appId: 'com.vidyt.app',
-  appName: 'Vid YT',
-  webDir: 'www',
-  server: {
-    url: serverUrl.replace(/\/$/, ''),
-    androidScheme: 'https',
-    cleartext: serverUrl.startsWith('http://'),
-  },
-  plugins: {
-    SplashScreen: {
-      launchShowDuration: 2000,
-      backgroundColor: '#0F0F0F',
+const config = {
+    appId: 'com.viralboostai.app',
+    appName: 'ViralBoost AI',
+    webDir: 'www',
+    server: {
+        url: serverUrl.replace(/\/$/, ''),
+        androidScheme: 'https',
+        cleartext: serverUrl.startsWith('http://'),
     },
-    StatusBar: {
-      style: 'DARK',
-      backgroundColor: '#0F0F0F',
+    plugins: {
+        SplashScreen: {
+            launchShowDuration: 2000,
+            backgroundColor: '#0F0F0F',
+        },
+        StatusBar: {
+            style: 'DARK',
+            backgroundColor: '#0F0F0F',
+        },
     },
-  },
 };
-
 export default config;

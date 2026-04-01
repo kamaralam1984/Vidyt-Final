@@ -121,6 +121,19 @@ export async function POST(request: NextRequest) {
 
     } catch (error: any) {
         console.error('Multi-channel upload error:', error);
+        
+        const isAuthError = error.code === 401 || 
+            error.message?.includes('invalid authentication') || 
+            error.message?.includes('invalid_grant') || 
+            error.message?.toLowerCase().includes('credentials');
+
+        if (isAuthError) {
+             return NextResponse.json({
+                error: 'Authentication failed or expired. Please reconnect your selected YouTube account.',
+                needsAuth: true
+             }, { status: 401 });
+        }
+
         return NextResponse.json({
             error: error.message || 'Failed to upload video to selected channel'
         }, { status: 500 });

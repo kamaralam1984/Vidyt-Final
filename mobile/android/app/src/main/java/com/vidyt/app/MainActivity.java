@@ -1,4 +1,4 @@
-package com.viralboostai.app;
+package com.vidyt.app;
 
 import com.getcapacitor.BridgeActivity;
 

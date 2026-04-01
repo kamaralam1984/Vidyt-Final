@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 minutes
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
@@ -173,6 +174,29 @@ export async function POST(request: NextRequest) {
 
     } catch (error: any) {
         console.error('YouTube upload API error:', error);
+        
+        const errorString = String(error?.message || '').toLowerCase();
+        const fullErrorString = JSON.stringify(error || {}).toLowerCase();
+        
+        const isAuthError = 
+            error?.code === 401 || 
+            error?.code === '401' ||
+            error?.status === 401 ||
+            error?.response?.status === 401 ||
+            errorString.includes('invalid authentication') || 
+            errorString.includes('invalid_grant') || 
+            errorString.includes('credentials') ||
+            fullErrorString.includes('invalid authentication') ||
+            fullErrorString.includes('credentials');
+
+        if (isAuthError) {
+             console.log('Detected Auth Error, returning 401 needsAuth: true');
+             return NextResponse.json({
+                error: 'Authentication failed or expired. Please reconnect your YouTube account.',
+                needsAuth: true
+             }, { status: 401 });
+        }
+
         return NextResponse.json({
             error: error.message || 'Failed to upload video'
         }, { status: 500 });
