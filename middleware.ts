@@ -142,7 +142,8 @@ export async function middleware(request: NextRequest) {
 
   // Handle OPTIONS request for CORS preflight
   if (request.method === 'OPTIONS') {
-    return nextWithHeaders(request, { status: 200 });
+    const response = new NextResponse(null, { status: 204 });
+    return addSecurityHeaders(response, request);
   }
 
   if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/')) {
