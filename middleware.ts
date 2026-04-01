@@ -126,6 +126,7 @@ export async function middleware(request: NextRequest) {
     '/api/posting-time', // Posting time heatmap (public, general data)
     '/api/channel/videos', // Channel videos (public, uses RSS feeds)
     '/api/facebook/page/videos', // Facebook page videos (public, returns empty array - Facebook doesn't support automatic fetching)
+    '/api/admin/super/tracking', // Tracking is best-effort — route handles auth internally and skips unauthenticated events
   ];
 
   const isPublicRoute = publicRoutes.some(route =>
