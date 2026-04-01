@@ -5,7 +5,7 @@ import { yearlyUsdFromMonthly } from '@/lib/planPricing';
 import { getPlanRoll } from '@/lib/planLimits';
 import { headers, cookies } from 'next/headers';
 import HomeClient, { type MarketingPlan } from '@/components/HomeClient';
-import { verifyTokenSync } from '@/lib/auth-jwt';
+
 
 async function getPlans(): Promise<MarketingPlan[]> {
   await connectDB();
@@ -49,7 +49,8 @@ async function getUserData() {
     return { planId: null };
   }
 
-  const jwtUser = verifyTokenSync(token);
+  const { verifyToken } = await import('@/lib/auth-jwt');
+  const jwtUser = await verifyToken(token);
   if (!jwtUser) return { planId: null };
 
   try {

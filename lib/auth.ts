@@ -74,9 +74,8 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
   }
 
   // Use JWT verification first (no DB call)
-  // For Node.js runtime (API routes), use sync version
-  const { verifyTokenSync } = await import('./auth-jwt');
-  const jwtUser = verifyTokenSync(token);
+  const { verifyToken } = await import('./auth-jwt');
+  const jwtUser = await verifyToken(token);
 
   if (!jwtUser) {
     return null;
