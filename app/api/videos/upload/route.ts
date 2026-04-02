@@ -200,10 +200,17 @@ async function handleUpload(request: NextRequest) {
         },
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading video:', error);
+    // Log more details if it's a specific error
+    const detailedError = error instanceof Error ? error.message : String(error);
+    console.error('Detailed error info:', detailedError);
+    
     return NextResponse.json(
-      { error: 'Failed to upload and analyze video' },
+      { 
+        error: 'Failed to upload and analyze video',
+        details: detailedError
+      },
       { status: 500 }
     );
   }

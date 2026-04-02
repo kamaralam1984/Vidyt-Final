@@ -229,7 +229,11 @@ export default function VideoUpload({
       }
       onAnalysisComplete(analysis);
     } catch (error: any) {
-      console.error('Upload error:', error);
+      const errorData = error?.response?.data;
+      const errorMessage = typeof errorData?.error === 'string' 
+        ? errorData.error 
+        : (typeof errorData?.message === 'string' ? errorData.message : (error?.message || 'Failed to upload video'));
+      
       if (error?.response?.status === 401) {
         alert('Session expired. Please login again.');
         localStorage.removeItem('token');
@@ -237,7 +241,7 @@ export default function VideoUpload({
           window.location.href = '/login';
         }, 1500);
       } else {
-        alert(error?.response?.data?.error || 'Failed to upload video');
+        alert(errorMessage);
       }
     } finally {
       setLoading(false);
@@ -303,12 +307,11 @@ export default function VideoUpload({
       console.error(`${uploadType} import error:`, error);
       console.error('Error response:', error?.response?.data);
       
-      // Extract error message from response
+      // Extract error message from response safely
       let errorMessage = `Failed to import ${uploadType} video`;
+      const errorData = error?.response?.data;
       
-      // Handle authentication errors
       if (error?.response?.status === 401) {
-        const errorData = error?.response?.data;
         if (errorData?.error === 'Invalid token') {
           errorMessage = 'Your session has expired. Please login again.';
         } else {
@@ -318,16 +321,15 @@ export default function VideoUpload({
         setTimeout(() => {
           window.location.href = '/login';
         }, 2000);
-      } else if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error;
-        if (error.response.data.details) {
-          errorMessage += `\n\nDetails: ${error.response.data.details}`;
+      } else if (errorData?.error) {
+        errorMessage = typeof errorData.error === 'string' ? errorData.error : (errorData.message || errorMessage);
+        if (errorData.details) {
+          errorMessage += `\n\nDetails: ${typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details)}`;
         }
       } else if (error?.message) {
         errorMessage = error.message;
       }
       
-      // Show error in alert (can be replaced with a toast notification)
       alert(errorMessage);
     } finally {
       setLoading(false);
