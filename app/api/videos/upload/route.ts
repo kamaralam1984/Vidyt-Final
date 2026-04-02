@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 minutes
 
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
@@ -37,6 +38,14 @@ async function handleUpload(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
+    }
+
+    // Reject files exceeding 500 MB before buffering
+    if (file.size > 500 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: `File too large (${(file.size / 1024 / 1024).toFixed(0)} MB). Maximum allowed size is 500 MB.` },
+        { status: 413 }
+      );
     }
 
     const user = await User.findById(userId);

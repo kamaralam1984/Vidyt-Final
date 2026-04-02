@@ -40,6 +40,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No video file provided' }, { status: 400 });
         }
 
+        // Reject files exceeding 500 MB before buffering
+        if (videoFile.size > 500 * 1024 * 1024) {
+            return NextResponse.json(
+                { error: `File too large (${(videoFile.size / 1024 / 1024).toFixed(0)} MB). Maximum allowed size is 500 MB.` },
+                { status: 413 }
+            );
+        }
+
         const channelIdParam = ((formData.get('channelId') as string) || '').trim();
 
         let channelDoc: IChannel | null = null;
