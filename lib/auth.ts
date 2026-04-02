@@ -139,7 +139,7 @@ export async function loginUserWithPin(
     subscription: user.subscription as any,
   };
 
-  const token = generateToken(authUser);
+  const token = await generateToken(authUser);
 
   // Update last login and role in DB
   const normalizedPlan = normalizePlan(user.subscription);
@@ -183,7 +183,7 @@ export async function loginUser(
     subscription: user.subscription as any,
   };
 
-  const token = generateToken(authUser);
+  const token = await generateToken(authUser);
 
   // Update last login and role in DB
   const normalizedPlan = normalizePlan(user.subscription);

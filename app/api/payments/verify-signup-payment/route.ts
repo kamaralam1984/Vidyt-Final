@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         role: existingUser.role as any,
         subscription: existingUser.subscription as any,
       };
-      const token = generateToken(authUser);
+      const token = await generateToken(authUser);
       const response = NextResponse.json({
         success: true,
         message: 'Account already created. Payment verified successfully.',
@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
       subscription: user.subscription as any,
     };
 
-    const token = generateToken(authUser);
+    const token = await generateToken(authUser);
 
     const response = NextResponse.json({
       success: true,
