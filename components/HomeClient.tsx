@@ -18,6 +18,8 @@ import {
   Sparkles,
   Globe,
   Crown,
+  Loader2,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { type PlanFeatures } from '@/lib/planLimits';
@@ -106,6 +108,45 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
   const { locale } = useLocale();
   const { t } = useTranslations();
   const { authenticated } = useUser();
+
+  // Waitlist state
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistStatus, setWaitlistStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({
+    type: null,
+    message: '',
+  });
+
+  const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!waitlistEmail || waitlistLoading) return;
+
+    setWaitlistLoading(true);
+    setWaitlistStatus({ type: null, message: '' });
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: waitlistEmail, source: 'browser_extension' }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setWaitlistStatus({ type: 'success', message: data.message || 'Successfully joined the waitlist!' });
+        setWaitlistEmail('');
+      } else {
+        setWaitlistStatus({ type: 'error', message: data.error || 'Something went wrong. Please try again.' });
+      }
+    } catch (err) {
+      setWaitlistStatus({ type: 'error', message: 'Failed to connect to the server.' });
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -562,15 +603,61 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 <p className="text-xl text-[#AAAAAA] mb-10 leading-relaxed">
                   {t('home.extension.subtitle')}
                 </p>
-                <div className="flex flex-wrap gap-4">
-                  <button className="px-8 py-4 bg-[#FF0000] text-white rounded-xl hover:bg-[#CC0000] transition-all font-bold shadow-lg shadow-[#FF0000]/20">
-                    {t('home.extension.cta')}
+                <form onSubmit={handleWaitlistSubmit} className="space-y-4">
+                  <div className="flex flex-wrap gap-4">
+                    <div className="relative flex-1 min-w-[280px]">
+                      <input
+                        type="email"
+                        value={waitlistEmail}
+                        onChange={(e) => setWaitlistEmail(e.target.value)}
+                        placeholder="Enter your email"
+                        required
+                        className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-[#FF0000]/50 transition-all"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={waitlistLoading}
+                      className="px-8 py-4 bg-[#FF0000] text-white rounded-xl hover:bg-[#CC0000] transition-all font-bold shadow-lg shadow-[#FF0000]/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {waitlistLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {t('home.extension.cta')}
+                    </button>
+                    
+                    <a
+                      href="/vidyt-extension.zip"
+                      download
+                      className="px-8 py-4 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-all font-bold border border-white/10 flex items-center gap-2"
+                    >
+                      Download Beta
+                    </a>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setIsExtensionModalOpen(true)}
+                    className="text-[#AAAAAA] hover:text-white text-sm underline underline-offset-4"
+                  >
+                    How to install?
                   </button>
+                  
+                  {waitlistStatus.type && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`text-sm font-medium ${
+                        waitlistStatus.type === 'success' ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
+                    >
+                      {waitlistStatus.message}
+                    </motion.p>
+                  )}
+
                   <div className="flex items-center gap-2 text-[#AAAAAA] text-sm">
                     <Users className="w-5 h-5" />
                     <span>500+ creators waiting</span>
                   </div>
-                </div>
+                </form>
               </div>
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -686,6 +773,56 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
           </div>
         </div>
       </footer>
+      {/* Extension Installation Modal */}
+      {isExtensionModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-[#181818] border border-white/10 rounded-3xl p-8 max-w-2xl w-full relative shadow-2xl"
+          >
+            <button
+              onClick={() => setIsExtensionModalOpen(false)}
+              className="absolute top-6 right-6 p-2 hover:bg-white/5 rounded-full transition-all text-[#aaaaaa] hover:text-white"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h2 className="text-3xl font-bold text-white mb-6">How to Install Vid YT Helper</h2>
+            
+            <div className="space-y-6 text-[#AAAAAA] text-lg">
+              {[
+                'Download the ZIP file by clicking "Download Beta".',
+                'Extract the contents of the ZIP to a folder on your computer.',
+                <>Open Chrome and navigate to <code className="text-white bg-white/10 px-2 py-0.5 rounded">chrome://extensions</code>.</>,
+                'Enable "Developer mode" in the top right corner.',
+                'Click "Load unpacked" and select the extracted folder.',
+              ].map((step, i) => (
+                <div key={i} className="flex gap-4">
+                  <div className="w-8 h-8 rounded-full bg-[#FF0000]/20 flex items-center justify-center text-[#FF0000] font-bold shrink-0">
+                    {i + 1}
+                  </div>
+                  <p>{step}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 p-6 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-2xl">
+              <p className="text-[#FF0000] font-semibold mb-2">Note for Brave/Edge Users:</p>
+              <p className="text-sm text-[#AAAAAA]">
+                The same steps apply. Use <code className="text-white">brave://extensions</code> or <code className="text-white">edge://extensions</code> respectively.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setIsExtensionModalOpen(false)}
+              className="mt-10 w-full py-4 bg-white text-black font-bold rounded-xl hover:bg-[#eeeeee] transition-all"
+            >
+              Got it!
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

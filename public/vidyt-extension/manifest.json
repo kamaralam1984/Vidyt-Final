@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Vid YT Helper",
+  "version": "1.0.0",
+  "description": "Optimize your YouTube videos directly on the platform with Vid YT.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["sidebar.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.png"],
+      "matches": ["*://*.youtube.com/*"]
+    }
+  ]
+}

@@ -1,0 +1,144 @@
+#vidyt-sidebar-container {
+  position: fixed;
+  right: 0;
+  top: 56px;
+  width: 300px;
+  height: calc(100vh - 56px);
+  background: #0f0f0f;
+  border-left: 1px solid #282828;
+  font-family: 'Roboto', Arial, sans-serif;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 2001; /* Above YouTube player but below some modals */
+  box-shadow: -4px 0 10px rgba(0,0,0,0.5);
+  transition: transform 0.3s ease;
+}
+
+.vidyt-sidebar-header {
+  padding: 14px 16px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #282828;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vidyt-sidebar-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ff0000;
+  letter-spacing: 0.5px;
+  text-transform: none;
+}
+
+.vidyt-sidebar-content {
+  padding: 16px;
+}
+
+.vidyt-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #aaaaaa;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+}
+
+.vidyt-card {
+  background: #1a1a1a;
+  border: 1px solid #282828;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.vidyt-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vidyt-metric-label {
+  font-size: 13px;
+  color: #efefef;
+  font-weight: 400;
+}
+
+.vidyt-metric-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.vidyt-progress-container {
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.vidyt-progress-bar {
+  height: 100%;
+  background: #ff0000;
+  border-radius: 2px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vidyt-tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.vidyt-tag {
+  background: #2a2a2a;
+  color: #aaa;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  transition: all 0.2s;
+}
+
+.vidyt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px;
+  background: #ff0000;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.vidyt-btn:hover {
+  opacity: 0.9;
+}
+
+.vidyt-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #282828;
+  display: flex;
+  justify-content: center;
+}
+
+.vidyt-footer a {
+  color: #666;
+  font-size: 11px;
+  text-decoration: none;
+}
