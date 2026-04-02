@@ -65,7 +65,12 @@ export default function Navbar() {
     fetchUserInfo();
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await axios.post('/api/auth/logout');
+    } catch (err) {
+      console.error('Logout API error:', err);
+    }
     removeToken();
     if (typeof window !== 'undefined') {
       localStorage.removeItem('uniqueId');

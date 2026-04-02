@@ -910,18 +910,23 @@ export default function SuperAdminPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] mt-2 border-t border-[#212121] pt-3"
-            onClick={() => {
-              removeToken();
-              if (typeof window !== 'undefined') localStorage.removeItem('uniqueId');
-              router.push('/login');
-            }}
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Logout</span>
-          </button>
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] mt-2 border-t border-[#212121] pt-3"
+              onClick={async () => {
+                try {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                } catch (err) {
+                  console.error('Logout error:', err);
+                }
+                removeToken();
+                if (typeof window !== 'undefined') localStorage.removeItem('uniqueId');
+                router.push('/login');
+              }}
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
+            </button>
         </nav>
       </aside>
 
@@ -1555,16 +1560,36 @@ export default function SuperAdminPage() {
             )}
 
             <div className="mb-4 flex items-center gap-3">
-              <div className="relative flex-1">
+              <div className="relative flex-1 group">
                 <input
                   type="text"
                   value={search}
+                  autoComplete="off"
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
                   placeholder="Search by email, name or Unique ID"
                   className="w-full px-4 py-2 bg-[#181818] border border-[#333333] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
                 />
+                {search && (
+                  <button
+                    onClick={() => {
+                      setSearch('');
+                      setTimeout(() => fetchUsers(), 0);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[#333333] rounded text-[#AAAAAA] transition-colors"
+                    title="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
+              <button
+                onClick={fetchUsers}
+                className="px-4 py-2 bg-[#181818] border border-[#333333] rounded-lg text-sm hover:border-[#FF0000] transition-colors"
+                title="Trigger search"
+              >
+                Search
+              </button>
             </div>
 
             {error && (
