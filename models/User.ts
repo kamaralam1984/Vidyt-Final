@@ -48,6 +48,8 @@ export interface IUser extends Document {
     analysesThisMonth: number;
     competitorsTracked: number;
     hashtagsGenerated: number;
+    requestsToday?: number;
+    lastRequestDate?: Date;
   };
   customLimits?: Record<string, number>;
   lastLogin?: Date;
@@ -126,6 +128,8 @@ const UserSchema = new Schema<IUser>({
     analysesThisMonth: { type: Number, default: 0 },
     competitorsTracked: { type: Number, default: 0 },
     hashtagsGenerated: { type: Number, default: 0 },
+    requestsToday: { type: Number, default: 0 },
+    lastRequestDate: { type: Date },
   },
   customLimits: { type: Map, of: Number, default: {} },
   lastLogin: { type: Date },
