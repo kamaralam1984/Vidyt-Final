@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Crown, CreditCard, MessageCircle, LogOut, User, ChevronDown, Globe } from 'lucide-react';
-import { getAuthHeaders, removeToken } from '@/utils/auth';
+import { getAuthHeaders, removeToken, decodeToken } from '@/utils/auth';
 import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 
 const LOGO_SRC = '/Logo.png';
@@ -20,9 +20,29 @@ export default function Navbar() {
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const { locale, setLocale } = useLocale();
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const fetchUserInfo = async () => {
+      // ⚡️ Instant client-side check
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = decodeToken(token);
+        if (payload) {
+          setUserRole(payload.role || 'user');
+          setUserName(payload.name || '');
+          const uniqueId = payload.uniqueId || localStorage.getItem('uniqueId');
+          if (uniqueId) setUserUniqueId(uniqueId);
+          
+          // Initial plan display based on role/subscription
+          const sub = (payload.subscription || 'free').toLowerCase();
+          if (sub === 'pro') setPlanName('Pro');
+          else if (sub === 'enterprise') setPlanName('Enterprise');
+          else if (payload.role === 'super-admin') setPlanName('Owner');
+          else setPlanName('Free');
+        }
+      }
+
       try {
         const response = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
         if (response.data.user) {
@@ -66,16 +86,24 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    
     try {
+      // ⚡️ Await server-side cookie clearing
       await axios.post('/api/auth/logout');
     } catch (err) {
       console.error('Logout API error:', err);
     }
+
+    // Clear client-side state
     removeToken();
     if (typeof window !== 'undefined') {
       localStorage.removeItem('uniqueId');
     }
-    router.push('/login');
+    
+    // Hard redirect to clear any cached states
+    window.location.href = '/login';
   };
 
   const navItems = [
@@ -187,10 +215,11 @@ export default function Navbar() {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[#AAAAAA] hover:bg-[#212121] hover:text-white transition-colors"
+            disabled={isLoggingOut}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-[#AAAAAA] hover:bg-[#212121] hover:text-white transition-colors ${isLoggingOut ? 'opacity-50 cursor-wait' : ''}`}
           >
             <LogOut className="w-4 h-4" />
-            <span>Logout</span>
+            <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
           </button>
         </div>
       </div>

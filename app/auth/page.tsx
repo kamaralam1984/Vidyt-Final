@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 import { computeSignupUsdCharge, convertUsdToCurrency } from '@/lib/paymentCurrencyShared';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 
 interface Plan {
   id: string;
@@ -306,6 +307,27 @@ function AuthPageContent() {
     }
   };
 
+  const handleGoogleSuccess = async (credential?: string) => {
+    if (!credential) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.post('/api/auth/google', { credential });
+      if (res.data.success) {
+        localStorage.setItem('token', res.data.token);
+        if (res.data.user?.uniqueId) localStorage.setItem('uniqueId', res.data.user.uniqueId);
+        
+        let target = '/dashboard';
+        if (res.data.user?.role === 'super-admin') target = '/admin/super';
+        else if (res.data.user?.uniqueId) target = `/user/${res.data.user.uniqueId}`;
+        window.location.href = target;
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Google login failed');
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -513,6 +535,21 @@ function AuthPageContent() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="flex justify-center mb-6">
+                <GoogleLogin
+                  onSuccess={(credentialResponse) => handleGoogleSuccess(credentialResponse.credential)}
+                  onError={() => { setError('Google Login Failed'); setLoading(false); }}
+                  shape="rectangular"
+                  size="large"
+                  text="signin_with"
+                />
+              </div>
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-[#333333]"></div>
+                <span className="flex-shrink-0 mx-4 text-[#AAAAAA] text-sm">or sign in with</span>
+                <div className="flex-grow border-t border-[#333333]"></div>
+              </div>
+
               {/* Login method toggle */}
               <div className="flex gap-2 mb-4 bg-[#212121] p-1 rounded-lg">
                 <button
@@ -811,6 +848,21 @@ function AuthPageContent() {
 
             {/* Registration Form */}
             <form className="space-y-4">
+              <div className="flex justify-center mb-4 mt-2">
+                <GoogleLogin
+                  onSuccess={(credentialResponse) => handleGoogleSuccess(credentialResponse.credential)}
+                  onError={() => { setError('Google Signup Failed'); setLoading(false); }}
+                  shape="rectangular"
+                  size="large"
+                  text="signup_with"
+                />
+              </div>
+              <div className="relative flex pb-4 items-center">
+                <div className="flex-grow border-t border-[#333333]"></div>
+                <span className="flex-shrink-0 mx-4 text-[#AAAAAA] text-sm">or sign up with email</span>
+                <div className="flex-grow border-t border-[#333333]"></div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
@@ -1069,8 +1121,10 @@ function AuthPageContent() {
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
-      <AuthPageContent />
-    </Suspense>
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
+        <AuthPageContent />
+      </Suspense>
+    </GoogleOAuthProvider>
   );
 }
