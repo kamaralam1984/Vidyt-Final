@@ -7,6 +7,7 @@ import MarketingNavbar from '@/components/MarketingNavbar';
 import {
   Zap,
   TrendingUp,
+  Brain,
   BarChart3,
   ArrowRight,
   Check,
@@ -451,7 +452,159 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Coaching Section */}
+      <section id="coaching" className="py-24 px-6 bg-[#181818]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center gap-12">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="flex-1"
+            >
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                {t('home.coaching.title')}
+              </h2>
+              <p className="text-xl text-[#AAAAAA] mb-8">
+                {t('home.coaching.subtitle')}
+              </p>
+              <div className="space-y-4">
+                {[
+                  'Personalized Channel Audits',
+                  'AI-Driven Content Strategy',
+                  'Retention & Watch Time Optimization',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 text-white/80">
+                    <div className="w-6 h-6 rounded-full bg-[#FF0000]/20 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-[#FF0000]" />
+                    </div>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="flex-1 relative"
+            >
+              <div className="aspect-video bg-gradient-to-br from-[#FF0000]/20 to-transparent rounded-2xl border border-white/10 flex items-center justify-center overflow-hidden">
+                <Brain className="w-32 h-32 text-[#FF0000]/40 animate-pulse" />
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Resources Section */}
+      <section id="resources" className="py-24 px-6 bg-[#0F0F0F]">
+        <div className="max-w-7xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-12"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              {t('home.resources.title')}
+            </h2>
+            <p className="text-xl text-[#AAAAAA]">
+              {t('home.resources.subtitle')}
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              { title: 'The SEO Playbook', desc: 'Everything you need to rank #1 on YouTube search.', icon: Globe },
+              { title: 'Viral Hooks Library', desc: '100+ proven hooks to skyrocket your retention.', icon: Sparkles },
+              { title: 'Creator Blog', desc: 'Latest tips and trends from the world of content creation.', icon: Crown, href: '/blog' },
+            ].map((res, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-[#181818] border border-white/5 p-8 rounded-2xl hover:border-[#FF0000]/50 transition-all text-left group"
+              >
+                <res.icon className="w-10 h-10 text-[#FF0000] mb-6" />
+                <h3 className="text-xl font-bold text-white mb-3">{res.title}</h3>
+                <p className="text-[#AAAAAA] mb-6">{res.desc}</p>
+                {res.href ? (
+                  <Link href={res.href} className="text-[#FF0000] font-semibold flex items-center gap-2">
+                    Read more <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                ) : (
+                  <span className="text-white/40 text-sm font-medium">Coming Soon</span>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Extension Section */}
+      <section id="extension" className="py-24 px-6 bg-gradient-to-b from-[#181818] to-[#0F0F0F] relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#FF0000]/5 rounded-full blur-[120px] pointer-events-none" />
+        
+        <div className="max-w-5xl mx-auto relative z-10">
+          <div className="bg-[#212121]/50 border border-white/10 rounded-[2.5rem] p-8 md:p-16 backdrop-blur-md">
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              <div className="flex-1 text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-full text-[#FF0000] text-xs font-bold uppercase tracking-widest mb-6">
+                  <Sparkles className="w-3 h-3" />
+                  New Architecture
+                </div>
+                <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                  {t('home.extension.title')}
+                </h2>
+                <p className="text-xl text-[#AAAAAA] mb-10 leading-relaxed">
+                  {t('home.extension.subtitle')}
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <button className="px-8 py-4 bg-[#FF0000] text-white rounded-xl hover:bg-[#CC0000] transition-all font-bold shadow-lg shadow-[#FF0000]/20">
+                    {t('home.extension.cta')}
+                  </button>
+                  <div className="flex items-center gap-2 text-[#AAAAAA] text-sm">
+                    <Users className="w-5 h-5" />
+                    <span>500+ creators waiting</span>
+                  </div>
+                </div>
+              </div>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                className="flex-1"
+              >
+                <div className="relative">
+                   <div className="absolute -inset-4 bg-[#FF0000]/20 blur-2xl rounded-full" />
+                   <div className="relative bg-[#0F0F0F] border border-white/10 rounded-2xl p-4 shadow-2xl">
+                      <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500/50" />
+                        <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+                        <div className="w-3 h-3 rounded-full bg-green-500/50" />
+                        <div className="ml-2 h-4 w-48 bg-white/5 rounded" />
+                      </div>
+                      <div className="space-y-3">
+                        <div className="h-4 bg-[#FF0000]/10 rounded w-3/4" />
+                        <div className="h-4 bg-white/5 rounded w-full" />
+                        <div className="h-4 bg-white/5 rounded w-5/6" />
+                        <div className="grid grid-cols-3 gap-2 mt-6">
+                           <div className="h-20 bg-[#FF0000]/5 rounded-lg border border-[#FF0000]/10" />
+                           <div className="h-20 bg-white/5 rounded-lg" />
+                           <div className="h-20 bg-white/5 rounded-lg" />
+                        </div>
+                      </div>
+                   </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="py-24 px-6 bg-gradient-to-r from-[#FF0000] to-[#CC0000]">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h2

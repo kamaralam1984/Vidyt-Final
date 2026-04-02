@@ -69,7 +69,14 @@ type TranslationKey =
   | 'pricing.limitedOffer'
   | 'pricing.validTill'
   | 'pricing.getStarted'
-  | 'pricing.viewAllPlans';
+  | 'pricing.viewAllPlans'
+  | 'home.coaching.title'
+  | 'home.coaching.subtitle'
+  | 'home.resources.title'
+  | 'home.resources.subtitle'
+  | 'home.extension.title'
+  | 'home.extension.subtitle'
+  | 'home.extension.cta';
 
 type TranslationTable = Record<LanguageCode, Partial<Record<TranslationKey, string>>>;
 
@@ -147,6 +154,13 @@ const TRANSLATIONS: TranslationTable = {
     'pricing.validTill': 'Valid till',
     'pricing.getStarted': 'Get Started',
     'pricing.viewAllPlans': 'View All Plans',
+    'home.coaching.title': 'AI Growth Coaching',
+    'home.coaching.subtitle': 'Personalized advice to scale your channel with AI-powered insights.',
+    'home.resources.title': 'Creator Resources',
+    'home.resources.subtitle': 'Master YouTube SEO with our exclusive playbooks and guides.',
+    'home.extension.title': 'Vid YT Browser Extension',
+    'home.extension.subtitle': 'Optimise your videos directly on YouTube. Coming soon to Chrome Web Store.',
+    'home.extension.cta': 'Join the Waitlist',
   },
   hi: {
     'navbar.features': 'फ़ीचर्स',
@@ -221,6 +235,13 @@ const TRANSLATIONS: TranslationTable = {
     'pricing.validTill': 'तक वैध',
     'pricing.getStarted': 'शुरू करें',
     'pricing.viewAllPlans': 'सभी प्लान देखें',
+    'home.coaching.title': 'AI ग्रोथ कोचिंग',
+    'home.coaching.subtitle': 'AI-पावर्ड इनसाइट्स के साथ अपने चैनल को स्केल करने के लिए पर्सनल सलाह।',
+    'home.resources.title': 'क्रिएटर रिसोर्सेज़',
+    'home.resources.subtitle': 'हमारे एक्सक्लूसिव प्लेबुक्स और गाइड्स के साथ YouTube SEO में महारत हासिल करें।',
+    'home.extension.title': 'Vid YT ब्राउज़र एक्सटेंशन',
+    'home.extension.subtitle': 'सीधे YouTube पर अपने वीडियो ऑप्टिमाइज़ करें। जल्द ही Chrome वेब स्टोर पर आ रहा है।',
+    'home.extension.cta': 'वेटलिस्ट जॉइन करें',
   },
   hinglish: {
     'navbar.features': 'Features',
@@ -295,6 +316,13 @@ const TRANSLATIONS: TranslationTable = {
     'pricing.validTill': 'Valid till',
     'pricing.getStarted': 'Get started',
     'pricing.viewAllPlans': 'View all plans',
+    'home.coaching.title': 'AI Growth Coaching',
+    'home.coaching.subtitle': 'Personalized advice to scale your channel with AI-powered insights.',
+    'home.resources.title': 'Creator Resources',
+    'home.resources.subtitle': 'Master YouTube SEO with our exclusive playbooks and guides.',
+    'home.extension.title': 'Vid YT Browser Extension',
+    'home.extension.subtitle': 'Optimise your videos directly on YouTube. Coming soon to Chrome Web Store.',
+    'home.extension.cta': 'Waitlist join karein',
   },
   es: {
     'navbar.features': 'Funciones',
