@@ -151,6 +151,9 @@ export async function middleware(request: NextRequest) {
     return nextWithHeaders(request);
   }
 
+  // Check if user is already authenticated and trying to access login/auth
+  const isAuthPageRoute = pathname === '/login' || pathname === '/auth';
+
   // Check authentication for protected routes
   const authHeader = request.headers.get('authorization');
   let token: string | null = null;
@@ -188,6 +191,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    if (isAuthPageRoute) return nextWithHeaders(request);
+
     if (!pathname.startsWith('/api')) return nextWithHeaders(request);
 
     return jsonError(request, 'Unauthorized', 401);
@@ -195,6 +200,12 @@ export async function middleware(request: NextRequest) {
   const user = await verifyToken(token);
 
   if (!user) {
+    if (isAuthPageRoute) {
+       const response = nextWithHeaders(request);
+       response.cookies.delete('token');
+       return response;
+    }
+
     if (isProtectedPageRoute) {
       const loginUrl = new URL('/login', request.url);
       const response = NextResponse.redirect(loginUrl);
@@ -209,6 +220,13 @@ export async function middleware(request: NextRequest) {
       },
       { status: 401 }
     );
+  }
+
+  // Redirect authenticated users away from login/auth
+  if (isAuthPageRoute) {
+    const target = user.role === 'super-admin' ? '/admin/super' : '/dashboard';
+    console.log(`[Middleware] Authenticated user ${user.email} accessing login, redirecting to ${target}`);
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   const roleNorm = String(user.role || '')
@@ -250,5 +268,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*', '/admin/:path*', '/dashboard/:path*', '/user/:path*'],
+  matcher: ['/api/:path*', '/admin/:path*', '/dashboard/:path*', '/user/:path*', '/login', '/auth'],
 };

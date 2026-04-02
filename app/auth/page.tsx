@@ -60,6 +60,7 @@ function AuthPageContent() {
       setIsLogin(false);
     }
   }, [pathname, searchParams]);
+
   const [subscriptionType, setSubscriptionType] = useState<SubscriptionType>('trial');
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -93,19 +94,6 @@ function AuthPageContent() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token && !loading) {
-      console.log('[Auth] Token found on mount, checking redirect...');
-      const uniqueId = localStorage.getItem('uniqueId');
-      if (uniqueId === '795752') { 
-         console.log('[Auth] Super Admin detected on mount, force redirecting...');
-         window.location.href = '/admin/super';
-      } else {
-         console.log('[Auth] Regular user detected on mount, force redirecting...');
-         window.location.href = '/dashboard';
-      }
-    }
-
     // /login route shows login; /auth uses ?mode= param
     if (pathname === '/login') {
       setIsLogin(true);
@@ -814,37 +802,6 @@ function AuthPageContent() {
                             </span>
                           </div>
                         </div>
-
-                        {/* Features List */}
-                        {plan.features && plan.features.length > 0 && (
-                          <>
-                            <div className="text-xs text-[#AAAAAA] text-center mb-3 pb-3 border-b border-[#333333]">
-                              <span className="font-semibold text-white">{plan.features.length}</span> features included
-                            </div>
-                            <ul className="space-y-3 mb-6 max-h-80 overflow-y-auto flex-1">
-                              {plan.features.map((feature, featureIndex) => (
-                                <motion.li
-                                  key={featureIndex}
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: 0.05 * featureIndex }}
-                                  className="flex items-start gap-3"
-                                >
-                                  <Check className="w-5 h-5 text-[#10b981] flex-shrink-0 mt-0.5" />
-                                  <span className="text-[#AAAAAA] text-sm">{feature}</span>
-                                </motion.li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-
-                        {/* Selection Indicator */}
-                        {selectedPlan?.id === plan.id && (
-                          <div className="flex items-center justify-center gap-2 p-3 bg-[#FF0000]/20 rounded-lg border border-[#FF0000]">
-                            <CheckCircle className="w-5 h-5 text-[#FF0000]" />
-                            <span className="text-white text-sm font-semibold">Selected</span>
-                          </div>
-                        )}
                       </div>
                     </motion.button>
                   ))}
@@ -852,172 +809,95 @@ function AuthPageContent() {
               </div>
             )}
 
-            {error && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-3"
-              >
-                <XCircle className="w-5 h-5 text-red-400" />
-                <p className="text-red-200 text-sm">{error}</p>
-              </motion.div>
-            )}
+            {/* Registration Form */}
+            <form className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Full Name *
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.name ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
+                      placeholder="Enter your name"
+                    />
+                  </div>
+                  {fieldErrors.name && (
+                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {fieldErrors.name}
+                    </p>
+                  )}
+                </div>
 
-            {success && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mb-6 p-4 bg-green-500/20 border border-green-500 rounded-lg flex items-center gap-3"
-              >
-                <CheckCircle className="w-5 h-5 text-green-400" />
-                <p className="text-green-200 text-sm">{success}</p>
-              </motion.div>
-            )}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Email Address *
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
+                      placeholder="you@company.com"
+                    />
+                  </div>
+                  {fieldErrors.email && (
+                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {fieldErrors.email}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              {subscriptionType === 'paid' && (
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Company Name *
+                  </label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
+                    <input
+                      type="text"
+                      value={formData.companyName}
+                      onChange={(e) => handleInputChange('companyName', e.target.value)}
+                      className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
+                      placeholder="Enter your company name"
+                    />
+                  </div>
+                  {fieldErrors.companyName && (
+                    <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {fieldErrors.companyName}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
-                  Company Name {subscriptionType === 'paid' && '*'}
+                  Phone Number
                 </label>
                 <div className="relative">
-                  <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
                   <input
-                    type="text"
-                    value={formData.companyName}
-                    onChange={(e) => handleInputChange('companyName', e.target.value)}
-                    required={subscriptionType === 'paid'}
-                    className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
-                    placeholder="Acme Corp"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
+                    className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.phone ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
+                    placeholder={`e.g. ${locale.phoneLength} digits`}
                   />
                 </div>
-                {fieldErrors.companyName && (
+                {fieldErrors.phone && (
                   <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {fieldErrors.companyName}
+                    <AlertCircle className="w-3 h-3" /> {fieldErrors.phone}
                   </p>
                 )}
                 <p className="text-xs text-[#AAAAAA] mt-1">
-                  {subscriptionType === 'paid' ? 'Required. 2-100 characters.' : 'Optional'}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Your Full Name *
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    required
-                    className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.name ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
-                    placeholder="John Doe"
-                  />
-                </div>
-                {fieldErrors.name && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {fieldErrors.name}
-                  </p>
-                )}
-                <p className="text-xs text-[#AAAAAA] mt-1">Required. 2-100 characters.</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Work Email *
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    required
-                    className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
-                    placeholder="you@example.com"
-                  />
-                </div>
-                {fieldErrors.email && (
-                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {fieldErrors.email}
-                  </p>
-                )}
-                <p className="text-xs text-[#AAAAAA] mt-1">Required. Valid email address.</p>
-              </div>
-
-              <div className="relative">
-                <label className="block text-sm font-medium text-white mb-2">
-                  Country &amp; Phone (Optional)
-                </label>
-                <div className="flex gap-2">
-                  {/* Country Selector Button */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setCountryMenuOpen(!countryMenuOpen)}
-                      className="flex items-center gap-2 h-[50px] px-3 bg-[#212121] border border-[#333333] rounded-lg text-white hover:border-[#FF0000] transition-colors"
-                    >
-                      <span className="text-xl leading-none">{locale.flag}</span>
-                      <span className="text-xs font-medium text-[#AAAAAA]">{locale.phoneCode}</span>
-                      <ChevronDown className={`w-4 h-4 text-[#AAAAAA] transition-transform ${countryMenuOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {/* Country List Dropdown */}
-                    <AnimatePresence>
-                      {countryMenuOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 10 }}
-                          className="absolute left-0 mt-2 w-64 max-h-64 overflow-y-auto bg-[#181818] border border-[#333333] rounded-xl shadow-2xl z-50 py-2 scrollbar-thin scrollbar-thumb-[#333333]"
-                        >
-                          {SUPPORTED_LOCALES.map((opt) => (
-                            <button
-                              key={opt.countryCode}
-                              type="button"
-                              onClick={() => {
-                                setLocale(opt);
-                                setCountryMenuOpen(false);
-                              }}
-                              className={`w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#212121] transition-colors ${opt.countryCode === locale.countryCode ? 'bg-[#FF0000]/10' : ''
-                                }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="text-xl leading-none">{opt.flag}</span>
-                                <div className="text-left">
-                                  <div className="text-sm font-medium text-white">{opt.countryName}</div>
-                                  <div className="text-[10px] text-[#AAAAAA] uppercase">{opt.currency} · {opt.language}</div>
-                                </div>
-                              </div>
-                              <div className="text-xs font-mono text-[#AAAAAA]">{opt.phoneCode}</div>
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* Phone Input */}
-                  <div className="relative flex-1">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#AAAAAA]" />
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
-                      maxLength={locale.phoneLength}
-                      className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.phone ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
-                      placeholder={"X".repeat(locale.phoneLength)}
-                    />
-                    {fieldErrors.phone && (
-                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {fieldErrors.phone}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <p className="text-xs text-[#AAAAAA] mt-1.5 flex items-center gap-1">
-                  <span className="w-1 h-1 bg-[#FF0000] rounded-full"></span>
                   Selected: {locale.countryName} ({locale.currency}). Phone autofill: {locale.phoneCode}
                 </p>
               </div>
@@ -1032,7 +912,6 @@ function AuthPageContent() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
-                    required
                     className={`w-full pl-10 pr-11 py-3 bg-[#212121] border ${fieldErrors.password ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                     placeholder="••••••••"
                   />
@@ -1075,7 +954,6 @@ function AuthPageContent() {
                 </p>
               </div>
 
-              {/* Email OTP for Paid Plans */}
               {/* Email OTP for all signups */}
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
