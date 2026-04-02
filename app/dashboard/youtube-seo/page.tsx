@@ -708,9 +708,19 @@ function YouTubeLiveSEOContent() {
         window.location.href = '/api/youtube/auth';
         return;
       }
+      let errMsg = 'Upload failed. Please try again.';
+      if (typeof err.response?.data?.error === 'string') {
+        errMsg = err.response.data.error;
+      } else if (typeof err.response?.data?.message === 'string') {
+        errMsg = err.response.data.message;
+      } else if (err.response?.data?.error?.message) {
+        errMsg = err.response.data.error.message;
+      } else if (err.message) {
+        errMsg = err.message;
+      }
       setUploadStatus({
         type: 'error',
-        message: err.response?.data?.error || 'Upload failed. Please try again.'
+        message: errMsg
       });
     } finally {
       setIsUploading(false);
