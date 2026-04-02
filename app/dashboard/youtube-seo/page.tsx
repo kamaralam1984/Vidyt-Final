@@ -1889,10 +1889,7 @@ function YouTubeLiveSEOContent() {
                     <Upload className="w-5 h-5" /> Video upload
                   </h2>
                   <p className="text-xs text-[#888] mb-3">
-                    Choose a video and the system will start a quick analysis automatically (typically within a few seconds).
-                    <strong className="text-[#AAA]"> If an OpenAI API key is set</strong>, the audio is transcribed and
-                    used to generate title, description, keywords and hashtags from the exact content (Super Admin → API keys).
-                    The transcript appears in Chinki&apos;s textbox and the form fields are filled from it.
+                    Video uploaded directly to YouTube will appear here for optimization.
                   </p>
                   {!videoPreviewUrl ? (
                     <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[#333] rounded-lg cursor-pointer hover:bg-[#212121] transition">
