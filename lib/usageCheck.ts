@@ -15,15 +15,21 @@ export interface AnalysisLimitResult {
   message?: string;
 }
 
-/**
- * Get start of today (UTC) and start of current month (UTC).
- */
 export function getPeriodStart(period: 'day' | 'month'): Date {
   const now = new Date();
   if (period === 'day') {
+    // For many users in India (primary user base), "Today" starts at 00:00 IST.
+    // IST is UTC+5:30. So 00:00 IST is 18:30 UTC of the previous day.
     const start = new Date(now);
-    start.setUTCHours(0, 0, 0, 0);
-    return start;
+    
+    // Convert to IST to find the start of the day
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const nowIst = new Date(now.getTime() + istOffset);
+    nowIst.setUTCHours(0, 0, 0, 0);
+    
+    // Convert back to UTC for the query
+    const startIstUtc = new Date(nowIst.getTime() - istOffset);
+    return startIstUtc;
   }
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
   return start;
@@ -38,8 +44,18 @@ export async function getAnalysisUsageCount(
 ): Promise<number> {
   await connectDB();
   const start = getPeriodStart(period);
+  
+  // Create an array of possible IDs (String and ObjectId) to be more robust
+  const userIds: any[] = [userId];
+  try {
+    const { ObjectId } = require('mongodb');
+    if (ObjectId.isValid(userId)) {
+      userIds.push(new ObjectId(userId));
+    }
+  } catch (e) {}
+
   const count = await Video.countDocuments({
-    userId,
+    userId: { $in: userIds },
     uploadedAt: { $gte: start },
   });
   return count;
@@ -52,8 +68,17 @@ export async function getUploadUsageCount(
 ): Promise<number> {
   await connectDB();
   const start = getPeriodStart(period);
+
+  const userIds: any[] = [userId];
+  try {
+    const { ObjectId } = require('mongodb');
+    if (ObjectId.isValid(userId)) {
+      userIds.push(new ObjectId(userId));
+    }
+  } catch (e) {}
+
   return Video.countDocuments({
-    userId,
+    userId: { $in: userIds },
     platform: 'upload',
     uploadedAt: { $gte: start },
   });
