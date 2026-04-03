@@ -24,8 +24,11 @@ import {
   Film,
   Search,
   Loader2,
+  User,
+  CreditCard,
+  LogOut,
 } from 'lucide-react';
-import { getAuthHeaders } from '@/utils/auth';
+import { getAuthHeaders, removeToken } from '@/utils/auth';
 import UsageBar from './UsageBar';
 
 interface SidebarProps {
@@ -42,6 +45,9 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
 
   const [platformControls, setPlatformControls] = useState<Record<string, any>>({});
   const [loadingControls, setLoadingControls] = useState(true);
+
+  const [userUniqueId, setUserUniqueId] = useState<string>('');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const fetchSystems = async () => {
@@ -69,9 +75,32 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
       }
     };
 
+    const fetchUserInfo = async () => {
+      try {
+        const res = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
+        if (res.data.user?.uniqueId) {
+          setUserUniqueId(res.data.user.uniqueId);
+        }
+      } catch (_) {}
+    };
+
     fetchSystems();
     fetchPlatformControls();
+    fetchUserInfo();
   }, []);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await axios.post('/api/auth/logout');
+    } catch (_) {}
+    removeToken();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('uniqueId');
+    }
+    window.location.href = '/login';
+  };
 
   /** API load hone tak empty object par `!== false` sab dikha deta tha — sirf explicit `true` par item dikhao. */
   const navReady = !loadingSystems && !loadingControls;
@@ -196,6 +225,45 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                         })}
                       </>
                     )}
+
+                    {/* Mobile Account Section */}
+                    <li className="sm:hidden pt-2 mt-2 border-t border-[#212121]">
+                      <p className="px-3 py-1 text-xs font-semibold text-[#FF0000] uppercase tracking-wider">Account</p>
+                    </li>
+                    <li className="sm:hidden">
+                      <Link
+                        href={userUniqueId ? `/user/${userUniqueId}` : '#'}
+                        className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname.startsWith('/user/')
+                          ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20'
+                          : 'hover:bg-[#212121] text-[#AAAAAA]'
+                          }`}
+                      >
+                        <User className="w-5 h-5" />
+                        <span>Profile</span>
+                      </Link>
+                    </li>
+                    <li className="sm:hidden">
+                      <Link
+                        href="/subscription"
+                        className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname === '/subscription'
+                          ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20'
+                          : 'hover:bg-[#212121] text-[#AAAAAA]'
+                          }`}
+                      >
+                        <CreditCard className="w-5 h-5" />
+                        <span>Plan</span>
+                      </Link>
+                    </li>
+                    <li className="sm:hidden">
+                      <button
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:bg-[#212121] text-[#AAAAAA] hover:text-white disabled:opacity-50"
+                      >
+                        {isLoggingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
+                        <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                      </button>
+                    </li>
                   </>
                 )}
               </ul>
