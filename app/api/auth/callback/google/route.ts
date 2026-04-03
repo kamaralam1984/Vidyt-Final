@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Initialize OAuth2Client with the exact redirect URI expected by Google
-    const redirectUri = `${url.origin}/api/auth/google/callback`;
+    const redirectUri = `${url.origin}/api/auth/callback/google`;
     const client = new OAuth2Client(clientId, clientSecret, redirectUri);
 
     // Exchange auth code for tokens

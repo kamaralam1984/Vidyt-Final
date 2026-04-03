@@ -113,6 +113,7 @@ export async function middleware(request: NextRequest) {
     '/api/auth/login-pin',
     '/api/auth/register',
     '/api/auth/google', // Google OAuth Sign-In (public, verifies Google JWT internally)
+    '/api/auth/callback', // OAuth Callbacks
     '/api/auth/password-reset', // Password reset (public)
     '/api/auth/send-otp', // OTP sending (public)
     '/api/auth/verify-otp', // OTP verification (public)
