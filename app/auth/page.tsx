@@ -486,21 +486,18 @@ function AuthPageContent() {
             <p className="text-[#AAAAAA]">Start your journey to viral content</p>
           )}
 
-          {/* Database Status */}
           <div className="flex items-center justify-center gap-2 mt-4">
             {dbStatus === 'checking' ? (
               <Loader2 className="w-4 h-4 animate-spin text-yellow-400" />
             ) : dbStatus === 'connected' ? (
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                <Wifi className="w-4 h-4 text-green-400" />
-                <span className="text-xs text-green-400 font-medium">Database Connected</span>
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <Wifi className="w-3 h-3 text-green-400" />
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                <WifiOff className="w-4 h-4 text-red-400" />
-                <span className="text-xs text-red-400 font-medium">Database Disconnected</span>
+                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                <WifiOff className="w-3 h-3 text-red-400" />
               </div>
             )}
           </div>
