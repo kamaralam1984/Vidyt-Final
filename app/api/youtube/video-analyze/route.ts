@@ -4,62 +4,7 @@ export const maxDuration = 300; // 5 minutes
 import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
 import { getApiConfig } from '@/lib/apiConfig';
-
-const WHISPER_SUPPORTED_EXT = /\.(mp3|mp4|m4a|wav|webm|mpeg|mpga|m4v)$/i;
-
-const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
-const WHISPER_TIMEOUT_MS = 120000; // 2 min for upload + transcription
-
-async function transcribeWithWhisper(
-  apiKey: string,
-  file: Blob & { name?: string; type?: string; arrayBuffer?: () => Promise<ArrayBuffer>; size?: number }
-): Promise<{ text: string | null; error?: string }> {
-  const name = file.name || 'audio.mp4';
-  if (!WHISPER_SUPPORTED_EXT.test(name)) {
-    return { text: null, error: 'Unsupported format. Use mp3, mp4, m4a, wav, webm.' };
-  }
-  try {
-    const arrayBuffer = await (file.arrayBuffer?.() ?? (file as unknown as { arrayBuffer(): Promise<ArrayBuffer> }).arrayBuffer?.());
-    const size = arrayBuffer.byteLength;
-    if (size > WHISPER_MAX_BYTES) {
-      return { text: null, error: `File too large (${(size / 1024 / 1024).toFixed(1)} MB). OpenAI Whisper max is 25 MB.` };
-    }
-    const OpenAIModule = await import('openai');
-    const OpenAI = OpenAIModule.default;
-    const openai = new OpenAI({ apiKey, timeout: WHISPER_TIMEOUT_MS });
-    const buffer = Buffer.from(arrayBuffer);
-    const fileForWhisper = await OpenAI.toFile(buffer, name, { type: file.type || 'video/mp4' });
-    const transcription = await openai.audio.transcriptions.create({
-      file: fileForWhisper,
-      model: 'whisper-1',
-    });
-    return { text: transcription?.text?.trim() || null };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('Whisper transcription error:', err);
-    if (message.includes('api_key') || message.includes('Incorrect API key') || message.includes('invalid_api_key')) {
-      return { text: null, error: 'OpenAI API key invalid or inactive. Check Super Admin → API keys.' };
-    }
-    if (message.includes('rate_limit') || message.includes('Rate limit')) {
-      return { text: null, error: 'OpenAI rate limit. Try again in a minute.' };
-    }
-    if (
-      message.includes('Connection') ||
-      message.includes('ECONNREFUSED') ||
-      message.includes('ECONNRESET') ||
-      message.includes('ETIMEDOUT') ||
-      message.includes('ENOTFOUND') ||
-      message.includes('network') ||
-      message.includes('fetch failed')
-    ) {
-      return {
-        text: null,
-        error: 'Connection to OpenAI failed. Check internet, firewall/proxy, or try a smaller video (< 10 MB). Retry in a moment.',
-      };
-    }
-    return { text: null, error: message || 'Transcription failed.' };
-  }
-}
+import { transcribeAudio } from '@/lib/transcription';
 
 async function callOpenAI(apiKey: string, prompt: string): Promise<string> {
   const OpenAI = (await import('openai')).default;
@@ -150,13 +95,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Transcribe video content when OpenAI key + file available (video me jo baatein hui hain)
+    // Transcribe video content using our highly robust multi-provider SaaS transcription system
     let transcript: string | null = null;
     let transcriptionError: string | undefined;
-    if (file && config.openaiApiKey?.trim()) {
-      const result = await transcribeWithWhisper(config.openaiApiKey, file);
-      transcript = result.text;
-      transcriptionError = result.error;
+    if (file) {
+      let ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'anonymous';
+      if (ip.includes(',')) ip = ip.split(',')[0].trim();
+
+      const result = await transcribeAudio(file, filename, ip);
+      if (result.success) {
+        transcript = result.transcript;
+      } else {
+        transcriptionError = result.error;
+      }
     }
 
     const hasContent = Boolean(transcript?.length);
