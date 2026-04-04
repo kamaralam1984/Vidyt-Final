@@ -27,6 +27,7 @@ import {
   User,
   CreditCard,
   LogOut,
+  Sparkles,
 } from 'lucide-react';
 import { getAuthHeaders, removeToken } from '@/utils/auth';
 import UsageBar from './UsageBar';
@@ -106,6 +107,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
   const navReady = !loadingSystems && !loadingControls;
 
   const aiStudioItems = [
+    { id: 'viral_intelligence', icon: Sparkles, label: 'Ultra AI Engine', href: '/dashboard/viral-intelligence' },
     { id: 'script_generator', icon: FileText, label: 'Script Generator', href: '/ai/script-generator' },
     { id: 'ai_coach', icon: Zap, label: 'AI Coach', href: '/ai/script-generator?mode=coach' },
     { id: 'thumbnail_generator', icon: Image, label: 'Thumbnail Generator', href: '/ai/thumbnail-generator' },

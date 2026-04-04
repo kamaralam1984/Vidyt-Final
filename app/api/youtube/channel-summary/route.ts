@@ -7,7 +7,9 @@ import axios from 'axios';
 
 function extractChannelIdentifier(url: string): string | null {
   const u = url.trim();
-  const m = u.match(/youtube\.com\/channel\/([^/?]+)/) || u.match(/youtube\.com\/@([^/?]+)/) || u.match(/youtube\.com\/c\/([^/?]+)/);
+  if (!u) return null;
+  if (!u.includes('/')) return u; // allow bare inputs 'kvlnews' or '@kvlnews'
+  const m = u.match(/youtube\.com\/channel\/([^/?]+)/) || u.match(/youtube\.com\/@([^/?]+)/) || u.match(/youtube\.com\/c\/([^/?]+)/) || u.match(/(?:^|\/)(@[^/?]+)/);
   return m ? m[1] : null;
 }
 
