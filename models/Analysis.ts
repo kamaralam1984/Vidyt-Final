@@ -37,6 +37,9 @@ export interface IAnalysis extends Document {
     hour: number;
     confidence: number;
   };
+  reasons?: string[];
+  weak_points?: string[];
+  improvements?: string[];
   priority?: 'normal' | 'high'; // high = Pro/Enterprise priority processing
   createdAt: Date;
 }
@@ -78,6 +81,9 @@ const AnalysisSchema = new Schema<IAnalysis>({
     hour: { type: Number },
     confidence: { type: Number },
   },
+  reasons: [{ type: String }],
+  weak_points: [{ type: String }],
+  improvements: [{ type: String }],
   priority: { type: String, enum: ['normal', 'high'], default: 'normal' },
   createdAt: { type: Date, default: Date.now },
 });

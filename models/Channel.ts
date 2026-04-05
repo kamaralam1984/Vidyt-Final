@@ -7,6 +7,12 @@ export interface IChannel extends Document {
     channelThumbnail?: string;
     accessToken: string;
     refreshToken: string;
+    // Statistics
+    subscribers: number;
+    totalViews: number;
+    videoCount: number;
+    workspaceId?: mongoose.Types.ObjectId;
+    lastSyncedAt: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -18,6 +24,11 @@ const ChannelSchema = new Schema<IChannel>({
     channelThumbnail: { type: String },
     accessToken: { type: String, required: true },
     refreshToken: { type: String, required: true },
+    subscribers: { type: Number, default: 0 },
+    totalViews: { type: Number, default: 0 },
+    videoCount: { type: Number, default: 0 },
+    workspaceId: { type: Schema.Types.ObjectId, ref: 'Workspace' },
+    lastSyncedAt: { type: Date },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 }, {

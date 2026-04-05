@@ -65,9 +65,11 @@ export async function POST(request: NextRequest) {
       priceYearly,
       currency = 'USD',
       features,
+      label,
       billingPeriod = 'both',
       role = 'user', // NEW: Role assignment with plan
       limits = {}, // NEW: Custom limits per role
+      limitsDisplay,
       featureFlags = {}, // NEW: Feature flags per plan
     } = body;
 
@@ -207,7 +209,9 @@ export async function PATCH(request: NextRequest) {
       }
       updateData.role = role;
     }
+    if (label !== undefined) updateData.label = label;
     if (limits !== undefined) updateData.limits = limits;
+    if (limitsDisplay !== undefined) updateData.limitsDisplay = limitsDisplay;
     if (featureFlags !== undefined) updateData.featureFlags = featureFlags;
 
     await connectDB();

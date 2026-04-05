@@ -26,6 +26,10 @@ import { type PlanFeatures } from '@/lib/planLimits';
 import { useLocale } from '@/context/LocaleContext';
 import { useTranslations } from '@/context/translations';
 import { useUser } from '@/hooks/useUser';
+import PricingSection from '@/components/PricingSection';
+import { PricingPlan } from '@/components/PricingCard';
+import { getPlanRoll } from '@/lib/planLimits';
+import { PLAN_UI_METADATA } from '@/constants/pricing';
 
 type HomeFeatureKey = keyof PlanFeatures;
 
@@ -36,7 +40,12 @@ export type MarketingPlan = {
   popular?: boolean;
   priceMonth: number;
   priceYear: number;
+  description: string;
   features: string[];
+  discount?: {
+    percentage: number;
+    label: string;
+  };
 };
 
 const HOME_FEATURES: {
@@ -104,7 +113,7 @@ interface HomeClientProps {
 
 export default function HomeClient({ initialPlans, initialUserPlanId, features }: HomeClientProps) {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
+
   const { locale } = useLocale();
   const { t } = useTranslations();
   const { authenticated } = useUser();
@@ -329,106 +338,44 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             <p className="text-xl text-[#AAAAAA] max-w-2xl mx-auto mb-8">
               {t('pricing.subheading')}
             </p>
-            {/* Monthly / Yearly Toggle */}
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <span className={`text-sm font-medium ${billingPeriod === 'month' ? 'text-white' : 'text-[#AAAAAA]'}`}>
-                {t('pricing.toggle.monthly')}
-              </span>
-              <button
-                type="button"
-                onClick={() => setBillingPeriod((p) => (p === 'month' ? 'year' : 'month'))}
-                className="relative w-14 h-7 bg-[#212121] rounded-full p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-[#FF0000] focus:ring-offset-2 focus:ring-offset-[#0F0F0F]"
-                aria-label="Toggle billing period"
-              >
-                <motion.div
-                  animate={{ x: billingPeriod === 'year' ? 28 : 0 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                  className="w-5 h-5 bg-[#FF0000] rounded-full absolute top-1 left-1"
-                />
-              </button>
-              <span className={`text-sm font-medium ${billingPeriod === 'year' ? 'text-white' : 'text-[#AAAAAA]'}`}>
-                {t('pricing.toggle.yearly')}
-              </span>
-            </div>
           </motion.div>
 
           {initialPlans.length === 0 ? (
             <p className="text-center text-[#AAAAAA] py-12">Loading plans…</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
-              {initialPlans.map((plan, index) => {
-                const basePrice = billingPeriod === 'year' ? plan.priceYear : plan.priceMonth;
-                const isFree = plan.priceMonth === 0 && plan.priceYear === 0;
-                // Simple static conversion for marketing display only
-                const rateMap: Record<string, number> = {
-                  USD: 1,
-                  INR: 83,
-                  EUR: 0.92,
-                  GBP: 0.79,
-                  AED: 3.67,
-                  SGD: 1.34,
-                  AUD: 1.52,
-                  CAD: 1.36,
-                  MXN: 18.0,
-                  IDR: 15500,
-                  PKR: 278,
+            <PricingSection
+              plans={initialPlans.map((p) => {
+                const roll = getPlanRoll(p.planId);
+                return {
+                  id: p.planId,
+                  name: p.name,
+                  price: p.priceMonth,
+                  priceYear: p.priceYear,
+                  description: p.description || (roll.id === 'pro' ? 'Advanced AI features for serious creators.' : (roll.id === 'enterprise' ? 'Full power for agencies and brands.' : p.name + ' plan.')),
+                  features: p.features,
+                  popular: p.popular,
+                  role: roll.role,
+                  level: (roll as any).level,
+                  limitsDisplay: roll.limitsDisplay,
+                  discount: p.discount,
                 };
-                const rate = rateMap[locale.currency] ?? 1;
-                const converted = isFree ? 0 : Math.round(basePrice * rate * 100) / 100;
-                const format = (v: number) =>
-                  Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2).replace(/\.00$/, '');
-                const priceLabel = isFree ? `${locale.currencySymbol}0` : `${locale.currencySymbol}${format(converted)}`;
-                const periodLabel = billingPeriod === 'year' ? '/year' : '/month';
-                return (
-                  <motion.div
-                    key={plan.planId || plan.name}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`bg-[#181818] border-2 rounded-xl p-8 ${plan.popular ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20' : 'border-[#212121]'
-                      }`}
-                  >
-                    {plan.popular && (
-                      <div className="bg-[#FF0000] text-white px-4 py-1 rounded-full text-sm font-semibold inline-block mb-4">
-                        {t('pricing.mostPopular')}
-                      </div>
-                    )}
-                    <h3 className="text-2xl font-bold text-white mb-2">
-                      {plan.name}
-                    </h3>
-                    <div className="mb-2 space-y-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-bold text-white">
-                          {priceLabel}
-                          <span className="text-lg text-[#AAAAAA]">{periodLabel}</span>
-                        </span>
-                      </div>
-                    </div>
-                    <ul className="space-y-3 mb-6">
-                      {plan.features.map((feature, i) => {
-                        const translated = typeof feature === 'string' && feature.startsWith('pricing.') ? t(feature as any) : feature;
-                        return (
-                          <li key={i} className="flex items-center gap-2 text-[#AAAAAA]">
-                            <Check className="w-5 h-5 text-[#10b981]" />
-                            {translated}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <Link
-                      href="/register"
-                      className={`block w-full py-3 px-6 rounded-lg font-semibold text-center transition-all ${plan.popular
-                        ? 'bg-[#FF0000] text-white hover:bg-[#CC0000]'
-                        : 'bg-[#212121] text-white hover:bg-[#333333]'
-                        }`}
-                    >
-                      {t('pricing.getStarted')}
-                    </Link>
-                  </motion.div>
-                );
               })}
-            </div>
+              userPlanId={initialUserPlanId}
+              variant="homepage"
+              fxRates={{
+                USD: 1,
+                INR: 83,
+                EUR: 0.92,
+                GBP: 0.79,
+                AED: 3.67,
+                SGD: 1.34,
+                AUD: 1.52,
+                CAD: 1.36,
+                MXN: 18.0,
+                IDR: 15500,
+                PKR: 278,
+              }}
+            />
           )}
 
           <motion.div

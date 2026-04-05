@@ -78,7 +78,12 @@ export interface IUser extends Document {
   isDeleted?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  activeWorkspaceId?: mongoose.Types.ObjectId;
+  workspaces?: mongoose.Types.ObjectId[];
   videos: mongoose.Types.ObjectId[];
+  apiKey?: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -160,6 +165,11 @@ const UserSchema = new Schema<IUser>({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   videos: [{ type: Schema.Types.ObjectId, ref: 'Video' }],
+  activeWorkspaceId: { type: Schema.Types.ObjectId, ref: 'Workspace' },
+  workspaces: [{ type: Schema.Types.ObjectId, ref: 'Workspace' }],
+  apiKey: { type: String, unique: true, sparse: true, index: true },
+  stripeCustomerId: { type: String, unique: true, sparse: true },
+  stripeSubscriptionId: { type: String, unique: true, sparse: true },
 }, {
   timestamps: true,
 });

@@ -23,6 +23,9 @@ import {
 } from 'lucide-react';
 import { useLocale } from '@/context/LocaleContext';
 import { convertUsdToCurrency } from '@/lib/paymentCurrencyShared';
+import PricingSection from '@/components/PricingSection';
+import { PricingPlan } from '@/components/PricingCard';
+import { getPlanRoll } from '@/lib/planLimits';
 
 interface Plan {
   id: string;
@@ -46,69 +49,7 @@ interface Plan {
   };
 }
 
-const PLAN_UI_PRESETS: Record<string, any> = {
-  free: {
-    icon: Sparkles,
-    color: '#AAAAAA',
-    role: 'user',
-    level: 1,
-    limits: {
-      videos: '5/month',
-      analyses: 'Basic',
-      storage: '—',
-      support: 'Community',
-    },
-  },
-  starter: {
-    icon: Rocket,
-    color: '#3b82f6',
-    role: 'user',
-    level: 1,
-    limits: {
-      videos: '10/day',
-      analyses: 'Standard',
-      storage: '—',
-      support: 'Email',
-    },
-  },
-  pro: {
-    icon: Zap,
-    color: '#FF0000',
-    popular: true,
-    role: 'manager',
-    level: 2,
-    limits: {
-      videos: '30/days',
-      analyses: 'Advanced AI',
-      storage: '—',
-      support: 'Email',
-    },
-  },
-  enterprise: {
-    icon: Crown,
-    color: '#FFD700',
-    role: 'admin',
-    level: 3,
-    limits: {
-      videos: '100 Videos/Days',
-      analyses: 'Custom AI',
-      storage: '—',
-      support: '24/7 Priority',
-    },
-  },
-  custom: {
-    icon: Globe,
-    color: '#FF0000',
-    role: 'admin',
-    level: 3,
-    limits: {
-      videos: 'Unlimited',
-      analyses: 'Unlimited Custom AI',
-      storage: 'Unlimited',
-      support: 'Dedicated Support',
-    },
-  },
-};
+// PLAN_UI_PRESETS removed in favor of constants/pricing.ts
 
 export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
@@ -147,18 +88,7 @@ export default function PricingPage() {
         const apiPlans = res.data?.plans || [];
 
         const formattedPlans = apiPlans.map((p: any) => {
-          const preset = PLAN_UI_PRESETS[p.id] || {
-            icon: Star,
-            color: '#3b82f6',
-            role: 'user',
-            level: 1,
-            limits: {
-              videos: p.limits?.videos === -1 ? 'Unlimited' : `${p.limits?.videos || 'Custom'}/month`,
-              analyses: p.limits?.analyses === -1 ? 'Unlimited' : (typeof p.limits?.analyses === 'number' ? `${p.limits.analyses}/month` : 'Standard'),
-              storage: '—',
-              support: 'Priority',
-            }
-          };
+          const roll = getPlanRoll(p.id);
           const price = Number(p.price) || 0;
           const priceYear =
             typeof p.priceYearly === 'number' && p.priceYearly > 0 ? p.priceYearly : price * 10;
@@ -172,12 +102,11 @@ export default function PricingPage() {
             period: p.interval || 'month',
             description: p.description || 'Custom Plan',
             features: p.features || [],
-            popular: p.id === 'pro' || preset.popular || false,
-            icon: preset.icon,
-            color: preset.color,
-            role: preset.role,
-            level: preset.level,
-            limits: preset.limits,
+            popular: p.id === 'pro' || p.popular || false,
+            role: p.role || roll.role,
+            level: p.level || (roll as any).level,
+            limitsDisplay: p.limitsDisplay || roll.limitsDisplay,
+            discount: p.discount,
           };
         });
 
@@ -215,7 +144,7 @@ export default function PricingPage() {
   const payBusy = (planId: string) =>
     loading === `rzp:${planId}` || loading === `stripe:${planId}`;
 
-  const handleSubscribeStripe = async (plan: Plan) => {
+  const handleSubscribeStripe = async (plan: PricingPlan) => {
     if (plan.price === 0) {
       window.location.href = '/dashboard';
       return;
@@ -250,7 +179,7 @@ export default function PricingPage() {
     }
   };
 
-  const handleSubscribe = async (plan: Plan) => {
+  const handleSubscribe = async (plan: PricingPlan) => {
     if (plan.price === 0) {
       window.location.href = '/dashboard';
       return;
@@ -375,226 +304,37 @@ export default function PricingPage() {
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
               Choose Your <span className="text-[#FF0000]">Plan</span>
             </h1>
-            <p className="text-xl text-[#AAAAAA] mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-[#AAAAAA] mb-4 max-w-2xl mx-auto">
               Unlock the power of AI-driven viral content optimization
             </p>
-          </motion.div>
-
-          {/* Billing Toggle */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="flex items-center justify-center gap-4 mb-12"
-          >
-            <span className={`text-sm ${billingPeriod === 'month' ? 'text-white' : 'text-[#AAAAAA]'}`}>
-              Monthly
-            </span>
-            <button
-              onClick={() => setBillingPeriod(billingPeriod === 'month' ? 'year' : 'month')}
-              className="relative w-14 h-7 bg-[#212121] rounded-full p-1 transition-colors"
-            >
-              <motion.div
-                animate={{
-                  x: billingPeriod === 'year' ? 28 : 0,
-                }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className="w-5 h-5 bg-[#FF0000] rounded-full absolute"
-              />
-            </button>
-            <span className={`text-sm ${billingPeriod === 'year' ? 'text-white' : 'text-[#AAAAAA]'}`}>
-              Yearly
-              {billingPeriod === 'year' && (
-                <span className="ml-2 px-2 py-1 bg-[#FF0000]/20 text-[#FF0000] rounded text-xs">
-                  Save up to 17%
-                </span>
-              )}
-            </span>
+            <div className="inline-block bg-[#181818] border border-[#212121] px-4 py-2 rounded-full mb-8">
+              <p className="text-sm font-semibold text-[#AAAAAA]">
+                ✅ All prices are inclusive of 18% GST (Indian law). Billing managed securely by Kvl Business Solutions.
+              </p>
+            </div>
           </motion.div>
         </motion.div>
 
         {/* Plans Grid */}
         <div className="max-w-7xl mx-auto px-6 pb-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {activePlans
-              .filter(p => !userPlan || (userPlan === 'free' ? p.id !== 'free' : true))
-              .map((plan, index) => {
-                const Icon = plan.icon;
-                const isCurrentPlan = userPlan === plan.id;
-                const savings = getSavings(plan);
+          {plansLoading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-[#FF0000]" />
+            </div>
+          ) : (
+            <PricingSection
+              plans={activePlans as any[]}
+              userPlanId={userPlan}
+              loading={loading}
+              onSubscribe={handleSubscribe}
+              onSubscribeStripe={handleSubscribeStripe}
+              fxRates={fxRates}
+              variant="full"
+            />
+          )}
+        </div>
 
-                return (
-                  <motion.div
-                    key={plan.id}
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    className={`relative ${plan.popular
-                        ? 'md:-mt-4 md:mb-4'
-                        : ''
-                      }`}
-                  >
-                    {plan.popular && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.3 + index * 0.1 }}
-                        className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10"
-                      >
-                        <div className="bg-gradient-to-r from-[#FF0000] to-[#CC0000] text-white px-4 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
-                          <Star className="w-4 h-4 fill-white" />
-                          Most Popular
-                        </div>
-                      </motion.div>
-                    )}
-
-                    <motion.div
-                      whileHover={{ y: -8, scale: 1.02 }}
-                      className={`relative bg-[#181818] border-2 rounded-2xl p-8 h-full ${plan.popular
-                          ? 'border-[#FF0000] shadow-2xl shadow-[#FF0000]/20'
-                          : 'border-[#212121] hover:border-[#333333]'
-                        } transition-all duration-300`}
-                    >
-                      {/* Plan Header */}
-                      <div className="text-center mb-8">
-                        <motion.div
-                          whileHover={{ rotate: 360 }}
-                          transition={{ duration: 0.6 }}
-                          className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4"
-                          style={{ backgroundColor: `${plan.color}20` }}
-                        >
-                          <Icon className="w-8 h-8" style={{ color: plan.color }} />
-                        </motion.div>
-                        <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-
-                        {/* Role Badge */}
-                        {plan.role && (
-                          <div className="flex items-center justify-center gap-2 mb-3">
-                            <span
-                              className="px-3 py-1 rounded-full text-xs font-semibold text-white"
-                              style={{ backgroundColor: plan.color }}
-                            >
-                              {plan.role.charAt(0).toUpperCase() + plan.role.slice(1)} Role
-                            </span>
-                            <span className="text-xs text-[#AAAAAA] font-medium">
-                              Level {plan.level}
-                            </span>
-                          </div>
-                        )}
-
-                        <p className="text-[#AAAAAA] text-sm mb-4">{plan.description}</p>
-                        <div className="mb-2 space-y-1">
-                          <div className="flex items-baseline justify-center gap-2">
-                            <span className="text-4xl font-bold text-white">
-                              {getPrice(plan)}
-                            </span>
-                          </div>
-                          {savings ? (
-                            <span className="ml-2 text-sm text-[#10b981]">
-                              Save {savings}%
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      {/* Features List */}
-                      <ul className="space-y-4 mb-8">
-                        {plan.features.map((feature, featureIndex) => (
-                          <motion.li
-                            key={featureIndex}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.1 * index + 0.05 * featureIndex }}
-                            className="flex items-start gap-3"
-                          >
-                            <Check className="w-5 h-5 text-[#10b981] flex-shrink-0 mt-0.5" />
-                            <span className="text-[#AAAAAA] text-sm">{feature}</span>
-                          </motion.li>
-                        ))}
-                      </ul>
-
-                      {/* Limits */}
-                      <div className="border-t border-[#212121] pt-6 mb-6">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-[#AAAAAA] mb-1">Videos</p>
-                            <p className="text-white font-semibold">{plan.limits.videos}</p>
-                          </div>
-                          <div>
-                            <p className="text-[#AAAAAA] mb-1">Analyses</p>
-                            <p className="text-white font-semibold">{plan.limits.analyses}</p>
-                          </div>
-                          <div>
-                            <p className="text-[#AAAAAA] mb-1">Storage</p>
-                            <p className="text-white font-semibold">{plan.limits.storage}</p>
-                          </div>
-                          <div>
-                            <p className="text-[#AAAAAA] mb-1">Support</p>
-                            <p className="text-white font-semibold">{plan.limits.support}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* CTA Button */}
-                      {isCurrentPlan ? (
-                        <motion.button
-                          disabled
-                          className="w-full py-3 px-6 bg-[#212121] text-[#AAAAAA] rounded-lg font-semibold cursor-not-allowed"
-                        >
-                          Current Plan
-                        </motion.button>
-                      ) : (
-                        <div className="space-y-2 w-full">
-                          <motion.button
-                            type="button"
-                            onClick={() => handleSubscribe(plan)}
-                            disabled={payBusy(plan.id)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className={`w-full py-3 px-6 rounded-lg font-semibold text-white transition-all ${plan.popular
-                                ? 'bg-gradient-to-r from-[#FF0000] to-[#CC0000] hover:from-[#CC0000] hover:to-[#AA0000]'
-                                : 'bg-[#212121] hover:bg-[#333333]'
-                              } flex items-center justify-center gap-2`}
-                          >
-                            {loading === `rzp:${plan.id}` ? (
-                              <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Processing...
-                              </>
-                            ) : (
-                              <>
-                                {plan.price === 0 ? 'Get Started' : 'Pay with Razorpay'}
-                                <ArrowRight className="w-5 h-5" />
-                              </>
-                            )}
-                          </motion.button>
-                          {plan.price > 0 && (
-                            <motion.button
-                              type="button"
-                              onClick={() => handleSubscribeStripe(plan)}
-                              disabled={payBusy(plan.id)}
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              className="w-full py-2.5 px-6 rounded-lg font-medium text-white border border-[#635bff] bg-[#635bff]/15 hover:bg-[#635bff]/25 flex items-center justify-center gap-2 text-sm"
-                            >
-                              {loading === `stripe:${plan.id}` ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Opening Stripe…
-                                </>
-                              ) : (
-                                <>Pay with Stripe (card)</>
-                              )}
-                            </motion.button>
-                          )}
-                        </div>
-                      )}
-                    </motion.div>
-                  </motion.div>
-                );
-              })}
-          </div>
-
+        <div className="max-w-7xl mx-auto px-6 pb-16">
           {/* Features Comparison */}
           <motion.div
             initial={{ opacity: 0, y: 50 }}

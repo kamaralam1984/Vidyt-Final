@@ -1,5 +1,5 @@
 /** Matches verify-and-pay early-bird behaviour for yearly plans. */
-export const SIGNUP_EARLY_BIRD_DISCOUNT = true;
+export const SIGNUP_EARLY_BIRD_DISCOUNT = false;
 
 const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP', 'UGX']);
 

@@ -69,7 +69,8 @@ export interface GrowthCurve {
 export async function getAnalyticsOverview(
   userId: string,
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
+  workspaceId?: string
 ): Promise<AnalyticsOverview> {
   await connectDB();
 
@@ -80,7 +81,12 @@ export async function getAnalyticsOverview(
     if (endDate) dateFilter.uploadedAt.$lte = endDate;
   }
 
-  const videos = await Video.find({ userId, ...dateFilter });
+  const query: any = { userId, ...dateFilter };
+  if (workspaceId) {
+    query.workspaceId = workspaceId;
+  }
+
+  const videos = await Video.find(query);
   const videoIds = videos.map(v => v._id);
   
   const analyses = await Analysis.find({ videoId: { $in: videoIds } });

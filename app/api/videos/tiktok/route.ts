@@ -10,7 +10,7 @@ import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { extractTikTokMetadata } from '@/services/tiktok';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
 import { analyzeTitle } from '@/services/titleOptimizer';
-import { predictViralPotential } from '@/services/viralPredictor';
+import { predictViralPotential } from '@/services/ai/viralPredictor';
 import { getTrendingScore, getTrendingTopics } from '@/services/trendingEngine';
 import { generateHashtags } from '@/services/hashtagGenerator';
 import { predictBestPostingTime } from '@/services/postingTimePredictor';
@@ -77,7 +77,22 @@ export async function POST(request: NextRequest) {
     const thumbnailAnalysis = await analyzeThumbnail(metadata.thumbnailUrl);
     const titleAnalysis = analyzeTitle(metadata.title, { maxSuggestions: titleSuggestionsLimit });
     const trendingScore = await getTrendingScore(titleAnalysis.keywords);
-    const viralPrediction = predictViralPotential(hookAnalysis, thumbnailAnalysis, titleAnalysis, trendingScore, metadata.duration);
+    const viralPrediction = await predictViralPotential({
+      hookScore: hookAnalysis.score,
+      thumbnailScore: thumbnailAnalysis.score,
+      titleScore: titleAnalysis.score,
+      trendingScore,
+      videoDuration: metadata.duration,
+      platform: 'tiktok',
+      // Real-world features from yt-dlp
+      views: metadata.views,
+      likes: metadata.likes,
+      comments: metadata.comments,
+      shares: metadata.shares,
+      hashtags: metadata.hashtags,
+      author: metadata.author
+    });
+    
     const hashtags = await generateHashtags(titleAnalysis, metadata.description, metadata.hashtags, getHashtagCount(planId));
     const trendingTopics = await getTrendingTopics(titleAnalysis.keywords, 'tiktok');
     const bestPostingTime = predictBestPostingTime(undefined, 'tiktok');
@@ -111,13 +126,16 @@ export async function POST(request: NextRequest) {
         thumbnailScore: thumbnailAnalysis.score,
         titleScore: titleAnalysis.score,
         viralProbability: viralPrediction.viralProbability,
-        confidenceLevel: viralPrediction.confidenceLevel,
+        confidenceLevel: Math.round(viralPrediction.confidence * 100),
         hookAnalysis: hookAnalysis,
         thumbnailAnalysis: thumbnailAnalysis,
         titleAnalysis: titleAnalysis,
         hashtags: hashtags.map(tag => tag.replace('#', '')),
-        trendingTopics: trendingTopics.map(topic => ({ keyword: topic.keyword, score: topic.score })),
+        trendingTopics: trendingTopics.map(topic => ({ keyword: topic.topic, score: topic.score })),
         bestPostingTime: bestPostingTime,
+        reasons: viralPrediction.reasons,
+        weak_points: viralPrediction.weak_points,
+        improvements: viralPrediction.improvements,
         platform: 'tiktok',
       });
       await analysis.save();

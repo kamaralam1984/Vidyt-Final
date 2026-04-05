@@ -31,6 +31,8 @@ function generatePredictionInsights(features: ViralFeatures, viralProbability: n
   return insights.slice(0, 5);
 }
 
+import { predictViralPotential } from '@/services/ai/viralPredictor';
+
 async function handlePredict(request: NextRequest) {
   try {
     const access = await requireAIToolAccess(request, 'advancedAiViralPrediction');
@@ -41,8 +43,8 @@ async function handlePredict(request: NextRequest) {
 
     await connectDB();
     
-    // Additional per-user rate limiting (30 req/hour for analysis)
-    const limiter = rateLimit(`ai-predict:${authUser.id}`, { limit: 30, windowMs: 60 * 60 * 1000 });
+    // Additional per-user rate limiting (60 req/hour for production analysis)
+    const limiter = rateLimit(`ai-predict:${authUser.id}`, { limit: 60, windowMs: 60 * 60 * 1000 });
     if (!limiter.allowed) {
       return NextResponse.json(
         { error: 'Analysis limit reached. Please try again later.' },
@@ -54,129 +56,36 @@ async function handlePredict(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const features = parseFeaturesFromBody(body);
-    const hashtags = Array.isArray(body.hashtags) ? body.hashtags.filter((h: unknown) => typeof h === 'string') : [];
-    const engagement = {
-      views: Number(body?.engagement?.views || body.views || 0),
-      likes: Number(body?.engagement?.likes || body.likes || 0),
-      comments: Number(body?.engagement?.comments || body.comments || 0),
-    };
-
-    const rawVideoId = body.videoId || body.video_id;
-    const platformStr = String(body.platform || 'youtube').toLowerCase();
-    const videoId =
-      typeof rawVideoId === 'string' && rawVideoId.trim()
-        ? extractYoutubeVideoId(rawVideoId) || rawVideoId.trim()
-        : platformStr.includes('youtube') && typeof body.videoUrl === 'string'
-          ? extractYoutubeVideoId(body.videoUrl)
-          : null;
-
-    let nnScore = 50;
-    let modelVersion = 'none';
-    const modelVersionDoc = await AIModelVersion.findOne({ status: 'ready', isActive: true })
-      .sort({ createdAt: -1 })
-      .lean() as { version: string } | null;
-    if (modelVersionDoc) {
-      const model = await loadModel(modelVersionDoc.version);
-      if (model) {
-        nnScore = await predictViralProbability(model, features);
-        modelVersion = modelVersionDoc.version;
-      }
-    }
-
-    const ruleScore = ruleBasedScore(features);
-    let historicalScoreValue = 50;
-    const userVideos = await Video.find({ userId: authUser.id }).select('_id').lean();
-    const videoIds = userVideos.map((v) => v._id);
-    if (videoIds.length > 0) {
-      const analyses = await Analysis.find({ videoId: { $in: videoIds } })
-        .select('viralProbability')
-        .lean();
-      if (analyses.length > 0) {
-        const avg =
-          analyses.reduce((s, a) => s + (a.viralProbability ?? 0), 0) / analyses.length;
-        historicalScoreValue = Math.min(100, Math.max(0, avg));
-      }
-    }
-    const histScore = historicalScore(historicalScoreValue);
-    let { viralProbability, confidence } = ensembleViralScore(nnScore, ruleScore, histScore);
-    let insights = generatePredictionInsights(features, viralProbability);
-    let modelProvider: 'internal_ensemble' | 'python_ml' = 'internal_ensemble';
-    let servedModelVersion = modelVersion;
-
-    // Prefer external Python ML model when available.
-    const aiPrediction = await predictWithPythonService({
-      title: String(body.title || ''),
-      description: String(body.description || ''),
-      hashtags,
-      duration: Number(body.duration || features.videoDuration || 0),
-      platform: String(body.platform || 'youtube'),
-      category: String(body.category || 'general'),
-      engagement,
-      thumbnail_score: Number(body.thumbnail_score || features.thumbnailScore || 50),
-      hook_score: Number(body.hook_score || features.hookScore || 50),
-      title_score: Number(body.title_score || features.titleScore || 50),
-      trending_score: Number(body.trending_score || features.trendingScore || 50),
+    
+    // Use the upgraded Hardcore Production service
+    const prediction = await predictViralPotential({
+        ...body,
+        platform: body.platform || 'youtube'
     });
-    if (aiPrediction) {
-      viralProbability = Math.max(0, Math.min(100, Number(aiPrediction.viral_probability || 0)));
-      confidence = Math.max(0, Math.min(100, Number(aiPrediction.confidence || 0)));
-      insights = Array.isArray(aiPrediction.suggestions) && aiPrediction.suggestions.length > 0
-        ? aiPrediction.suggestions.slice(0, 5)
-        : insights;
-      servedModelVersion = aiPrediction.model_version || servedModelVersion;
-      modelProvider = 'python_ml';
-    }
 
+    // Persistent Storage of the prediction
     const doc = await ViralPrediction.create({
       userId: authUser.id,
-      videoId: videoId || undefined,
-      features,
-      nnScore,
-      ruleScore,
-      historicalScore: histScore,
-      viralProbability,
-      confidence,
-      insights,
-      modelVersion: servedModelVersion,
-      sourceProvider: modelProvider,
+      videoId: body.videoId || undefined,
+      features: body, // Store raw features for audit
+      viralProbability: prediction.score,
+      confidence: prediction.confidence * 100,
+      reasons: prediction.reasons,
+      weak_points: prediction.weak_points,
+      improvements: prediction.improvements,
+      insights: prediction.reasons, // Legacy support
+      modelVersion: 'hardcore_v1',
+      sourceProvider: 'internal_ensemble',
       title: String(body.title || ''),
-      description: String(body.description || ''),
-      hashtags,
       platform: String(body.platform || 'youtube'),
-      category: String(body.category || 'general'),
-      engagement,
+      engagement: body.engagement || {},
     });
-
-    // Non-blocking queue log for async pipelines/analytics.
-    if (process.env.AI_PREDICTION_QUEUE_ENABLED === 'true') {
-      enqueueAiJob({
-        jobType: 'prediction',
-        userId: String(authUser.id),
-        data: {
-          predictionId: String(doc._id),
-          provider: modelProvider,
-          modelVersion: servedModelVersion,
-          viralProbability,
-          confidence,
-        },
-        opts: { priority: 5 },
-      }).catch(() => {});
-    }
 
     return NextResponse.json({
       success: true,
-      viralProbability: Math.round(viralProbability * 100) / 100,
-      confidence: Math.round(confidence * 100) / 100,
-      insights,
-      breakdown: {
-        neuralNetwork: Math.round(nnScore * 100) / 100,
-        ruleBased: Math.round(ruleScore * 100) / 100,
-        historical: Math.round(histScore * 100) / 100,
-      },
-      modelVersion: servedModelVersion,
-      provider: modelProvider,
+      ...prediction,
       id: doc._id.toString(),
+      modelVersion: 'hardcore_v1'
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Prediction failed';
@@ -184,8 +93,10 @@ async function handlePredict(request: NextRequest) {
   }
 }
 
-// Wrap with analysis rate limiting (30 req/hour)
+import { withUsageLimit } from '@/middleware/usageGuard';
+
+// Wrap with analysis rate limiting (60 req/hour) AND plan-based usage limits
 export const POST = withAnalysisRateLimit(
-  (req) => handlePredict(req),
+  withUsageLimit((req) => handlePredict(req), 'video_analysis'),
   { endpoint: '/api/ai/predict' }
 );

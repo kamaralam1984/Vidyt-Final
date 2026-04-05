@@ -43,6 +43,22 @@ class JobScheduler {
       // TODO: Remove old non-viral videos
     });
 
+    // Usage records cleanup (daily at 4 AM)
+    this.scheduleJob('usage-cleanup', '0 4 * * *', async () => {
+        console.log('🧹 Cleaning up old usage records...');
+        try {
+            const Usage = (await import('@/models/Usage')).default;
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+            
+            const result = await Usage.deleteMany({ date: { $lt: dateStr } });
+            console.log(`✅ Cleaned up ${result.deletedCount} usage records.`);
+        } catch (error) {
+            console.error('❌ Usage cleanup failed:', error);
+        }
+    });
+
     // AI model retraining (weekly)
     this.scheduleJob('model-retraining', '0 3 * * 0', async () => {
       console.log('🤖 Running AI model retraining job...');

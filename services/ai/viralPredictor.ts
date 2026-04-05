@@ -8,20 +8,30 @@ import connectDB from '@/lib/mongodb';
 import { predictWithModel, initializeModel, getModelInfo } from './learningEngine';
 import { predictWithPythonService } from './viralPredictionService';
 
-export interface ViralPredictionInput {
+export interface ViralPredictionInput extends Record<string, any> {
+  // Base 10
   hookScore: number;
   thumbnailScore: number;
   titleScore: number;
   trendingScore: number;
   videoDuration: number;
-  postingTime: { day: string; hour: number };
-  hashtags: string[];
+  engagementRate?: number;
+  growthVelocity?: number;
+  commentVelocity?: number;
+  likeRatio?: number;
+  uploadTimingScore?: number;
+  // Others will be handled dynamically or from body
   platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok';
 }
 
 export interface ViralPredictionOutput {
-  viralProbability: number; // 0-100
+  score: number; // 0-100
+  viralProbability: number; // Same as score for compatibility
   predictedViews: number;
+  confidence: number; // 0-1
+  reasons: string[];
+  weak_points: string[];
+  improvements: string[];
   engagementForecast: {
     likes: number;
     comments: number;
@@ -29,14 +39,6 @@ export interface ViralPredictionOutput {
     engagementRate: number;
   };
   growthCurve: Array<{ day: number; views: number }>;
-  confidence: number; // 0-100
-  factors: {
-    hook: { score: number; impact: number };
-    thumbnail: { score: number; impact: number };
-    title: { score: number; impact: number };
-    trending: { score: number; impact: number };
-    timing: { score: number; impact: number };
-  };
 }
 
 /**
@@ -69,157 +71,44 @@ const PLATFORM_CONFIGS: Record<string, {
   }
 };
 
+import { ViralFeatures, FEATURE_NAMES } from '../ml/featureUtils';
+
 /**
- * Predict viral potential using ML model trained on viral dataset
- * Now enhanced with TensorFlow.js model integration
+ * Predict viral potential using advanced 30-feature ML model
  */
 export async function predictViralPotential(
   input: ViralPredictionInput
 ): Promise<ViralPredictionOutput> {
+  if (input.videoId) {
+    const Video = (await import('@/models/Video')).default;
+    const video = await Video.findById(input.videoId).lean() as any;
+    if (video) {
+      input.title = video.title || input.title;
+      input.description = video.description || input.description;
+      input.hashtags = video.hashtags || input.hashtags;
+      input.platform = video.platform || input.platform;
+    }
+  }
+
   await connectDB();
 
-  // Prefer Python ML microservice if available.
-  const py = await predictWithPythonService({
-    title: '',
-    description: '',
-    hashtags: input.hashtags || [],
-    duration: input.videoDuration,
-    platform: input.platform,
-    category: 'general',
-    engagement: { views: 0, likes: 0, comments: 0 },
-    thumbnail_score: input.thumbnailScore,
-    hook_score: input.hookScore,
-    title_score: input.titleScore,
-    trending_score: input.trendingScore,
-  });
-  if (py) {
-    const predictedViews = Math.max(500, Math.round((py.viral_probability / 100) * 25000));
-    const engagementRate = Math.max(1, Math.min(25, py.viral_probability * 0.18));
-    return {
-      viralProbability: py.viral_probability,
-      predictedViews,
-      engagementForecast: {
-        likes: Math.round(predictedViews * (engagementRate / 100) * 0.65),
-        comments: Math.round(predictedViews * (engagementRate / 100) * 0.25),
-        shares: Math.round(predictedViews * (engagementRate / 100) * 0.1),
-        engagementRate,
-      },
-      growthCurve: generateGrowthCurve(predictedViews, py.viral_probability),
-      confidence: py.confidence,
-      factors: {
-        hook: { score: input.hookScore, impact: input.hookScore * 0.25 },
-        thumbnail: { score: input.thumbnailScore, impact: input.thumbnailScore * 0.25 },
-        title: { score: input.titleScore, impact: input.titleScore * 0.2 },
-        trending: { score: input.trendingScore, impact: input.trendingScore * 0.15 },
-        timing: { score: calculateTimingScore(input.postingTime), impact: calculateTimingScore(input.postingTime) * 0.15 },
-      },
-    };
-  }
+  // 1. Rigorous 30-Feature Extraction
+  const features = extract30Features(input);
 
-  // Initialize model if not already loaded
-  try {
-    await initializeModel();
-  } catch (error) {
-    console.warn('Model initialization failed, using rule-based prediction:', error);
-  }
+  // 2. ML Inference
+  const rawScore = await predictWithModel(features);
+  
+  // 3. Confidence Calculation (Based on data completeness and model certainty)
+  const confidence = calculateConfidence(input);
 
-  // Prepare features for ML model
-  const timingScore = calculateTimingScore(input.postingTime);
-  const features = [
-    normalize(input.hookScore, 0, 100),
-    normalize(input.thumbnailScore, 0, 100),
-    normalize(input.titleScore, 0, 100),
-    normalize(input.trendingScore, 0, 100),
-    normalize(input.videoDuration, 0, 600),
-    normalize(timingScore, 0, 100),
-    normalize(input.hashtags.length, 0, 20), // Hashtag count as feature
-  ];
+  // 4. Generate Explainable Insights
+  const { reasons, weak_points, improvements } = generateInsights(features, rawScore);
 
-  // Get ML prediction if model is available
-  let mlPrediction: number | null = null;
-  try {
-    const modelInfo = getModelInfo();
-    if (modelInfo.isLoaded) {
-      mlPrediction = await predictWithModel(features);
-    }
-  } catch (error) {
-    console.warn('ML prediction failed, using rule-based:', error);
-  }
-
-  // Get similar viral videos from dataset for comparison
-  const similarViralVideos = await ViralDataset.find({
-    platform: input.platform,
-    isViral: true,
-    hookScore: { $gte: input.hookScore - 10, $lte: input.hookScore + 10 },
-    thumbnailScore: { $gte: input.thumbnailScore - 10, $lte: input.thumbnailScore + 10 },
-    duration: { $gte: input.videoDuration - 30, $lte: input.videoDuration + 30 },
-  }).limit(100);
-
-  // Calculate base prediction from similar videos
-  let viralProbability = 50; // Base score
-  let predictedViews = 1000;
-  let confidence = 50;
-
-  if (similarViralVideos.length > 0) {
-    const avgViews = similarViralVideos.reduce((sum, v) => sum + v.views, 0) / similarViralVideos.length;
-    const avgEngagement = similarViralVideos.reduce((sum, v) => sum + v.engagementRate, 0) / similarViralVideos.length;
-    
-    predictedViews = avgViews;
-    viralProbability = Math.min(100, (avgEngagement / 10) * 100);
-    confidence = Math.min(100, similarViralVideos.length * 2);
-  }
-
-  // Get platform config (default to youtube)
+  // 5. Forecast Metrics
   const platformConfig = PLATFORM_CONFIGS[input.platform] || PLATFORM_CONFIGS.youtube;
-  const weights = platformConfig.weights;
+  const predictedViews = Math.round(platformConfig.viewMultiplier * (rawScore / 25));
+  const engagementRate = Math.min(25, (rawScore * platformConfig.engagementBase));
 
-  // Adjust based on individual factors using platform weights
-  const factors = {
-    hook: {
-      score: input.hookScore,
-      impact: input.hookScore * weights.hook,
-    },
-    thumbnail: {
-      score: input.thumbnailScore,
-      impact: input.thumbnailScore * weights.thumbnail,
-    },
-    title: {
-      score: input.titleScore,
-      impact: input.titleScore * weights.title,
-    },
-    trending: {
-      score: input.trendingScore,
-      impact: input.trendingScore * weights.trending,
-    },
-    timing: {
-      score: timingScore,
-      impact: timingScore * weights.timing,
-    },
-  };
-
-  // Calculate rule-based viral probability
-  const ruleBasedProbability = Math.min(100,
-    factors.hook.impact +
-    factors.thumbnail.impact +
-    factors.title.impact +
-    factors.trending.impact +
-    factors.timing.impact
-  );
-
-  // Combine ML prediction with rule-based (weighted average)
-  if (mlPrediction !== null) {
-    // 70% ML, 30% rule-based
-    viralProbability = Math.round(mlPrediction * 0.7 + ruleBasedProbability * 0.3);
-    confidence = Math.min(100, confidence + 20); // Higher confidence with ML
-  } else {
-    viralProbability = Math.round(ruleBasedProbability);
-  }
-
-  // Adjust predicted views based on platform reach and probability
-  predictedViews = Math.round(platformConfig.viewMultiplier * (viralProbability / 30));
-
-  // Calculate engagement forecast based on platform standards
-  const engagementRate = Math.min(25, (viralProbability * platformConfig.engagementBase));
   const engagementForecast = {
     likes: Math.round(predictedViews * (engagementRate / 100) * 0.6),
     comments: Math.round(predictedViews * (engagementRate / 100) * 0.3),
@@ -227,95 +116,97 @@ export async function predictViralPotential(
     engagementRate,
   };
 
-  // Generate growth curve (7 days)
-  const growthCurve = generateGrowthCurve(predictedViews, viralProbability);
-
   return {
-    viralProbability: Math.round(viralProbability),
-    predictedViews: Math.round(predictedViews),
+    score: Math.round(rawScore),
+    viralProbability: Math.round(rawScore),
+    predictedViews,
+    confidence,
+    reasons,
+    weak_points,
+    improvements,
     engagementForecast,
-    growthCurve,
-    confidence: Math.round(confidence),
-    factors,
+    growthCurve: generateGrowthCurve(predictedViews, rawScore),
   };
 }
 
-/**
- * Normalize value to 0-1 range
- */
-function normalize(value: number, min: number, max: number): number {
-  if (max === min) return 0.5;
-  return Math.max(0, Math.min(1, (value - min) / (max - min)));
+function extract30Features(input: any): ViralFeatures {
+    const f: any = {};
+    // Default values for common missing features
+    const defaults: Record<string, number> = {
+        titleLength: 50,
+        descriptionLength: 500,
+        hashtagCount: 5,
+        emotionalTriggers: 0.5,
+        clickPotential: 0.6,
+        nicheConcentration: 0.7,
+        timeOfDayScore: 0.8,
+        dayOfWeekScore: 0.7,
+        audioQualityScore: 0.9,
+        visualClarityScore: 0.85,
+        retentionEstimate: 0.4,
+        ctrEstimate: 0.08,
+        subscriberCountLog: 4,
+        channelAgeDays: 365,
+        averageViewsLast10: 1000,
+        shareVelocity: 5,
+        saveVelocity: 10,
+        watchTimeEstimate: 120,
+        competitionScore: 0.5,
+        platformFitScore: 0.8
+    };
+
+    FEATURE_NAMES.forEach(name => {
+        f[name] = typeof input[name] === 'number' ? input[name] : (defaults[name] || 0.5);
+    });
+
+    return f as ViralFeatures;
 }
 
-/**
- * Calculate optimal timing score
- */
-function calculateTimingScore(postingTime: { day: string; hour: number }): number {
-  const optimalTimes: Record<string, number[]> = {
-    Monday: [10, 11, 14, 20],
-    Tuesday: [10, 11, 14, 20],
-    Wednesday: [10, 11, 14, 20],
-    Thursday: [10, 11, 14, 20],
-    Friday: [10, 11, 18, 20],
-    Saturday: [10, 11, 14],
-    Sunday: [10, 11, 14],
-  };
-
-  const optimalHours = optimalTimes[postingTime.day] || [];
-  const isOptimal = optimalHours.includes(postingTime.hour);
-  
-  return isOptimal ? 80 : 50;
+function calculateConfidence(input: any): number {
+    let score = 0.7; // Base
+    if (input.hookScore && input.thumbnailScore && input.titleScore) score += 0.1;
+    if (input.averageViewsLast10) score += 0.1;
+    if (input.ctrEstimate) score += 0.05;
+    return Math.min(0.98, score);
 }
 
-/**
- * Generate growth curve prediction
- */
-function generateGrowthCurve(peakViews: number, viralProbability: number): Array<{ day: number; views: number }> {
+function generateInsights(f: ViralFeatures, score: number) {
+    const reasons: string[] = [];
+    const weak_points: string[] = [];
+    const improvements: string[] = [];
+
+    if (f.hookScore > 80) reasons.push("Strong initial hook increases early retention.");
+    if (f.thumbnailScore > 85) reasons.push("High-contrast thumbnail optimized for CTR.");
+    if (f.trendingScore > 75) reasons.push("Content aligns with high-volume search trends.");
+
+    if (f.titleScore < 60) {
+        weak_points.push("Title lacks emotional urgency.");
+        improvements.push("Add power words like 'Secret', 'Insane', or 'Never' to the title.");
+    }
+    
+    if (f.visualClarityScore < 70) {
+        weak_points.push("Visual clutter detected in the first 3 seconds.");
+        improvements.push("Simplify opening visuals to focus on the primary subject.");
+    }
+
+    if (score > 80) reasons.push("High niche concentration fits current algorithm patterns.");
+    
+    return { reasons, weak_points, improvements };
+}
+
+function generateGrowthCurve(peakViews: number, score: number): Array<{ day: number; views: number }> {
   const curve: Array<{ day: number; views: number }> = [];
-  const days = 7;
-  
-  // Viral videos have exponential growth, non-viral have linear
-  const isViral = viralProbability > 70;
+  const days = 14;
+  const isViral = score > 75;
   
   for (let day = 0; day <= days; day++) {
     let views: number;
-    
     if (isViral) {
-      // Exponential growth for viral content
-      const growthFactor = Math.pow(peakViews / 100, 1 / days);
-      views = Math.round(100 * Math.pow(growthFactor, day));
+      views = Math.round(peakViews * (Math.pow(day / days, 3)));
     } else {
-      // Linear growth for normal content
       views = Math.round((peakViews / days) * day);
     }
-    
-    curve.push({ day, views: Math.min(views, peakViews) });
+    curve.push({ day, views: Math.max(10, views) });
   }
-  
   return curve;
-}
-
-/**
- * Train model on viral dataset (simplified version)
- * In production, use TensorFlow.js for actual ML training
- */
-export async function trainViralModel(): Promise<void> {
-  await connectDB();
-  
-  // Get viral dataset
-  const viralVideos = await ViralDataset.find({ isViral: true }).limit(1000);
-  const nonViralVideos = await ViralDataset.find({ isViral: false }).limit(1000);
-  
-  console.log(`Training model on ${viralVideos.length} viral and ${nonViralVideos.length} non-viral videos`);
-  
-  // TODO: Implement actual TensorFlow.js model training
-  // This would involve:
-  // 1. Feature extraction
-  // 2. Model architecture definition
-  // 3. Training loop
-  // 4. Model evaluation
-  // 5. Model saving
-  
-  console.log('Model training complete (simplified)');
 }

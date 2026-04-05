@@ -78,41 +78,61 @@ async function handleSupportAi(job: Job) {
   return { ok: true, ...ai };
 }
 
-async function handleTraining(job: Job) {
-  if (process.env.AI_TEST_MODE === 'true') {
-    // Test mode: avoid heavy python calls; still validate queue/worker wiring.
-    return { ok: true, mockTrain: true, minSamples: job.data?.minSamples ?? 100 };
-  }
+import { trainModel as trainNodeModel, TrainingSample } from '@/services/ml/viralModel';
 
+async function handleTraining(job: Job) {
   await connectDB();
-  const labeled = await getLabeledPredictionTrainingSamples(2500);
+  
+  // 1. Fetch data from ViralDataset
   const ds = await ViralDataset.find({})
-    .select('title description hashtags duration platform metadata views likes comments hookScore thumbnailScore titleScore trendingScore isViral')
     .sort({ collectedAt: -1 })
-    .limit(5000)
+    .limit(2000)
     .lean();
 
-  const fromDs = ds.map((d: any) => ({
-    title: String(d.title || ''),
-    description: String(d.description || ''),
-    hashtags: Array.isArray(d.hashtags) ? d.hashtags : [],
-    duration: Number(d.duration || 0),
-    platform: String(d.platform || 'youtube'),
-    category: String(d?.metadata?.category || 'general'),
-    views: Number(d.views || 0),
-    likes: Number(d.likes || 0),
-    comments: Number(d.comments || 0),
-    thumbnail_score: Number(d.thumbnailScore || 50),
-    hook_score: Number(d.hookScore || 50),
-    title_score: Number(d.titleScore || 50),
-    trending_score: Number(d.trendingScore || 50),
-    viral_label: d.isViral ? 1 : 0,
+  if (ds.length < 50) {
+    return { ok: false, reason: 'Insufficient data for training (50+ samples required)' };
+  }
+
+  // 2. Transform to TrainingSamples
+  const samples: TrainingSample[] = ds.map((d: any) => ({
+    features: {
+        hookScore: d.hookScore || 50,
+        thumbnailScore: d.thumbnailScore || 50,
+        titleScore: d.titleScore || 50,
+        trendingScore: d.trendingScore || 50,
+        videoDuration: d.duration || 60,
+        engagementRate: d.engagementRate || 5,
+        growthVelocity: d.growthVelocity || 100,
+        commentVelocity: 10,
+        likeRatio: (d.likes / (d.views || 1)) || 0.05,
+        uploadTimingScore: 12,
+    },
+    isViral: !!d.isViral
   }));
 
-  const samples = [...labeled, ...fromDs].slice(0, 5000);
+  // 3. Trigger Node-based training
+  console.log(`[aiWorker] Starting TensorFlow training on ${samples.length} samples...`);
+  
+  const version = `model_v${Date.now()}`;
+  const result = await trainNodeModel(samples, {
+      epochs: job.data?.epochs || 50,
+      version
+  });
 
-  const result = await trainPythonModel(samples, Number(job.data?.minSamples || 100));
-  return { ok: true, result };
+  // 4. Update accuracy history (could be stored in a separate Monitoring model)
+  console.log(`[aiWorker] Training complete. Accuracy: ${result.accuracy.toFixed(4)}, Loss: ${result.loss.toFixed(4)}`);
+  
+  return { 
+    ok: true, 
+    version,
+    metrics: {
+        accuracy: result.accuracy,
+        loss: result.loss,
+        valAccuracy: result.valAccuracy,
+        valLoss: result.valLoss,
+        mae: result.loss // BinaryCrossentropy is used, using loss as proxy for MAE in result
+    }
+  };
 }
 
 async function handlePrediction(job: Job) {

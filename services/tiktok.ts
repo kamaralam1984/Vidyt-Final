@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { getHardcoreMetadata } from './multiplatform/metadata';
 
 export interface TikTokMetadata {
   title: string;
@@ -15,53 +15,39 @@ export interface TikTokMetadata {
 
 /**
  * Extract TikTok video metadata
- * Note: TikTok doesn't have a public API, so we use oEmbed or scraping
+ * Note: TikTok doesn't have a public API, so we use oEmbed, scraping, or yt-dlp
  */
 export async function extractTikTokMetadata(url: string): Promise<TikTokMetadata> {
-  const videoId = extractVideoId(url);
-  if (!videoId) {
-    throw new Error('Invalid TikTok URL format. Supported formats:\n' +
-      '- tiktok.com/@username/video/VIDEO_ID\n' +
-      '- vm.tiktok.com/SHORT_CODE\n' +
-      '- tiktok.com/t/ZTdVIDEO_ID');
-  }
-
   try {
-    // Try oEmbed first (limited data)
-    const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
-    const response = await axios.get(oembedUrl, { timeout: 10000 });
-    const data = response.data;
-
-    // Extract hashtags from title/description
-    const hashtags = extractHashtags(data.title || '');
-
+    const data = await getHardcoreMetadata(url);
+    
     return {
-      title: data.title || 'TikTok Video',
-      description: data.author_name || '',
-      thumbnailUrl: data.thumbnail_url || '',
-      duration: 0, // oEmbed doesn't provide duration
-      views: 0, // oEmbed doesn't provide views
+      title: data.title,
+      description: data.description,
+      thumbnailUrl: data.thumbnailUrl,
+      duration: data.duration,
+      views: data.views,
+      likes: data.likes,
+      comments: data.comments,
+      shares: data.shares,
+      hashtags: data.hashtags,
+      author: data.author
+    };
+  } catch (error: any) {
+    console.error('TikTok hardcore metadata extraction failed, falling back to basic:', error.message);
+    
+    // Fallback: This is kept for safety but we expect yt-dlp to work
+    return {
+      title: 'TikTok Video',
+      description: '',
+      thumbnailUrl: '',
+      duration: 0,
+      views: 0,
       likes: 0,
       comments: 0,
       shares: 0,
-      hashtags,
-      author: data.author_name || '',
-    };
-  } catch (error: any) {
-    console.error('TikTok metadata extraction error:', error);
-    
-    // Fallback: Return basic metadata
-    return {
-      title: `TikTok Video ${videoId}`,
-      description: 'TikTok video description',
-      thumbnailUrl: `https://via.placeholder.com/480x360?text=TikTok+${videoId}`,
-      duration: 0,
-      views: Math.floor(Math.random() * 1000000),
-      likes: Math.floor(Math.random() * 100000),
-      comments: Math.floor(Math.random() * 10000),
-      shares: Math.floor(Math.random() * 10000),
-      hashtags: ['tiktok', 'viral', 'fyp', 'foryou'],
-      author: 'tiktok_user',
+      hashtags: [],
+      author: 'Unknown'
     };
   }
 }

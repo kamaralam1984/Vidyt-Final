@@ -253,15 +253,15 @@ export default function AnalyticsPage() {
                     <div className="flex flex-wrap gap-6 mt-4">
                       <div className="flex items-center gap-2 text-[#AAA]">
                         <Users className="w-5 h-5 text-blue-400" />
-                        <span className="text-white font-bold">{channelData.channelInfo.statistics.subscriberCount.toLocaleString()}</span> Subscribers
+                        <span className="text-white font-bold">{channelData.channelInfo?.statistics?.subscriberCount?.toLocaleString() || '0'}</span> Subscribers
                       </div>
                       <div className="flex items-center gap-2 text-[#AAA]">
                         <Eye className="w-5 h-5 text-emerald-400" />
-                        <span className="text-white font-bold">{channelData.channelInfo.statistics.viewCount.toLocaleString()}</span> Total Views
+                        <span className="text-white font-bold">{channelData.channelInfo?.statistics?.viewCount?.toLocaleString() || '0'}</span> Total Views
                       </div>
                       <div className="flex items-center gap-2 text-[#AAA]">
                         <PlaySquare className="w-5 h-5 text-[#FF0000]" />
-                        <span className="text-white font-bold">{channelData.channelInfo.statistics.videoCount.toLocaleString()}</span> Videos
+                        <span className="text-white font-bold">{channelData.channelInfo?.statistics?.videoCount?.toLocaleString() || '0'}</span> Videos
                       </div>
                     </div>
                   </div>
@@ -280,28 +280,28 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <MetricCard 
                   title="Avg Engagement Rate" 
-                  value={`${channelData.videoPerformance.averageEngagementRate}%`} 
+                  value={`${channelData.videoPerformance?.averageEngagementRate || 0}%`} 
                   icon={TrendingUp} 
                   color="text-emerald-400"
-                  sub={`${channelData.videoPerformance.averageEngagementRate > 4 ? 'Excellent Performance' : 'Standard'}`}
+                  sub={`${(channelData.videoPerformance?.averageEngagementRate || 0) > 4 ? 'Excellent Performance' : 'Standard'}`}
                 />
                 <MetricCard 
                   title="Growth Velocity" 
-                  value={`${channelData.videoPerformance.growthVelocity.toLocaleString()}`} 
+                  value={`${(channelData.videoPerformance?.growthVelocity || 0).toLocaleString()}`} 
                   icon={Zap} 
                   color="text-[#FF0000]"
                   sub="Views per day (Recent)"
                 />
                 <MetricCard 
                   title="Viral Score" 
-                  value={`${Math.round(channelData.videoPerformance.averageEngagementRate * 15)}%`} 
+                  value={`${Math.round((channelData.videoPerformance?.averageEngagementRate || 0) * 15)}%`} 
                   icon={Sparkles} 
                   color="text-purple-400"
                   sub="Overall channel potential"
                 />
                 <MetricCard 
                   title="Consistency Score" 
-                  value={`${channelData.videoPerformance.consistencyScore}%`} 
+                  value={`${channelData.videoPerformance?.consistencyScore || 0}%`} 
                   icon={Target} 
                   color="text-blue-400"
                   sub="Upload frequency index"
@@ -319,7 +319,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="h-[350px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={channelData.recentVideos.slice().reverse()}>
+                      <AreaChart data={(channelData.recentVideos || []).slice().reverse()}>
                         <defs>
                           <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#FF0000" stopOpacity={0.3}/>
@@ -352,7 +352,7 @@ export default function AnalyticsPage() {
                             <ArrowUpRight className="w-3 h-3" /> Core Strengths
                          </div>
                          <div className="space-y-2">
-                            {channelData.audit.strengths.map((s, i) => (
+                            {(channelData.audit?.strengths || []).map((s, i) => (
                               <div key={i} className="flex gap-3 text-sm text-[#CCC] bg-emerald-400/5 border border-emerald-400/10 p-3 rounded-xl">
                                  <span className="text-emerald-400 font-bold">•</span> {s}
                               </div>
@@ -365,7 +365,7 @@ export default function AnalyticsPage() {
                             <AlertTriangle className="w-3 h-3" /> Growth Inhibitors
                          </div>
                          <div className="space-y-2">
-                            {channelData.audit.weaknesses.map((w, i) => (
+                            {(channelData.audit?.weaknesses || []).map((w, i) => (
                               <div key={i} className="flex gap-3 text-sm text-[#CCC] bg-[#FF0000]/5 border border-[#FF0000]/10 p-3 rounded-xl">
                                  <span className="text-[#FF0000] font-bold">•</span> {w}
                               </div>
@@ -378,7 +378,7 @@ export default function AnalyticsPage() {
                             <Lightbulb className="w-3 h-3" /> Opportunities
                          </div>
                          <div className="space-y-2">
-                            {channelData.audit.opportunities.map((o, i) => (
+                            {(channelData.audit?.opportunities || []).map((o, i) => (
                               <div key={i} className="flex gap-3 text-sm text-[#CCC] bg-blue-400/5 border border-blue-400/10 p-3 rounded-xl">
                                  <span className="text-blue-400 font-bold">•</span> {o}
                               </div>
@@ -413,7 +413,7 @@ export default function AnalyticsPage() {
                           </tr>
                        </thead>
                        <tbody className="divide-y divide-[#222]">
-                          {channelData.recentVideos.map((video) => (
+                          {(channelData.recentVideos || []).map((video) => (
                             <tr key={video.id} className="group hover:bg-white/[0.02] transition-colors">
                                <td className="px-8 py-4 max-w-md">
                                   <div className="flex items-center gap-4">
@@ -422,26 +422,26 @@ export default function AnalyticsPage() {
                                      </div>
                                      <div className="space-y-1">
                                         <p className="text-sm font-bold text-white line-clamp-1">{video.title}</p>
-                                        <p className="text-xs text-[#555]">{new Date(video.publishedAt).toLocaleDateString()}</p>
+                                        <p className="text-xs text-[#555]">{video.publishedAt ? new Date(video.publishedAt).toLocaleDateString() : 'N/A'}</p>
                                      </div>
                                   </div>
                                </td>
                                <td className="px-8 py-4">
-                                  <div className="text-sm font-bold text-white">{video.views.toLocaleString()}</div>
+                                  <div className="text-sm font-bold text-white">{(video.views || 0).toLocaleString()}</div>
                                </td>
                                <td className="px-8 py-4">
                                   <div className="flex items-center gap-2">
                                      <div className="w-16 h-1.5 bg-[#222] rounded-full overflow-hidden">
                                         <div className={`h-full ${video.engagementRate > 3 ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${Math.min(100, video.engagementRate * 10)}%` }} />
                                      </div>
-                                     <span className="text-xs text-white font-bold">{video.engagementRate}%</span>
+                                     <span className="text-xs text-white font-bold">{video.engagementRate || 0}%</span>
                                   </div>
                                </td>
                                <td className="px-8 py-4">
                                   <span className={`text-sm font-black ${video.viralScore > 70 ? 'text-[#FF0000]' : 'text-[#AAA]'}`}>{video.viralScore}%</span>
                                </td>
                                <td className="px-8 py-4">
-                                  <button className="text-xs font-black uppercase text-[#FF0000] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => window.location.href = `/dashboard/viral-optimizer?title=${encodeURIComponent(video.title)}&videoId=${video.id}`} className="text-xs font-black uppercase text-[#FF0000] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                      Analyze <ChevronRight className="w-3 h-3" />
                                   </button>
                                </td>

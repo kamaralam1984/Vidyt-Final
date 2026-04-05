@@ -20,6 +20,7 @@ import {
   FileText,
   TrendingUp,
   Target,
+  Sparkles,
 } from 'lucide-react';
 
 const cardVariants = {
@@ -35,11 +36,56 @@ export default function ViralOptimizerPage() {
   const router = useRouter();
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [title, setTitle] = useState('');
+  const [videoId, setVideoId] = useState<string | null>(null);
+
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [description, setDescription] = useState('');
   const [keywords, setKeywords] = useState('');
   const [script, setScript] = useState('');
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+
+  const [generatingSEO, setGeneratingSEO] = useState(false);
+  const autoGenerateSEO = async (promptHint: string) => {
+    if (!promptHint) return;
+    setGeneratingSEO(true);
+    try {
+      const fd = new FormData();
+      fd.append('topic', promptHint);
+      const res = await axios.post('/api/youtube/video-analyze', fd, { headers: getAuthHeaders() });
+      const sug = res.data?.suggestions;
+      if (sug) {
+        setTitle((prev) => prev || sug.title);
+        setDescription((prev) => prev || sug.description);
+        setKeywords((prev) => prev || sug.keywords?.join(', '));
+        const hashStr = sug.hashtags?.length ? sug.hashtags.join(' ') : '';
+        if (hashStr && !sug.description?.includes('#')) {
+          setDescription((prev) => (prev ? `${prev}\n\n${hashStr}` : hashStr));
+        }
+      }
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setGeneratingSEO(false);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const titleParam = params.get('title');
+      const vidParam = params.get('videoId');
+      if (titleParam) {
+        setTitle(titleParam);
+        autoGenerateSEO(titleParam);
+      }
+      if (vidParam) {
+        setVideoId(vidParam);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [ctrData, setCtrData] = useState<{
@@ -139,6 +185,35 @@ export default function ViralOptimizerPage() {
       console.error('Analysis error:', e);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleUpdateYoutube = async () => {
+    if (!videoId) return;
+    setIsUpdating(true);
+    setUpdateStatus(null);
+    try {
+      const res = await axios.post('/api/youtube/update-video', {
+        videoId,
+        title,
+        description,
+        keywords
+      }, { headers: getAuthHeaders() });
+
+      if (res.data.success) {
+        setUpdateStatus({ type: 'success', message: 'Successfully updated on YouTube!' });
+      }
+    } catch (err: any) {
+      if (err.response?.data?.needsAuth) {
+        window.location.href = '/api/youtube/auth';
+        return;
+      }
+      setUpdateStatus({ 
+        type: 'error', 
+        message: err.response?.data?.error || err.message || 'Failed to update video' 
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -281,15 +356,46 @@ export default function ViralOptimizerPage() {
                       className="w-full px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-[#FF0000] resize-none"
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={runAnalysis}
-                    disabled={analyzing}
-                    className="w-full py-3 px-4 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 text-white font-semibold rounded-lg flex items-center justify-center gap-2"
-                  >
-                    {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <TrendingUp className="w-5 h-5" />}
-                    {analyzing ? 'Analyzing…' : 'Analyze Viral Potential'}
-                  </button>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => autoGenerateSEO(title || keywords || description || 'viral content')}
+                      disabled={generatingSEO || (!title && !keywords && !description)}
+                      className="w-full py-2.5 px-4 bg-[#222] hover:bg-[#333] border border-[#444] disabled:opacity-50 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors focus:ring-2 focus:ring-[#FF0000]"
+                    >
+                      {generatingSEO ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-purple-400" />}
+                      {generatingSEO ? 'AI is generating high-ranking SEO...' : 'Auto-Generate SEO ✨'}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={runAnalysis}
+                      disabled={analyzing}
+                      className="w-full py-3 px-4 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 text-white font-semibold rounded-lg flex items-center justify-center gap-2"
+                    >
+                      {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <TrendingUp className="w-5 h-5" />}
+                      {analyzing ? 'Analyzing…' : 'Analyze Viral Potential'}
+                    </button>
+
+                    {videoId && (
+                      <button
+                        type="button"
+                        onClick={handleUpdateYoutube}
+                        disabled={isUpdating || !title}
+                        className="w-full mt-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                      >
+                        {isUpdating ? <Loader2 className="w-5 h-5 animate-spin" /> : '🚀'}
+                        {isUpdating ? 'Updating...' : 'Push Changes to YouTube'}
+                      </button>
+                    )}
+
+                    {updateStatus && (
+                        <div className={`mt-2 p-3 rounded-lg text-sm ${updateStatus.type === 'success' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                            {updateStatus.type === 'success' ? '✓ ' : '⚠️ '}
+                            {updateStatus.message}
+                        </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>

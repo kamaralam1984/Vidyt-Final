@@ -17,16 +17,68 @@ import {
   Save,
   Loader2,
   Power,
+  Edit2,
+  Plus,
+  Trash2,
+  X,
 } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 
+interface PlanLimits {
+  analysesLimit: number;
+  analysesPeriod: 'day' | 'month';
+  titleSuggestions: number;
+  hashtagCount: number;
+  competitorsTracked: number;
+}
+
+interface PlanFeatureFlags {
+  // AI Studio Features
+  daily_ideas: boolean;
+  ai_coach: boolean;
+  keyword_research: boolean;
+  script_writer: boolean;
+  title_generator: boolean;
+  channel_audit_tool: boolean;
+  ai_shorts_clipping: boolean;
+  ai_thumbnail_maker: boolean;
+  optimize: boolean;
+  // Core Platform Features
+  advancedAiViralPrediction: boolean;
+  realTimeTrendAnalysis: boolean;
+  bestPostingTimePredictions: boolean;
+  competitorAnalysis: boolean;
+  emailSupport: boolean;
+  priorityProcessing: boolean;
+  // Enterprise & Advanced Features
+  teamCollaboration: boolean;
+  whiteLabelReports: boolean;
+  customAiModelTraining: boolean;
+  dedicatedAccountManager: boolean;
+  prioritySupport24x7: boolean;
+  advancedAnalyticsDashboard: boolean;
+  customIntegrations: boolean;
+}
+
 interface Plan {
   planId: string;
   name: string;
+  label?: string;
+  description?: string;
   priceMonthly: number;
+  priceYearly?: number;
   role: string;
   isActive: boolean;
+  features: string[];
+  limits: PlanLimits;
+  limitsDisplay?: {
+    videos: string;
+    analyses: string;
+    storage: string;
+    support: string;
+  };
+  featureFlags: PlanFeatureFlags;
   _id?: string;
 }
 
@@ -56,6 +108,8 @@ export default function UnifiedControlPanel() {
   const [success, setSuccess] = useState<string | null>(null);
   const [savingPlatform, setSavingPlatform] = useState('');
   const [savingMaster, setSavingMaster] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
 
   const availablePlans = ['free', 'pro', 'enterprise', 'owner'];
   const defaultFeatures: Record<string, string[]> = {
@@ -137,7 +191,7 @@ export default function UnifiedControlPanel() {
     setError(null);
     try {
       const plan = plans.find((p) => p.planId === planId);
-      const res = await fetch(`/api/admin/plans/${planId}`, {
+      const res = await fetch(`/api/admin/plans`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,6 +212,46 @@ export default function UnifiedControlPanel() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePlan = async () => {
+    if (!editingPlan) return;
+    setIsSavingPlan(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/plans`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingPlan._id,
+          name: editingPlan.name,
+          label: editingPlan.label,
+          description: editingPlan.description,
+          priceMonthly: editingPlan.priceMonthly,
+          priceYearly: editingPlan.priceYearly,
+          features: editingPlan.features,
+          role: editingPlan.role,
+          limits: editingPlan.limits,
+          limitsDisplay: editingPlan.limitsDisplay,
+          featureFlags: editingPlan.featureFlags,
+          isActive: editingPlan.isActive,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(`✓ ${editingPlan.name} saved successfully`);
+        setTimeout(() => setSuccess(null), 3000);
+        setEditingPlan(null);
+        fetchAllData();
+      } else {
+        setError(data.error);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSavingPlan(false);
     }
   };
 
@@ -317,9 +411,18 @@ export default function UnifiedControlPanel() {
                           <p className="text-gray-400 text-xs">{plan.planId}</p>
                         </div>
                       </div>
-                      <span className={`${info.badgeColor} text-white px-3 py-1 rounded-full text-xs font-semibold`}>
-                        Lvl {info.level}
-                      </span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={`${info.badgeColor} text-white px-3 py-1 rounded-full text-xs font-semibold`}>
+                          Lvl {info.level}
+                        </span>
+                        <button
+                          onClick={() => setEditingPlan(plan)}
+                          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400"
+                          title="Edit Plan"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Price */}
@@ -532,6 +635,254 @@ export default function UnifiedControlPanel() {
           </div>
         </div>
       </div>
+
+      {editingPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-8 border-b border-gray-800 pb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <Edit2 className="w-6 h-6 text-blue-400" /> Edit Plan: {editingPlan.name}
+                </h2>
+                <p className="text-gray-400 text-sm mt-1">Configure pricing, limits, and features for this plan</p>
+              </div>
+              <button
+                onClick={() => setEditingPlan(null)}
+                className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+              {/* Basic Info */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Basic Information</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Plan Name</label>
+                  <input
+                    type="text"
+                    value={editingPlan.name}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Display Label (e.g. Starter Plan)</label>
+                  <input
+                    type="text"
+                    value={editingPlan.label || ''}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, label: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Description</label>
+                  <textarea
+                    value={editingPlan.description || ''}
+                    onChange={(e) => setEditingPlan({ ...editingPlan, description: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition h-20"
+                  />
+                </div>
+                <div className="flex items-center gap-4">
+                   <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Price Monthly (USD)</label>
+                    <input
+                      type="number"
+                      value={editingPlan.priceMonthly}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, priceMonthly: parseFloat(e.target.value) })}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Price Yearly (USD)</label>
+                    <input
+                      type="number"
+                      value={editingPlan.priceYearly || 0}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, priceYearly: parseFloat(e.target.value) })}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+                {/* Usage Limits */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Hard Usage Limits & Display</h3>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="col-span-full bg-blue-900/10 p-3 rounded border border-blue-800/30 mb-2">
+                    <p className="text-xs text-blue-300">Numerical limits are enforced by the system. Display labels are what users see on pricing cards.</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Analyses Limit (-1 = ∞)</label>
+                    <input
+                      type="number"
+                      value={editingPlan.limits.analysesLimit}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, limits: { ...editingPlan.limits, analysesLimit: parseInt(e.target.value) }})}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    />
+                  </div>
+                   <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Analyses (e.g. 500/mo)</label>
+                    <input
+                      type="text"
+                      value={editingPlan.limitsDisplay?.analyses || ''}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, analyses: e.target.value }})}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Title Suggestions Limit</label>
+                    <input
+                      type="number"
+                      value={editingPlan.limits.titleSuggestions}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, limits: { ...editingPlan.limits, titleSuggestions: parseInt(e.target.value) }})}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    />
+                  </div>
+                   <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Videos (e.g. 5 Videos)</label>
+                    <input
+                      type="text"
+                      value={editingPlan.limitsDisplay?.videos || ''}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, videos: e.target.value }})}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    />
+                  </div>
+                   <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Storage (e.g. 10GB)</label>
+                    <input
+                      type="text"
+                      value={editingPlan.limitsDisplay?.storage || ''}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, storage: e.target.value }})}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    />
+                  </div>
+                   <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Support</label>
+                    <input
+                      type="text"
+                      value={editingPlan.limitsDisplay?.support || ''}
+                      onChange={(e) => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, support: e.target.value }})}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Features List */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Marketing Features List</h3>
+                <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                  {editingPlan.features.map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                       <input
+                        type="text"
+                        value={feature}
+                        onChange={(e) => {
+                          const newFeatures = [...editingPlan.features];
+                          newFeatures[idx] = e.target.value;
+                          setEditingPlan({ ...editingPlan, features: newFeatures });
+                        }}
+                        className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white"
+                      />
+                      <button
+                        onClick={() => {
+                          const newFeatures = editingPlan.features.filter((_, i) => i !== idx);
+                          setEditingPlan({ ...editingPlan, features: newFeatures });
+                        }}
+                        className="p-1 hover:bg-gray-800 text-red-500"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setEditingPlan({ ...editingPlan, features: [...editingPlan.features, ''] })}
+                    className="w-full py-2 border-2 border-dashed border-gray-700 rounded-lg text-gray-500 hover:text-white hover:border-gray-500 transition-all text-sm flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> Add Feature
+                  </button>
+                </div>
+              </div>
+
+              {/* Feature Flags */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Functional Feature Flags</h3>
+                <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
+                  {[
+                    {
+                      label: 'AI Studio Tools',
+                      flags: ['daily_ideas', 'ai_coach', 'keyword_research', 'script_writer', 'title_generator', 'channel_audit_tool', 'ai_shorts_clipping', 'ai_thumbnail_maker', 'optimize']
+                    },
+                    {
+                      label: 'Growth & Analytics',
+                      flags: ['advancedAiViralPrediction', 'realTimeTrendAnalysis', 'bestPostingTimePredictions', 'competitorAnalysis', 'advancedAnalyticsDashboard']
+                    },
+                    {
+                      label: 'Support & Enterprise',
+                      flags: ['emailSupport', 'prioritySupport24x7', 'priorityProcessing', 'teamCollaboration', 'whiteLabelReports', 'customAiModelTraining', 'dedicatedAccountManager', 'customIntegrations']
+                    }
+                  ].map((group) => (
+                    <div key={group.label} className="space-y-3">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">{group.label}</h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        {group.flags.map((flag) => (
+                          <label key={flag} className="flex items-center justify-between cursor-pointer group p-2 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-gray-800">
+                            <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{flag.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}</span>
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={!!editingPlan.featureFlags[flag as keyof PlanFeatureFlags]}
+                                onChange={(e) => setEditingPlan({
+                                  ...editingPlan,
+                                  featureFlags: { ...editingPlan.featureFlags, [flag]: e.target.checked }
+                                })}
+                              />
+                              <div className={`block w-10 h-6 rounded-full transition-colors ${editingPlan.featureFlags[flag as keyof PlanFeatureFlags] ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+                              <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${editingPlan.featureFlags[flag as keyof PlanFeatureFlags] ? 'translate-x-4' : ''}`}></div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex justify-end gap-4 mt-12 border-t border-gray-800 pt-8">
+               <button
+                onClick={() => setEditingPlan(null)}
+                className="px-6 py-2.5 rounded-lg font-semibold text-gray-400 hover:text-white hover:bg-gray-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePlan}
+                disabled={isSavingPlan}
+                className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
+              >
+                {isSavingPlan ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving Changes...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

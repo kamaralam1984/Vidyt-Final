@@ -13,23 +13,15 @@ export interface IViralPrediction extends Document {
     likes?: number;
     comments?: number;
   };
-  features: {
-    hookScore: number;
-    thumbnailScore: number;
-    titleScore: number;
-    trendingScore: number;
-    videoDuration: number;
-    engagementRate: number;
-    growthVelocity: number;
-    commentVelocity: number;
-    likeRatio: number;
-    uploadTimingScore: number;
-  };
+  features: { [K: string]: number };
   nnScore: number;
   ruleScore: number;
   historicalScore: number;
   viralProbability: number;
   confidence: number;
+  reasons: string[];
+  weak_points: string[];
+  improvements: string[];
   insights: string[];
   modelVersion: string;
   sourceProvider?: 'internal_ensemble' | 'python_ml';
@@ -63,23 +55,15 @@ const ViralPredictionSchema = new Schema<IViralPrediction>(
       likes: { type: Number, default: 0 },
       comments: { type: Number, default: 0 },
     },
-    features: {
-      hookScore: { type: Number, default: 0 },
-      thumbnailScore: { type: Number, default: 0 },
-      titleScore: { type: Number, default: 0 },
-      trendingScore: { type: Number, default: 0 },
-      videoDuration: { type: Number, default: 0 },
-      engagementRate: { type: Number, default: 0 },
-      growthVelocity: { type: Number, default: 0 },
-      commentVelocity: { type: Number, default: 0 },
-      likeRatio: { type: Number, default: 0 },
-      uploadTimingScore: { type: Number, default: 0 },
-    },
+    features: { type: Schema.Types.Mixed, default: {} },
     nnScore: { type: Number, default: 0 },
     ruleScore: { type: Number, default: 0 },
     historicalScore: { type: Number, default: 0 },
     viralProbability: { type: Number, required: true },
     confidence: { type: Number, default: 0 },
+    reasons: [{ type: String }],
+    weak_points: [{ type: String }],
+    improvements: [{ type: String }],
     insights: [{ type: String }],
     modelVersion: { type: String, default: 'v0' },
     sourceProvider: { type: String, enum: ['internal_ensemble', 'python_ml'], default: 'internal_ensemble' },

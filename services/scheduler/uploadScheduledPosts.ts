@@ -29,6 +29,9 @@ export async function processDueScheduledPosts(): Promise<{
 }> {
   await connectDB();
 
+  // First, try to retry previously failed posts
+  await retryFailedPosts(3).catch(e => console.error('Retry failed posts error:', e));
+
   try {
     // Find all posts that are due (scheduledAt <= now and status === 'scheduled')
     const now = new Date();

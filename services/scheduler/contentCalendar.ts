@@ -96,6 +96,30 @@ export async function schedulePost(
   });
 
   await post.save();
+  
+  // Enqueue job to BullMQ
+  try {
+    const { enqueueJob, POSTING_QUEUE } = await import('@/lib/queue');
+    const delay = Math.max(0, new Date(data.scheduledAt).getTime() - Date.now());
+    
+    await enqueueJob(POSTING_QUEUE, {
+      jobType: 'post_video',
+      userId,
+      data: {
+        postId: post._id.toString(),
+        userId,
+        platform: data.platform,
+      },
+      opts: {
+        delay, // BullMQ handles the delay automatically
+      }
+    });
+    console.log(`[ContentCalendar] Job enqueued for post ${post._id} with delay ${delay}ms`);
+  } catch (err) {
+    console.error('[ContentCalendar] Failed to enqueue job:', err);
+    // Non-critical error if DB saved but queue failed, but ideally both should succeed
+  }
+
   return post;
 }
 

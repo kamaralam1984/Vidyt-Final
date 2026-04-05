@@ -10,6 +10,7 @@ import { getBulkSchedulingLimit, getSchedulePostsLimit } from '@/lib/usageDispla
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
+import { checkUsageLimit, recordUsage } from '@/lib/usageControl';
 
 /**
  * Schedule a post with optional file uploads
@@ -57,27 +58,18 @@ export async function POST(request: NextRequest) {
     const { posts, bulk } = formData ? {} : body;
 
     if (bulk && Array.isArray(posts)) {
-      if (bulkLimit === 0) {
-        return NextResponse.json(
-          { error: 'Your current plan does not include bulk scheduling.' },
-          { status: 403 }
-        );
-      }
-      if (bulkLimit !== -1 && posts.length > bulkLimit) {
-        return NextResponse.json(
-          { error: `Bulk scheduling limit exceeded. Max ${bulkLimit} posts allowed.` },
-          { status: 403 }
-        );
-      }
-      if (activeScheduleLimit !== -1 && (activeScheduledCount + posts.length) > activeScheduleLimit) {
-        return NextResponse.json(
-          { error: `Schedule limit reached. You can keep up to ${activeScheduleLimit} active scheduled posts.` },
-          { status: 403 }
-        );
+      const check = await checkUsageLimit(authUser.id, planId, 'bulk_scheduling');
+      if (!check.allowed) {
+          return NextResponse.json({
+            error: 'LIMIT_REACHED',
+            message: `Bulk scheduling limit reached (${check.limit}). Upgrade your plan.`
+          }, { status: 403 });
       }
 
       // Bulk scheduling
       const scheduled = await bulkSchedulePosts(authUser.id, posts);
+      await recordUsage(authUser.id, 'bulk_scheduling');
+      
       return NextResponse.json({
         success: true,
         message: `${scheduled.length} posts scheduled successfully`,
@@ -129,18 +121,13 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-
-      if (activeScheduleLimit === 0) {
-        return NextResponse.json(
-          { error: 'Your current plan does not include post scheduling.' },
-          { status: 403 }
-        );
-      }
-      if (activeScheduleLimit !== -1 && activeScheduledCount >= activeScheduleLimit) {
-        return NextResponse.json(
-          { error: `Schedule limit reached. You can keep up to ${activeScheduleLimit} active scheduled posts.` },
-          { status: 403 }
-        );
+      
+      const check = await checkUsageLimit(authUser.id, planId, 'schedule_posts');
+      if (!check.allowed) {
+          return NextResponse.json({
+            error: 'LIMIT_REACHED',
+            message: `Post scheduling limit reached (${check.limit}). Upgrade your plan.`
+          }, { status: 403 });
       }
 
       const post = await schedulePost(authUser.id, {
@@ -152,6 +139,8 @@ export async function POST(request: NextRequest) {
         scheduledAt: new Date(scheduledAt),
         hashtags: hashtags || [],
       });
+
+      await recordUsage(authUser.id, 'schedule_posts');
 
       return NextResponse.json({
         success: true,

@@ -26,6 +26,9 @@ export interface CompetitorInsights {
   recommendations: string[];
 }
 
+import { getApiConfig } from '@/lib/apiConfig';
+import axios from 'axios';
+
 /**
  * Analyze competitor channel and extract insights
  */
@@ -36,6 +39,13 @@ export async function analyzeCompetitor(
 ): Promise<CompetitorInsights> {
   await connectDB();
 
+  const config = await getApiConfig();
+  const apiKey = config.youtubeDataApiKey;
+
+  if (!apiKey && platform === 'youtube') {
+    throw new Error('YouTube Data API Key not configured in Super Admin settings');
+  }
+
   // Get or create competitor record
   let competitor = await Competitor.findOne({ 
     userId, 
@@ -43,44 +53,94 @@ export async function analyzeCompetitor(
     platform 
   });
 
+  let channelData: any = null;
+  let videoItems: any[] = [];
+
+  if (platform === 'youtube') {
+    console.log(`[CompetitorIntelligence] Fetching real data for YouTube channel: ${competitorId}`);
+    
+    // 1. Fetch Channel Metadata
+    const channelRes = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
+      params: {
+        part: 'snippet,statistics,contentDetails',
+        id: competitorId,
+        key: apiKey
+      }
+    });
+    
+    channelData = channelRes.data?.items?.[0];
+    if (!channelData) {
+      // Try resolving handle if competitorId starts with @
+      if (competitorId.startsWith('@')) {
+        const searchRes = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+          params: { part: 'snippet', q: competitorId, type: 'channel', key: apiKey, maxResults: 1 }
+        });
+        const resolvedId = searchRes.data?.items?.[0]?.id?.channelId;
+        if (resolvedId) return analyzeCompetitor(userId, resolvedId, platform);
+      }
+      throw new Error(`YouTube channel ${competitorId} not found`);
+    }
+
+    // 2. Fetch Recent Videos via Search (more reliable for "latest")
+    const videoRes = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+      params: {
+        part: 'snippet',
+        channelId: channelData.id,
+        order: 'date',
+        type: 'video',
+        maxResults: 25,
+        key: apiKey
+      }
+    });
+    
+    const searchItems = videoRes.data?.items || [];
+    const videoIds = searchItems.map((item: any) => item.id.videoId).join(',');
+
+    // 3. Get detailed stats for these videos
+    if (videoIds) {
+      const statsRes = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
+        params: {
+          part: 'snippet,statistics,contentDetails',
+          id: videoIds,
+          key: apiKey
+        }
+      });
+      videoItems = statsRes.data?.items || [];
+    }
+  }
+
   if (!competitor) {
-    // Create new competitor record
     competitor = new Competitor({
       userId,
       competitorId,
       platform,
-      channelName: competitorId, // Would fetch from API
-      channelUrl: '',
+      channelName: channelData?.snippet?.title || competitorId,
+      channelUrl: platform === 'youtube' ? `https://youtube.com/channel/${channelData?.id}` : '',
       trackedVideos: [],
       lastAnalyzed: new Date(),
-      topPerformers: [],
-      averageEngagementRate: 0,
-      averageViews: 0,
-      bestPostingTimes: [],
-      successfulPatterns: {
-        titles: [],
-        hashtags: [],
-        videoLengths: [],
-        categories: [],
-      },
-      growthRate: 0,
     });
+  } else {
+    competitor.channelName = channelData?.snippet?.title || competitor.channelName;
   }
 
-  // Get competitor's videos (would fetch from platform API)
-  // For now, analyze existing videos in our database
-  const competitorVideos = await Video.find({
-    platform,
-    // Would filter by competitorId/channelId
-  }).limit(50);
+  // Transform YouTube API items to our internal "Video" like structure for analysis
+  const normalizedVideos = videoItems.map(item => ({
+    title: item.snippet.title,
+    views: parseInt(item.statistics.viewCount) || 0,
+    duration: parseISO8601Duration(item.contentDetails.duration),
+    uploadedAt: new Date(item.snippet.publishedAt),
+    hashtags: extractHashtags(item.snippet.description || ''),
+    category: item.snippet.categoryId,
+    likes: parseInt(item.statistics.likeCount) || 0,
+    comments: parseInt(item.statistics.commentCount) || 0,
+  }));
 
-  // Analyze videos
-  const insights = await extractInsights(competitorVideos);
+  const insights = await extractInsights(normalizedVideos);
 
   // Update competitor record
   competitor.averageEngagementRate = insights.averageEngagementRate;
   competitor.averageViews = insights.averageViews;
-  competitor.topPerformers = insights.topPerformers.map(v => v.videoId as any);
+  competitor.followerCount = parseInt(channelData?.statistics?.subscriberCount) || 0;
   competitor.bestPostingTimes = insights.bestPostingTimes;
   competitor.successfulPatterns = insights.successfulPatterns;
   competitor.growthRate = insights.growthRate;
@@ -93,6 +153,18 @@ export async function analyzeCompetitor(
     channelName: competitor.channelName,
     ...insights,
   };
+}
+
+function parseISO8601Duration(duration: string): number {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  return (parseInt(match[1] || '0') * 3600) + (parseInt(match[2] || '0') * 60) + parseInt(match[3] || '0');
+}
+
+function extractHashtags(text: string): string[] {
+  const hashtagRegex = /#[\w]+/g;
+  const matches = text.match(hashtagRegex);
+  return matches ? matches.map(tag => tag.substring(1)) : [];
 }
 
 /**
@@ -128,13 +200,13 @@ async function extractInsights(videos: any[]): Promise<Omit<CompetitorInsights, 
   // Find top performers
   const topPerformers = videos
     .map(v => ({
-      videoId: v._id.toString(),
+      videoId: v.id || Math.random().toString(),
       title: v.title,
       views: v.views || 0,
-      engagementRate: v.analysisId?.viralProbability || 0,
-      viralScore: v.analysisId?.viralProbability || 0,
+      engagementRate: v.views > 0 ? (v.likes / v.views) * 100 : 0,
+      viralScore: v.views > 0 ? (v.likes / v.views) * 100 : 0,
     }))
-    .sort((a, b) => b.viralScore - a.viralScore)
+    .sort((a, b) => b.views - a.views)
     .slice(0, 10);
 
   // Analyze posting times

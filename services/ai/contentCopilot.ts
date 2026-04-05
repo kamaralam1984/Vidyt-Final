@@ -283,6 +283,89 @@ Return as JSON array of strings.`;
   }
 }
 
+/**
+ * Repurpose YouTube video content for other social platforms
+ */
+export async function repurposeVideoContent(
+  title: string,
+  description: string,
+  transcript: string = '',
+  targetPlatform: 'tiktok' | 'instagram' | 'linkedin' | 'twitter' | 'facebook',
+  customInstructions: string = ''
+): Promise<{
+  content: string;
+  hashtags: string[];
+  suggestedHooks: string[];
+  estimatedViralPotential: number;
+}> {
+  const openai = await getOpenAIClient();
+  if (!openai) {
+    return {
+      content: `Check out this amazing video about ${title}! #viral #trending`,
+      hashtags: ['viral', 'trending', targetPlatform],
+      suggestedHooks: [`You won't believe this about ${title}`],
+      estimatedViralPotential: 50
+    };
+  }
+
+  try {
+    const platformSpecificPrompt = {
+      tiktok: 'Create a short, punchy, high-energy caption with 3-5 viral hooks for the first 3 seconds.',
+      instagram: 'Create an engaging Reel caption with a strong hook and emojis.',
+      linkedin: 'Create a professional, thought-leadership style post with key takeaways.',
+      twitter: 'Create a thread or a single punchy tweet with high engagement potential.',
+      facebook: 'Create a community-focused post that encourages comments and shares.'
+    }[targetPlatform];
+
+    const prompt = `Repurpose the following YouTube video content for ${targetPlatform}.
+Title: "${title}"
+Description: "${description}"
+Transcript/Snippet: "${transcript.substring(0, 2000)}"
+
+Instructions:
+1. ${platformSpecificPrompt}
+2. ${customInstructions}
+3. Provide 10-15 relevant hashtags.
+4. Provide 3 variation of "hooks" for the video intro.
+5. Estimate viral potential (0-100).
+
+Return as JSON object with keys: "content", "hashtags" (array), "suggestedHooks" (array), "estimatedViralPotential" (number).`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a multi-platform social media strategy expert. You excel at adapting long-form content into high-performing short-form posts.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.8,
+      max_tokens: 1500,
+    });
+
+    const content = JSON.parse(response.choices[0]?.message?.content || '{}');
+    
+    return {
+      content: content.content || '',
+      hashtags: content.hashtags || [],
+      suggestedHooks: content.suggestedHooks || [],
+      estimatedViralPotential: content.estimatedViralPotential || 50,
+    };
+  } catch (error) {
+    console.error('OpenAI Repurpose Error:', error);
+    return {
+      content: `Check out this amazing video about ${title}! #viral #trending`,
+      hashtags: ['viral', 'trending', targetPlatform],
+      suggestedHooks: [`You won't believe this about ${title}`],
+      estimatedViralPotential: 50
+    };
+  }
+}
+
 // Enhanced fallback functions with trend data
 function generateEnhancedIdeas(
   niche: string,

@@ -53,9 +53,6 @@ async function handleUpload(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    if (!checkLimit(user, 'analyses')) {
-      return NextResponse.json(getLimitExceededResponse(), { status: 403 });
-    }
     const planId = user.subscription || 'free';
 
     const titleSuggestionsLimit = getTitleSuggestionsCount(planId);
@@ -153,7 +150,7 @@ async function handleUpload(request: NextRequest) {
       },
       hashtags: seoPack.hashtags,
       trendingTopics: seoPack.trendingTags.map((topic) => ({
-        keyword: topic.keyword,
+        keyword: topic.topic,
         score: topic.score,
       })),
       bestPostingTime: {
@@ -225,8 +222,10 @@ async function handleUpload(request: NextRequest) {
   }
 }
 
-// Wrap with rate limiting (20 uploads per hour)
+import { withUsageLimit } from '@/middleware/usageGuard';
+
+// Wrap with rate limiting (20 uploads per hour) AND plan-based usage limits
 export const POST = withUploadRateLimit(
-  (req) => handleUpload(req),
+  withUsageLimit((req) => handleUpload(req), 'video_upload'),
   { endpoint: '/api/videos/upload' }
 );

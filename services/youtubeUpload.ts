@@ -90,3 +90,73 @@ export async function getYouTubeClient(credentials: { access_token?: string | nu
 
     return google.youtube({ version: 'v3', auth });
 }
+/**
+ * High-level function for background worker to upload a scheduled post.
+ */
+export async function uploadScheduledPost(userId: string, post: any) {
+    const user = await (await import('@/models/User')).default.findById(userId);
+    if (!user || !user.youtube || !user.youtube.refresh_token) {
+        throw new Error('User YouTube account not linked or refresh token missing');
+    }
+
+    const auth = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET || process.env.CLIENT_SECRET,
+        getMainYoutubeOAuthRedirectUri()
+    );
+
+    auth.setCredentials({
+        access_token: user.youtube.access_token,
+        refresh_token: user.youtube.refresh_token,
+        expiry_date: user.youtube.expiry_date ? new Date(user.youtube.expiry_date).getTime() : undefined,
+    });
+
+    // Auto-save refreshed tokens
+    auth.on('tokens', async (tokens) => {
+        const update: any = {};
+        if (tokens.access_token) update['youtube.access_token'] = tokens.access_token;
+        if (tokens.refresh_token) update['youtube.refresh_token'] = tokens.refresh_token;
+        if (tokens.expiry_date) update['youtube.expiry_date'] = new Date(tokens.expiry_date);
+        
+        await (await import('@/models/User')).default.findByIdAndUpdate(userId, { $set: update });
+    });
+
+    const youtube = google.youtube({ version: 'v3', auth });
+
+    // Handle local file vs remote URL
+    const fs = await import('fs');
+    const path = await import('path');
+    let videoFilePath = post.videoUrl || '';
+    if (videoFilePath.startsWith('/')) {
+        videoFilePath = path.join(process.cwd(), 'public', videoFilePath);
+    }
+
+    if (!fs.existsSync(videoFilePath)) {
+        throw new Error(`Video file not found: ${videoFilePath}`);
+    }
+
+    const res = await youtube.videos.insert({
+        part: ['snippet', 'status'],
+        requestBody: {
+            snippet: {
+                title: post.title,
+                description: post.description || '',
+                tags: post.hashtags || [],
+                categoryId: '22',
+            },
+            status: {
+                privacyStatus: 'public',
+                selfDeclaredMadeForKids: false,
+            },
+        },
+        media: {
+            body: fs.createReadStream(videoFilePath),
+        },
+    });
+
+    return {
+        youtubeId: res.data.id,
+        link: `https://www.youtube.com/watch?v=${res.data.id}`,
+        status: res.data.status?.privacyStatus,
+    };
+}

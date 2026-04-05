@@ -37,7 +37,7 @@ export interface TrainingSample {
 function buildModel(): tf.Sequential {
   const model = tf.sequential();
   model.add(tf.layers.dense({
-    inputShape: [10],
+    inputShape: [30],
     units: 64,
     activation: 'relu',
   }));

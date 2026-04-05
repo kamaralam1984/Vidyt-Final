@@ -9,11 +9,19 @@ import HomeClient, { type MarketingPlan } from '@/components/HomeClient';
 
 async function getPlans(): Promise<MarketingPlan[]> {
   await connectDB();
-  const dbPlans = await Plan.find({ isActive: true }).sort({ priceMonthly: 1 }).lean();
+  const [dbPlans, discounts] = await Promise.all([
+    Plan.find({ isActive: true }).sort({ priceMonthly: 1 }).lean(),
+    import('@/models/PlanDiscount').then(m => m.default.find({
+      startsAt: { $lte: new Date() },
+      endsAt: { $gte: new Date() }
+    }).lean())
+  ]);
 
   return dbPlans.map((p: any) => {
     const priceMonth = p.priceMonthly;
     const priceYear = yearlyUsdFromMonthly(priceMonth, p.priceYearly);
+    
+    const d = discounts.find((disc: any) => disc.planId === p.planId || disc.planId === p._id.toString());
 
     return {
       planId: p.planId,
@@ -21,7 +29,12 @@ async function getPlans(): Promise<MarketingPlan[]> {
       popular: p.planId === 'pro',
       priceMonth,
       priceYear,
+      description: p.description || '',
       features: p.features || [],
+      discount: d ? {
+        percentage: d.percentage,
+        label: d.label,
+      } : undefined
     };
   });
 }

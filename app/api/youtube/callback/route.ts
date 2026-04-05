@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         console.log('YouTube Callback: Tokens received successfully');
         console.log(tokens);
 
-        // Store tokens in user document
+        // 1. Store tokens in user document
         const updatedUser = await User.findByIdAndUpdate(authUser.id, {
             youtube: {
                 access_token: tokens.access_token,
@@ -49,6 +49,42 @@ export async function GET(request: NextRequest) {
         }, { new: true });
 
         console.log('YouTube Callback: User updated with tokens:', !!updatedUser);
+
+        // 2. Discover and Sync Channels
+        client.setCredentials(tokens);
+        const youtube = google.youtube({ version: 'v3', auth: client });
+
+        const channelRes = await youtube.channels.list({
+            mine: true,
+            part: ['snippet', 'statistics']
+        });
+
+        if (channelRes.data.items && channelRes.data.items.length > 0) {
+            const Channel = (await import('@/models/Channel')).default;
+            for (const item of channelRes.data.items) {
+                await Channel.findOneAndUpdate(
+                    { channelId: item.id },
+                    {
+                        userId: authUser.id,
+                        channelTitle: item.snippet?.title || 'Unknown Channel',
+                        channelThumbnail: item.snippet?.thumbnails?.default?.url || '',
+                        accessToken: tokens.access_token!,
+                        refreshToken: tokens.refresh_token!,
+                        subscribers: parseInt(item.statistics?.subscriberCount || '0'),
+                        totalViews: parseInt(item.statistics?.viewCount || '0'),
+                        videoCount: parseInt(item.statistics?.videoCount || '0'),
+                        lastSyncedAt: new Date()
+                    },
+                    { upsert: true, new: true }
+                );
+                console.log(`YouTube Callback: Synced channel ${item.snippet?.title}`);
+                
+                // 3. Trigger deep sync (Stats + Videos) in background
+                const { syncChannelStats, importRecentVideos } = await import('@/lib/youtubeSync');
+                syncChannelStats(item.id!).catch(e => console.error('Initial stat sync failed', e));
+                importRecentVideos(item.id!).catch(e => console.error('Initial video import failed', e));
+            }
+        }
 
         // Redirect to dashboard with specific query param as requested
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';

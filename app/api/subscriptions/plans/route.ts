@@ -10,7 +10,7 @@ import { yearlyUsdFromMonthly } from '@/lib/planPricing';
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const includeDiscounts = url.searchParams.get('withDiscounts') === '1';
+    const includeDiscounts = url.searchParams.get('withDiscounts') !== '0';
 
     await connectDB();
     
@@ -37,11 +37,12 @@ export async function GET(request: NextRequest) {
         features: p.features || [],
         description: p.description || '',
         isCustom: p.isCustom,
-        limits: basePlan ? basePlan.limits : {
+        limits: p.limitsDisplay || (basePlan ? basePlan.limits : {
           videos: 'Custom',
           analyses: 'Custom',
-          competitors: 'Custom',
-        },
+          storage: '—',
+          support: 'Priority',
+        }),
       };
     });
 

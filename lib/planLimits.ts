@@ -4,14 +4,17 @@
  */
 
 import connectDB from './mongodb';
+import { normalizePlan } from './normalizePlan';
+import { getApiConfig } from './apiConfig';
 
 export type PlanId = 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'owner';
 
 export interface PlanLimits {
-  /** Video analyses: per day (pro/enterprise) or per month (free) */
-  analysesLimit: number;
-  /** 'day' for pro/enterprise, 'month' for free */
-  analysesPeriod: 'day' | 'month';
+  video_upload: number;
+  video_analysis: number;
+  schedule_posts: number;
+  bulk_scheduling: number;
+  /** Legacy/Extra */
   titleSuggestions: number;
   hashtagCount: number;
   competitorsTracked: number;
@@ -32,6 +35,16 @@ export interface PlanFeatures {
   prioritySupport24x7: boolean;
   advancedAnalyticsDashboard: boolean;
   customIntegrations: boolean;
+  /** AI Studio Features */
+  daily_ideas: boolean;
+  ai_coach: boolean;
+  keyword_research: boolean;
+  script_writer: boolean;
+  title_generator: boolean;
+  channel_audit_tool: boolean;
+  ai_shorts_clipping: boolean;
+  ai_thumbnail_maker: boolean;
+  optimize: boolean;
 }
 
 export interface PlanRoll {
@@ -57,7 +70,15 @@ const FREE_ROLL: PlanRoll = {
   id: 'free',
   name: 'Free',
   role: 'user',
-  limits: { analysesLimit: 5, analysesPeriod: 'month', titleSuggestions: 3, hashtagCount: 10, competitorsTracked: 3 },
+  limits: { 
+    video_upload: 5, 
+    video_analysis: 5, 
+    schedule_posts: 0, 
+    bulk_scheduling: 0,
+    titleSuggestions: 3, 
+    hashtagCount: 10, 
+    competitorsTracked: 3 
+  },
   limitsDisplay: { videos: '5/month', analyses: 'Basic', storage: '—', support: 'Community' },
   features: {
     advancedAiViralPrediction: false,
@@ -73,6 +94,15 @@ const FREE_ROLL: PlanRoll = {
     prioritySupport24x7: false,
     advancedAnalyticsDashboard: false,
     customIntegrations: false,
+    daily_ideas: false,
+    ai_coach: false,
+    keyword_research: false,
+    script_writer: false,
+    title_generator: false,
+    channel_audit_tool: false,
+    ai_shorts_clipping: false,
+    ai_thumbnail_maker: false,
+    optimize: false,
   },
   featureList: ['5 video analyses/month', 'Basic viral score', 'Title optimization (3)', 'Hashtag generator (10)', 'Community support'],
 };
@@ -81,7 +111,15 @@ const STARTER_ROLL: PlanRoll = {
   id: 'starter',
   name: 'Starter',
   role: 'user',
-  limits: { analysesLimit: 10, analysesPeriod: 'day', titleSuggestions: 5, hashtagCount: 15, competitorsTracked: 10 },
+  limits: { 
+    video_upload: 15, 
+    video_analysis: 15, 
+    schedule_posts: 5, 
+    bulk_scheduling: 10,
+    titleSuggestions: 5, 
+    hashtagCount: 15, 
+    competitorsTracked: 10 
+  },
   limitsDisplay: { videos: '10/days', analyses: 'Standard AI', storage: '—', support: 'Email' },
   features: {
     advancedAiViralPrediction: true,
@@ -97,6 +135,15 @@ const STARTER_ROLL: PlanRoll = {
     prioritySupport24x7: false,
     advancedAnalyticsDashboard: false,
     customIntegrations: false,
+    daily_ideas: true,
+    ai_coach: false,
+    keyword_research: true,
+    script_writer: true,
+    title_generator: true,
+    channel_audit_tool: false,
+    ai_shorts_clipping: false,
+    ai_thumbnail_maker: false,
+    optimize: true,
   },
   featureList: ['10 video analyses/day', 'Standard viral prediction', 'Real-time trends', 'Email support'],
 };
@@ -105,7 +152,15 @@ const PRO_ROLL: PlanRoll = {
   id: 'pro',
   name: 'Pro',
   role: 'manager',
-  limits: { analysesLimit: 30, analysesPeriod: 'day', titleSuggestions: 10, hashtagCount: 20, competitorsTracked: 50 },
+  limits: { 
+    video_upload: 30, 
+    video_analysis: 30, 
+    schedule_posts: 10, 
+    bulk_scheduling: 50,
+    titleSuggestions: 10, 
+    hashtagCount: 20, 
+    competitorsTracked: 50 
+  },
   limitsDisplay: { videos: '30/days', analyses: 'Advanced AI', storage: '—', support: 'Email' },
   features: {
     advancedAiViralPrediction: true,
@@ -121,6 +176,15 @@ const PRO_ROLL: PlanRoll = {
     prioritySupport24x7: false,
     advancedAnalyticsDashboard: false,
     customIntegrations: false,
+    daily_ideas: true,
+    ai_coach: true,
+    keyword_research: true,
+    script_writer: true,
+    title_generator: true,
+    channel_audit_tool: true,
+    ai_shorts_clipping: true,
+    ai_thumbnail_maker: true,
+    optimize: true,
   },
   featureList: ['30 video analyses/day', 'Advanced AI prediction', 'Best posting times', 'Priority support'],
 };
@@ -129,7 +193,15 @@ const ENTERPRISE_ROLL: PlanRoll = {
   id: 'enterprise',
   name: 'Enterprise',
   role: 'admin',
-  limits: { analysesLimit: 100, analysesPeriod: 'day', titleSuggestions: 10, hashtagCount: 20, competitorsTracked: -1 },
+  limits: { 
+    video_upload: -1, 
+    video_analysis: -1, 
+    schedule_posts: -1, 
+    bulk_scheduling: -1,
+    titleSuggestions: 10, 
+    hashtagCount: 20, 
+    competitorsTracked: -1 
+  },
   limitsDisplay: { videos: '100/days', analyses: 'Custom AI', storage: '—', support: '24/7 Priority' },
   features: {
     advancedAiViralPrediction: true,
@@ -145,6 +217,15 @@ const ENTERPRISE_ROLL: PlanRoll = {
     prioritySupport24x7: true,
     advancedAnalyticsDashboard: true,
     customIntegrations: true,
+    daily_ideas: true,
+    ai_coach: true,
+    keyword_research: true,
+    script_writer: true,
+    title_generator: true,
+    channel_audit_tool: true,
+    ai_shorts_clipping: true,
+    ai_thumbnail_maker: true,
+    optimize: true,
   },
   featureList: ['100 videos /day', 'Team collaboration', 'White-label reports', '24/7 priority support'],
 };
@@ -153,7 +234,15 @@ const CUSTOM_ROLL: PlanRoll = {
   id: 'custom',
   name: 'Custom',
   role: 'admin',
-  limits: { analysesLimit: 500, analysesPeriod: 'day', titleSuggestions: 50, hashtagCount: 50, competitorsTracked: -1 },
+  limits: { 
+    video_upload: -1, 
+    video_analysis: -1, 
+    schedule_posts: -1, 
+    bulk_scheduling: -1,
+    titleSuggestions: 50, 
+    hashtagCount: 50, 
+    competitorsTracked: -1 
+  },
   limitsDisplay: { videos: '500/days', analyses: 'Custom AI', storage: '—', support: '24/7 Priority' },
   features: {
     advancedAiViralPrediction: true,
@@ -169,6 +258,15 @@ const CUSTOM_ROLL: PlanRoll = {
     prioritySupport24x7: true,
     advancedAnalyticsDashboard: true,
     customIntegrations: true,
+    daily_ideas: true,
+    ai_coach: true,
+    keyword_research: true,
+    script_writer: true,
+    title_generator: true,
+    channel_audit_tool: true,
+    ai_shorts_clipping: true,
+    ai_thumbnail_maker: true,
+    optimize: true,
   },
   featureList: ['Everything in Enterprise', 'Custom usage limits', 'Dedicated support team'],
 };
@@ -177,7 +275,15 @@ const OWNER_ROLL: PlanRoll = {
   id: 'owner',
   name: 'Owner',
   role: 'superadmin',
-  limits: { analysesLimit: -1, analysesPeriod: 'month', titleSuggestions: -1, hashtagCount: -1, competitorsTracked: -1 },
+  limits: { 
+    video_upload: -1, 
+    video_analysis: -1, 
+    schedule_posts: -1, 
+    bulk_scheduling: -1,
+    titleSuggestions: -1, 
+    hashtagCount: -1, 
+    competitorsTracked: -1 
+  },
   limitsDisplay: { videos: 'Unlimited', analyses: 'Unlimited', storage: '—', support: 'Full' },
   features: {
     advancedAiViralPrediction: true,
@@ -193,6 +299,15 @@ const OWNER_ROLL: PlanRoll = {
     prioritySupport24x7: true,
     advancedAnalyticsDashboard: true,
     customIntegrations: true,
+    daily_ideas: true,
+    ai_coach: true,
+    keyword_research: true,
+    script_writer: true,
+    title_generator: true,
+    channel_audit_tool: true,
+    ai_shorts_clipping: true,
+    ai_thumbnail_maker: true,
+    optimize: true,
   },
   featureList: ['Unlimited access', 'All features enabled'],
 };
@@ -241,8 +356,10 @@ async function syncPlansFromDB() {
           name: p.name || staticRoll.name,
           role: p.role || staticRoll.role,
           limits: {
-            analysesLimit: p.limits?.analysesLimit ?? staticRoll.limits.analysesLimit,
-            analysesPeriod: p.limits?.analysesPeriod ?? staticRoll.limits.analysesPeriod,
+            video_upload: p.limits?.video_upload ?? staticRoll.limits.video_upload,
+            video_analysis: p.limits?.video_analysis ?? staticRoll.limits.video_analysis,
+            schedule_posts: p.limits?.schedule_posts ?? staticRoll.limits.schedule_posts,
+            bulk_scheduling: p.limits?.bulk_scheduling ?? staticRoll.limits.bulk_scheduling,
             titleSuggestions: p.limits?.titleSuggestions ?? staticRoll.limits.titleSuggestions,
             hashtagCount: p.limits?.hashtagCount ?? staticRoll.limits.hashtagCount,
             competitorsTracked: p.limits?.competitorsTracked ?? staticRoll.limits.competitorsTracked,
@@ -261,6 +378,16 @@ async function syncPlansFromDB() {
             prioritySupport24x7: p.featureFlags?.prioritySupport24x7 ?? staticRoll.features.prioritySupport24x7,
             advancedAnalyticsDashboard: p.featureFlags?.advancedAnalyticsDashboard ?? staticRoll.features.advancedAnalyticsDashboard,
             customIntegrations: p.featureFlags?.customIntegrations ?? staticRoll.features.customIntegrations,
+            // AI Studio
+            daily_ideas: p.featureFlags?.daily_ideas ?? staticRoll.features.daily_ideas,
+            ai_coach: p.featureFlags?.ai_coach ?? staticRoll.features.ai_coach,
+            keyword_research: p.featureFlags?.keyword_research ?? staticRoll.features.keyword_research,
+            script_writer: p.featureFlags?.script_writer ?? staticRoll.features.script_writer,
+            title_generator: p.featureFlags?.title_generator ?? staticRoll.features.title_generator,
+            channel_audit_tool: p.featureFlags?.channel_audit_tool ?? staticRoll.features.channel_audit_tool,
+            ai_shorts_clipping: p.featureFlags?.ai_shorts_clipping ?? staticRoll.features.ai_shorts_clipping,
+            ai_thumbnail_maker: p.featureFlags?.ai_thumbnail_maker ?? staticRoll.features.ai_thumbnail_maker,
+            optimize: p.featureFlags?.optimize ?? staticRoll.features.optimize,
           },
           limitsDisplay: {
             videos: p.limitsDisplay?.videos ?? staticRoll.limitsDisplay.videos,
@@ -336,9 +463,9 @@ export function getSubscriptionLimitsForApi(planId: string | undefined): {
 } {
   const limits = getPlanLimits(planId);
   return {
-    videos: limits.analysesLimit,
-    analyses: limits.analysesLimit,
+    videos: limits.video_upload,
+    analyses: limits.video_analysis,
     competitors: limits.competitorsTracked,
-    analysesPeriod: limits.analysesPeriod,
+    analysesPeriod: 'day', // New system is primarily daily-tracked
   };
 }

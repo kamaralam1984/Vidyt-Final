@@ -127,13 +127,15 @@ export async function generatePDFReport(
 export async function exportAnalytics(
   userId: string,
   format: 'pdf' | 'excel' | 'csv',
-  options?: ExportOptions
+  options?: ExportOptions,
+  workspaceId?: string
 ): Promise<{ content: string; filename: string; mimeType: string }> {
   // Get analytics data
   const overview = await getAnalyticsOverview(
     userId,
     options?.dateRange?.start,
-    options?.dateRange?.end
+    options?.dateRange?.end,
+    workspaceId
   );
 
   const data = {
@@ -144,12 +146,26 @@ export async function exportAnalytics(
   let whiteLabel: { companyName?: string; logoUrl?: string } | undefined;
   try {
     await connectDB();
-    const user = await User.findById(userId).select('whiteLabelCompanyName whiteLabelLogoUrl companyName').lean();
-    if (user?.whiteLabelCompanyName || user?.companyName || user?.whiteLabelLogoUrl) {
-      whiteLabel = {
-        companyName: user.whiteLabelCompanyName || user.companyName,
-        logoUrl: user.whiteLabelLogoUrl,
-      };
+    
+    if (workspaceId) {
+      const Workspace = (await import('@/models/Workspace')).default;
+      const workspace = await Workspace.findById(workspaceId).lean() as any;
+      if (workspace) {
+        whiteLabel = {
+          companyName: workspace.name,
+          logoUrl: workspace.logoUrl
+        };
+      }
+    }
+
+    if (!whiteLabel) {
+      const user = await User.findById(userId).select('whiteLabelCompanyName whiteLabelLogoUrl companyName').lean();
+      if (user?.whiteLabelCompanyName || user?.companyName || user?.whiteLabelLogoUrl) {
+        whiteLabel = {
+          companyName: user.whiteLabelCompanyName || user.companyName,
+          logoUrl: user.whiteLabelLogoUrl,
+        };
+      }
     }
   } catch (_) {}
 

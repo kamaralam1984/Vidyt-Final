@@ -227,8 +227,10 @@ export function checkSubscriptionLimit(
   if (!user) return false;
   const limits = getPlanLimits(user.subscription);
   const limit =
-    feature === 'analyses' || feature === 'videos'
-      ? limits.analysesLimit
+    feature === 'analyses'
+      ? limits.video_analysis
+      : feature === 'videos'
+      ? limits.video_upload
       : limits.competitorsTracked;
   return limit === -1 || limit > 0;
 }

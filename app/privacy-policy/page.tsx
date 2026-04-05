@@ -1,261 +1,102 @@
-'use client';
+import MarketingNavbar from '@/components/MarketingNavbar';
+import MarketingFooter from '@/components/MarketingFooter';
+
+export const metadata = {
+  title: 'Privacy Policy | Vid YT',
+  description: 'Privacy Policy for Vid YT, a product operated by Kvl Business Solutions.',
+};
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="min-h-screen bg-[#0F0F0F] text-white px-6 py-16">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl md:text-5xl font-bold mb-6">
-          Privacy Policy
-        </h1>
-        <p className="text-[#AAAAAA] mb-8 text-sm">
-          Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">1. Data We Collect</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            We may collect basic account information (email, name), usage data (which tools were used and how often) and, optionally, identifiers from connected platforms (such as YouTube channel IDs). This includes:
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li>Account credentials (email, encrypted password)</li>
-            <li>Profile information (name, company, phone)</li>
-            <li>Connected platform tokens (YouTube OAuth)</li>
-            <li>Usage analytics and engagement metrics</li>
-            <li>Video analysis data and predictions</li>
-            <li>Subscription and payment information</li>
-          </ul>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">2. How We Use Your Data</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            We primarily use data to:
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li>Provide personalized video analysis and AI recommendations</li>
-            <li>Generate analytics and performance insights</li>
-            <li>Improve our AI models and platform features</li>
-            <li>Process payments and manage subscriptions</li>
-            <li>Send service updates and important notifications</li>
-            <li>Comply with legal and security obligations</li>
-          </ul>
-          <p className="text-[#CCCCCC]">
-            We do not publicly share your content unless you explicitly give us permission.
-          </p>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">3. Third-Party Services</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            For payments, hosting, analytics, and platform integrations, we may use trusted third-party providers:
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li><strong>YouTube API:</strong> For channel management and video analytics</li>
-            <li><strong>Razorpay & Stripe:</strong> For secure payment processing</li>
-            <li><strong>Email Services:</strong> For notifications and verification</li>
-            <li><strong>Google Cloud:</strong> For hosting and data processing</li>
-            <li><strong>AI APIs:</strong> OpenAI and Google Gemini for analysis (anonymized data)</li>
-          </ul>
-          <p className="text-[#CCCCCC]">
-            All partners follow industry-standard security practices under strict data processing agreements.
-          </p>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">4. Cookie Policy</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            We use cookies to enhance your experience:
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li><strong>Functional Cookies:</strong> Essential for login, authentication, and site operation</li>
-            <li><strong>Analytics Cookies:</strong> Help us understand how you use Vid YT (optional)</li>
-            <li><strong>Marketing Cookies:</strong> Used for personalized content and campaigns (optional)</li>
-          </ul>
-          <p className="text-[#CCCCCC] mb-4">
-            When you first visit, we show a consent banner. Functional cookies are always enabled (required for the site to work), but you can accept or reject analytics and marketing cookies.
-          </p>
-          <div className="bg-[#181818] border border-[#333333] rounded-lg p-4 text-[#AAAAAA] text-sm">
-            <p className="mb-2"><strong>Manage Your Cookie Preferences:</strong></p>
-            <p>You can change your cookie preferences at any time by looking for the cookie consent banner at the bottom of the page, or by clearing your browser cookies and refreshing.</p>
+    <div className="min-h-screen bg-[#0F0F0F] text-[#AAAAAA] font-sans selection:bg-[#FF0000]/30 selection:text-white">
+      <MarketingNavbar />
+      
+      <main className="max-w-4xl mx-auto px-6 py-24">
+        <div className="mb-12 border-b border-[#212121] pb-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">Privacy Policy</h1>
+          <div className="space-y-1 text-lg text-[#AAAAAA]">
+            <p><strong>Version:</strong> 1.0</p>
+            <p><strong>Last Updated:</strong> April 5, 2026</p>
+            <p><strong>Effective From:</strong> April 5, 2026</p>
           </div>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">5. How to Delete Your Account & Data Rights</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            You have the right to request deletion of your account and all associated data at any time:
-          </p>
-
-          <h3 className="text-xl font-semibold text-white mb-3 mt-4">Deletion Process:</h3>
-          <ol className="list-decimal list-inside text-[#CCCCCC] space-y-2 mb-6">
-            <li><strong>Go to Settings → Delete My Account</strong></li>
-            <li><strong>Review the warning</strong> and confirm the deletion request</li>
-            <li><strong>Enter the verification code</strong> sent to your registered email (2-factor verification)</li>
-            <li><strong>Your account is immediately anonymized</strong> and marked for deletion</li>
-            <li>All your personal data is removed within 24 hours</li>
-          </ol>
-
-          <p className="text-[#CCCCCC] mb-4">
-            <strong>Alternatively, you can email us:</strong>
-          </p>
-          <div className="bg-[#181818] border border-[#333333] rounded-lg p-4 mb-6">
-            <p className="text-[#AAAAAA]">
-              <strong>Email:</strong> <a href="mailto:support@vidyt.com" className="text-[#FF0000] hover:underline">support@vidyt.com</a>
-            </p>
-            <p className="text-[#AAAAAA] text-sm mt-1">Subject: "Data Deletion Request"</p>
-            <p className="text-[#888] text-sm mt-2">Include your account email and we'll process your request within 7 business days.</p>
-          </div>
-
-          <p className="text-[#CCCCCC] mb-4">
-            <strong>What happens when you delete:</strong>
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li>✓ All videos, analytics, and settings are permanently removed</li>
-            <li>✓ Your email and name are anonymized (replaced with unique IDs)</li>
-            <li>✓ YouTube OAuth tokens are revoked and disconnected</li>
-            <li>✓ API keys and webhooks are deleted</li>
-            <li>✓ Subscription data is anonymized per GDPR requirements</li>
-            <li>✓ All personal identifiable information is removed from live databases</li>
-          </ul>
-
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4">
-            <p className="text-red-300 text-sm">
-              ⚠️ <strong>Important:</strong> This action is <strong>permanent and cannot be undone</strong>. Deleted data cannot be recovered. You can re-register with the same email after 30 days.
-            </p>
-          </div>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">6. Data Export (GDPR Compliance)</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            You have the right to download a copy of all your data in a portable format:
-          </p>
-          <ol className="list-decimal list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li>Go to <strong>Settings → Download My Data</strong></li>
-            <li>Choose format: <strong>JSON</strong> (full data) or <strong>CSV</strong> (videos only)</li>
-            <li>Click <strong>Export</strong> and download your data file</li>
-          </ol>
-          <p className="text-[#CCCCCC] mb-4">
-            Your data export includes:
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li>Account profile (name, email, subscription level, preferences)</li>
-            <li>All video analysis results and viral predictions</li>
-            <li>Engagement metrics and analytics data</li>
-            <li>Connected channels and platform information</li>
-            <li>API keys and webhook configurations</li>
-          </ul>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">7. Data Retention Policy</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            We retain your data as follows:
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li><strong>Active Accounts:</strong> Data kept as long as your account is active</li>
-            <li><strong>Deleted Accounts:</strong> Personal data anonymized within 24 hours. Logs and aggregated analytics may be retained for 12 months for legal and security purposes</li>
-            <li><strong>Video Analysis Data:</strong> Kept for 24 months in backups for recovery purposes, then permanently deleted</li>
-            <li><strong>OAuth Tokens:</strong> Revoked immediately and deleted upon account deletion</li>
-            <li><strong>Payment Records:</strong> Retained for 7 years per legal/tax requirements (anonymized)</li>
-          </ul>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">8. Security & Encryption</h2>
-          <p className="text-[#CCCCCC]">
-            We use industry-standard encryption (TLS 1.3), secure password hashing, and OAuth 2.0 for platform integrations. However, no system is 100% secure. If you suspect unauthorized access, please change your password immediately and contact support.
-          </p>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">9. Your Rights</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            Under privacy laws (GDPR, India&apos;s proposed DPA), you have the right to:
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li>Access your personal data</li>
-            <li>Request correction of inaccurate data</li>
-            <li>Request deletion of your account and data</li>
-            <li>Object to processing of your data</li>
-            <li>Export your data in standard formats</li>
-            <li>Withdraw consent for marketing communications</li>
-          </ul>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">10. YouTube API &amp; Third-Party Compliance</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            As a YouTube API consumer, we comply with all Google API policies:
-          </p>
-          <ul className="list-disc list-inside text-[#CCCCCC] space-y-2 mb-4">
-            <li><strong>Token Security:</strong> YouTube tokens are encrypted and stored securely. Tokens are revoked immediately upon account deletion.</li>
-            <li><strong>Data Minimization:</strong> We only request the minimum scopes needed for video analysis.</li>
-            <li><strong>User Transparency:</strong> Users can manage connected accounts anytime in Settings.</li>
-            <li><strong>No Token Sharing:</strong> We never share YouTube tokens with third parties.</li>
-            <li><strong>Compliance:</strong> Regular audits ensure compliance with Google's developer policies.</li>
-          </ul>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">11. International Data Transfers</h2>
-          <p className="text-[#CCCCCC]">
-            Your data may be processed and stored in India and other countries. By using Vid YT, you consent to the transfer and processing of your information in accordance with this privacy policy.
-          </p>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">12. Contact Us &amp; Privacy Requests</h2>
-          <p className="text-[#CCCCCC] mb-4">
-            For privacy concerns, data access requests, deletion inquiries, or to exercise your rights:
-          </p>
-
-          <div className="bg-[#181818] border border-[#333333] rounded-lg p-6 mb-6">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-white mb-2">Vid YT Privacy Team</h3>
-              <p className="text-[#AAAAAA] mb-1">
-                <strong>Email:</strong> <a href="mailto:support@vidyt.com" className="text-[#FF0000] hover:underline">support@vidyt.com</a>
-              </p>
-              <p className="text-[#AAAAAA] mb-1">
-                <strong>Subject Line:</strong> "Data Request" or "Privacy Inquiry"
-              </p>
-              <p className="text-[#888] text-sm">
-                <strong>Response Time:</strong> Within 7 business days
-              </p>
-            </div>
-
-            <div className="border-t border-[#333333] pt-4">
-              <h3 className="text-lg font-semibold text-white mb-2">Dashboard Options</h3>
-              <ul className="text-[#AAAAAA] space-y-1 text-sm">
-                <li>✓ <strong>Delete My Account:</strong> Settings → Delete My Account</li>
-                <li>✓ <strong>Download My Data:</strong> Settings → Download My Data</li>
-                <li>✓ <strong>Manage Cookies:</strong> Cookie banner (at bottom of page)</li>
-                <li>✓ <strong>Disconnect Apps:</strong> Settings → Connected Accounts</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-            <p className="text-blue-300 text-sm">
-              <strong>💡 Tip:</strong> Most privacy requests can be completed instantly through your dashboard. If you need assistance, our support team is available 24/7.
-            </p>
-          </div>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-2xl font-semibold mt-6 mb-3">13. Policy Updates</h2>
-          <p className="text-[#CCCCCC]">
-            We may update this policy occasionally. Significant changes will be announced via email or a prominent notice on the site. Continued use of Vid YT after updates means you accept the new policy.
-          </p>
-        </section>
-
-        <div className="mt-12 pt-8 border-t border-[#333333] text-[#888]">
-          <p className="text-sm">
-            This privacy policy is provided to comply with applicable regulations. Please review our <a href="/auth" className="text-[#FF0000] hover:underline">Terms of Use</a> for complete terms and conditions.
-          </p>
         </div>
-      </div>
-    </main>
+
+        <div className="space-y-10 prose prose-invert max-w-none">
+          <section>
+            <p className="text-lg font-medium text-white mb-6">
+              Vid YT (operated by <strong>Kvl Business Solutions</strong>) acts as the data controller for the information you share with us.
+            </p>
+            <p>
+              We highly respect your privacy and are committed to protecting it through our compliance with this policy. This policy details how we collect, use, and protect your data.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-white mb-4">1. Data Collection</h2>
+            <p>We collect several different types of information for various purposes to provide and improve our Service to you:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-4">
+              <li><strong>Personal Data:</strong> Email address, first name, and last name during registration.</li>
+              <li><strong>Usage Data:</strong> Information on how you interact with the platform, page visits, features utilized, and analytics requested.</li>
+              <li><strong>YouTube Data:</strong> By connecting your channel via Google OAuth, you allow us access to read your YouTube statistics and perform analysis on public or unlisted videos as permitted by the YouTube API.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-white mb-4">2. Data Usage</h2>
+            <p>Vid YT uses the collected data for various purposes:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-4">
+              <li>To provide, maintain, and monitor the usage of the Service.</li>
+              <li>To run AI-driven analysis, performance mapping, and algorithmic recommendations.</li>
+              <li>To contact you via email regarding updates, support, and billing notifications.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-white mb-4">3. Third-Party Services</h2>
+            <p>To operate our SaaS ecosystem securely and efficiently, we employ third-party tools. Your data may be processed by:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-4">
+              <li><strong>YouTube API Services:</strong> Vid YT uses YouTube API Services. By using our application, you agree to be bound by the YouTube Terms of Service and Google Privacy Policy.</li>
+              <li><strong>Payment Gateways (Razorpay / Stripe):</strong> Process payments securely on behalf of Kvl Business Solutions. We do not store your raw credit card information.</li>
+              <li><strong>AI Partners (OpenAI / Gemini):</strong> Process text and image inputs locally for generating titles, assessing viral scores, and identifying hooks.</li>
+              <li><strong>Google Cloud:</strong> Hosts our application servers and databases securely.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-white mb-4">4. Cookie Usage</h2>
+            <p>
+              We use cookies and similar tracking technologies to track activity on our Service and hold certain information. You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent. For more details, please review our <a href="/cookie-policy" className="text-[#FF0000] hover:underline">Cookie Policy</a>.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-white mb-4">5. Data Deletion & Export</h2>
+            <p>
+              You have the right to request deletion of your account and personal data from our servers. You can initiate an account deletion from your security settings. Alternatively, you can contact <a href="mailto:support@vidyt.com" className="text-[#FF0000] hover:underline">support@vidyt.com</a> to request a complete wipe of your data or an export of your information.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-white mb-4">6. Security Measures</h2>
+            <p>
+              We implement reasonable security measures (including secure SSL transmission, hashed passwords, and restricted database access) to protect your personal information. However, no method of transmission over the internet or method of electronic storage is 100% secure.
+            </p>
+          </section>
+
+          <section className="bg-[#181818] rounded-xl p-6 mt-12 border border-[#212121]">
+            <h2 className="text-xl font-bold text-white mb-2">Contact Information</h2>
+            <p>
+              If you have any questions regarding this Privacy Policy, please contact us:
+            </p>
+            <p className="mt-4">
+              <strong>Email:</strong> <a href="mailto:support@vidyt.com" className="text-[#FF0000] hover:underline">support@vidyt.com</a><br/>
+              <strong>Legal Entity:</strong> Kvl Business Solutions, India
+            </p>
+          </section>
+        </div>
+      </main>
+
+      <MarketingFooter />
+    </div>
   );
 }
-

@@ -6,6 +6,6 @@
     "outDir": ".server-build",
     "esModuleInterop": true
   },
-  "include": ["server.ts", "lib/**/*.ts"],
+  "include": ["server.ts", "lib/**/*.ts", "workers/**/*.ts", "services/**/*.ts", "models/**/*.ts"],
   "exclude": ["node_modules", ".next"]
 }

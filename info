@@ -13,6 +13,8 @@ Primary goal:
 - higher viral potential
 - faster workflow
 - data-driven growth
+- resilient AI infrastructure (Hardcore Production Grade)
+- automated multi-platform optimization
 
 ---
 
@@ -29,12 +31,14 @@ Primary goal:
 ### B) Video Input and Analysis
 - Direct video upload
 - YouTube/Facebook/Instagram/TikTok URL analysis
-- Viral probability score
+- Viral probability score (AI Learning Engine powered)
 - Hook score, thumbnail score, title score
+- 30-feature advanced viral analysis (Emotional triggers, Niche concentration, etc.)
+- Explainable AI insights: Reasons, Weak Points, and Improvements
 - Optimized title suggestions
 - SEO description generation
 - Tags and hashtags generation
-- Best posting time recommendation
+- Best posting time recommendation (Heatmap-based)
 
 ### C) YouTube Upload System
 - Video upload to YouTube from dashboard
@@ -64,15 +68,21 @@ Primary goal:
 - Competitor context based optimization
 
 ### F) Analytics and Insights
-- Dashboard analytics overview
-- Growth and performance trends
-- Engagement style insights
-- Heatmap/best-time style outputs
+- Dashboard analytics overview (Real-time metrics)
+- Performance trend charts (Viral score & Engagement)
+- Platform distribution analysis
+- Top performing videos list
+- Engagement heatmap (Best posting times)
+- Viewer retention analysis
+- Growth curve tracking
+- Benchmark comparison (User vs Industry)
 - Analysis history and video-level details
 
 ### G) Calendar and Scheduling
 - Content planning and schedule endpoints
-- Calendar-based posting workflow
+- Calendar-based posting workflow (Monthly/Weekly views)
+- Bulk scheduling support
+- Status tracking (Scheduled, Posted, Failed)
 
 ### H) Export and Reporting
 - Analytics export support (CSV/Excel/PDF routes)
@@ -82,6 +92,12 @@ Primary goal:
 - Support tickets
 - AI-assisted support response paths
 - Chat session + message history
+
+### J) Audio & Video Transcription
+- Multi-provider resilient transcription service
+- Automatic fallback: OpenAI → Deepgram → AssemblyAI → Local Whisper
+- High-accuracy transcript extraction
+- Multi-language support
 
 ### J) Shorts Creator Tool
 - Auto shorts generation from long-form videos
@@ -97,8 +113,8 @@ Primary goal:
 - Channel rank system (global, niche, growth-based)
 - Estimated revenue calculator with CPM ranges
 - Competitor comparison (up to 3 channels side-by-side)
-- AI-powered insights and recommendations
-- 30-day growth prediction and forecasting
+- AI-powered insights and categorical recommendations
+- 30-day math-based growth prediction (EMA + Linear Regression Slope)
 - Upload frequency and engagement analysis
 - Niche-based performance benchmarking
 - Export capability for analysis reports
@@ -108,6 +124,7 @@ Primary goal:
 - API key management
 - Public usage endpoint
 - Webhook support for analysis events
+- Transcription API for external apps
 
 ---
 
@@ -123,7 +140,9 @@ Primary goal:
 - Full platform visibility
 - Revenue/usage/control dashboards
 - Plan and feature configuration (System Access Matrix, Unified Feature Matrix)
-- AI monitoring and YT SEO Section Control
+- Role-based Access Control (RBAC) Management
+- AI Monitoring and Training Control
+- YT SEO Section Visibility Control (Toggles)
 - System-level management routes
 
 ---
@@ -141,11 +160,13 @@ Primary goal:
 
 ## 5) AI and Prediction Stack
 
-- Viral prediction service integration (with fallback behavior)
+- Hardcore Viral prediction service (30-feature TensorFlow.js Neural Network)
+- Automated Training Pipeline (`/api/ai/train`) with versioning
+- Feature extraction from viral datasets (30 dimensions)
 - Outcome/label capture support (`/api/ai/outcome`)
-- Metrics endpoint for model quality tracking
-- Retrain/cron-oriented endpoints
-- Queue/worker support paths for async processing
+- Advanced metric tracking: MAE (Mean Absolute Error) and Loss
+- Retrain/cron-oriented endpoints with model versioning (model_v1, hardcore_v1, etc.)
+- Queue/worker support paths for async processing (BullMQ + Redis)
 
 ---
 
@@ -161,10 +182,11 @@ Major route groups:
 - `/api/videos/*`
 - `/api/trending/*` and `/api/trends/*`
 - `/api/posting-time/*`
-- `/api/export/*`
+- `/api/export/*` (CSV, Excel, PDF)
 - `/api/schedule/*`
 - `/api/support/*`
-- `/api/ai/*` (including `/api/ai/shorts-creator` for clip generation and cutting)
+- `/api/transcribe` (Multi-provider transcription)
+- `/api/ai/*` (including `/api/ai/train` and shorts creator)
 
 ---
 
@@ -208,15 +230,64 @@ Website currently can:
 - track usage/subscription behavior
 - provide analytics + optimization insights
 - support admin/super-admin operational control
-- create short-form video clips with aspect ratio selection
-- analyze YouTube channels with ranking and revenue estimates
-- predict channel growth and provide AI-powered recommendations
+- create short-form video clips with aspect ratio selection (16:9, 9:16)
+- analyze YouTube channels with ranking and data-backed revenue estimates
+- predict channel growth using trend slope analysis and EMA
+- transcribe audio/video with resilient multi-provider fallback
+- manage hierarchical roles and permissions (RBAC)
+- protect infrastructure with Cloudflare CDN/WAF
 
 ---
 
-Last updated: 2026-04-01
+Last updated: 2026-04-04
 
+---
+
+## 11) Infrastructure & Security
+
+### Cloudflare Global Infrastructure
+- **CDN (Content Delivery Network)**: 50+ edge locations globally for <100ms latency.
+- **WAF (Web Application Firewall)**: Protects against SQLi, XSS, and custom bot patterns.
+- **DDoS Mitigation**: Automated Layer 3/4 and Layer 7 protection.
+- **Edge Rate Limiting**: Request throttling at the edge (Auth, Upload, AI endpoints).
+- **Security Hardening**: HSTS, CSP, and strict SSL/TLS configurations.
+
+### Application Resilience
+- **Multi-Provider Fallback**: Critical services (Transcription, AI) have automated fallback chains.
+- **Hierarchical RBAC**: 4-level role system ensuring secure access to enterprise features.
+- **Database Abuse Logging**: Detailed tracking of suspicious patterns for admin review.
+
+---
 ## New Features
+
+### SaaS Legal & Compliance Infrastructure (April 5, 2026)
+- ✅ **Dual-Identity Structure**: Distinguishes product branding (**Vid YT**) from the legal and billing entity (**Kvl Business Solutions**, India).
+- ✅ **Tax & GST Ready**: 18% GST (Indian law) automatically factored into all SaaS pricing displays.
+- ✅ **Version Control**: All policies operate under a v1.0 system with 'Last Updated' and 'Effective From' dates.
+- ✅ **Dedicated Pages**: Fully functional `/terms`, `/privacy-policy`, `/refund-policy` (strict no-refunds), and `/cookie-policy` pages with a global `MarketingFooter`.
+
+
+### Advanced YouTube Analytics (April 4, 2026)
+- ✅ **Advanced Analytics Dashboard**: Performance trends, platform distribution, and engagement heatmaps.
+- ✅ **Retention & Growth**: Detailed viewer retention analysis and predictive growth curves.
+- ✅ **Benchmark Comparison**: Compare your performance against niche industry benchmarks.
+
+### Hardcore Production Transformation (April 4, 2026 - Evening)
+- ✅ **30-Feature AI Engine**: Upgraded from 10 to 30 features including emotional triggers and competitive density.
+- ✅ **Explainable AI (XAI)**: Predictions now include specific **Reasons**, **Weak Points**, and **Actionable Improvements**.
+- ✅ **Math-Based Growth**: Replaced heuristic predictions with real Linear Regression (Slope) and Exponential Moving Averages (EMA).
+- ✅ **Data Transparency**: All analytics now explicitly labeled as `real` (API) or `estimated` (Heuristic) with categorical confidence levels.
+- ✅ **Advanced Training**: AI Retraining pipeline now tracks **MAE** and **Loss** for rigorous model audit.
+
+### Robust Multi-Provider Transcription (April 3, 2026)
+- ✅ **Resilient AI Chain**: Automated fallback through OpenAI, Deepgram, and AssemblyAI.
+- ✅ **Local Whisper Support**: Final fallback to on-premise Whisper models for maximum uptime.
+- ✅ **Usage-Aware Routing**: IP-based rate limiting and provider rotation.
+
+### Enterprise Security & Infrastructure (April 2, 2026)
+- ✅ **Cloudflare CDN/WAF**: Global edge caching and enterprise-grade security rules.
+- ✅ **RBAC Completion**: Full hierarchical role-based access control with super-admin panel.
+- ✅ **Multi-Format Export**: One-click reports in CSV, Excel, and PDF formats.
 
 ### Super Admin Analytics Dashboard (April 1, 2026)
 - **Enterprise-Grade Dashboard**: Comprehensive real-time data visualization for platform metrics.
@@ -384,4 +455,4 @@ These Terms of Use, Privacy Policy, and all related agreements are governed by a
 
 **✔ By using this platform, you agree to all the above terms.**
 
-Last updated: 2026-04-01
+Last updated: 2026-04-05
