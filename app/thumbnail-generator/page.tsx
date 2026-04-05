@@ -1,5 +1,3 @@
-'use client';
-
 import ThumbnailGenerator from '@/components/thumbnail-generator';
 
 export default function ThumbnailGeneratorPage() {

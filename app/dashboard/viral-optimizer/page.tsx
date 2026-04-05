@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import AuthGuard from '@/components/AuthGuard';
 import DashboardLayout from '@/components/DashboardLayout';
+import QuickReferenceBanner from '@/components/quick-reference-banner';
+import StepByStepGuide from '@/components/step-by-step-guide';
+import SEOGenerator from '@/components/seo-generator';
+import ExistingVideoUpdater from '@/components/existing-video-updater';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import {
@@ -291,6 +295,16 @@ export default function ViralOptimizerPage() {
             </div>
           </motion.div>
 
+          {/* Quick Reference Banner */}
+          <div className="mb-6">
+            <QuickReferenceBanner />
+          </div>
+
+          {/* Step-by-Step Guide */}
+          <div className="mb-8">
+            <StepByStepGuide />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* LEFT: Inputs */}
             <motion.div
@@ -366,7 +380,7 @@ export default function ViralOptimizerPage() {
                       {generatingSEO ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-purple-400" />}
                       {generatingSEO ? 'AI is generating high-ranking SEO...' : 'Auto-Generate SEO ✨'}
                     </button>
-                    
+
                     <button
                       type="button"
                       onClick={runAnalysis}
@@ -398,6 +412,27 @@ export default function ViralOptimizerPage() {
                   </div>
                 </div>
               </div>
+
+              {/* SEO Generator Component */}
+              <SEOGenerator
+                currentTopic={title || keywords || description || 'viral content'}
+                onSelectKeyword={(kw) => setKeywords((prev) => (prev ? `${prev}, ${kw}` : kw))}
+                onSelectTitle={(t) => setTitle(t)}
+                onSelectDescription={(d) => setDescription(d)}
+                onSelectHashtags={(h) => setDescription((prev) => (prev ? `${prev}\n\n${h}` : h))}
+              />
+
+              {/* Existing Video Updater */}
+              <ExistingVideoUpdater
+                onVideoSelected={(video) => {
+                  setVideoId(video.videoId);
+                  setTitle(video.title);
+                  setDescription(video.description);
+                }}
+                onTitleUpdate={(title) => setTitle(title)}
+                onDescriptionUpdate={(desc) => setDescription(desc)}
+                onTagsUpdate={(tags) => setKeywords(tags)}
+              />
             </motion.div>
 
             {/* RIGHT: Analysis cards */}

@@ -1,9 +1,4 @@
-export const dynamic = "force-dynamic";
-
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAIToolAccess } from '@/lib/aiStudioAccess';
-import connectDB from '@/lib/mongodb';
-import AIThumbnail from '@/models/AIThumbnail';
 
 interface ThumbnailInput {
   video_title: string;
@@ -58,8 +53,10 @@ function analyzeEmotionalTriggers(input: ThumbnailInput): string[] {
   const triggers: string[] = [];
   const { emotion, niche, topic, video_title } = input;
   
+  // Base emotion
   triggers.push(emotion);
   
+  // Niche-specific triggers
   if (niche === 'news') {
     triggers.push('urgency', 'fear');
   } else if (niche === 'entertainment') {
@@ -70,6 +67,7 @@ function analyzeEmotionalTriggers(input: ThumbnailInput): string[] {
     triggers.push('value', 'discovery');
   }
   
+  // Topic-based triggers
   const topic_lower = topic.toLowerCase();
   if (topic_lower.includes('war') || topic_lower.includes('attack')) {
     triggers.push('fear', 'urgency');
@@ -85,6 +83,7 @@ function generateHookText(input: ThumbnailInput): string {
   const { video_title, topic, emotion, niche } = input;
   const words = video_title.split(' ');
   
+  // Extract key phrases
   const hooks = [
     `${words[0]?.toUpperCase() || ''}: ${POWER_WORDS[0]}`,
     `${emotion.toUpperCase()} TRUTH`,
@@ -122,17 +121,21 @@ function generateVariations(mainText: string, input: ThumbnailInput): string[] {
 }
 
 function calculateCTR(text: string, emotion: string, niche: string): number {
-  let score = 70;
+  let score = 70; // Base score
   
+  // Power words bonus
   POWER_WORDS.forEach(word => {
     if (text.includes(word)) score += 8;
   });
   
+  // Emotion bonus
   if (['fear', 'shock', 'urgency'].includes(emotion)) score += 10;
   if (['curiosity', 'mystery'].includes(emotion)) score += 7;
   
+  // Niche bonus
   if (niche === 'news') score += 5;
   
+  // Length penalty (shorter is better)
   if (text.split(' ').length <= 3) score += 5;
   if (text.split(' ').length > 5) score -= 10;
   
@@ -162,35 +165,27 @@ function generateReasoning(text: string, emotion: string, niche: string): string
 }
 
 export async function POST(request: NextRequest) {
-  const access = await requireAIToolAccess(request, 'ai_thumbnail_maker');
-  if (!access.allowed) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
-  }
-
   try {
-    const body = await request.json();
-    const { videoTitle, topic, emotion, niche } = body;
+    const input: ThumbnailInput = await request.json();
     
-    if (!videoTitle?.trim()) {
-      return NextResponse.json({ error: 'Video title is required' }, { status: 400 });
-    }
-
-    const input: ThumbnailInput = {
-      video_title: videoTitle.trim(),
-      topic: (topic || '').trim(),
-      emotion: (emotion || 'curiosity').trim(),
-      niche: (niche || '').trim(),
-    };
-    
+    // Step 1: AI Analysis
     const triggers = analyzeEmotionalTriggers(input);
+    
+    // Step 2: Generate Thumbnail Text
     const thumbnail_text = generateHookText(input);
+    
+    // Step 3: Image Generation Prompt
     const image_prompt = generateImagePrompt(input, thumbnail_text);
+    
+    // Step 4: Generate Variations
     const variations = generateVariations(thumbnail_text, input);
     
+    // Step 5: CTR + Viral Optimization
     const all_texts = [thumbnail_text, ...variations];
     const ctr_scores = all_texts.map(text => calculateCTR(text, input.emotion, input.niche));
     const reasoning = all_texts.map(text => generateReasoning(text, input.emotion, input.niche));
     
+    // Step 6: Design Instructions
     const template = NICHE_TEMPLATES[input.niche as keyof typeof NICHE_TEMPLATES] || NICHE_TEMPLATES.news;
     
     const output: ThumbnailOutput = {
@@ -205,26 +200,13 @@ export async function POST(request: NextRequest) {
         effects: 'glow effect on text, light flare, motion blur, depth shadow, gradient background'
       }
     };
-
-    await connectDB();
-    await AIThumbnail.create({
-      userId: access.userId,
-      videoTitle: input.video_title,
-      topic: input.topic,
-      emotion: input.emotion,
-      niche: input.niche,
-      textSuggestions: all_texts,
-      layoutIdea: output.design.layout,
-      colorPalette: output.design.colors,
-      ctrScore: ctr_scores[0],
-    });
-
+    
     return NextResponse.json(output);
     
-  } catch (e: any) {
-    console.error('Thumbnail generation error:', e);
+  } catch (error) {
+    console.error('Thumbnail generation error:', error);
     return NextResponse.json(
-      { error: e.message || 'Failed to generate thumbnail' },
+      { error: 'Failed to generate thumbnail' },
       { status: 500 }
     );
   }
