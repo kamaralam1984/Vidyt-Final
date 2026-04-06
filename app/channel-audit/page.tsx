@@ -18,6 +18,8 @@ interface ChannelAnalysis {
   videoAnalyses: VideoAnalysis[];
   trendingKeywords: string[];
   channelRecommendations: string[];
+  aiRecommendations?: string;
+  isAiRecommendationsLoading?: boolean;
 }
 
 interface VideoAnalysis {
@@ -67,6 +69,7 @@ export default function ChannelAuditPage() {
 
     try {
       let sampleVideoUrls: string[] = [];
+      let apiTotalVideos: number | undefined;
 
       if (useManualUrls) {
         // Parse video URLs from textarea (one per line or comma-separated)
@@ -96,7 +99,9 @@ export default function ChannelAuditPage() {
         }
 
         // Try to get videos from channel
-        sampleVideoUrls = await getChannelVideos(channelId);
+        const result = await getChannelVideos(channelId);
+        sampleVideoUrls = result.videoUrls;
+        apiTotalVideos = result.totalVideos;
         
         if (sampleVideoUrls.length === 0) {
           alert('Channel videos could not be fetched automatically.\n\nPossible reasons:\n• YouTube RSS feeds may not be available for this channel\n• Channel may have no public videos\n• YouTube API key not configured\n\nPlease use "Video URLs Manually Add करें" option and paste your video URLs directly.');
@@ -200,16 +205,46 @@ export default function ChannelAuditPage() {
       const channelAnalysis: ChannelAnalysis = {
         channelName: useManualUrls ? 'Your Channel' : extractChannelName(channelUrl),
         channelScore: Math.round(totalScore / videoAnalyses.length),
-        totalVideos: sampleVideoUrls.length,
+        totalVideos: apiTotalVideos || sampleVideoUrls.length,
         analyzedVideos: videoAnalyses.length,
         averageViralScore: Math.round(totalScore / videoAnalyses.length),
         channelIssues: Array.from(channelIssues),
         videoAnalyses,
         trendingKeywords: Array.from(allTrendingKeywords).slice(0, 20),
         channelRecommendations: generateChannelRecommendations(videoAnalyses),
+        isAiRecommendationsLoading: true, // We will fetch AI recommendations
       };
 
       setAnalysis(channelAnalysis);
+      setLoading(false); // Stop main loading
+
+      // Fire off AI recommendation fetch asynchronously
+      try {
+        const recommendRes = await axios.post('/api/channel-audit/recommend', {
+          context: {
+            channelName: channelAnalysis.channelName,
+            channelScore: channelAnalysis.channelScore,
+            totalVideos: channelAnalysis.totalVideos,
+            averageViralScore: channelAnalysis.averageViralScore,
+            channelIssues: channelAnalysis.channelIssues,
+            trendingKeywords: channelAnalysis.trendingKeywords,
+            videoSummaries: channelAnalysis.videoAnalyses.map(v => ({
+              title: v.title,
+              score: v.currentScore,
+            }))
+          }
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        
+        if (recommendRes.data?.recommendations) {
+           setAnalysis(prev => prev ? { ...prev, aiRecommendations: recommendRes.data.recommendations, isAiRecommendationsLoading: false } : prev);
+        } else {
+           setAnalysis(prev => prev ? { ...prev, isAiRecommendationsLoading: false } : prev);
+        }
+      } catch (err) {
+        console.error('Failed to get AI recommendations', err);
+        setAnalysis(prev => prev ? { ...prev, isAiRecommendationsLoading: false } : prev);
+      }
+      
     } catch (error: any) {
       console.error('Error auditing channel:', error);
       
@@ -222,7 +257,6 @@ export default function ChannelAuditPage() {
       } else {
         alert(error.response?.data?.error || 'Failed to audit channel');
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -270,7 +304,7 @@ export default function ChannelAuditPage() {
     return 'YouTube Channel';
   };
 
-  const getChannelVideos = async (channelId: string): Promise<string[]> => {
+  const getChannelVideos = async (channelId: string): Promise<{videoUrls: string[], totalVideos?: number}> => {
     try {
       console.log('🔍 Fetching videos for channel:', channelId);
       
@@ -298,7 +332,7 @@ export default function ChannelAuditPage() {
         
         if (response.data.success && response.data.videoUrls && response.data.videoUrls.length > 0) {
           console.log(`✅ Found ${response.data.videoUrls.length} videos via API`);
-          return response.data.videoUrls.slice(0, 20); // Limit to 20 videos
+          return { videoUrls: response.data.videoUrls.slice(0, 20), totalVideos: response.data.totalVideos };
         } else {
           console.log('API returned no videos');
           if (response.data.message) {
@@ -316,10 +350,10 @@ export default function ChannelAuditPage() {
       
       // If API fails, return empty array (client-side RSS won't work due to CORS)
       console.log('❌ Channel video fetching failed - please use manual video URLs');
-      return [];
+      return { videoUrls: [] };
     } catch (error: any) {
       console.error('❌ Error fetching channel videos:', error);
-      return [];
+      return { videoUrls: [] };
     }
   };
 
@@ -670,7 +704,7 @@ https://www.youtube.com/watch?v=VIDEO_ID_1, https://www.youtube.com/watch?v=VIDE
               )}
 
               {/* Channel Recommendations */}
-              {analysis.channelRecommendations.length > 0 && (
+              {(analysis.channelRecommendations.length > 0 || analysis.isAiRecommendationsLoading || analysis.aiRecommendations) && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -680,16 +714,27 @@ https://www.youtube.com/watch?v=VIDEO_ID_1, https://www.youtube.com/watch?v=VIDE
                   <div className="flex items-center gap-2 mb-4">
                     <CheckCircle className="w-6 h-6 text-[#10b981]" />
                     <h2 className="text-xl font-bold text-white">
-                      Channel Recommendations
+                      Channel Recommendations (AI Powered)
                     </h2>
                   </div>
-                  <ul className="space-y-2">
-                    {analysis.channelRecommendations.map((rec, index) => (
-                      <li key={index} className="flex items-start gap-3 text-[#AAAAAA]">
-                        <span className="text-[#10b981] mt-1">{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {analysis.isAiRecommendationsLoading ? (
+                    <div className="flex items-center gap-2 text-[#AAAAAA] text-sm py-4">
+                      <Loader2 className="w-5 h-5 animate-spin text-[#FF0000]" />
+                      Generating custom channel insights and real examples...
+                    </div>
+                  ) : analysis.aiRecommendations ? (
+                    <div className="whitespace-pre-wrap text-[#AAAAAA] text-sm leading-relaxed">
+                      {analysis.aiRecommendations}
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {analysis.channelRecommendations.map((rec, index) => (
+                        <li key={index} className="flex items-start gap-3 text-[#AAAAAA]">
+                          <span className="text-[#10b981] mt-1">{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </motion.div>
               )}
 

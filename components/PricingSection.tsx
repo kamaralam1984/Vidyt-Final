@@ -12,7 +12,7 @@ interface PricingSectionProps {
   userPlanId?: string | null;
   loading?: string | null;
   onSubscribe?: (plan: PricingPlan) => void;
-  onSubscribeStripe?: (plan: PricingPlan) => void;
+  onSubscribePaypal?: (plan: PricingPlan) => void;
   variant?: 'homepage' | 'full';
   fxRates?: Record<string, number> | null;
 }
@@ -22,7 +22,7 @@ export default function PricingSection({
   userPlanId,
   loading,
   onSubscribe,
-  onSubscribeStripe,
+  onSubscribePaypal,
   variant = 'full',
   fxRates: initialFxRates
 }: PricingSectionProps) {
@@ -128,7 +128,7 @@ export default function PricingSection({
             billingPeriod={billingPeriod}
             isCurrentPlan={userPlanId === plan.id}
             onSubscribe={onSubscribe}
-            onSubscribeStripe={onSubscribeStripe}
+            onSubscribePaypal={onSubscribePaypal}
             loading={loading}
             getPrice={getPrice}
             getOriginalPrice={getOriginalPrice}

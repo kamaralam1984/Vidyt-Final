@@ -2,13 +2,13 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { createCheckoutSession, SUBSCRIPTION_PLANS, stripeConfigured } from '@/services/payments/stripe';
+import { createPaypalOrder, SUBSCRIPTION_PLANS, paypalConfigured } from '@/services/payments/paypal';
 
 export async function POST(request: NextRequest) {
   try {
-    if (!stripeConfigured()) {
+    if (!(await paypalConfigured())) {
       return NextResponse.json(
-        { error: 'Stripe is not configured. Set STRIPE_SECRET_KEY on the server.' },
+        { error: 'PayPal is not configured. Set PayPal Auth on the server.' },
         { status: 503 }
       );
     }
@@ -62,10 +62,10 @@ export async function POST(request: NextRequest) {
     const billingPeriod = body.billingPeriod === 'year' ? 'year' : 'month';
 
     const origin = request.headers.get('origin') || 'http://localhost:3000';
-    const successUrl = `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}&gateway=stripe`;
+    const successUrl = `${origin}/subscription/success?gateway=paypal`;
     const cancelUrl = `${origin}/subscription/cancel`;
 
-    const session = await createCheckoutSession(
+    const session = await createPaypalOrder(
       authUser.id,
       planId,
       successUrl,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      sessionId: session.sessionId,
+      sessionId: session.orderId,
       url: session.url,
     });
   } catch (error: any) {

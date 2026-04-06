@@ -12,11 +12,10 @@ export function razorpayKeyIsTest(): boolean {
 /** Stored on Payment.metadata — use on verify + webhook writes */
 export function buildRazorpayMetadata(extra: Record<string, unknown> = {}): Record<string, unknown> {
   const testKey = razorpayKeyIsTest();
-  const mock = process.env.RAZORPAY_MOCK === 'true';
+  const mock = false;
   return {
     ...extra,
     paymentMode: testKey || mock ? 'test' : 'live',
-    ...(mock ? { razorpayMock: true } : {}),
   };
 }
 

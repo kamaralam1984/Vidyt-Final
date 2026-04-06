@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Try YouTube RSS Feed (Free, no API key needed)
-    const videoUrls = await fetchVideosFromRSS(channelId);
+    const result = await fetchVideosFromRSS(channelId);
+    const { videoUrls, totalVideos } = result;
     
     console.log(`Channel video fetch result: ${videoUrls.length} videos found for channel: ${channelId}`);
     
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
       success: true,
       videoUrls,
       count: videoUrls.length,
+      totalVideos,
       channelId,
       message: videoUrls.length === 0 
         ? 'No videos found. This channel may not have public videos, or RSS feeds may not be available. Please use manual video URLs.'
@@ -78,9 +80,12 @@ function extractChannelId(url: string): string | null {
   return null;
 }
 
-async function fetchVideosFromRSS(channelId: string): Promise<string[]> {
-  const videoUrls: string[] = [];
-  
+interface FetchVideosResult {
+  videoUrls: string[];
+  totalVideos?: number;
+}
+
+async function fetchVideosFromRSS(channelId: string): Promise<FetchVideosResult> {
   try {
     console.log('Fetching videos for channel ID:', channelId);
     
@@ -128,7 +133,17 @@ async function fetchVideosFromRSS(channelId: string): Promise<string[]> {
               `https://www.youtube.com/watch?v=${item.id.videoId}`
             );
             console.log(`✅ Found ${videos.length} videos via YouTube Data API`);
-            return videos;
+            
+            let totalVideos: number | undefined;
+            try {
+              const statsRes = await axios.get(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${actualChannelId}&key=${apiKey}`);
+              const stats = statsRes.data.items?.[0]?.statistics;
+              if (stats?.videoCount) totalVideos = parseInt(stats.videoCount, 10);
+            } catch (e) {
+              console.log('Failed to fetch channel stats:', e);
+            }
+            
+            return { videoUrls: videos, totalVideos };
           }
         }
       } catch (apiError: any) {
@@ -142,10 +157,10 @@ async function fetchVideosFromRSS(channelId: string): Promise<string[]> {
     const username = channelId.replace('@', '').trim();
     if (!channelId.startsWith('UC')) {
       console.log('Trying channel page scraping for:', username);
-      const scrapedVideos = await scrapeChannelPage(username);
-      if (scrapedVideos.length > 0) {
-        console.log(`✅ Found ${scrapedVideos.length} videos via page scraping`);
-        return scrapedVideos;
+      const scrapedResult = await scrapeChannelPage(username);
+      if (scrapedResult.videoUrls.length > 0) {
+        console.log(`✅ Found ${scrapedResult.videoUrls.length} videos via page scraping`);
+        return scrapedResult;
       }
     }
     
@@ -156,7 +171,7 @@ async function fetchVideosFromRSS(channelId: string): Promise<string[]> {
       const videos = await fetchFromRSSFeed(rssUrl);
       if (videos.length > 0) {
         console.log(`✅ Found ${videos.length} videos via channel ID RSS`);
-        return videos;
+        return { videoUrls: videos };
       }
     }
     
@@ -166,7 +181,7 @@ async function fetchVideosFromRSS(channelId: string): Promise<string[]> {
     const atUsernameVideos = await fetchFromRSSFeed(atUsernameRssUrl);
     if (atUsernameVideos.length > 0) {
       console.log(`✅ Found ${atUsernameVideos.length} videos via @username RSS`);
-      return atUsernameVideos;
+      return { videoUrls: atUsernameVideos };
     }
     
     // Method 5: Try old user RSS feed format (legacy)
@@ -175,19 +190,19 @@ async function fetchVideosFromRSS(channelId: string): Promise<string[]> {
     const userVideos = await fetchFromRSSFeed(userRssUrl);
     if (userVideos.length > 0) {
       console.log(`✅ Found ${userVideos.length} videos via legacy user RSS`);
-      return userVideos;
+      return { videoUrls: userVideos };
     }
     
     console.log('❌ All methods failed - no videos found');
-    return [];
+    return { videoUrls: [] };
   } catch (error) {
     console.error('Error in fetchVideosFromRSS:', error);
-    return [];
+    return { videoUrls: [] };
   }
 }
 
 // Scrape channel page to extract video links
-async function scrapeChannelPage(username: string): Promise<string[]> {
+async function scrapeChannelPage(username: string): Promise<FetchVideosResult> {
   try {
     console.log('🔍 Scraping channel page for:', username);
     const channelUrl = `https://www.youtube.com/@${username}/videos`;
@@ -206,14 +221,14 @@ async function scrapeChannelPage(username: string): Promise<string[]> {
     
     if (response.status !== 200) {
       console.log(`❌ Channel page returned status ${response.status}`);
-      return [];
+      return { videoUrls: [] };
     }
     
     const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
     
     if (!html || html.length < 1000) {
       console.log('❌ Channel page response too short');
-      return [];
+      return { videoUrls: [] };
     }
     
     console.log(`📄 Channel page HTML length: ${html.length} characters`);
@@ -254,7 +269,25 @@ async function scrapeChannelPage(username: string): Promise<string[]> {
             }
           };
           extractVideoIds(ytData);
-          console.log(`✅ Parsed ytInitialData, found ${videoIds.size} video IDs`);
+          
+          // Try to get total videos natively from ytInitialData
+          let totalVideos: number | undefined;
+          try {
+            const header = ytData?.header?.c4TabbedHeaderRenderer || ytData?.header?.pageHeaderRenderer;
+            let videosCountStr = header?.videosCountText?.runs?.[0]?.text;
+            if (!videosCountStr) {
+               videosCountStr = header?.content?.pageHeaderViewModel?.metadata?.contentMetadataViewModel?.metadataRows?.[1]?.metadataParts?.[0]?.text?.content;
+            }
+            if (videosCountStr) {
+               const numMatch = videosCountStr.match(/[\d,.]+/);
+               if (numMatch) totalVideos = parseInt(numMatch[0].replace(/,/g, ''), 10);
+            }
+          } catch(e) {}
+          
+          console.log(`✅ Parsed ytInitialData, found ${videoIds.size} video IDs, total videos: ${totalVideos}`);
+          
+          // Attach totalVideos so the return can use it
+          (videoIds as any)._totalVideos = totalVideos;
           break;
         } catch (e: any) {
           console.log('Failed to parse ytInitialData:', e.message);
@@ -299,14 +332,14 @@ async function scrapeChannelPage(username: string): Promise<string[]> {
     // Convert to full YouTube URLs (limit to 20 most recent)
     const videos = Array.from(videoIds).slice(0, 20).map(id => `https://www.youtube.com/watch?v=${id}`);
     console.log(`📹 Returning ${videos.length} video URLs`);
-    return videos;
+    return { videoUrls: videos, totalVideos: (videoIds as any)._totalVideos };
   } catch (error: any) {
     console.error('❌ Channel page scraping error:', error.message);
     if (error.response) {
       console.error('Response status:', error.response.status);
       console.error('Response headers:', error.response.headers);
     }
-    return [];
+    return { videoUrls: [] };
   }
 }
 

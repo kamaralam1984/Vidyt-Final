@@ -17,39 +17,6 @@ function SuccessContent() {
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
   useEffect(() => {
-    const isStripeSession =
-      Boolean(sessionId) &&
-      (gateway === 'stripe' || (sessionId as string).startsWith('cs_'));
-
-    if (isStripeSession && sessionId) {
-      (async () => {
-        try {
-          const token =
-            typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-          if (!token) {
-            setVerifyError('Please log in again if your plan does not update automatically.');
-            setLoading(false);
-            return;
-          }
-          await axios.post(
-            '/api/payments/stripe/verify-session',
-            { sessionId },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          setVerifyError(null);
-        } catch (e: any) {
-          console.error('Stripe verify-session:', e);
-          setVerifyError(
-            e.response?.data?.error ||
-              'We could not confirm the payment immediately. If you were charged, your plan usually activates within a minute (webhook).'
-          );
-        } finally {
-          setLoading(false);
-        }
-      })();
-      return;
-    }
-
     const timer = setTimeout(() => setLoading(false), 1500);
     return () => clearTimeout(timer);
   }, [sessionId, gateway]);

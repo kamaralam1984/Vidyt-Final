@@ -38,7 +38,7 @@ const SubscriptionSchema = new Schema<ISubscription>({
   cancelAtPeriodEnd: { type: Boolean, default: false },
   trialEnd: { type: Date },
   paymentMethod: {
-    type: { type: String, enum: ['stripe', 'paypal', 'razorpay'] },
+    type: { type: String, enum: ['paypal', 'razorpay'] },
     customerId: String,
     subscriptionId: String,
   },

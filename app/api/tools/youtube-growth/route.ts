@@ -122,21 +122,17 @@ async function fetchChannelDataFromYouTube(
 
         const ts = d.toISOString();
         const viewsFactor = (totalViews / 1000) / count;
-        const v = Math.round(viewsFactor * (0.5 + Math.random() * 1.5)); // More variance
+        const v = Math.round(viewsFactor);
         viewsGrowthData.push({ date: ts, views: v });
         
-        totalWatchTime += v * (3 + Math.random() * 4); // Varying minutes per view
-        totalLikes += Math.round(v * (0.01 + Math.random() * 0.05)); // 1% to 6% like rate
+        totalWatchTime += v * 3;
+        totalLikes += Math.round(v * 0.03);
 
         const avgDailySubs = Math.max(10, (subscriberCount / 2000) / count);
-        // High volatility noise (sharp peaks and valleys)
-        const volatility = Math.random() > 0.8 ? 3 : 1; // Occasional spikes
-        const dailyVariation = avgDailySubs * (Math.random() - 0.5) * 4 * volatility; 
-        const netChange = Math.round(avgDailySubs + dailyVariation);
         
         subscriberGrowthData.push({
             date: ts,
-            count: subscriberCount - (Math.round(avgDailySubs * (count - i))) + netChange,
+            count: subscriberCount - Math.round(avgDailySubs * (count - 1 - i)),
         });
     }
 

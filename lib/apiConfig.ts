@@ -10,13 +10,13 @@ let cached: Record<string, string> | null = null;
 let cacheTime = 0;
 const CACHE_MS = 60 * 1000; // 1 min
 
-export async function getApiConfig(): Promise<Record<string, string>> {
+export async function getApiConfig(): Promise<Record<string, any>> {
   const now = Date.now();
   if (cached && now - cacheTime < CACHE_MS) return cached;
   try {
     await connectDB();
-    const doc = (await ApiConfig.findOne({ id: 'default' }).lean()) as Record<string, string | undefined> | null;
-    const out: Record<string, string> = {
+    const doc = (await ApiConfig.findOne({ id: 'default' }).lean()) as any | null;
+    const out: Record<string, any> = {
       youtubeDataApiKey: (doc?.youtubeDataApiKey as string)?.trim() || process.env.YOUTUBE_API_KEY || '',
       resendApiKey: (doc?.resendApiKey as string)?.trim() || process.env.RESEND_API_KEY || '',
       openaiApiKey: (doc?.openaiApiKey as string)?.trim() || process.env.OPENAI_API_KEY || '',
@@ -27,7 +27,17 @@ export async function getApiConfig(): Promise<Record<string, string>> {
       stripeSecretKey: (doc?.stripeSecretKey as string)?.trim() || process.env.STRIPE_SECRET_KEY || '',
       stripeWebhookSecret: (doc?.stripeWebhookSecret as string)?.trim() || process.env.STRIPE_WEBHOOK_SECRET || '',
       stripePublishableKey: (doc?.stripePublishableKey as string)?.trim() || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+      groqApiKey: (doc?.groqApiKey as string)?.trim() || process.env.GROQ_API_KEY || '',
+      openrouterApiKey: (doc?.openrouterApiKey as string)?.trim() || process.env.OPENROUTER_API_KEY || '',
+      mistralApiKey: (doc?.mistralApiKey as string)?.trim() || process.env.MISTRAL_API_KEY || '',
+      cohereApiKey: (doc?.cohereApiKey as string)?.trim() || process.env.COHERE_API_KEY || '',
+      deepseekApiKey: (doc?.deepseekApiKey as string)?.trim() || process.env.DEEPSEEK_API_KEY || '',
+      togetherApiKey: (doc?.togetherApiKey as string)?.trim() || process.env.TOGETHER_API_KEY || '',
+      huggingfaceApiKey: (doc?.huggingfaceApiKey as string)?.trim() || process.env.HUGGINGFACE_API_KEY || '',
+      serpapiKey: (doc?.serpapiKey as string)?.trim() || process.env.SERPAPI_KEY || '',
+      rapidapiKey: (doc?.rapidapiKey as string)?.trim() || process.env.RAPIDAPI_KEY || '',
     };
+    out.customApis = doc?.customApis || {};
     cached = out;
     cacheTime = now;
     return out;
@@ -43,6 +53,16 @@ export async function getApiConfig(): Promise<Record<string, string>> {
       stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
       stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
       stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+      groqApiKey: process.env.GROQ_API_KEY || '',
+      openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
+      mistralApiKey: process.env.MISTRAL_API_KEY || '',
+      cohereApiKey: process.env.COHERE_API_KEY || '',
+      deepseekApiKey: process.env.DEEPSEEK_API_KEY || '',
+      togetherApiKey: process.env.TOGETHER_API_KEY || '',
+      huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY || '',
+      serpapiKey: process.env.SERPAPI_KEY || '',
+      rapidapiKey: process.env.RAPIDAPI_KEY || '',
+      customApis: {},
     };
   }
 }

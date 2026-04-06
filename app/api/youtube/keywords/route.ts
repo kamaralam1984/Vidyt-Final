@@ -65,8 +65,8 @@ function buildViralKeywords(title: string, keyword: string): { keyword: string; 
         let kw = (p + b + s).replace(/\s+/g, ' ').trim();
         if (kw.length < 3) continue;
         if (seen.has(kw)) continue;
-        seen.add(kw);
-        const viralScore = 45 + Math.floor(Math.random() * 50);
+        const hash = kw.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const viralScore = 45 + (hash % 50);
         out.push({ keyword: kw, viralScore });
         if (out.length >= 100) break;
       }
@@ -80,8 +80,8 @@ function buildViralKeywords(title: string, keyword: string): { keyword: string; 
     const extra = [`${b} video`, `${b} channel`, `${b} content`, `${b} ideas`, `learn ${b}`, `get ${b}`, `${b} 2025`, `${b} for free`, `${b} tutorial hindi`, `${b} full guide`];
     for (const kw of extra) {
       if (seen.has(kw)) continue;
-      seen.add(kw);
-      out.push({ keyword: kw, viralScore: 50 + Math.floor(Math.random() * 45) });
+      const hash = kw.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      out.push({ keyword: kw, viralScore: 50 + (hash % 45) });
       if (out.length >= 100) break;
     }
     break;
@@ -94,7 +94,8 @@ function mockKeywordAnalysis(keyword: string) {
   const len = keyword.length;
   const searchVolume = len > 15 ? 'Low' : len > 8 ? 'Medium' : 'High';
   const competition = len > 12 ? 'Low' : len > 6 ? 'Medium' : 'High';
-  const seoScore = Math.min(95, 50 + Math.floor(Math.random() * 45));
+  const hash = keyword.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+  const seoScore = Math.min(95, 50 + (hash % 45));
   return { searchVolume, competition, seoScore };
 }
 

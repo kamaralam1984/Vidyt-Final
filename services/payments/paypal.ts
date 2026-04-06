@@ -1,14 +1,13 @@
 /**
- * Stripe Checkout (one-time plan payments), alongside Razorpay.
- * Configure STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in production.
+ * PayPal Checkout (one-time plan payments for given subscription duration).
  */
 
-import Stripe from 'stripe';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import { getPlanRoll, getSubscriptionLimitsForApi } from '@/lib/planLimits';
 import { getActivePlanPricing, usdAmountForBilling } from '@/lib/planPricing';
 import { isValidPlan } from '@/utils/currency';
+import { getApiConfig } from '@/lib/apiConfig';
 
 export interface SubscriptionPlan {
   id: string;
@@ -24,7 +23,6 @@ export interface SubscriptionPlan {
   };
 }
 
-/** Subscription plans: prices from pricing page; features and limits from plan roll. */
 export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   free: {
     id: 'free',
@@ -88,93 +86,110 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   },
 };
 
-let stripeSingleton: Stripe | null = null;
-
-export function stripeConfigured(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+export async function paypalConfigured(): Promise<boolean> {
+  const config = await getApiConfig();
+  return Boolean(config.paypalClientId?.trim() && config.paypalClientSecret?.trim());
 }
 
-export function getStripe(): Stripe | null {
-  const key = process.env.STRIPE_SECRET_KEY?.trim();
-  if (!key) return null;
-  if (!stripeSingleton) {
-    stripeSingleton = new Stripe(key, {
-      apiVersion: '2025-02-24.acacia',
-      typescript: true,
-    });
+async function getPaypalAccessToken(): Promise<string> {
+  const config = await getApiConfig();
+  const clientId = config.paypalClientId || process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = config.paypalClientSecret || process.env.PAYPAL_CLIENT_SECRET;
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+  const PAYPAL_API = 'https://api-m.paypal.com';
+
+  const res = await fetch(`${PAYPAL_API}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: 'grant_type=client_credentials'
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to obtain PayPal access token');
   }
-  return stripeSingleton;
+
+  const data = await res.json();
+  return data.access_token;
 }
 
 /**
- * Stripe Checkout Session (mode=payment) — same access window as Razorpay (month/year).
+ * Creates a PayPal Order for the given plan.
  */
-export async function createCheckoutSession(
+export async function createPaypalOrder(
   userId: string,
   planId: string,
   successUrl: string,
   cancelUrl: string,
   billingPeriod: 'month' | 'year' = 'month'
-): Promise<{ sessionId: string; url: string }> {
-  const stripe = getStripe();
-  if (!stripe) {
-    throw new Error('STRIPE_SECRET_KEY is not configured');
-  }
-
+): Promise<{ orderId: string; url: string }> {
   if (!isValidPlan(planId) || planId === 'free' || planId === 'owner') {
     throw new Error('Invalid plan for checkout');
   }
 
   await connectDB();
-  const user = await User.findById(userId).select('email name');
   const planPricing = await getActivePlanPricing(planId);
   if (!planPricing) {
     throw new Error('Plan pricing not found');
   }
 
   const usd = usdAmountForBilling(planPricing, billingPeriod === 'year' ? 'year' : 'month');
-  const cents = Math.round(usd * 100);
-  if (!Number.isFinite(cents) || cents <= 0) {
-    throw new Error('Invalid plan amount');
-  }
-
+  const amountStr = usd.toFixed(2);
   const label = planPricing.label || planPricing.name || planId;
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    customer_email: user?.email || undefined,
-    line_items: [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: `ViralBoost AI — ${label} (${billingPeriod === 'year' ? 'Annual' : 'Monthly'})`,
-          },
-          unit_amount: cents,
-        },
-        quantity: 1,
-      },
-    ],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    metadata: {
-      userId,
-      planId,
-      billingPeriod: billingPeriod === 'year' ? 'year' : 'month',
+  const dsc = `ViralBoost AI — ${label} (${billingPeriod === 'year' ? 'Annual' : 'Monthly'})`;
+
+  const accessToken = await getPaypalAccessToken();
+
+  const PAYPAL_API = 'https://api-m.paypal.com';
+
+  const res = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
     },
-    payment_intent_data: {
-      metadata: {
-        userId,
-        planId,
-        billingPeriod: billingPeriod === 'year' ? 'year' : 'month',
-      },
-    },
+    body: JSON.stringify({
+      intent: 'CAPTURE',
+      purchase_units: [
+        {
+          reference_id: `user_${userId}_plan_${planId}`,
+          description: dsc,
+          custom_id: JSON.stringify({ userId, planId, billingPeriod }),
+          amount: {
+            currency_code: 'USD',
+            value: amountStr
+          }
+        }
+      ],
+      payment_source: {
+        paypal: {
+          experience_context: {
+            return_url: successUrl,
+            cancel_url: cancelUrl,
+            brand_name: "ViralBoost AI"
+          }
+        }
+      }
+    })
   });
 
-  if (!session.url) {
-    throw new Error('Stripe did not return a checkout URL');
+  if (!res.ok) {
+    const errData = await res.text();
+    console.error('PayPal Order Error', errData);
+    throw new Error('Failed to create PayPal Order');
   }
 
-  return { sessionId: session.id, url: session.url };
+  const data = await res.json();
+  const approveLink = data.links?.find((link: any) => link.rel === 'payer-action' || link.rel === 'approve');
+  
+  if (!approveLink) {
+      throw new Error('No approve link from PayPal');
+  }
+
+  return { orderId: data.id, url: approveLink.href };
 }
 
 export function getSubscriptionLimits(planId: string): SubscriptionPlan['limits'] {

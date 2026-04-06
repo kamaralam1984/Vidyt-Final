@@ -13,7 +13,18 @@ type ApiId =
   | 'assemblyai'
   | 'sentry_client'
   | 'sentry_server'
-  | 'stripe';
+  | 'stripe'
+  | 'paypal'
+  | 'groq'
+  | 'openrouter'
+  | 'mistral'
+  | 'cohere'
+  | 'deepseek'
+  | 'together'
+  | 'huggingface'
+  | 'serpapi'
+  | 'rapidapi'
+  | string;
 
 type ApiStatus = {
   id: ApiId;
@@ -291,8 +302,146 @@ export async function GET(request: NextRequest) {
         'Webhook handling for renewals & cancellations (Stripe Webhook Secret)',
       ],
     };
-    // NOTE: Stripe SDK is optional dependency; yahan sirf key presence check kar rahe hain.
     out.push(item);
+  }
+
+  // PayPal
+  {
+    const clientId = config.paypalClientId?.trim();
+    const secret = config.paypalClientSecret?.trim();
+    const webhook = config.paypalWebhookId?.trim();
+    const hasAny = !!clientId || !!secret || !!webhook;
+    const item: ApiStatus = {
+      id: 'paypal',
+      name: 'PayPal API',
+      hasKey: hasAny,
+      status: hasAny ? 'ok' : 'no-key',
+      message: hasAny
+        ? 'Keys partially/fully set. Used for live payment verification.'
+        : 'Not set – PayPal payments are disabled.',
+      limitInfo: 'PayPal rate limits depend on merchant account status.',
+      usedBy: ['Checkout API', 'Webhook endpoint for subscriptions'],
+    };
+    if (clientId && secret) {
+       try {
+         // simple auth ping
+         const basicAuth = Buffer.from(`${clientId}:${secret}`).toString('base64');
+         const res = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+           method: 'POST',
+           headers: {
+             'Authorization': `Basic ${basicAuth}`,
+             'Content-Type': 'application/x-www-form-urlencoded'
+           },
+           body: 'grant_type=client_credentials'
+         });
+         if (res.ok) {
+           item.status = 'ok';
+           item.message = 'Live auth OK. Valid Client ID and Secret.';
+         } else {
+           const data = await res.json().catch(()=>({}));
+           item.status = 'error';
+           item.message = data.error_description || `HTTP ${res.status} from PayPal`;
+         }
+       } catch (e: any) {
+         item.status = 'error';
+         item.message = e.message || 'PayPal auth check failed';
+       }
+    }
+    out.push(item);
+  }
+
+  // Groq
+  {
+    const apiKey = config.groqApiKey?.trim();
+    const item: ApiStatus = {
+      id: 'groq',
+      name: 'Groq API',
+      hasKey: !!apiKey,
+      status: apiKey ? 'ok' : 'no-key',
+      message: apiKey ? 'Not checked yet' : 'Key missing',
+      limitInfo: 'High speed inference. RPM limits based on tiers.',
+      usedBy: ['Language inference fallback for fast models (e.g. LLaMA 3)'],
+    };
+    if (apiKey) {
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${apiKey}` }});
+        if (res.ok) { item.status = 'ok'; item.message = 'Live auth OK. Models fetched.'; }
+        else { item.status = 'error'; item.message = `HTTP ${res.status} from Groq`; }
+      } catch (e: any) { item.status = 'error'; item.message = e.message || 'Groq check failed'; }
+    }
+    out.push(item);
+  }
+
+  // OpenRouter
+  {
+    const apiKey = config.openrouterApiKey?.trim();
+    const item: ApiStatus = {
+      id: 'openrouter',
+      name: 'OpenRouter API',
+      hasKey: !!apiKey,
+      status: apiKey ? 'ok' : 'no-key',
+      message: apiKey ? 'Not checked yet' : 'Key missing',
+      limitInfo: 'Extensive model routing. Limits vary by provider routed to.',
+      usedBy: ['Fallback and aggregated LLM access'],
+    };
+    if (apiKey) {
+      try {
+        const res = await fetch('https://openrouter.ai/api/v1/auth/key', { headers: { 'Authorization': `Bearer ${apiKey}` }});
+        if (res.ok) { item.status = 'ok'; item.message = 'Live auth OK. Token verified.'; }
+        else { item.status = 'error'; item.message = `HTTP ${res.status} from OpenRouter`; }
+      } catch (e: any) { item.status = 'error'; item.message = e.message || 'OpenRouter check failed'; }
+    }
+    out.push(item);
+  }
+
+  // Mistral, Cohere, DeepSeek, Together, HuggingFace, SerpApi, Rapidapi
+  const otherApis = [
+    { id: 'mistral', name: 'Mistral API', key: config.mistralApiKey, url: 'https://api.mistral.ai/v1/models', usedBy: ['Mistral LLM Backup'] },
+    { id: 'cohere', name: 'Cohere API', key: config.cohereApiKey, url: 'https://api.cohere.com/v1/models', usedBy: ['Cohere Command models backup'] },
+    { id: 'deepseek', name: 'DeepSeek API', key: config.deepseekApiKey, url: 'https://api.deepseek.com/models', usedBy: ['DeepSeek Chat fallback'] },
+    { id: 'together', name: 'Together AI API', key: config.togetherApiKey, url: 'https://api.together.xyz/v1/models', usedBy: ['Together inference backup'] },
+    { id: 'huggingface', name: 'HuggingFace API', key: config.huggingfaceApiKey, url: null, usedBy: ['HF Inference fallback'] },
+    { id: 'serpapi', name: 'SerpApi', key: config.serpapiKey, url: null, usedBy: ['Google/YouTube Search Fallback'] },
+    { id: 'rapidapi', name: 'RapidAPI', key: config.rapidapiKey, url: null, usedBy: ['YouTube 138 API endpoints'] }
+  ];
+
+  for (const api of otherApis) {
+    const k = api.key?.trim();
+    const item: ApiStatus = {
+      id: api.id,
+      name: api.name,
+      hasKey: !!k,
+      status: k ? 'ok' : 'no-key',
+      message: k ? 'Key exists (live ping not configured or executed).' : 'Key missing.',
+      limitInfo: 'Refer to respective developer console.',
+      usedBy: api.usedBy,
+    };
+    if (k && api.url) {
+      try {
+         const res = await fetch(api.url, { headers: { 'Authorization': `Bearer ${k}` }});
+         if (res.ok) { item.status = 'ok'; item.message = 'Live auth OK.'; }
+         else { item.status = 'error'; item.message = `HTTP ${res.status} from ${api.name}`; }
+      } catch (e: any) {
+         item.status = 'error'; item.message = e.message;
+      }
+    }
+    out.push(item);
+  }
+  
+  // Custom APIs dynamically loaded
+  if (config.customApis) {
+     for (const [k, v] of Object.entries(config.customApis)) {
+       const keyVal = (v as string)?.trim();
+       out.push({
+         id: `custom_${k}`,
+         name: `Custom API: ${k}`,
+         hasKey: !!keyVal,
+         status: keyVal ? 'ok' : 'no-key',
+         message: keyVal ? 'Custom API key present.' : 'Empty value.',
+         limitInfo: 'Custom defined limit',
+         usedBy: ['Custom extension features'],
+       });
+     }
   }
 
   return NextResponse.json({ apis: out });

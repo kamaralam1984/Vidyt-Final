@@ -24,8 +24,8 @@ export interface IUser extends Document {
     paymentId?: string;
     razorpayOrderId?: string;
     razorpayPaymentId?: string;
-    stripeCheckoutSessionId?: string;
-    stripePaymentIntentId?: string;
+    paypalSubscriptionId?: string;
+    paypalOrderId?: string;
     earlyBirdDiscount?: boolean;
   };
   profilePicture?: string;
@@ -82,8 +82,8 @@ export interface IUser extends Document {
   workspaces?: mongoose.Types.ObjectId[];
   videos: mongoose.Types.ObjectId[];
   apiKey?: string;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
+  paypalCustomerId?: string;
+  paypalSubscriptionId?: string;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -110,8 +110,8 @@ const UserSchema = new Schema<IUser>({
     paymentId: { type: String },
     razorpayOrderId: { type: String },
     razorpayPaymentId: { type: String },
-    stripeCheckoutSessionId: { type: String },
-    stripePaymentIntentId: { type: String },
+    paypalSubscriptionId: { type: String },
+    paypalOrderId: { type: String },
     earlyBirdDiscount: { type: Boolean, default: false },
   },
   profilePicture: { type: String },
@@ -168,8 +168,8 @@ const UserSchema = new Schema<IUser>({
   activeWorkspaceId: { type: Schema.Types.ObjectId, ref: 'Workspace' },
   workspaces: [{ type: Schema.Types.ObjectId, ref: 'Workspace' }],
   apiKey: { type: String, unique: true, sparse: true, index: true },
-  stripeCustomerId: { type: String, unique: true, sparse: true },
-  stripeSubscriptionId: { type: String, unique: true, sparse: true },
+  paypalCustomerId: { type: String, unique: true, sparse: true },
+  paypalSubscriptionId: { type: String, unique: true, sparse: true },
 }, {
   timestamps: true,
 });

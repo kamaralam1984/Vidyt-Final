@@ -142,15 +142,15 @@ export default function PricingPage() {
   }, []);
 
   const payBusy = (planId: string) =>
-    loading === `rzp:${planId}` || loading === `stripe:${planId}`;
+    loading === `rzp:${planId}` || loading === `paypal:${planId}`;
 
-  const handleSubscribeStripe = async (plan: PricingPlan) => {
+  const handleSubscribePaypal = async (plan: PricingPlan) => {
     if (plan.price === 0) {
       window.location.href = '/dashboard';
       return;
     }
 
-    setLoading(`stripe:${plan.id}`);
+    setLoading(`paypal:${plan.id}`);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -160,8 +160,8 @@ export default function PricingPage() {
       }
 
       const response = await axios.post(
-        '/api/payments/stripe/create-checkout',
-        { plan: plan.id, billingPeriod },
+        '/api/subscriptions/checkout',
+        { planId: plan.id, billingPeriod },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -170,10 +170,10 @@ export default function PricingPage() {
         return;
       }
 
-      alert(response.data?.error || 'Failed to start Stripe checkout.');
+      alert(response.data?.error || 'Failed to start PayPal checkout.');
     } catch (error: any) {
-      console.error('Stripe checkout error:', error);
-      alert(error.response?.data?.error || 'Failed to start Stripe checkout.');
+      console.error('PayPal checkout error:', error);
+      alert(error.response?.data?.error || 'Failed to start PayPal checkout.');
     } finally {
       setLoading(null);
     }
@@ -327,7 +327,7 @@ export default function PricingPage() {
               userPlanId={userPlan}
               loading={loading}
               onSubscribe={handleSubscribe}
-              onSubscribeStripe={handleSubscribeStripe}
+              onSubscribePaypal={handleSubscribePaypal}
               fxRates={fxRates}
               variant="full"
             />

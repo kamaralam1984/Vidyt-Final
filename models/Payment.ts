@@ -9,7 +9,7 @@ export interface IPayment extends Document {
   amount: number;
   currency: string;
   status: 'success' | 'failed' | 'pending';
-  gateway: 'razorpay' | 'stripe' | 'manual';
+  gateway: 'razorpay' | 'paypal' | 'manual';
   metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
@@ -24,7 +24,7 @@ const PaymentSchema = new Schema<IPayment>({
   amount: { type: Number, required: true },
   currency: { type: String, default: 'INR' },
   status: { type: String, enum: ['success', 'failed', 'pending'], default: 'pending', index: true },
-  gateway: { type: String, enum: ['razorpay', 'stripe', 'manual'], default: 'razorpay' },
+  gateway: { type: String, enum: ['razorpay', 'paypal', 'manual'], default: 'razorpay' },
   metadata: { type: Schema.Types.Mixed },
 }, { timestamps: true });
 

@@ -9,9 +9,19 @@ export interface IApiConfig extends Document {
   googleGeminiApiKey?: string;
   sentryDsn?: string;
   sentryServerDsn?: string;
-  stripeSecretKey?: string;
-  stripeWebhookSecret?: string;
-  stripePublishableKey?: string;
+  paypalClientId?: string;
+  paypalClientSecret?: string;
+  paypalWebhookId?: string;
+  groqApiKey?: string;
+  openrouterApiKey?: string;
+  mistralApiKey?: string;
+  cohereApiKey?: string;
+  deepseekApiKey?: string;
+  togetherApiKey?: string;
+  huggingfaceApiKey?: string;
+  serpapiKey?: string;
+  rapidapiKey?: string;
+  customApis?: Map<string, string>;
   updatedAt: Date;
 }
 
@@ -25,9 +35,19 @@ const ApiConfigSchema = new Schema<IApiConfig>(
     googleGeminiApiKey: { type: String, default: '' },
     sentryDsn: { type: String, default: '' },
     sentryServerDsn: { type: String, default: '' },
-    stripeSecretKey: { type: String, default: '' },
-    stripeWebhookSecret: { type: String, default: '' },
-    stripePublishableKey: { type: String, default: '' },
+    paypalClientId: { type: String, default: '' },
+    paypalClientSecret: { type: String, default: '' },
+    paypalWebhookId: { type: String, default: '' },
+    groqApiKey: { type: String, default: '' },
+    openrouterApiKey: { type: String, default: '' },
+    mistralApiKey: { type: String, default: '' },
+    cohereApiKey: { type: String, default: '' },
+    deepseekApiKey: { type: String, default: '' },
+    togetherApiKey: { type: String, default: '' },
+    huggingfaceApiKey: { type: String, default: '' },
+    serpapiKey: { type: String, default: '' },
+    rapidapiKey: { type: String, default: '' },
+    customApis: { type: Map, of: String, default: {} },
   },
   { timestamps: true }
 );

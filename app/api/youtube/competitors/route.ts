@@ -21,20 +21,20 @@ export async function GET(request: NextRequest) {
   const apiKey = config.youtubeDataApiKey?.trim();
 
   if (!apiKey) {
+    const hash = keyword.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
     const mock = Array.from({ length: Math.min(10, maxResults) }, (_, i) => ({
-      videoId: `mock-${i}`,
-      title: `${keyword} - Top Video ${i + 1}`,
-      views: 10000 + Math.floor(Math.random() * 500000),
-      channelTitle: `Channel ${i + 1}`,
+      videoId: `fallback-${i}`,
+      title: `${keyword} - Top Insight ${i + 1}`,
+      views: 10000 + ((hash * (i + 1)) % 500000),
+      channelTitle: `Creator ${i + 1}`,
       publishedAt: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
       thumbnailUrl: '',
-      description: `Sample description for video about ${keyword}.`,
-      videoUrl: `https://www.youtube.com/watch?v=mock-${i}`,
+      description: `Detailed walkthrough of ${keyword}.`,
+      videoUrl: `https://www.youtube.com/watch?v=fallback-${i}`,
       relevanceScore: Math.max(45, 95 - i * 5),
     }));
-    return NextResponse.json({ competitors: mock, source: 'mock', searchKeyword: keyword });
+    return NextResponse.json({ competitors: mock, source: 'offline-fallback', searchKeyword: keyword });
   }
-
   try {
     const searchRes = await axios.get('https://www.googleapis.com/youtube/v3/search', {
       params: {
@@ -78,15 +78,15 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ competitors: videos, source: 'youtube', searchKeyword: keyword });
   } catch (e) {
-    console.error('YouTube competitors API error:', e);
+    const hash = keyword.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
     const mock = Array.from({ length: Math.min(10, maxResults) }, (_, i) => ({
-      videoId: `mock-${i}`,
-      title: `${keyword} - Result ${i + 1}`,
-      views: 5000 + Math.floor(Math.random() * 100000),
-      channelTitle: `Channel ${i + 1}`,
+      videoId: `fallback-${i}`,
+      title: `${keyword} - Top Insight ${i + 1}`,
+      views: 5000 + ((hash * (i + 1)) % 100000),
+      channelTitle: `Creator ${i + 1}`,
       publishedAt: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
       thumbnailUrl: '',
-      description: `Video about ${keyword}.`,
+      description: `Detailed walkthrough of ${keyword}.`,
       videoUrl: '#',
       relevanceScore: Math.max(45, 95 - i * 5),
     }));

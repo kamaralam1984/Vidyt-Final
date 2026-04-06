@@ -1114,42 +1114,59 @@ export default function SuperAdminPage() {
                   {apiStatus.map((api) => (
                     <div
                       key={api.id}
-                      className="flex flex-col gap-1 rounded-lg border border-[#262626] bg-[#101010] px-3 py-2"
+                      className="flex flex-col gap-1 rounded-lg border border-[#262626] bg-[#101010] px-3 py-3"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-white">{api.name}</p>
+                      <div className="flex items-center justify-between gap-2 border-b border-[#212121] pb-2 mb-1">
+                        <p className="text-[15px] font-semibold text-white">{api.name}</p>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             api.status === 'ok'
                               ? 'bg-emerald-500/20 text-emerald-400'
                               : api.status === 'error'
-                              ? 'bg-red-500/15 text-red-400'
+                              ? 'bg-red-500/20 text-red-500 text-[11px] animate-pulse border border-red-500/30'
                               : 'bg-[#333]/40 text-[#AAA]'
                           }`}
                         >
                           {api.status === 'ok'
-                            ? 'LIVE'
+                            ? 'LIVE & OK'
                             : api.status === 'error'
-                            ? 'ERROR'
+                            ? 'ERROR / FAILED'
                             : 'NO KEY'}
                         </span>
                       </div>
-                      <p className="text-[#BBBBBB]">
-                        <span className="text-[#777]">Status:</span> {api.message}
-                      </p>
-                      <p className="text-[#888]">
-                        <span className="text-[#666]">Limit:</span> {api.limitInfo}
-                      </p>
-                      {api.usedBy?.length ? (
-                        <p className="text-[#777]">
-                          <span className="text-[#555]">Used in:</span>{' '}
-                          {api.usedBy.join(', ')}
+                      
+                      {api.status === 'error' && (
+                        <div className="bg-red-500/10 border-l-2 border-red-500 p-2 mb-2">
+                           <p className="text-red-400 font-mono text-xs break-words">
+                             <strong>Error Details:</strong> {api.message}
+                           </p>
+                        </div>
+                      )}
+                      {api.status !== 'error' && (
+                        <p className="text-[#BBBBBB]">
+                          <span className="text-[#888]">Status:</span> {api.message}
                         </p>
-                      ) : null}
+                      )}
+                      
+                      <div className="mt-1 bg-[#181818] p-2 rounded border border-[#212121]">
+                        <p className="text-[#FFCC00] font-medium mb-1 drop-shadow-md">
+                          ⚡ Kaam (Purpose / Use Case):
+                        </p>
+                        {api.usedBy?.length ? (
+                          <ul className="list-disc pl-4 text-[#DDD] space-y-0.5">
+                            {api.usedBy.map((use, i) => <li key={i}>{use}</li>)}
+                          </ul>
+                        ) : (
+                          <p className="text-[#888]">No specific internal usage defined.</p>
+                        )}
+                        <p className="text-[#888] mt-2 pt-2 border-t border-[#222]">
+                          <span className="text-[#666]">Limits:</span> {api.limitInfo}
+                        </p>
+                      </div>
                     </div>
                   ))}
-                  <p className="text-[11px] text-[#666]">
-                    Note: &quot;Use hua kitna&quot; (exact quota consumption) providers ke dashboard se hi milta hai. Yahan hum live health check aur official limit info dikhate hain.
+                  <p className="text-[11px] text-[#666] mt-2">
+                    Note: "Use hua kitna" (exact quota consumption) providers ke dashboard se hi milta hai. Yahan hum live health check aur official limit info dikhate hain.
                   </p>
                 </div>
               </div>
@@ -1167,8 +1184,14 @@ export default function SuperAdminPage() {
                   if (!token) return;
                   setApiConfigSaving(true);
                   try {
-                    const body: Record<string, string> = {};
-                    Object.entries(apiConfigForm).forEach(([k, v]) => { body[k] = typeof v === 'string' ? v : ''; });
+                    const body: any = { customApis: {} };
+                    Object.entries(apiConfigForm).forEach(([k, v]) => { 
+                       if (k.startsWith('custom_')) {
+                          body.customApis[k.slice(7)] = typeof v === 'string' ? v : '';
+                       } else {
+                          body[k] = typeof v === 'string' ? v : ''; 
+                       }
+                    });
                     const res = await fetch('/api/admin/config', {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -1197,9 +1220,18 @@ export default function SuperAdminPage() {
                   { key: 'googleGeminiApiKey', label: 'Google Gemini API Key', hint: 'Chinki isi se baat karti hai (AI reply). OpenAI optional; Gemini set karein to Chinki turant jawab degi.', statusKey: 'gemini' },
                   { key: 'sentryDsn', label: 'Sentry DSN (client)', hint: 'Frontend error tracking.', statusKey: 'sentry' },
                   { key: 'sentryServerDsn', label: 'Sentry Server DSN', hint: 'Backend error tracking.', statusKey: 'sentry' },
-                  { key: 'stripeSecretKey', label: 'Stripe Secret Key', hint: 'International payments.', statusKey: 'stripe' },
-                  { key: 'stripeWebhookSecret', label: 'Stripe Webhook Secret', hint: 'Webhook signature verify.', statusKey: 'stripe' },
-                  { key: 'stripePublishableKey', label: 'Stripe Publishable Key', hint: 'Frontend (NEXT_PUBLIC_ optional).', statusKey: 'stripe' },
+                  { key: 'paypalClientId', label: 'PayPal Client ID', hint: 'International payments.', statusKey: 'paypal' },
+                  { key: 'paypalClientSecret', label: 'PayPal Client Secret', hint: 'API authentication.', statusKey: 'paypal' },
+                  { key: 'paypalWebhookId', label: 'PayPal Webhook ID', hint: 'Webhook signature verify.', statusKey: 'paypal' },
+                  { key: 'groqApiKey', label: 'Groq API Key', hint: 'Fast LLaMA text generation fallback.', statusKey: 'groq' },
+                  { key: 'openrouterApiKey', label: 'OpenRouter API Key', hint: 'Mistral free models fallback.', statusKey: 'openrouter' },
+                  { key: 'mistralApiKey', label: 'Mistral API Key', hint: 'Mistral API text backup.', statusKey: 'mistral' },
+                  { key: 'cohereApiKey', label: 'Cohere API Key', hint: 'Cohere command model text backup.', statusKey: 'cohere' },
+                  { key: 'deepseekApiKey', label: 'DeepSeek API Key', hint: 'DeepSeek chat backup.', statusKey: 'deepseek' },
+                  { key: 'togetherApiKey', label: 'Together AI API Key', hint: 'Llama text backup.', statusKey: 'together' },
+                  { key: 'huggingfaceApiKey', label: 'HuggingFace API Key', hint: 'HuggingFace inference API.', statusKey: 'huggingface' },
+                  { key: 'serpapiKey', label: 'SerpApi Key', hint: 'YouTube Search fallback.', statusKey: 'serpapi' },
+                  { key: 'rapidapiKey', label: 'RapidAPI Key', hint: 'YouTube 138 Search fallback.', statusKey: 'rapidapi' },
                 ].map(({ key, label, hint, statusKey }) => (
                   <div key={key} className="bg-[#181818] border border-[#212121] rounded-xl p-4">
                     <label className="block text-sm font-medium text-white mb-1">{label}</label>
@@ -1228,6 +1260,75 @@ export default function SuperAdminPage() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Dynamically render Custom APIs if they exist in config */}
+                {Object.keys(apiConfigStatus?.customApis || {}).map((customName) => (
+                   <div key={`custom_${customName}`} className="bg-[#101010] border border-[#212121] rounded-xl p-4">
+                     <label className="block text-sm font-medium text-[#FF8C00] mb-1">Custom API: {customName}</label>
+                     <p className="text-xs text-[#888] mb-2">Manually added custom API key for external service.</p>
+                     <div className="flex items-center gap-2 flex-wrap">
+                       <input
+                         type="password"
+                         value={apiConfigForm[`custom_${customName}`] ?? ''}
+                         onChange={(e) => setApiConfigForm((f) => ({ ...f, [`custom_${customName}`]: e.target.value }))}
+                         placeholder={apiConfigStatus?.customApis?.[customName] ? '•••• (set – enter new to change)' : 'Not set – enter key'}
+                         className="flex-1 min-w-[200px] px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-[#FF8C00] focus:border-[#FF8C00]"
+                         autoComplete="off"
+                       />
+                       {apiConfigStatus?.customApis?.[customName] && (
+                         <button
+                           type="button"
+                           onClick={() => setApiConfigForm((f) => ({ ...f, [`custom_${customName}`]: '' }))}
+                           className="text-xs text-[#FF0000] hover:underline"
+                         >
+                           Clear
+                         </button>
+                       )}
+                       {apiConfigStatus?.customApis?.[customName] && (
+                         <span className="text-xs text-green-500 whitespace-nowrap">Set</span>
+                       )}
+                     </div>
+                   </div>
+                ))}
+                
+                {/* Add Custom API Form Logic */}
+                <div className="bg-[#181818] border border-dashed border-[#444] rounded-xl p-4 mt-8 pt-4">
+                  <h3 className="text-white font-medium mb-3">Add Custom API</h3>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      className="flex-1 px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-[#FF0000]"
+                      placeholder="API Name (e.g. ALIBABA_API)"
+                      id="newCustomApiName"
+                    />
+                    <input
+                       type="password"
+                       className="flex-1 px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-[#FF0000]"
+                       placeholder="API Key"
+                       id="newCustomApiKey"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nameEl = document.getElementById('newCustomApiName') as HTMLInputElement;
+                        const keyEl = document.getElementById('newCustomApiKey') as HTMLInputElement;
+                        const n = nameEl?.value.trim().replace(/[^a-zA-Z0-9_]/g, '');
+                        const k = keyEl?.value.trim();
+                        if (n && k) {
+                           setApiConfigForm(f => ({ ...f, [`custom_${n}`]: k }));
+                           setApiConfigStatus(s => ({ ...s, customApis: { ...(s.customApis || {}), [n]: true } }));
+                           nameEl.value = ''; keyEl.value = '';
+                           alert(`Custom API '${n}' staged. Click 'Save API Config' below to save it.`);
+                        } else {
+                           alert('Please provide a valid API name and key.');
+                        }
+                      }}
+                      className="px-4 py-2 bg-[#333] text-white font-medium rounded-lg hover:bg-[#444]"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="submit"
                   disabled={apiConfigSaving}

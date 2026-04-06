@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
-import { SUBSCRIPTION_PLANS, getSubscriptionLimits } from '@/services/payments/stripe';
+import { SUBSCRIPTION_PLANS, getSubscriptionLimits } from '@/services/payments/paypal';
 import connectDB from '@/lib/mongodb';
 import PlanDiscount from '@/models/PlanDiscount';
 import Plan from '@/models/Plan';

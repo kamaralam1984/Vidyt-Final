@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
     // Channel Audit feature access
     try {
       const { default: FeatureAccess } = await import('@/models/FeatureAccess');
@@ -46,21 +47,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const question = typeof body.question === 'string' ? body.question.trim() : '';
     const context = body.context || {};
-
-    if (!question) {
-      return NextResponse.json({ error: 'Question is required' }, { status: 400 });
-    }
+    const contextStr = JSON.stringify(context, null, 2);
 
     const config = await getApiConfig();
-    const contextStr = JSON.stringify(context, null, 2);
-    const systemPrompt = `You are an expert YouTube channel growth strategist. Use the following channel audit data to inform your answer, but DO NOT restrict yourself to it. Actively use your broad knowledge of YouTube trends, actual channel examples, and best practices to provide specific, highly actionable, and correct advice. Reply in the same language the user asks in (e.g. Hindi or English).
+    const systemPrompt = `You are an expert YouTube channel growth strategist. Analyze the provided channel audit data, which includes recently analyzed videos, their titles, tags, and viral scores.
+
+Based on this specific channel's niche, please provide:
+1. Specific, actionable advice on EXACTLY what type of videos the creator should upload next to improve their Average Viral Score, get more views, and go viral. Focus on specific formats, topics, or hooks that work well in this niche.
+2. A list of 3 to 5 REAL, actual successful YouTube channels in their specific niche that they should study for inspiration. Mention their names and what they do well. 
+3. Any other highly actionable, non-generic YouTube optimization advice.
+
+Reply in a clear format using Markdown. If you see Hindi use in the context or titles, you may provide a bilingual or Hindi response; otherwise default to English. Keep your answer highly practical and concise.
 
 Channel audit data context:
 ${contextStr}`;
 
-    const fullPrompt = `${systemPrompt}\n\nUser question: ${question}\n\nYour answer:`;
+    const fullPrompt = `${systemPrompt}\n\nYour expert recommendations:`;
 
     if (config.openaiApiKey?.trim()) {
       const OpenAI = (await import('openai')).default;
@@ -69,18 +72,18 @@ ${contextStr}`;
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: question },
+          { role: 'user', content: "Please analyze the channel data and generate the recommendations and real channel examples as instructed." },
         ],
         temperature: 0.7,
         max_tokens: 1024,
       });
-      const answer = res.choices[0]?.message?.content?.trim() || 'No response.';
-      return NextResponse.json({ answer });
+      const recommendations = res.choices[0]?.message?.content?.trim() || 'No response.';
+      return NextResponse.json({ recommendations });
     }
 
     if (config.googleGeminiApiKey?.trim()) {
-      const answer = await callGemini(fullPrompt, config.googleGeminiApiKey);
-      return NextResponse.json({ answer: answer.trim() });
+      const recommendations = await callGemini(fullPrompt, config.googleGeminiApiKey);
+      return NextResponse.json({ recommendations: recommendations.trim() });
     }
 
     return NextResponse.json(
@@ -88,8 +91,8 @@ ${contextStr}`;
       { status: 503 }
     );
   } catch (e: unknown) {
-    console.error('Channel audit ask error:', e);
-    const message = e instanceof Error ? e.message : 'Failed to get AI answer';
+    console.error('Channel audit recommendations error:', e);
+    const message = e instanceof Error ? e.message : 'Failed to get recommendations';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

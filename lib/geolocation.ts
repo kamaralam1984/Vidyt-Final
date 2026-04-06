@@ -30,10 +30,18 @@ export async function getGeoFromIP(ip: string): Promise<GeoInfo | null> {
   }
 
   try {
-    const res = await fetch(`https://ipapi.co/${ip}/json/`, {
-      headers: { 'User-Agent': 'ViralBoostAI/1.0' },
-      next: { revalidate: 3600 }, // Cache for 1 hour
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+    let res: Response;
+    try {
+      res = await fetch(`https://ipapi.co/${ip}/json/`, {
+        headers: { 'User-Agent': 'ViralBoostAI/1.0' },
+        signal: controller.signal,
+        next: { revalidate: 3600 }, // Cache for 1 hour
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
     if (!res.ok) return null;
 
     const data = await res.json();

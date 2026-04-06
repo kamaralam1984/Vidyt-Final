@@ -33,7 +33,7 @@ interface PricingCardProps {
   billingPeriod: 'month' | 'year';
   isCurrentPlan?: boolean;
   onSubscribe?: (plan: PricingPlan) => void;
-  onSubscribeStripe?: (plan: PricingPlan) => void;
+  onSubscribePaypal?: (plan: PricingPlan) => void;
   loading?: string | null;
   getPrice: (plan: PricingPlan) => string;
   getOriginalPrice: (plan: PricingPlan) => string;
@@ -47,7 +47,7 @@ export default function PricingCard({
   billingPeriod,
   isCurrentPlan,
   onSubscribe,
-  onSubscribeStripe,
+  onSubscribePaypal,
   loading,
   getPrice,
   getOriginalPrice,
@@ -60,7 +60,7 @@ export default function PricingCard({
   const isPopular = plan.popular || metadata.popular;
   const savings = getSavings(plan);
   
-  const payBusy = loading === `rzp:${plan.id}` || loading === `stripe:${plan.id}`;
+  const payBusy = loading === `rzp:${plan.id}` || loading === `paypal:${plan.id}`;
 
   return (
     <motion.div
@@ -238,22 +238,22 @@ export default function PricingCard({
                       </>
                     )}
                   </motion.button>
-                  {plan.price > 0 && onSubscribeStripe && (
+                  {plan.price > 0 && onSubscribePaypal && (
                     <motion.button
                       type="button"
-                      onClick={() => onSubscribeStripe(plan)}
+                      onClick={() => onSubscribePaypal(plan)}
                       disabled={payBusy}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full py-2.5 px-6 rounded-lg font-medium text-white border border-[#635bff] bg-[#635bff]/15 hover:bg-[#635bff]/25 flex items-center justify-center gap-2 text-sm"
+                      className="w-full py-2.5 px-6 rounded-lg font-medium text-white border border-[#253b80] bg-[#0070ba]/20 hover:bg-[#0070ba]/40 flex items-center justify-center gap-2 text-sm"
                     >
-                      {loading === `stripe:${plan.id}` ? (
+                      {loading === `paypal:${plan.id}` ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Opening Stripe…
+                          Opening PayPal…
                         </>
                       ) : (
-                        <>Pay with Stripe (card)</>
+                        <>Pay with PayPal</>
                       )}
                     </motion.button>
                   )}

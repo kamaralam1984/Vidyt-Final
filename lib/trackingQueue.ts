@@ -4,19 +4,32 @@ import crypto from 'crypto';
 export const TRACKING_QUEUE = process.env.TRACKING_QUEUE_NAME || 'tracking-events';
 
 let queueInstance: Queue | null = null;
+let queueFailed = false; // Track if queue has previously failed to avoid repeated connection attempts
 
 function getBullConnection() {
   return {
     host: process.env.REDIS_HOST || '127.0.0.1',
     port: Number(process.env.REDIS_PORT || 6379),
     password: process.env.REDIS_PASSWORD || undefined,
+    // Short connect timeout so we fail fast instead of causing 504s
+    connectTimeout: 2000,
+    maxRetriesPerRequest: 1,
+    lazyConnect: true,
   };
 }
 
-export function getTrackingQueue() {
+export function getTrackingQueue(): Queue | null {
+  if (queueFailed) return null;
   if (queueInstance) return queueInstance;
-  queueInstance = new Queue(TRACKING_QUEUE, { connection: getBullConnection() });
-  return queueInstance;
+  try {
+    queueInstance = new Queue(TRACKING_QUEUE, {
+      connection: getBullConnection() as any,
+    });
+    return queueInstance;
+  } catch {
+    queueFailed = true;
+    return null;
+  }
 }
 
 export async function closeTrackingQueue() {
@@ -69,6 +82,9 @@ export async function enqueueTrackingEvent(
   options: EnqueueTrackingEventOptions = {}
 ) {
   const queue = getTrackingQueue();
+  // If Redis/BullMQ is unavailable, skip queueing silently (best-effort tracking)
+  if (!queue) return null;
+
   const data: TrackingEventPayload = { jobType: 'tracking_event', ...payload };
 
   const jobId = options.opts?.jobId || payload.eventId || makeDefaultEventIdempotencyKey(data);
@@ -88,9 +104,15 @@ export async function enqueueTrackingEvent(
     );
   } catch (err: any) {
     // Idempotent dedupe: if jobId already exists, return it.
-    const existing = await queue.getJob(jobId);
-    if (existing) return existing;
+    try {
+      const existing = await queue.getJob(jobId);
+      if (existing) return existing;
+    } catch {
+      // Queue is truly broken — skip silently
+      queueFailed = true;
+      queueInstance = null;
+      return null;
+    }
     throw err;
   }
 }
-
