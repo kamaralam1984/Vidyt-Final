@@ -6,7 +6,7 @@ import {
   MapPin, MousePointer2, TrendingUp, RefreshCw, Download,
   ChevronRight, ArrowUpRight, ArrowDownRight, DollarSign,
   Zap, BarChart2, PieChart as PieChartIcon, Eye, Search,
-  Wifi, WifiOff, Filter, Flag
+  Wifi, WifiOff, Filter, Flag, X, Loader2
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -120,6 +120,118 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+function SessionDetailModal({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const res = await fetch(`/api/admin/super/analytics/session?sessionId=${sessionId}`, { headers: getAuthHeaders() });
+        const json = await res.data || await res.json();
+        setData(json);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSession();
+  }, [sessionId]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-[#121212] border border-[#222] w-full max-w-4xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+      >
+        <div className="p-6 border-b border-[#222] flex items-center justify-between bg-[#181818]">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-500/10 rounded-lg">
+              <Activity className="w-5 h-5 text-red-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Visitor Journey</h3>
+              <p className="text-xs text-[#666] font-mono">{sessionId}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-[#222] rounded-xl text-[#666] hover:text-white transition-all">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 bg-[#0c0c0c] custom-scrollbar">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-[#444]">
+              <Loader2 className="w-10 h-10 animate-spin text-red-500" />
+              <p className="text-sm animate-pulse">Reconstructing timeline...</p>
+            </div>
+          ) : !data?.logs?.length ? (
+            <div className="text-center py-20 text-[#444]">No activity logs found.</div>
+          ) : (
+            <div className="relative space-y-8 before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-0.5 before:bg-[#222]">
+              {data.logs.map((log: any, i: number) => {
+                const isPage = log.eventType === 'page' || !log.eventType;
+                return (
+                  <div key={i} className="relative pl-12 group">
+                    <div className={`absolute left-0 top-1 w-9 h-9 rounded-full border-4 border-[#0c0c0c] flex items-center justify-center z-10 transition-transform group-hover:scale-110 ${
+                      log.eventType === 'start' ? 'bg-emerald-500 text-black' : 
+                      log.eventType === 'end' ? 'bg-red-500 text-white' : 
+                      'bg-[#222] text-[#888]'
+                    }`}>
+                      {log.eventType === 'start' ? <Zap className="w-4 h-4" /> : 
+                       log.eventType === 'end' ? <X className="w-4 h-4" /> : 
+                       <MousePointer2 className="w-4 h-4" />}
+                    </div>
+                    <div className="bg-[#181818] border border-[#222] rounded-2xl p-4 hover:border-[#333] transition-all">
+                      <div className="flex justify-between items-start gap-4 mb-2">
+                        <div>
+                          <p className="text-xs font-bold text-[#666] uppercase tracking-widest flex items-center gap-2">
+                            {log.eventType === 'start' ? 'Session Started' : 
+                             log.eventType === 'end' ? 'Session Ended' : 'Page Visit'}
+                            <span className="text-[10px] lowercase text-[#444]">· {new Date(log.timestamp).toLocaleTimeString()}</span>
+                          </p>
+                          <h4 className="text-sm font-semibold text-white mt-1 font-mono">{log.page}</h4>
+                        </div>
+                        {log.timeSpentSeconds > 0 && (
+                          <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/10 text-[10px] text-[#888] font-bold">
+                            {fmtSeconds(log.timeSpentSeconds)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 pt-3 border-t border-[#222]/50">
+                        {log.city && (
+                          <div className="flex items-center gap-1.5 text-[10px] text-[#666]">
+                            <MapPin className="w-3 h-3" /> {log.city}, {log.country}
+                          </div>
+                        )}
+                        {log.userAgent && (
+                          <div className="flex items-center gap-1.5 text-[10px] text-[#666] truncate max-w-[200px]">
+                            <Monitor className="w-3 h-3" /> {log.userAgent.split(') ')[0].replace('Mozilla/5.0 (', '')}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 text-[10px] text-[#666]">
+                          <Globe className="w-3 h-3" /> {log.ipAddress || '0.0.0.0'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        
+        <div className="px-6 py-4 border-t border-[#222] bg-[#181818] flex items-center justify-between text-xs text-[#555]">
+          <p>Total Session Duration: <span className="text-emerald-400 font-bold">{fmtSeconds(data?.totalDurationSeconds || 0)}</span></p>
+          <p>Location: {data?.logs?.[0]?.city || 'Unknown'}</p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────
@@ -135,6 +247,7 @@ export default function PlatformAnalytics() {
   const [traffic, setTraffic] = useState<any>(null);
   const [revenue, setRevenue] = useState<any>(null);
   const [sessions, setSessions] = useState<any>(null);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
 
   const headers = getAuthHeaders();
 
@@ -305,12 +418,21 @@ export default function PlatformAnalytics() {
                           <p className="text-[11px] text-[#555]">{u.city || '–'}, {u.country || '–'}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-[#888] font-mono truncate max-w-[120px]">{u.currentPage || '/'}</p>
-                        <span className="text-[10px] text-emerald-400 flex items-center justify-end gap-1 mt-0.5">
-                          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
-                          {u.sessionDurationMinutes}m online
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p className="text-xs text-[#888] font-mono truncate max-w-[120px]">{u.currentPage || '/'}</p>
+                          <span className="text-[10px] text-emerald-400 flex items-center justify-end gap-1 mt-0.5">
+                            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
+                            {u.sessionDurationMinutes}m online
+                          </span>
+                        </div>
+                        <button 
+                          onClick={() => setSelectedSession(u.sessionId)}
+                          className="p-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors group/btn"
+                          title="View Journey"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-[#666] group-hover/btn:text-[#FF0000]" />
+                        </button>
                       </div>
                     </motion.div>
                   ))}

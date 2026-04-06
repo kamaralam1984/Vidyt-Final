@@ -122,6 +122,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
     { id: 'dashboard', icon: Home, label: 'Dashboard', href: '/dashboard' },
     { id: 'videos', icon: Video, label: 'My Videos', href: '/videos', platform: 'youtube' },
     { id: 'youtube_seo', icon: Search, label: 'YouTube Live SEO Analyzer', href: '/dashboard/youtube-seo', platform: 'youtube' },
+    { id: 'keyword_intelligence', icon: Zap, label: 'Keyword Intelligence Engine', href: '/dashboard/keyword-intelligence', platform: 'youtube' },
     { id: 'facebook_seo', icon: Facebook, label: 'Facebook SEO Analyzer', href: '/dashboard/facebook-seo', platform: 'facebook' },
     { id: 'instagram_seo', icon: Instagram, label: 'Instagram SEO Analyzer', href: '/dashboard/instagram-seo', platform: 'instagram' },
     { id: 'viral_optimizer', icon: Zap, label: 'AI Viral Optimization Engine', href: '/dashboard/viral-optimizer', platform: 'youtube' },

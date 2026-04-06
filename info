@@ -260,6 +260,13 @@ Last updated: 2026-04-04
 ---
 ## New Features
 
+### Viral Optimizer Enhancements (April 5, 2026)
+- **Existing Video Updater**: Users can select previously uploaded YouTube videos. The current title and description automatically populate into the main optimizer inputs.
+- **Push Changes Directly**: Modified video metadata (title, description, tags, hashtags) can be securely pushed directly back to the original YouTube video without leaving the page.
+- **SEO Trending Generator Multi-Select**: Added checkboxes and "Select All" functionality for generated keywords, titles, descriptions, and hashtags.
+- **Bulk Copy Capability**: Extracted keywords are formatted correctly automatically (e.g. comma separation for keywords, spaces for hashtags) when copying multiple selected items.
+- **Apply to Inputs**: Individual SEO suggestions can now be instantly applied to the main optimization input panel via a hover-only 'Apply' action.
+
 ### SaaS Legal & Compliance Infrastructure (April 5, 2026)
 - ✅ **Dual-Identity Structure**: Distinguishes product branding (**Vid YT**) from the legal and billing entity (**Kvl Business Solutions**, India).
 - ✅ **Tax & GST Ready**: 18% GST (Indian law) automatically factored into all SaaS pricing displays.

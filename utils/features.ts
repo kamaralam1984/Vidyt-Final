@@ -10,6 +10,7 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'dashboard', label: 'Dashboard', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'videos', label: 'My Videos', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'youtube_seo', label: 'YouTube Live SEO Analyzer', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'keyword_intelligence', label: 'Keyword Intelligence Engine', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'facebook_seo', label: 'Facebook SEO Analyzer', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'instagram_seo', label: 'Instagram SEO Analyzer', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'viral_optimizer', label: 'AI Viral Optimization Engine', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },

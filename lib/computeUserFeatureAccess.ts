@@ -37,6 +37,7 @@ const FEATURE_PLATFORM_GATE: Record<string, string> = {
   facebook_seo: 'facebook',
   facebook_audit: 'facebook',
   instagram_seo: 'instagram',
+  keyword_intelligence: 'youtube',
 };
 
 function isPlatformAllowedForPlan(
@@ -103,6 +104,7 @@ export const DEFAULT_FREE_NAV: Record<string, boolean> = {
   hook_generator: false,
   shorts_creator: false,
   youtube_growth: false,
+  keyword_intelligence: true,
 };
 
 /**

@@ -1,0 +1,252 @@
+export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 minutes
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromRequest } from '@/lib/auth';
+import { getApiConfig } from '@/lib/apiConfig';
+
+async function callOpenAI(apiKey: string, prompt: string): Promise<string> {
+  const OpenAI = (await import('openai')).default;
+  const openai = new OpenAI({ apiKey });
+  const res = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'system', content: prompt }],
+    temperature: 0.7,
+    max_tokens: 2500,
+  });
+  return res.choices[0]?.message?.content?.trim() || '{}';
+}
+
+async function callGemini(apiKey: string, prompt: string): Promise<string> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2500 },
+      }),
+    }
+  );
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error(data?.error?.message || 'Gemini no text returned');
+  return text.trim();
+}
+
+export async function POST(request: NextRequest) {
+  let parsedKeyword = 'viral content';
+  let parsedPage = 'SEO_TOOLS_PAGE';
+
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { primaryKeyword, currentPage = 'SEO_TOOLS_PAGE', platform = 'youtube', contentType = 'video', niche = '' } = body;
+    
+    if (primaryKeyword) parsedKeyword = primaryKeyword;
+    if (currentPage) parsedPage = currentPage;
+
+    if (!primaryKeyword) {
+      return NextResponse.json({ error: 'Primary Keyword is required' }, { status: 400 });
+    }
+
+    const prompt = `You are an advanced AI Keyword Intelligence Engine integrated across a full SaaS platform (VidYT). Your job is to generate, analyze, and optimize keywords dynamically based on the page context where the user is interacting.
+
+---
+
+INPUT:
+* Primary Keyword: ${primaryKeyword}
+* Current Page: ${currentPage}
+* Platform: ${platform}
+* Content Type: ${contentType}
+* Niche: ${niche}
+
+---
+
+SUPPORTED PAGES (VERY IMPORTANT CONTEXT):
+1. SEO_TOOLS_PAGE
+2. VIDEO_ANALYZER_PAGE
+3. VIDEO_UPLOAD_PAGE
+4. TRENDING_KEYWORDS_PAGE
+5. TITLE_GENERATOR_PAGE
+6. DESCRIPTION_GENERATOR_PAGE
+7. HASHTAG_GENERATOR_PAGE
+8. VIRAL_AI_ANALYZER_PAGE
+9. SHORTS_CREATOR_PAGE
+10. CHANNEL_INTELLIGENCE_PAGE
+11. COMPETITOR_ANALYSIS_PAGE
+12. ANALYTICS_DASHBOARD_PAGE
+13. CONTENT_CALENDAR_PAGE
+14. POSTING_TIME_PAGE
+15. EXPORT_REPORT_PAGE
+16. SUPPORT_AI_PAGE
+
+---
+
+PAGE-WISE BEHAVIOR RULES:
+
+IF Current Page = SEO_TOOLS_PAGE:
+→ Generate autocomplete, long-tail, SEO keywords, low competition keywords
+
+IF Current Page = VIDEO_ANALYZER_PAGE:
+→ Extract keywords from video context + generate SEO tags + improvement keywords
+
+IF Current Page = VIDEO_UPLOAD_PAGE:
+→ Generate optimized title keywords, tags, hashtags for publishing
+
+IF Current Page = TRENDING_KEYWORDS_PAGE:
+→ Generate trending + viral + real-time keywords (news priority)
+
+IF Current Page = TITLE_GENERATOR_PAGE:
+→ Focus on high-CTR keywords and emotional triggers
+
+IF Current Page = DESCRIPTION_GENERATOR_PAGE:
+→ Generate structured SEO keyword clusters for descriptions
+
+IF Current Page = HASHTAG_GENERATOR_PAGE:
+→ Generate platform-specific hashtags (#shorts, #viral, #news)
+
+IF Current Page = VIRAL_AI_ANALYZER_PAGE:
+→ Assign viral scores to keywords and rank them
+
+IF Current Page = SHORTS_CREATOR_PAGE:
+→ Generate short-form keywords, hooks, captions, trending hashtags
+
+IF Current Page = CHANNEL_INTELLIGENCE_PAGE:
+→ Generate niche keywords + competitor keywords + growth keywords
+
+IF Current Page = COMPETITOR_ANALYSIS_PAGE:
+→ Extract and suggest competitor-based keywords
+
+IF Current Page = ANALYTICS_DASHBOARD_PAGE:
+→ Highlight top-performing keywords and ranking insights
+
+IF Current Page = CONTENT_CALENDAR_PAGE:
+→ Suggest keywords based on future trends and scheduling
+
+IF Current Page = POSTING_TIME_PAGE:
+→ Recommend best keywords for specific time slots
+
+IF Current Page = EXPORT_REPORT_PAGE:
+→ Provide keyword summary and performance data
+
+IF Current Page = SUPPORT_AI_PAGE:
+→ Suggest help-related keywords and query intent
+
+---
+
+OUTPUT FORMAT (STRICT JSON):
+{
+"page": "${currentPage}",
+"primary_keyword": "${primaryKeyword}",
+"suggested_keywords": [],
+"long_tail_keywords": [],
+"trending_keywords": [],
+"viral_keywords": [],
+"low_competition_keywords": [],
+"hashtags": [],
+"titles": [],
+"hooks": [],
+"keyword_scores": [
+{
+"keyword": "",
+"trend_score": 0-100,
+"viral_score": 0-100,
+"seo_score": 0-100
+}
+],
+"best_keywords": []
+}
+
+---
+
+RULES:
+* Always adapt output based on CURRENT PAGE
+* Do NOT generate irrelevant keyword types
+* Keep keywords platform-specific
+* Prioritize trending + viral + SEO balance
+* Avoid repetition
+* Minimum 10 keywords per category where applicable
+* Ensure real-world usable keyword patterns
+* Return ONLY valid JSON, without any markdown blocks or explanation.
+
+---
+
+FINAL GOAL:
+Create a unified keyword intelligence system that works seamlessly across all pages, powering search suggestions, SEO optimization, viral prediction, content strategy, and analytics insights.`;
+
+    let config;
+    try {
+      config = await getApiConfig();
+    } catch {
+      return NextResponse.json({ error: 'API configuration not found' }, { status: 500 });
+    }
+
+    let text: string | null = null;
+    let fallbackUsed = false;
+
+    if (config.openaiApiKey?.trim()) {
+      try {
+        text = await callOpenAI(config.openaiApiKey, prompt);
+      } catch (err: any) {
+        console.warn('OpenAI error in Keyword Intelligence details:', err.message);
+        if (config.googleGeminiApiKey?.trim()) {
+          console.log('Falling back to Gemini...');
+          fallbackUsed = true;
+          try {
+             text = await callGemini(config.googleGeminiApiKey, prompt);
+          } catch (geminiErr: any) {
+             throw new Error(`OpenAI failed (${err.message}) and Gemini fallback failed (${geminiErr.message})`);
+          }
+        } else {
+          throw err; // Re-throw if no Gemini fallback
+        }
+      }
+    } else if (config.googleGeminiApiKey?.trim()) {
+      text = await callGemini(config.googleGeminiApiKey, prompt);
+    } else {
+      return NextResponse.json({ error: 'No AI provider configured' }, { status: 500 });
+    }
+
+    // Attempt to extract JSON from the response text
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Failed to parse AI response into JSON');
+    }
+
+    const parsedData = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
+
+    return NextResponse.json({ success: true, data: parsedData });
+
+  } catch (error: any) {
+    console.error('Keyword intelligence API error:', error);
+    
+    // Context-aware fallback using the user's input if it was successfully parsed
+    const fallbackPk = parsedKeyword;
+    const fallbackPg = parsedPage;
+
+    const fallbackData = {
+      page: fallbackPg,
+      primary_keyword: fallbackPk,
+      suggested_keywords: [`${fallbackPk} tips`, `${fallbackPk} guide`, `${fallbackPk} ideas`, `master ${fallbackPk}`],
+      long_tail_keywords: [`how to ${fallbackPk}`, `best ${fallbackPk} strategy 2026`, `${fallbackPk} step by step`],
+      trending_keywords: [`${fallbackPk} 2026`, `new ${fallbackPk} trend`, `latest ${fallbackPk}`],
+      viral_keywords: [`viral ${fallbackPk}`, `${fallbackPk} exposed`, `shocking ${fallbackPk}`],
+      low_competition_keywords: [`${fallbackPk} for beginners`, `easy ${fallbackPk} method`],
+      hashtags: [`#${fallbackPk.replace(/\s+/g, '')}`, '#viral', '#trending', '#youtube'],
+      titles: [`Complete Guide to ${fallbackPk}`, `The Secret of ${fallbackPk}`],
+      hooks: [`Stop doing ${fallbackPk} wrong...`, `Here is how you can master ${fallbackPk}`],
+      keyword_scores: [
+        { keyword: fallbackPk, trend_score: 50, viral_score: 50, seo_score: 50 }
+      ],
+      best_keywords: [fallbackPk, `viral ${fallbackPk}`]
+    };
+
+    return NextResponse.json({ success: true, data: fallbackData, isFallback: true, errorDetails: error.message });
+  }
+}

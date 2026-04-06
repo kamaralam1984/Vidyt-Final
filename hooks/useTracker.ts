@@ -44,10 +44,39 @@ export function useTracker() {
     if (pingRef.current) clearInterval(pingRef.current);
     pingRef.current = setInterval(() => {
       sock.emit('session_ping', { userId });
-    }, 30_000);
+      
+      // Also send a heartbeat to the HTTP API to update UserSession.lastSeen/duration
+      const headers = getAuthHeaders();
+      const sid = getOrCreateSessionId();
+      if (headers.Authorization && sid) {
+        fetch('/api/admin/super/tracking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify({ action: 'heartbeat', sessionId: sid, page: window.location.pathname }),
+        }).catch(() => {});
+      }
+    }, 45_000); // 45s heartbeat
+
+    const handleUnload = () => {
+      const sid = getOrCreateSessionId();
+      const headers = getAuthHeaders();
+      if (headers.Authorization && sid) {
+        const body = JSON.stringify({ action: 'end', sessionId: sid, page: window.location.pathname });
+        // Use sendBeacon for reliable delivery on page close
+        if (navigator.sendBeacon) {
+          const blob = new Blob([body], { type: 'application/json' });
+          navigator.sendBeacon('/api/admin/super/tracking', blob);
+        } else {
+          fetch('/api/admin/super/tracking', { method: 'POST', headers, body, keepalive: true });
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
 
     return () => {
       if (pingRef.current) clearInterval(pingRef.current);
+      window.removeEventListener('beforeunload', handleUnload);
     };
   }, [getTokenPayload]);
 
