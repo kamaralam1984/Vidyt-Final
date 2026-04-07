@@ -37,6 +37,8 @@
     "hooks/**/*.ts",
     "hooks/**/*.tsx",
     "middleware.ts",
+    "middleware/**/*.ts",
+    "middleware/**/*.tsx",
     ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules", "mobile", "workers"]

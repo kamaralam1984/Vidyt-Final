@@ -14,7 +14,7 @@ import {
   trackFailure,
   recordSuspiciousActivity,
 } from '@/lib/rateLimiter';
-import { AbuseLog } from '@/models/AbuseLog';
+import { AbuseLog, IAbuseLog } from '@/models/AbuseLog';
 import dbConnect from '@/lib/mongodb';
 
 export interface RateLimitMiddlewareOptions {
@@ -156,9 +156,9 @@ async function logAbuseEvent(
   event: {
     ipAddress: string;
     endpoint: string;
-    method: string;
-    violationType: string;
-    severity: string;
+    method: IAbuseLog['method'];
+    violationType: IAbuseLog['violationType'];
+    severity: IAbuseLog['severity'];
     description: string;
     botScore?: number;
     botReasons?: string[];

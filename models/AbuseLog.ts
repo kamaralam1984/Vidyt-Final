@@ -173,5 +173,12 @@ AbuseLogSchema.statics.getRecentSummary = async function (hours: number = 24) {
   ]);
 };
 
+export interface IAbuseLogModel extends mongoose.Model<IAbuseLog> {
+  isHighRisk(ipAddress: string, userId?: string): Promise<boolean>;
+  logAbuse(data: Partial<IAbuseLog>): Promise<IAbuseLog>;
+  getRecentSummary(hours?: number): Promise<any[]>;
+}
+
 export const AbuseLog =
-  mongoose.models.AbuseLog || mongoose.model<IAbuseLog>('AbuseLog', AbuseLogSchema);
+  (mongoose.models.AbuseLog as IAbuseLogModel) ||
+  mongoose.model<IAbuseLog, IAbuseLogModel>('AbuseLog', AbuseLogSchema);

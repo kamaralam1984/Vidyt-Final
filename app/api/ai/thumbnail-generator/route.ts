@@ -4,12 +4,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAIToolAccess } from '@/lib/aiStudioAccess';
 import connectDB from '@/lib/mongodb';
 import AIThumbnail from '@/models/AIThumbnail';
+import { getApiConfig } from '@/lib/apiConfig';
+import OpenAI from 'openai';
+import { generateAIImage } from '@/lib/ai-image';
 
 interface ThumbnailInput {
   video_title: string;
   topic: string;
   emotion: string;
   niche: string;
+  generateImage?: boolean;
 }
 
 interface ThumbnailOutput {
@@ -23,6 +27,7 @@ interface ThumbnailOutput {
     layout: string;
     effects: string;
   };
+  image_url?: string;
 }
 
 const POWER_WORDS = ['EXPOSED', 'SHOCKING', 'SECRET', 'WARNING', 'LEAKED', 'REVEALED', 'BANNED', 'CRISIS', 'URGENT', 'ALERT'];
@@ -169,7 +174,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { videoTitle, topic, emotion, niche } = body;
+    const { videoTitle, topic, emotion, niche, generateImage } = body;
     
     if (!videoTitle?.trim()) {
       return NextResponse.json({ error: 'Video title is required' }, { status: 400 });
@@ -180,6 +185,7 @@ export async function POST(request: NextRequest) {
       topic: (topic || '').trim(),
       emotion: (emotion || 'curiosity').trim(),
       niche: (niche || '').trim(),
+      generateImage: !!generateImage,
     };
     
     const triggers = analyzeEmotionalTriggers(input);
@@ -193,7 +199,24 @@ export async function POST(request: NextRequest) {
     
     const template = NICHE_TEMPLATES[input.niche as keyof typeof NICHE_TEMPLATES] || NICHE_TEMPLATES.news;
     
-    const output: ThumbnailOutput = {
+    // Step 3: Generate the Image Reference (with fallback)
+    let image_url = undefined;
+    let warning = undefined;
+    let generationProvider = 'none';
+
+    if (input.generateImage) {
+      try {
+        const generation = await generateAIImage(image_prompt, input.niche);
+        image_url = generation.url;
+        generationProvider = generation.provider;
+        if (generation.warning) warning = generation.warning;
+      } catch (e: any) {
+        console.error("AI Image Generation failed completely:", e.message);
+        warning = "AI image generation is temporarily unavailable.";
+      }
+    }
+
+    const output: ThumbnailOutput & { warning?: string, generationProvider?: string } = {
       thumbnail_text,
       image_prompt,
       variations,
@@ -203,7 +226,10 @@ export async function POST(request: NextRequest) {
         colors: template.colors,
         layout: template.layout,
         effects: 'glow effect on text, light flare, motion blur, depth shadow, gradient background'
-      }
+      },
+      image_url,
+      warning,
+      generationProvider
     };
 
     await connectDB();
