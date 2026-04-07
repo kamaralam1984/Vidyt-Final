@@ -11,9 +11,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const pathname = usePathname() || '';
   /** `/admin/super` root page has its own full "SaaS Control Center" sidebar — hide the slim SuperSidebar to avoid two left bars */
   const hideOuterSidebar = pathname === '/admin/super';
+  const [isMounted, setIsMounted] = useState(false);
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     const check = async () => {
       try {
         const res = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
@@ -32,6 +34,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     check();
   }, []);
 
+  // Guard to prevent hydration mismatch: only apply dynamic sidebar hiding after mount
+  const sidebarHidden = isMounted ? hideOuterSidebar : false;
+
   if (!allowed) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -45,8 +50,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {!hideOuterSidebar && <SuperSidebar />}
-      <main className={hideOuterSidebar ? 'min-h-screen' : 'pl-64 min-h-screen'}>
+      {!sidebarHidden && <SuperSidebar />}
+      <main className={sidebarHidden ? 'min-h-screen' : 'pl-64 min-h-screen'}>
         {children}
       </main>
     </div>

@@ -13,8 +13,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    console.log('[API/Plans] Connecting to DB...');
     await connectDB();
+    console.log('[API/Plans] DB Connected. Finding plans...');
     const plans = await Plan.find({}).sort({ createdAt: -1 }).lean();
+    console.log(`[API/Plans] Found ${plans.length} raw plans`);
 
     return NextResponse.json({
       success: true,
@@ -44,8 +47,11 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (e: any) {
-    console.error('Get plans error:', e);
-    return NextResponse.json({ error: 'Failed to load plans' }, { status: 500 });
+    console.error('[API/Plans] Get plans error:', e.message, e.stack);
+    return NextResponse.json({ 
+      error: 'Failed to load plans', 
+      details: e.message 
+    }, { status: 500 });
   }
 }
 
@@ -107,6 +113,7 @@ export async function POST(request: NextRequest) {
     const plan = await Plan.create({
       planId,
       name,
+      label,
       description: description || undefined,
       priceMonthly,
       priceYearly: priceYearly || undefined,
@@ -117,9 +124,11 @@ export async function POST(request: NextRequest) {
       isActive: true,
       role, // NEW: Assign role
       limits, // NEW: Set limits
+      limitsDisplay,
       featureFlags, // NEW: Set feature flags
     });
 
+    console.log(`[API/Plans] Plan created: ${plan.planId}`);
     return NextResponse.json({
       success: true,
       plan: {
@@ -140,8 +149,12 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (e: any) {
-    console.error('Create plan error:', e);
-    return NextResponse.json({ error: 'Failed to create plan' }, { status: 500 });
+    console.error('[API/Plans] Create plan error:', e.message, e.stack);
+    return NextResponse.json({ 
+      error: 'Failed to create plan',
+      details: e.message,
+      stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+    }, { status: 500 });
   }
 }
 
@@ -156,6 +169,7 @@ export async function PATCH(request: NextRequest) {
     const {
       id,
       name,
+      label,
       description,
       priceMonthly,
       priceYearly,
@@ -165,6 +179,7 @@ export async function PATCH(request: NextRequest) {
       isActive,
       role, // NEW: Allow changing role
       limits, // NEW: Allow changing limits
+      limitsDisplay,
       featureFlags, // NEW: Allow changing feature flags
     } = body;
 
@@ -221,6 +236,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
 
+    console.log(`[API/Plans] Plan updated: ${plan.planId}`);
     return NextResponse.json({
       success: true,
       plan: {
@@ -241,8 +257,12 @@ export async function PATCH(request: NextRequest) {
       },
     });
   } catch (e: any) {
-    console.error('Update plan error:', e);
-    return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 });
+    console.error('[API/Plans] Update plan error:', e.message, e.stack);
+    return NextResponse.json({ 
+      error: 'Failed to update plan',
+      details: e.message,
+      stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+    }, { status: 500 });
   }
 }
 
@@ -269,12 +289,17 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
 
+    console.log(`[API/Plans] Plan deactivated: ${plan.planId}`);
     return NextResponse.json({
       success: true,
       message: 'Plan deactivated successfully',
     });
   } catch (e: any) {
-    console.error('Delete plan error:', e);
-    return NextResponse.json({ error: 'Failed to delete plan' }, { status: 500 });
+    console.error('[API/Plans] Delete plan error:', e.message, e.stack);
+    return NextResponse.json({ 
+      error: 'Failed to delete plan',
+      details: e.message,
+      stack: process.env.NODE_ENV === 'development' ? e.stack : undefined
+    }, { status: 500 });
   }
 }

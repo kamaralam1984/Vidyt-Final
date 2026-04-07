@@ -128,7 +128,9 @@ export default function UnifiedControlPanel() {
     setError(null);
     try {
       const [plansRes, controlsRes] = await Promise.all([
-        fetch('/api/admin/plans'),
+        fetch('/api/admin/plans', {
+          headers: getAuthHeaders() as any,
+        }),
         axios.get('/api/admin/super/controls', { headers: getAuthHeaders() }).catch(err => {
           console.error('Controls API error:', err);
           return { data: { controls: [] } };
@@ -191,25 +193,20 @@ export default function UnifiedControlPanel() {
     setError(null);
     try {
       const plan = plans.find((p) => p.planId === planId);
-      const res = await fetch(`/api/admin/plans`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: plan?._id,
-          role: newRole,
-        }),
-      });
+      const res = await axios.patch(`/api/admin/plans`, {
+        id: plan?._id,
+        role: newRole,
+      }, { headers: getAuthHeaders() });
 
-      const data = await res.json();
-      if (data.success) {
+      if (res.data.success) {
         setSuccess(`✓ ${plan?.name} updated to ${newRole} role`);
         setTimeout(() => setSuccess(null), 3000);
         fetchAllData();
       } else {
-        setError(data.error);
+        setError(res.data.error);
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
@@ -220,36 +217,31 @@ export default function UnifiedControlPanel() {
     setIsSavingPlan(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/plans`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editingPlan._id,
-          name: editingPlan.name,
-          label: editingPlan.label,
-          description: editingPlan.description,
-          priceMonthly: editingPlan.priceMonthly,
-          priceYearly: editingPlan.priceYearly,
-          features: editingPlan.features,
-          role: editingPlan.role,
-          limits: editingPlan.limits,
-          limitsDisplay: editingPlan.limitsDisplay,
-          featureFlags: editingPlan.featureFlags,
-          isActive: editingPlan.isActive,
-        }),
-      });
+      const res = await axios.patch(`/api/admin/plans`, {
+        id: editingPlan._id,
+        name: editingPlan.name,
+        label: editingPlan.label,
+        description: editingPlan.description,
+        priceMonthly: editingPlan.priceMonthly,
+        priceYearly: editingPlan.priceYearly,
+        features: editingPlan.features,
+        role: editingPlan.role,
+        limits: editingPlan.limits,
+        limitsDisplay: editingPlan.limitsDisplay,
+        featureFlags: editingPlan.featureFlags,
+        isActive: editingPlan.isActive,
+      }, { headers: getAuthHeaders() });
 
-      const data = await res.json();
-      if (data.success) {
+      if (res.data.success) {
         setSuccess(`✓ ${editingPlan.name} saved successfully`);
         setTimeout(() => setSuccess(null), 3000);
         setEditingPlan(null);
         fetchAllData();
       } else {
-        setError(data.error);
+        setError(res.data.error);
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.error || err.message);
     } finally {
       setIsSavingPlan(false);
     }
