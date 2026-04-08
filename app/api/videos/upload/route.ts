@@ -61,109 +61,44 @@ async function handleUpload(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const videoBuffer = Buffer.from(arrayBuffer);
     
-    // Analyze video hook (first 3 seconds)
-    const hookAnalysis = await analyzeVideoHook(videoBuffer);
-    
-    // For uploaded videos, we'll need to extract thumbnail
-    // For now, use a placeholder
+    // ── STEP 1: Basic Metadata Extraction (Fast) ──────────────────────────
+    // In a real app, we'd use FFmpeg here to get duration/metadata.
+    // For now, we'll use sensible defaults for Fast Init.
+    const duration = 60; 
     const thumbnailUrl = '/placeholder-thumbnail.jpg';
-    const thumbnailAnalysis = await analyzeThumbnail(thumbnailUrl);
-    
-    const titleAnalysis = analyzeTitle(title, { maxSuggestions: titleSuggestionsLimit });
-    
-    // Get trending score
-    const trendingScore = await getTrendingScore(titleAnalysis.keywords);
-    
-    // Predict viral potential
-    const viralPrediction = predictViralPotential(
-      hookAnalysis,
-      thumbnailAnalysis,
-      titleAnalysis,
-      trendingScore,
-      60 // Default duration, would extract from video
-    );
-    
-    // Generate hashtags
-    const hashtags = await generateHashtags(titleAnalysis, description, [], getHashtagCount(planId));
-    
-    // Get trending topics
-    const { getTrendingTopics } = await import('@/services/trendingEngine');
-    const trendingTopics = await getTrendingTopics(titleAnalysis.keywords);
 
-    const seoViral = modeledViralFitForTitleSeo(titleAnalysis.score, trendingScore);
-    const seoHook = modeledHookStrengthForTitleSeo(titleAnalysis.score);
-
-    const seoPack = buildUploadSeoPack({
-      title,
-      keywords: titleAnalysis.keywords,
-      hookScore: seoHook,
-      viralProbability: seoViral,
-      rawHashtags: hashtags.map((h) => h.replace(/^#/, '')),
-      trendingTopics,
-    });
-    
-    // Predict best posting time
-    const bestPostingTime = predictBestPostingTime();
-    
-    // Save video to database
+    // ── STEP 2: Save Video Record (Fast) ──────────────────────────────────
     const video = new Video({
       userId,
       title,
-      description: seoPack.description,
-      videoUrl: `/uploads/${file.name}`, // In production, upload to cloud storage
+      description,
+      videoUrl: `/uploads/${file.name}`, // Simulated path
       thumbnailUrl,
       platform: 'upload',
-      duration: 60, // Would extract from video
-      hashtags: seoPack.hashtags,
+      duration,
+      hashtags: [],
     });
-    
     await video.save();
-    
-    // Save analysis
+
+    // ── STEP 3: Create Blank Analysis Record (Fast) ───────────────────────
     const analysisPriority = (planId === 'pro' || planId === 'enterprise') ? 'high' : 'normal';
     const analysis = new Analysis({
       videoId: video._id,
-      hookScore: hookAnalysis.score,
-      thumbnailScore: thumbnailAnalysis.score,
-      titleScore: titleAnalysis.score,
-      viralProbability: viralPrediction.viralProbability,
-      confidenceLevel: viralPrediction.confidenceLevel,
-      hookAnalysis: {
-        facesDetected: hookAnalysis.facesDetected,
-        motionIntensity: hookAnalysis.motionIntensity,
-        sceneChanges: hookAnalysis.sceneChanges,
-        brightness: hookAnalysis.brightness,
-      },
-      thumbnailAnalysis: {
-        facesDetected: thumbnailAnalysis.facesDetected,
-        emotion: thumbnailAnalysis.emotion,
-        colorContrast: thumbnailAnalysis.colorContrast,
-        textReadability: thumbnailAnalysis.textReadability,
-        suggestions: thumbnailAnalysis.suggestions,
-      },
-      titleAnalysis: {
-        keywords: titleAnalysis.keywords,
-        emotionalTriggers: titleAnalysis.emotionalTriggers,
-        length: titleAnalysis.length,
-        clickPotential: titleAnalysis.clickPotential,
-        optimizedTitles: takeFiveTitles(titleAnalysis.optimizedTitles),
-      },
-      hashtags: seoPack.hashtags,
-      trendingTopics: seoPack.trendingTags.map((topic) => ({
-        keyword: topic.topic,
-        score: topic.score,
-      })),
-      bestPostingTime: {
-        day: bestPostingTime.day,
-        hour: bestPostingTime.hour,
-        confidence: bestPostingTime.confidence,
-      },
+      hookScore: 0,
+      thumbnailScore: 0,
+      titleScore: 0,
+      viralProbability: 0,
+      confidenceLevel: 0,
+      hookAnalysis: { facesDetected: 0, motionIntensity: 0, sceneChanges: 0, brightness: 0 },
+      thumbnailAnalysis: { facesDetected: 0, emotion: 'neutral', colorContrast: 0, textReadability: 0, suggestions: [] },
+      titleAnalysis: { keywords: [], emotionalTriggers: [], length: title.length, clickPotential: 0, optimizedTitles: [] },
+      hashtags: [],
+      trendingTopics: [],
+      bestPostingTime: { day: 'Pending', hour: 0, confidence: 0 },
       priority: analysisPriority,
     });
-    
     await analysis.save();
-    
-    // Update video with analysis ID
+
     video.analysisId = analysis._id;
     await video.save();
     
@@ -183,28 +118,13 @@ async function handleUpload(request: NextRequest) {
         title: video.title,
         thumbnailUrl: video.thumbnailUrl,
       },
-      seo: {
-        description: seoPack.description,
-        hashtags: seoPack.hashtags,
-        trendingTags: seoPack.trendingTags,
-        tags: commaSeparatedYoutubeTags(seoPack),
-      },
-      analysis: {
-        viralProbability: analysis.viralProbability,
-        hookScore: analysis.hookScore,
-        thumbnailScore: analysis.thumbnailScore,
-        titleScore: analysis.titleScore,
-        confidenceLevel: analysis.confidenceLevel,
-        optimizedTitles: takeFiveTitles(titleAnalysis.optimizedTitles),
-        hashtags: seoPack.hashtags.map((h) => `#${h}`),
-        trendingTopics: seoPack.trendingTags,
-        seoDescription: seoPack.description,
-        bestPostingTime: {
-          day: bestPostingTime.day,
-          hour: bestPostingTime.hour,
-          confidence: bestPostingTime.confidence,
-        },
-      },
+      analysisId: analysis._id,
+      // Metadata for immediate display
+      metadata: {
+        title: video.title,
+        duration: video.duration,
+        platform: video.platform
+      }
     });
   } catch (error: any) {
     console.error('Error uploading video:', error);

@@ -13,7 +13,7 @@ import PostingTimeHeatmap from './PostingTimeHeatmap';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useSearchParams } from 'next/navigation';
-import { CheckCircle2, X, Copy, Zap, TrendingUp, Star, Sparkles } from 'lucide-react';
+import { CheckCircle2, X, Copy, Zap, TrendingUp, Star, Sparkles, Loader2 } from 'lucide-react';
 
 interface AnalysisData {
   viralProbability: number;
@@ -152,8 +152,9 @@ const itemVariants = {
 };
 
 export default function Dashboard() {
-  const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
+  const [analysis, setAnalysis] = useState<(AnalysisData & { id?: string; analysisId?: string; isPartial?: boolean }) | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lazyLoading, setLazyLoading] = useState<Record<string, boolean>>({});
   const searchParams = useSearchParams();
   const youtubeQuery = searchParams?.get('youtube');
   const [showYoutubeSuccess, setShowYoutubeSuccess] = useState(false);
@@ -202,6 +203,66 @@ export default function Dashboard() {
     };
     fetchSystems();
   }, []);
+
+  // Lazy Loading Effect
+  useEffect(() => {
+    if (!analysis?.isPartial || !analysis?.id || !analysis?.analysisId) return;
+
+    const fetchLazyData = async () => {
+      const payload = { videoId: analysis.id, analysisId: analysis.analysisId };
+      const headers = getAuthHeaders();
+
+      setLazyLoading({ thumbnail: true, hook: true, title: true, predict: true });
+
+      // Parallel score fetching
+      const results = await Promise.allSettled([
+        axios.post('/api/analysis/thumbnail', payload, { headers }),
+        axios.post('/api/analysis/hook', payload, { headers }),
+        axios.post('/api/analysis/title', payload, { headers }),
+      ]);
+
+      setAnalysis(prev => {
+        if (!prev) return null;
+        const thumbnailData = results[0].status === 'fulfilled' ? (results[0].value as any).data : {};
+        const hookData = results[1].status === 'fulfilled' ? (results[1].value as any).data : {};
+        const titleData = results[2].status === 'fulfilled' ? (results[2].value as any).data : {};
+
+        return {
+          ...prev,
+          thumbnailScore: thumbnailData.score || 0,
+          thumbnailAnalysis: thumbnailData.analysis,
+          hookScore: hookData.score || 0,
+          hookAnalysis: hookData.analysis,
+          titleScore: titleData.score || 0,
+          titleAnalysis: titleData.analysis,
+          optimizedTitles: titleData.analysis?.optimizedTitles || prev.optimizedTitles,
+        };
+      });
+
+      setLazyLoading(prev => ({ ...prev, thumbnail: false, hook: false, title: false }));
+
+      // Final prediction fetch
+      try {
+        const predictRes = await axios.post('/api/analysis/predict', payload, { headers });
+        const predictData = predictRes.data;
+        setAnalysis(prev => prev ? {
+          ...prev,
+          viralProbability: predictData.viralProbability,
+          confidenceLevel: predictData.confidenceLevel,
+          hashtags: predictData.hashtags,
+          trendingTopics: predictData.trendingTopics,
+          bestPostingTime: predictData.bestPostingTime,
+          isPartial: false // Mark as complete
+        } : null);
+      } catch (err) {
+        console.error('Prediction fetch failed:', err);
+      } finally {
+        setLazyLoading(prev => ({ ...prev, predict: false }));
+      }
+    };
+
+    fetchLazyData();
+  }, [analysis?.id, analysis?.analysisId, analysis?.isPartial]);
 
   const handleAnalysisComplete = (data: AnalysisData) => {
     const bestPostingTime = data.bestPostingTime || data.postingTime;
@@ -422,7 +483,14 @@ export default function Dashboard() {
                       animate={{ boxShadow: ['0 0 0px rgba(220,38,38,0)', '0 0 20px rgba(220,38,38,0.3)', '0 0 0px rgba(220,38,38,0)'] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     >
-                      Viral Score: {analysis.viralProbability}%
+                      {lazyLoading.predict ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Predicting Viral Potential...
+                        </span>
+                      ) : (
+                        `Viral Score: ${analysis.viralProbability}%`
+                      )}
                     </motion.div>
                   </div>
                 </motion.div>
@@ -434,15 +502,22 @@ export default function Dashboard() {
                       style={{ background: 'rgba(12,12,12,0.95)', backdropFilter: 'blur(20px)' }}>
                       <div className="absolute top-0 left-0 right-0 h-[1px]"
                         style={{ background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.5), transparent)' }} />
-                      <ViralScoreMeter score={analysis.viralProbability} confidence={analysis.confidenceLevel} />
+                      {lazyLoading.predict ? (
+                        <div className="h-[300px] flex flex-col items-center justify-center gap-4">
+                           <div className="w-24 h-24 rounded-full border-4 border-red-500/20 border-t-red-500 animate-spin" />
+                           <p className="text-white font-bold animate-pulse">Calculating Viral Probability...</p>
+                        </div>
+                      ) : (
+                        <ViralScoreMeter score={analysis.viralProbability} confidence={analysis.confidenceLevel} />
+                      )}
                     </div>
                   )}
                   {allowedSystems['score_cards'] !== false && (
                     <div className="space-y-4">
                       {[
-                        { title: 'Hook Score', score: analysis.hookScore, color: 'blue' as const },
-                        { title: 'Thumbnail Score', score: analysis.thumbnailScore, color: 'purple' as const },
-                        { title: 'Title Score', score: analysis.titleScore, color: 'green' as const },
+                        { key: 'hook', title: 'Hook Score', score: analysis.hookScore, color: 'blue' as const },
+                        { key: 'thumbnail', title: 'Thumbnail Score', score: analysis.thumbnailScore, color: 'purple' as const },
+                        { key: 'title', title: 'Title Score', score: analysis.titleScore, color: 'green' as const },
                       ].map((card, i) => (
                         <motion.div
                           key={card.title}
@@ -460,7 +535,17 @@ export default function Dashboard() {
                                   'linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent)' :
                                   'linear-gradient(90deg, transparent, rgba(16,185,129,0.5), transparent)'
                             }} />
-                          <ScoreCard title={card.title} score={card.score} color={card.color} />
+                          {lazyLoading[card.key] ? (
+                            <div className="p-6 h-[100px] flex items-center justify-between">
+                               <div>
+                                  <div className="w-24 h-4 bg-white/5 rounded animate-pulse mb-2" />
+                                  <div className="w-16 h-8 bg-white/10 rounded animate-pulse" />
+                               </div>
+                               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
+                            </div>
+                          ) : (
+                            <ScoreCard title={card.title} score={card.score} color={card.color} />
+                          )}
                         </motion.div>
                       ))}
                     </div>
@@ -468,13 +553,22 @@ export default function Dashboard() {
                 </motion.div>
 
                 {/* Title Suggestions */}
-                {analysis.optimizedTitles && allowedSystems['title_suggestions'] !== false && (
+                {allowedSystems['title_suggestions'] !== false && (
                   <motion.div variants={itemVariants}
                     className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
                     style={{ background: 'rgba(12,12,12,0.95)' }}>
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.5), transparent)' }} />
-                    <TitleSuggestions titles={analysis.optimizedTitles.slice(0, 5)} />
+                    {lazyLoading.title ? (
+                       <div className="p-8 space-y-4">
+                          <div className="w-1/3 h-6 bg-white/10 rounded animate-pulse" />
+                          <div className="space-y-2">
+                             {[1,2,3].map(i => <div key={i} className="w-full h-12 bg-white/5 rounded-xl animate-pulse" />)}
+                          </div>
+                       </div>
+                    ) : analysis.optimizedTitles && (
+                      <TitleSuggestions titles={analysis.optimizedTitles.slice(0, 5)} />
+                    )}
                   </motion.div>
                 )}
 
@@ -512,13 +606,22 @@ export default function Dashboard() {
                 )}
 
                 {/* Hashtags */}
-                {analysis.hashtags && allowedSystems['hashtag_recommendations'] !== false && (
+                {allowedSystems['hashtag_recommendations'] !== false && (
                   <motion.div variants={itemVariants}
                     className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
                     style={{ background: 'rgba(12,12,12,0.95)' }}>
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.5), transparent)' }} />
-                    <HashtagRecommendations hashtags={analysis.hashtags} />
+                    {lazyLoading.predict ? (
+                       <div className="p-8">
+                          <div className="w-48 h-6 bg-white/10 rounded animate-pulse mb-6" />
+                          <div className="flex flex-wrap gap-2">
+                             {[1,2,3,4,5,6].map(i => <div key={i} className="w-20 h-8 bg-white/5 rounded-full animate-pulse" />)}
+                          </div>
+                       </div>
+                    ) : analysis.hashtags && (
+                      <HashtagRecommendations hashtags={analysis.hashtags} />
+                    )}
                   </motion.div>
                 )}
 

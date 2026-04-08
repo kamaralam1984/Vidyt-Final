@@ -208,26 +208,24 @@ export default function VideoUpload({
           Authorization: `Bearer ${token}`,
         },
       });
-      const { analysis, seo } = response.data;
-      if (seo?.description) {
-        setYtDescription(truncateToWordCount(seo.description, SEO_DESCRIPTION_MAX_WORDS));
-      }
-      if (typeof seo?.tags === 'string' && seo.tags.length > 0) {
-        setYtTags(seo.tags);
-      } else if (seo?.hashtags?.length || seo?.trendingTags?.length) {
-        const tagParts: string[] = [
-          ...(seo.hashtags || []),
-          ...(seo.trendingTags || []).map((t: { keyword: string }) => t.keyword).filter(Boolean),
-        ];
-        setYtTags(tagParts.join(', '));
-      }
-      if (Array.isArray(seo?.hashtags)) {
-        setYtHashtags(seo.hashtags.map((h: string) => `#${String(h).replace(/^#/, '')}`).join(' '));
-      }
-      if (analysis?.optimizedTitles?.[0]) {
-        setYtTitle(clampYoutubeTitle(analysis.optimizedTitles[0]));
-      }
-      onAnalysisComplete(analysis);
+      const { video, analysisId, metadata } = response.data;
+      
+      // Construct a partial analysis object for the dashboard to start with
+      const initialAnalysis = {
+        id: video.id,
+        analysisId: analysisId,
+        title: video.title,
+        thumbnailUrl: video.thumbnailUrl,
+        viralProbability: 0,
+        hookScore: 0,
+        thumbnailScore: 0,
+        titleScore: 0,
+        confidenceLevel: 0,
+        isPartial: true, // Flag for Dashboard to start lazy loading
+        ...metadata
+      };
+
+      onAnalysisComplete(initialAnalysis);
     } catch (error: any) {
       const errorData = error?.response?.data;
       const errorMessage = typeof errorData?.error === 'string' 
@@ -291,14 +289,39 @@ export default function VideoUpload({
         ? { instagramUrl: url, userId: 'default-user' }
         : { tiktokUrl: url, userId: 'default-user' };
         
-      const response = await axios.post(apiEndpoint, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      onAnalysisComplete(response.data.analysis);
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // ── STEP 1: Fast Init — get video ID + analysisId in < 2s ──────────────
+      const initResponse = await axios.post(apiEndpoint, payload, { headers });
+      const { video, analysisId } = initResponse.data;
+
+      if (!video?.id || !analysisId) {
+        // Fallback: old APIs (facebook/instagram/tiktok) still return analysis directly
+        onAnalysisComplete(initResponse.data.analysis);
+        if (uploadType === 'youtube') setYoutubeUrl('');
+        if (uploadType === 'facebook') setFacebookUrl('');
+        if (uploadType === 'instagram') setInstagramUrl('');
+        if (uploadType === 'tiktok') setTiktokUrl('');
+        return;
+      }
+
+      // ── STEP 2: Trigger Dashboard immediately! ────────────────────────────
+      const initialAnalysis = {
+        id: video.id,
+        analysisId: analysisId,
+        title: video.title,
+        thumbnailUrl: video.thumbnailUrl,
+        viralProbability: 0,
+        hookScore: 0,
+        thumbnailScore: 0,
+        titleScore: 0,
+        confidenceLevel: 0,
+        isPartial: true
+      };
+
+      onAnalysisComplete(initialAnalysis);
       
-      // Clear the URL
+      // Clear the URL inputs
       if (uploadType === 'youtube') setYoutubeUrl('');
       if (uploadType === 'facebook') setFacebookUrl('');
       if (uploadType === 'instagram') setInstagramUrl('');
