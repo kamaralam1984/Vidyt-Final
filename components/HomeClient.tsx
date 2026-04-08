@@ -42,6 +42,7 @@ export type MarketingPlan = {
   priceYear: number;
   description: string;
   features: string[];
+  role?: string;
   discount?: {
     percentage: number;
     label: string;
@@ -354,7 +355,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                   description: p.description || (roll.id === 'pro' ? 'Advanced AI features for serious creators.' : (roll.id === 'enterprise' ? 'Full power for agencies and brands.' : p.name + ' plan.')),
                   features: p.features,
                   popular: p.popular,
-                  role: roll.role,
+                  role: p.role || roll.role,
                   level: (roll as any).level,
                   limitsDisplay: roll.limitsDisplay,
                   discount: p.discount,

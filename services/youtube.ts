@@ -249,6 +249,7 @@ export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetada
       if (errorMsg.includes('Could not extract functions') || 
           errorMsg.includes('extract functions') ||
           errorMsg.includes('compatibility issue') ||
+          errorMsg.includes('playable formats') ||
           errorMsg.includes('Sign in to confirm') ||
           errorCode === 'ERR_INVALID_RESPONSE') {
         console.log('ytdl-core failed, trying oEmbed fallback immediately...');
@@ -304,6 +305,7 @@ export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetada
   if ((errorMsg.includes('Could not extract functions') || 
        errorMsg.includes('extract functions') ||
        errorMsg.includes('compatibility issue') ||
+       errorMsg.includes('playable formats') ||
        errorCode === 'ERR_INVALID_RESPONSE') &&
       !errorMsg.includes('oEmbed')) {
     console.log('🔄 Attempting oEmbed fallback as last resort...');
@@ -326,6 +328,7 @@ export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetada
   // Provide more specific error messages
   if (errorMsg.includes('Could not extract functions') || 
       errorMsg.includes('extract functions') ||
+      errorMsg.includes('playable formats') ||
       errorMsg.includes('Sign in to confirm') ||
       errorCode === 'ERR_INVALID_RESPONSE') {
     throw new Error('YouTube API Compatibility Issue\n\n' +

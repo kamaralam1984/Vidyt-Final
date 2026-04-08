@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { getUserFromRequest } from '@/lib/auth';
+import { getMainYoutubeOAuthRedirectUri } from '@/services/youtubeUpload';
 
 export async function GET(request: NextRequest) {
     try {
@@ -14,9 +15,7 @@ export async function GET(request: NextRequest) {
         const clientId = process.env.CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
         const clientSecret = process.env.CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
         
-        // Use a new callback URI specifically for multiple channels 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const redirectUri = `${baseUrl}/api/youtube/channels/callback`;
+        const redirectUri = getMainYoutubeOAuthRedirectUri();
 
         if (!clientId || !clientSecret) {
              return NextResponse.json({ error: 'OAuth credentials not configured' }, { status: 500 });

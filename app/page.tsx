@@ -31,6 +31,7 @@ async function getPlans(): Promise<MarketingPlan[]> {
       priceYear,
       description: p.description || '',
       features: p.features || [],
+      role: p.role,
       discount: d ? {
         percentage: d.percentage,
         label: d.label,
