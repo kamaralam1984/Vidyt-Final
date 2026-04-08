@@ -176,7 +176,7 @@ export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetada
   }
   
   let lastError: any = null;
-  const maxRetries = 1; // Reduced retries since ytdl-core issues are usually consistent
+  const maxRetries = 0; // Set to 0 to fail fast on serverless platforms like Vercel
   
   // Retry logic for fetching video info
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -195,7 +195,7 @@ export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetada
       const info = await Promise.race([
         ytdl.getInfo(videoId, {
           requestOptions: {
-            timeout: 20000, // 20 second timeout
+            timeout: 4000, // 4 second timeout to prevent Vercel 504
           },
         }).catch((error: any) => {
           console.error(`ytdl.getInfo error for ${videoId}:`, error.message);
@@ -204,7 +204,7 @@ export async function extractYouTubeMetadata(url: string): Promise<YouTubeMetada
           throw error;
         }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout after 20 seconds')), 20000)
+          setTimeout(() => reject(new Error('Request timeout after 4 seconds')), 4000)
         )
       ]) as any;
       
