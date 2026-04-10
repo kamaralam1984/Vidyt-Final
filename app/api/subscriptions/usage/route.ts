@@ -18,7 +18,11 @@ export async function GET(request: NextRequest) {
 
     const planId = user.role === 'super-admin' ? 'owner' : (user.subscription || 'free');
     const plan = getPlanRoll(planId);
-    const { analysesLimit, analysesPeriod } = plan.limits;
+    const analysesLimit =
+      plan.limits.analysesLimit ??
+      plan.limits.video_analysis ??
+      0;
+    const analysesPeriod = plan.limits.analysesPeriod ?? 'day';
     const videosAnalyzed = await getAnalysisUsageCount(user.id, analysesPeriod);
 
     const videos = await Video.find({ userId: user.id });

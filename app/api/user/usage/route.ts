@@ -31,7 +31,14 @@ export async function GET(request: NextRequest) {
 
     const planId = user.role === 'super-admin' ? 'owner' : user.subscription || 'free';
     const plan = getPlanRoll(planId);
-    const { analysesLimit, analysesPeriod } = plan.limits;
+    const analysesLimit =
+      plan.limits.analysesLimit ??
+      plan.limits.video_analysis ??
+      0;
+    const uploadLimit =
+      plan.limits.video_upload ??
+      analysesLimit;
+    const analysesPeriod = plan.limits.analysesPeriod ?? 'day';
 
     const [analysisUsed, uploadUsed] = await Promise.all([
       getAnalysisUsageCount(authUser.id, analysesPeriod),
@@ -62,11 +69,11 @@ export async function GET(request: NextRequest) {
     }
 
     const analysisRemaining = analysesLimit === -1 ? -1 : Math.max(0, analysesLimit - analysisUsed);
-    const uploadRemaining = analysesLimit === -1 ? -1 : Math.max(0, analysesLimit - uploadUsed);
+    const uploadRemaining = uploadLimit === -1 ? -1 : Math.max(0, uploadLimit - uploadUsed);
     const usagePayload = {
       videoUpload: {
         used: uploadUsed,
-        limit: analysesLimit,
+        limit: uploadLimit,
         remaining: uploadRemaining,
         period: analysesPeriod,
       },
@@ -115,7 +122,7 @@ export async function GET(request: NextRequest) {
         preferences: user.preferences,
       },
       {
-        video_upload: usagePayload.videoUpload,
+        video_upload: { used: uploadUsed, limit: uploadLimit },
         video_analysis: usagePayload.videoAnalysis,
         schedule_posts: usagePayload.schedulePosts,
         bulk_scheduling: usagePayload.bulkScheduling,
