@@ -7,6 +7,7 @@ import axios from 'axios';
 import { Crown, CreditCard, MessageCircle, LogOut, User, ChevronDown, Globe } from 'lucide-react';
 import { getAuthHeaders, removeToken, decodeToken } from '@/utils/auth';
 import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
+import UsageNotificationsBell from '@/components/UsageNotificationsBell';
 
 const LOGO_SRC = '/Logo.png';
 
@@ -146,6 +147,7 @@ export default function Navbar() {
           </div>
         )}
         <div className="flex items-center gap-1">
+          <UsageNotificationsBell />
           {isSuperRoleNav && (
             <Link
               href="/admin/super"

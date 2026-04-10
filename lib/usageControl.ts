@@ -3,15 +3,7 @@ import Usage from '../models/Usage';
 import Notification from '../models/Notification';
 import User from '../models/User';
 import { getPlanLimits } from './planLimits';
-import { Resend } from 'resend';
-
-let resend: Resend | null = null;
-const getResend = () => {
-    if (!resend && process.env.RESEND_API_KEY) {
-        resend = new Resend(process.env.RESEND_API_KEY);
-    }
-    return resend;
-};
+import { sendBroadcastNotificationEmail } from '@/services/email';
 
 export interface UsageResult {
   allowed: boolean;
@@ -78,14 +70,14 @@ async function triggerNotification(
   type: 'warning' | 'limit_reached'
 ) {
   const today = new Date().toISOString().split('T')[0];
-  const featureLabel = feature.replace('_', ' ');
+  const featureLabel = feature.replace(/_/g, ' ');
   
   // Check if we already sent this type of notification today to avoid spam
   const existing = await Notification.findOne({
     userId,
     type,
-    message: { $regex: featureLabel, $options: 'i' },
-    createdAt: { $gte: new Date(today) }
+    feature,
+    dayKey: today,
   });
 
   if (existing) return;
@@ -99,20 +91,23 @@ async function triggerNotification(
     userId,
     type,
     message,
+    feature,
+    threshold: type === 'warning' ? 80 : 100,
+    dayKey: today,
     read: false
   });
 
-  // 2. Send Email (if user has email)
-  const user = await User.findById(userId).select('email').lean();
-  const resendClient = getResend();
-  if (user?.email && resendClient) {
+  // 2. Send Email (if user has email + has email updates on)
+  const user = await User.findById(userId).select('email name preferences').lean();
+  const shouldEmail = user?.preferences?.emailUpdates !== false;
+  if (user?.email && shouldEmail) {
     try {
-      await resendClient.emails.send({
-        from: 'VidYT <alerts@vidyt.com>',
-        to: user.email as string,
-        subject: type === 'warning' ? '⚠️ Almost reached your limit' : '🚫 Limit reached',
-        html: `<p>${message}</p><p><a href="https://vidyt.com/pricing">Upgrade Plan</a></p>`
-      });
+      await sendBroadcastNotificationEmail(
+        user.email as string,
+        type === 'warning' ? 'Usage Warning - Vid YT' : 'Limit Reached - Vid YT',
+        `${message}\n\nFeature: ${featureLabel}\n\nUpgrade plan: https://vidyt.com/pricing`,
+        (user as any).name
+      );
     } catch (err) {
       console.error('Email alert failed:', err);
     }

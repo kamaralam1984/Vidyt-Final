@@ -12,6 +12,9 @@ export type PlanId = 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'own
 export interface PlanLimits {
   video_upload: number;
   video_analysis: number;
+  /** Backward-compatible aliases used in multiple routes/components */
+  analysesLimit: number;
+  analysesPeriod: 'day' | 'month';
   schedule_posts: number;
   bulk_scheduling: number;
   /** Legacy/Extra */
@@ -73,6 +76,8 @@ const FREE_ROLL: PlanRoll = {
   limits: { 
     video_upload: 5, 
     video_analysis: 5, 
+    analysesLimit: 5,
+    analysesPeriod: 'month',
     schedule_posts: 0, 
     bulk_scheduling: 0,
     titleSuggestions: 3, 
@@ -114,6 +119,8 @@ const STARTER_ROLL: PlanRoll = {
   limits: { 
     video_upload: 15, 
     video_analysis: 15, 
+    analysesLimit: 15,
+    analysesPeriod: 'day',
     schedule_posts: 5, 
     bulk_scheduling: 10,
     titleSuggestions: 5, 
@@ -155,6 +162,8 @@ const PRO_ROLL: PlanRoll = {
   limits: { 
     video_upload: 30, 
     video_analysis: 30, 
+    analysesLimit: 30,
+    analysesPeriod: 'day',
     schedule_posts: 10, 
     bulk_scheduling: 50,
     titleSuggestions: 10, 
@@ -196,6 +205,8 @@ const ENTERPRISE_ROLL: PlanRoll = {
   limits: { 
     video_upload: -1, 
     video_analysis: -1, 
+    analysesLimit: -1,
+    analysesPeriod: 'day',
     schedule_posts: -1, 
     bulk_scheduling: -1,
     titleSuggestions: 10, 
@@ -237,6 +248,8 @@ const CUSTOM_ROLL: PlanRoll = {
   limits: { 
     video_upload: -1, 
     video_analysis: -1, 
+    analysesLimit: -1,
+    analysesPeriod: 'day',
     schedule_posts: -1, 
     bulk_scheduling: -1,
     titleSuggestions: 50, 
@@ -278,6 +291,8 @@ const OWNER_ROLL: PlanRoll = {
   limits: { 
     video_upload: -1, 
     video_analysis: -1, 
+    analysesLimit: -1,
+    analysesPeriod: 'day',
     schedule_posts: -1, 
     bulk_scheduling: -1,
     titleSuggestions: -1, 
@@ -356,8 +371,15 @@ async function syncPlansFromDB() {
           name: p.name || staticRoll.name,
           role: p.role || staticRoll.role,
           limits: {
-            video_upload: p.limits?.video_upload ?? staticRoll.limits.video_upload,
-            video_analysis: p.limits?.video_analysis ?? staticRoll.limits.video_analysis,
+            video_upload: p.limits?.video_upload ?? p.limits?.analysesLimit ?? staticRoll.limits.video_upload,
+            video_analysis: p.limits?.video_analysis ?? p.limits?.analysesLimit ?? staticRoll.limits.video_analysis,
+            analysesLimit:
+              p.limits?.analysesLimit ??
+              p.limits?.video_analysis ??
+              staticRoll.limits.analysesLimit,
+            analysesPeriod:
+              p.limits?.analysesPeriod ??
+              staticRoll.limits.analysesPeriod,
             schedule_posts: p.limits?.schedule_posts ?? staticRoll.limits.schedule_posts,
             bulk_scheduling: p.limits?.bulk_scheduling ?? staticRoll.limits.bulk_scheduling,
             titleSuggestions: p.limits?.titleSuggestions ?? staticRoll.limits.titleSuggestions,

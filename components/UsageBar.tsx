@@ -145,6 +145,7 @@ function UsageRow({
 
   const p = barPercent(used, limit);
   const color = barColor(p);
+  const danger = p >= 80;
 
   return (
     <div>
@@ -157,14 +158,23 @@ function UsageRow({
           {used} / {limit}
         </span>
       </div>
-      <div className="w-full h-1.5 bg-[#212121] rounded-full overflow-hidden">
+      <div className={`w-full h-1.5 bg-[#212121] rounded-full overflow-hidden relative ${danger ? 'ring-1 ring-white/10' : ''}`}>
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${p}%` }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
-          className={`h-full ${color}`}
+          className={`h-full ${color} ${danger ? 'shadow-[0_0_10px_rgba(255,255,255,0.2)]' : ''}`}
         />
+        {danger && (
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: '220%' }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            className="absolute inset-y-0 w-1/3 bg-white/20 blur-[1px]"
+          />
+        )}
       </div>
+      <p className="text-[9px] text-[#666] mt-0.5">{Math.round(p)}% used</p>
       {p >= 80 && p < 100 && (
         <p className="text-[9px] text-yellow-500 mt-1 font-medium">Almost at limit</p>
       )}

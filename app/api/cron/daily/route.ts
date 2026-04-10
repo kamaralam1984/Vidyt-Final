@@ -4,6 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import { sendExpiryAlertEmail } from '@/services/email';
+import ScheduledPost from '@/models/ScheduledPost';
+import { getPlanRoll } from '@/lib/planLimits';
+import { getAnalysisUsageCount, getUploadUsageCount } from '@/lib/usageCheck';
+import { getSchedulePostsLimit, getBulkSchedulingLimit } from '@/lib/usageDisplayLimits';
+import { maybeTriggerUsageAlerts } from '@/lib/usageAlerts';
 
 export async function GET(request: NextRequest) {
   // Validate CRON Secret for security
@@ -26,6 +31,7 @@ export async function GET(request: NextRequest) {
     const results = {
       warningsSent: 0,
       expiredSent: 0,
+      usageAlertsProcessed: 0,
       errors: 0
     };
 
@@ -74,6 +80,50 @@ export async function GET(request: NextRequest) {
           results.errors++;
         }
         await user.save();
+      }
+    }
+
+    // Usage sweep: trigger usage notifications/emails for all active users.
+    const usageUsers = await User.find({ isDeleted: { $ne: true } })
+      .select('_id email name preferences role subscription')
+      .lean();
+
+    for (const user of usageUsers) {
+      try {
+        const planId = (user.role === 'super-admin' || user.role === 'superadmin')
+          ? 'owner'
+          : (user.subscription || 'free');
+        const plan = getPlanRoll(planId);
+        const period = plan.limits.analysesPeriod;
+        const analysesLimit = plan.limits.analysesLimit;
+
+        const [analysisUsed, uploadUsed, scheduledActive, bulkTotal] = await Promise.all([
+          getAnalysisUsageCount(String(user._id), period),
+          getUploadUsageCount(String(user._id), period),
+          ScheduledPost.countDocuments({ userId: user._id, status: 'scheduled' }),
+          ScheduledPost.countDocuments({
+            userId: user._id,
+            status: { $in: ['scheduled', 'posted', 'failed'] },
+          }),
+        ]);
+
+        await maybeTriggerUsageAlerts(
+          {
+            id: String(user._id),
+            email: (user as any).email,
+            name: (user as any).name,
+            preferences: (user as any).preferences,
+          },
+          {
+            video_upload: { used: uploadUsed, limit: analysesLimit },
+            video_analysis: { used: analysisUsed, limit: analysesLimit },
+            schedule_posts: { used: scheduledActive, limit: getSchedulePostsLimit(planId) },
+            bulk_scheduling: { used: bulkTotal, limit: getBulkSchedulingLimit(planId) },
+          },
+        );
+        results.usageAlertsProcessed++;
+      } catch (e) {
+        results.errors++;
       }
     }
 

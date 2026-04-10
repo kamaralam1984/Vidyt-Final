@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import DeleteAccountSection from '@/components/DeleteAccountSection';
+import Link from 'next/link';
 import axios from 'axios';
-import { Settings, Key, Webhook, Building2, User, Loader2, Download, AlertCircle } from 'lucide-react';
+import { Settings, Key, Webhook, Building2, User, Loader2, Download, AlertCircle, Bell } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
 
 export default function SettingsPage() {
@@ -132,6 +133,21 @@ export default function SettingsPage() {
               <p className="text-[#AAAAAA]">Contact: <a href={`mailto:${profile.accountManagerEmail}`} className="text-[#FF0000] hover:underline">{profile.accountManagerEmail}</a></p>
             </section>
           )}
+
+          <section className="bg-[#181818] border border-[#212121] rounded-xl p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Usage notifications
+              </h2>
+              <Link href="/settings/notifications" className="text-sm text-[#00E5FF] hover:text-white">
+                Open center
+              </Link>
+            </div>
+            <p className="text-[#AAAAAA] text-sm">
+              Usage warning aur limit reached alerts yahan se monitor karein. Bell icon par bhi live alerts dikhenge.
+            </p>
+          </section>
 
           <section className="bg-[#181818] border border-[#212121] rounded-xl p-6 mb-6">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Building2 className="w-5 h-5" /> White-label reports</h2>

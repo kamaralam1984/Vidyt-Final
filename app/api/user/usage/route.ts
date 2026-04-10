@@ -9,6 +9,7 @@ import { getPlanRoll } from '@/lib/planLimits';
 import { getAnalysisUsageCount, getUploadUsageCount } from '@/lib/usageCheck';
 import { getSchedulePostsLimit, getBulkSchedulingLimit } from '@/lib/usageDisplayLimits';
 import connectDB from '@/lib/mongodb';
+import { maybeTriggerUsageAlerts } from '@/lib/usageAlerts';
 
 /**
  * Plan usage from database counts (Video, ScheduledPost), not stale usageStats counters.
@@ -62,52 +63,68 @@ export async function GET(request: NextRequest) {
 
     const analysisRemaining = analysesLimit === -1 ? -1 : Math.max(0, analysesLimit - analysisUsed);
     const uploadRemaining = analysesLimit === -1 ? -1 : Math.max(0, analysesLimit - uploadUsed);
+    const usagePayload = {
+      videoUpload: {
+        used: uploadUsed,
+        limit: analysesLimit,
+        remaining: uploadRemaining,
+        period: analysesPeriod,
+      },
+      videoAnalysis: {
+        used: analysisUsed,
+        limit: analysesLimit,
+        remaining: analysisRemaining,
+        period: analysesPeriod,
+      },
+      schedulePosts: {
+        used: scheduledActive,
+        limit: scheduleLimit,
+        remaining:
+          scheduleLimit === -1 ? -1 : scheduleLimit === 0 ? 0 : Math.max(0, scheduleLimit - scheduledActive),
+      },
+      bulkScheduling: {
+        used: bulkTotal,
+        limit: bulkLimit,
+        remaining:
+          bulkLimit === -1 ? -1 : bulkLimit === 0 ? 0 : Math.max(0, bulkLimit - bulkTotal),
+      },
+      videos: {
+        used: analysisUsed,
+        limit: analysesLimit,
+        remaining: analysisRemaining,
+        period: analysesPeriod,
+      },
+      analyses: {
+        used: analysisUsed,
+        limit: analysesLimit,
+        remaining: analysisRemaining,
+        period: analysesPeriod,
+      },
+      competitors: {
+        used: competitorsUsed,
+        limit: competitorsLimit,
+        remaining: competitorsRemaining,
+      },
+    };
+
+    await maybeTriggerUsageAlerts(
+      {
+        id: authUser.id,
+        email: user.email,
+        name: user.name,
+        preferences: user.preferences,
+      },
+      {
+        video_upload: usagePayload.videoUpload,
+        video_analysis: usagePayload.videoAnalysis,
+        schedule_posts: usagePayload.schedulePosts,
+        bulk_scheduling: usagePayload.bulkScheduling,
+      },
+    );
 
     return NextResponse.json({
       success: true,
-      usage: {
-        videoUpload: {
-          used: uploadUsed,
-          limit: analysesLimit,
-          remaining: uploadRemaining,
-          period: analysesPeriod,
-        },
-        videoAnalysis: {
-          used: analysisUsed,
-          limit: analysesLimit,
-          remaining: analysisRemaining,
-          period: analysesPeriod,
-        },
-        schedulePosts: {
-          used: scheduledActive,
-          limit: scheduleLimit,
-          remaining:
-            scheduleLimit === -1 ? -1 : scheduleLimit === 0 ? 0 : Math.max(0, scheduleLimit - scheduledActive),
-        },
-        bulkScheduling: {
-          used: bulkTotal,
-          limit: bulkLimit,
-          remaining:
-            bulkLimit === -1 ? -1 : bulkLimit === 0 ? 0 : Math.max(0, bulkLimit - bulkTotal),
-        },
-        videos: {
-          used: analysisUsed,
-          limit: analysesLimit,
-          remaining: analysisRemaining,
-          period: analysesPeriod,
-        },
-        analyses: {
-          used: analysisUsed,
-          limit: analysesLimit,
-          remaining: analysisRemaining,
-          period: analysesPeriod,
-        },
-        competitors: {
-          used: competitorsUsed,
-          limit: competitorsLimit,
-          remaining: competitorsRemaining,
-        },
-      },
+      usage: usagePayload,
       subscription: {
         plan: planId,
         planName: plan.name,
