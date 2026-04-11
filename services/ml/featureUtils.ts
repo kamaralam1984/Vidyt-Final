@@ -90,27 +90,43 @@ export function normalizeFeatures(features: ViralFeatures): number[] {
   ];
 }
 
+const FEATURE_DEFAULTS: Record<string, number> = {
+  hookScore: 50,
+  thumbnailScore: 50,
+  titleScore: 50,
+  trendingScore: 50,
+  videoDuration: 60,
+  engagementRate: 5,
+  growthVelocity: 100,
+  commentVelocity: 10,
+  likeRatio: 0.05,
+  uploadTimingScore: 12,
+  titleLength: 50,
+  descriptionLength: 2500,
+  hashtagCount: 15,
+  subscriberCountLog: 5,
+  channelAgeDays: 1000,
+  averageViewsLast10: 100000,
+  shareVelocity: 10,
+  saveVelocity: 10,
+  watchTimeEstimate: 300,
+};
+
 export function parseFeaturesFromBody(body: Record<string, unknown>): ViralFeatures {
-  const num = (v: unknown, d: number) => {
-    let val =
-      typeof v === 'number' && !Number.isNaN(v)
-        ? v
-        : typeof v === 'string'
-          ? parseFloat(v) || d
-          : d;
-
-    // 🔥 FIX: agar value 0–1 range me hai to convert to 0–100
-    if (val <= 1) {
-      val = val * 100;
-    }
-
-    return val;
-  };
-
   const features: any = {};
 
   FEATURE_NAMES.forEach(name => {
-    features[name] = num(body[name], 50); // default 50 (mid-range)
+    const val = body[name];
+    const defaultValue = FEATURE_DEFAULTS[name as string] ?? 0.5;
+
+    if (typeof val === 'number' && !Number.isNaN(val)) {
+      features[name] = val;
+    } else if (typeof val === 'string') {
+      const parsed = parseFloat(val);
+      features[name] = !Number.isNaN(parsed) ? parsed : defaultValue;
+    } else {
+      features[name] = defaultValue;
+    }
   });
 
   return features as ViralFeatures;
