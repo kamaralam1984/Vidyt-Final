@@ -47,7 +47,7 @@ const DURATION_CAP_SEC = 600;
 const GROWTH_VELOCITY_CAP = 10000;
 const COMMENT_VELOCITY_CAP = 1000;
 const ENGAGEMENT_CAP = 100;
-const SUB_COUNT_LOG_CAP = 10; // log10(10B)
+const SUB_COUNT_LOG_CAP = 10;
 const VIEWS_CAP = 10000000;
 
 export function normalizeFeatures(features: ViralFeatures): number[] {
@@ -63,6 +63,7 @@ export function normalizeFeatures(features: ViralFeatures): number[] {
     Math.min(1, Math.max(0, features.commentVelocity / COMMENT_VELOCITY_CAP)),
     Math.min(1, Math.max(0, features.likeRatio)),
     Math.min(1, Math.max(0, features.uploadTimingScore / 24)),
+
     // Group 2
     Math.min(1, Math.max(0, features.titleLength / 100)),
     Math.min(1, Math.max(0, features.descriptionLength / 5000)),
@@ -74,6 +75,7 @@ export function normalizeFeatures(features: ViralFeatures): number[] {
     Math.min(1, Math.max(0, features.dayOfWeekScore)),
     Math.min(1, Math.max(0, features.audioQualityScore)),
     Math.min(1, Math.max(0, features.visualClarityScore)),
+
     // Group 3
     Math.min(1, Math.max(0, features.retentionEstimate)),
     Math.min(1, Math.max(0, features.ctrEstimate)),
@@ -89,10 +91,27 @@ export function normalizeFeatures(features: ViralFeatures): number[] {
 }
 
 export function parseFeaturesFromBody(body: Record<string, unknown>): ViralFeatures {
-  const num = (v: unknown, d: number) => (typeof v === 'number' && !Number.isNaN(v) ? v : typeof v === 'string' ? parseFloat(v) || d : d);
+  const num = (v: unknown, d: number) => {
+    let val =
+      typeof v === 'number' && !Number.isNaN(v)
+        ? v
+        : typeof v === 'string'
+          ? parseFloat(v) || d
+          : d;
+
+    // 🔥 FIX: agar value 0–1 range me hai to convert to 0–100
+    if (val <= 1) {
+      val = val * 100;
+    }
+
+    return val;
+  };
+
   const features: any = {};
+
   FEATURE_NAMES.forEach(name => {
-    features[name] = num(body[name], 0.5); // Default to mid-range for missing features
+    features[name] = num(body[name], 50); // default 50 (mid-range)
   });
+
   return features as ViralFeatures;
 }
