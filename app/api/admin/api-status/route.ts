@@ -102,7 +102,6 @@ export async function GET(request: NextRequest) {
       usedBy: [
         'AI Studio tools (Script, Hooks, Thumbnails, Shorts)',
         'Video Analyze (Whisper transcription)',
-        'Channel Audit Q&A (fallback if Gemini off)',
         'Daily Ideas (topic ideas from trending)',
       ],
     };
@@ -134,7 +133,6 @@ export async function GET(request: NextRequest) {
       limitInfo: 'Free tier and paid limits vary; common default is tens of requests per minute. See Google AI Studio quotas.',
       usedBy: [
         'Chinki chat assistant',
-        'Channel Audit Q&A (if OpenAI off)',
         'Video Analyze (metadata suggestions, fallback)',
         'Daily Ideas (topic ideas from trending)',
       ],

@@ -14,6 +14,8 @@ import {
   Headphones,
   Cpu,
   Package,
+  SearchCode,
+  Sparkles,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -27,6 +29,7 @@ const NAV_ITEMS = [
   { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
   { href: '/admin/super/support', label: 'Support Queue', icon: Headphones },
   { href: '/admin/super/ai-monitoring', label: 'AI Monitoring', icon: Cpu },
+  { href: '/admin/super/channel-audit', label: 'Channel Intelligence', icon: SearchCode, isPremium: true },
 ];
 
 export default function SuperSidebar() {
@@ -47,7 +50,8 @@ export default function SuperSidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.map((item) => {
+          const { href, label, icon: Icon } = item;
           const isActive = (pathname || '').startsWith(href);
           return (
             <motion.div key={href} whileHover={{ x: 2 }} whileTap={{ scale: 0.98 }}>
@@ -61,6 +65,9 @@ export default function SuperSidebar() {
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span className="flex-1">{label}</span>
+                {(item as any).isPremium && (
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                )}
                 {isActive && <ChevronRight className="w-3.5 h-3.5" />}
               </Link>
             </motion.div>

@@ -51,7 +51,7 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'keyword_research', label: 'Keyword Research', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'script_writer', label: 'Script Writer', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'title_generator', label: 'Title Generator', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
-  { id: 'channel_audit_tool', label: 'Channel Audit Tool', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'ai_shorts_clipping', label: 'AI Shorts Clipping', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'ai_shorts_clipping', label: 'AI Shorts Clipping', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'ai_thumbnail_maker', label: 'AI Thumbnail Maker', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'optimize', label: 'Optimize', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },

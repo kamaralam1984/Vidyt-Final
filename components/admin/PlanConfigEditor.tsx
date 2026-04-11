@@ -46,7 +46,6 @@ interface FeatureFlags {
   keyword_research: boolean;
   script_writer: boolean;
   title_generator: boolean;
-  channel_audit_tool: boolean;
   ai_shorts_clipping: boolean;
   ai_thumbnail_maker: boolean;
   optimize: boolean;
@@ -93,7 +92,6 @@ const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
   keyword_research: 'Keyword Research',
   script_writer: 'Script Writer',
   title_generator: 'Title Generator',
-  channel_audit_tool: 'Channel Audit Tool',
   ai_shorts_clipping: 'AI Shorts Clipping',
   ai_thumbnail_maker: 'AI Thumbnail Maker',
   optimize: 'AI Optimization Engine',

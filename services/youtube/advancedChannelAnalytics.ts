@@ -11,7 +11,25 @@ export async function getAdvancedChannelAnalytics(urlOrHandle: string) {
 
     let channelId = '';
     let handle = urlOrHandle.replace('https://youtube.com/', '').replace('https://www.youtube.com/', '').replace('@', '');
-    if (urlOrHandle.includes('channel/')) {
+    
+    // Check if it is a video URL (shorts, watch?v=, or youtu.be)
+    const videoIdMatch = urlOrHandle.match(/(?:v=|youtu\.be\/|shorts\/)([^#&?]*)/);
+    const videoId = videoIdMatch ? videoIdMatch[1] : null;
+
+    if (videoId && videoId.length === 11) {
+        try {
+            const videoRes = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
+                params: { part: 'snippet', id: videoId, key: apiKey }
+            });
+            if (videoRes.data.items && videoRes.data.items.length > 0) {
+                channelId = videoRes.data.items[0].snippet.channelId;
+            }
+        } catch (err) {
+            console.error('Error resolving video to channelId:', err);
+        }
+    }
+
+    if (!channelId && urlOrHandle.includes('channel/')) {
         channelId = urlOrHandle.split('channel/')[1].split('/')[0];
     }
 

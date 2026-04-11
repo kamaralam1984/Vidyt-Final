@@ -48,6 +48,7 @@ import {
   ShieldCheck,
   Lock,
   Youtube,
+  Sparkles,
 } from 'lucide-react';
 import { removeToken } from '@/utils/auth';
 
@@ -752,6 +753,15 @@ export default function SuperAdminPage() {
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/dashboard/youtube-seo')}>
                       <MonitorPlay className="w-4 h-4" />
                       <span>YouTube SEO (channel tools)</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121] text-amber-400 font-medium"
+                      onClick={() => router.push('/admin/super/channel-audit')}
+                    >
+                      <Sparkles className="w-4 h-4 animate-pulse" />
+                      <span>Channel Intelligence</span>
+                      <span className="ml-auto text-[10px] bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 uppercase tracking-tighter">Premium</span>
                     </button>
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/facebook-audit')}>
                       <Facebook className="w-4 h-4" />
