@@ -95,7 +95,50 @@ type TranslationKey =
   | 'viral.optimizer.rec.hook'
   | 'viral.optimizer.rec.thumb'
   | 'viral.optimizer.rec.title'
-  | 'viral.optimizer.rec.overall';
+  | 'viral.optimizer.rec.overall'
+  | 'seo.analyzer.subtitle'
+  | 'seo.analyzer.contentSetup'
+  | 'seo.analyzer.linkDesc.facebook'
+  | 'seo.analyzer.linkDesc.instagram'
+  | 'seo.analyzer.linkButton'
+  | 'seo.analyzer.aiError'
+  | 'seo.analyzer.pageAuditTitle'
+  | 'seo.analyzer.pageAuditDesc'
+  | 'seo.analyzer.keywordsTitle'
+  | 'seo.analyzer.growthActionsTitle'
+  | 'seo.analyzer.actions.where'
+  | 'seo.analyzer.actions.action'
+  | 'seo.analyzer.actions.reason'
+  | 'seo.analyzer.recommendedKeywordsTitle'
+  | 'seo.analyzer.missingElementsTitle'
+  | 'seo.analyzer.postTimeTitle'
+  | 'seo.analyzer.postTimeDesc'
+  | 'seo.analyzer.activeTimeTitle'
+  | 'seo.analyzer.timezoneNote'
+  | 'seo.analyzer.exactTimeNote'
+  | 'seo.analyzer.linkFirstHint'
+  | 'seo.analyzer.autoDescTitle'
+  | 'seo.analyzer.autoDescDesc'
+  | 'seo.analyzer.fillTitleHint'
+  | 'seo.analyzer.hashtagsTitle'
+  | 'seo.analyzer.hashtagsDesc'
+  | 'seo.analyzer.fillKeywordsHint'
+  | 'seo.analyzer.viralKeywordsTitle'
+  | 'seo.analyzer.viralKeywordsDesc'
+  | 'seo.analyzer.keywordsHint'
+  | 'yt.seo.bestPostingTime.loading'
+  | 'yt.seo.bestPostingTime.highViewsDays'
+  | 'yt.seo.bestPostingTime.highViewsHours'
+  | 'yt.seo.bestPostingTime.topSlots'
+  | 'yt.seo.bestPostingTime.videosAnalyzed'
+  | 'yt.seo.competitor.addKeyword'
+  | 'yt.seo.thumbnail.improvementTitle'
+  | 'yt.seo.chinki.thinking'
+  | 'yt.seo.chinki.placeholder'
+  | 'yt.seo.chinki.subtitle'
+  | 'yt.seo.chinki.speakTitle'
+  | 'yt.seo.chinki.welcome'
+  | 'sidebar.accessLoading';
 
 type TranslationTable = Record<LanguageCode, Partial<Record<TranslationKey, string>>>;
 
@@ -199,6 +242,48 @@ const TRANSLATIONS: TranslationTable = {
     'viral.optimizer.rec.thumb': 'Ensure face is clearly visible and use high contrast colors',
     'viral.optimizer.rec.title': 'Add numbers or questions and use emotional words',
     'viral.optimizer.rec.overall': 'Follow best posting times and maintain consistent schedule',
+    'seo.analyzer.subtitle': 'Real-time SEO for posts, reels & live — description, keywords, hashtags',
+    'seo.analyzer.contentSetup': 'Content Setup',
+    'seo.analyzer.linkDesc.facebook': 'Adding a link will show a page/profile summary, growth actions, and keywords.',
+    'seo.analyzer.linkDesc.instagram': 'Adding a link will show a profile summary, growth actions, and keywords.',
+    'seo.analyzer.linkButton': 'Link Now',
+    'seo.analyzer.aiError': 'AI failed to process. Showing fallback results.',
+    'seo.analyzer.pageAuditTitle': 'Page Audit — Growth & Home',
+    'seo.analyzer.pageAuditDesc': 'Based on your link: what to change, what keywords to use.',
+    'seo.analyzer.keywordsTitle': 'Keywords to keep on page (score %)',
+    'seo.analyzer.growthActionsTitle': 'Required changes to increase followers & reach',
+    'seo.analyzer.actions.where': 'Where',
+    'seo.analyzer.actions.action': 'What to do',
+    'seo.analyzer.actions.reason': 'Why',
+    'seo.analyzer.missingElementsTitle': 'Page/Settings missing elements (summary)',
+    'seo.analyzer.postTimeTitle': 'Post Time — When to post',
+    'seo.analyzer.postTimeDesc': 'When your viewers are most active — posting at these times increases reach.',
+    'seo.analyzer.activeTimeTitle': 'Peak active times (research-based)',
+    'seo.analyzer.timezoneNote': 'Schedule posts according to your timezone.',
+    'seo.analyzer.exactTimeNote': 'For exact times: Check Facebook/Instagram Insights "When your fans are online".',
+    'seo.analyzer.linkFirstHint': 'Please enter a link above and click "Link Now" to see post times and tips.',
+    'seo.analyzer.autoDescTitle': 'Automatic Descriptions',
+    'seo.analyzer.autoDescDesc': 'Click to add to description.',
+    'seo.analyzer.fillTitleHint': 'Please fill title or keywords.',
+    'seo.analyzer.hashtagsTitle': 'Viral Hashtags',
+    'seo.analyzer.hashtagsDesc': 'Click to add. Green = high, amber = medium.',
+    'seo.analyzer.fillKeywordsHint': 'Please fill keywords.',
+    'seo.analyzer.viralKeywordsTitle': 'Viral Keywords',
+    'seo.analyzer.viralKeywordsDesc': 'Click to add. Each keyword includes viral score %.',
+    'seo.analyzer.keywordsHint': 'Type keywords or title.',
+    'yt.seo.bestPostingTime.loading': 'Analyzing channel for best time...',
+    'yt.seo.bestPostingTime.highViewsDays': 'High views days',
+    'yt.seo.bestPostingTime.highViewsHours': 'High views hours',
+    'yt.seo.bestPostingTime.topSlots': 'Top slots (day + time)',
+    'yt.seo.bestPostingTime.videosAnalyzed': 'videos analyzed.',
+    'yt.seo.competitor.addKeyword': 'add',
+    'yt.seo.thumbnail.improvementTitle': 'Improvements',
+    'yt.seo.chinki.thinking': 'Chinki is thinking...',
+    'yt.seo.chinki.placeholder': 'What should I improve? Ask me...',
+    'yt.seo.chinki.subtitle': '24 • Multilingual AI assistant for YouTube SEO',
+    'yt.seo.chinki.speakTitle': 'Listen to Chinki',
+    'yt.seo.chinki.welcome': 'Hi! I am Chinki, your AI assistant for YouTube SEO. I can guide you live on titles, descriptions, thumbnails and keywords. Ask me anything you want to improve.',
+    'sidebar.accessLoading': 'Loading access...',
   },
   hi: {
     'navbar.features': 'फ़ीचर्स',
@@ -299,6 +384,48 @@ const TRANSLATIONS: TranslationTable = {
     'viral.optimizer.rec.thumb': 'सुनिश्चित करें कि चेहरा स्पष्ट रूप से दिखाई दे और हाई कंट्रास्ट रंग इस्तेमाल करें',
     'viral.optimizer.rec.title': 'टाइटल में नंबर या सवाल जोड़ें और इमोशनल शब्दों का इस्तेमाल करें',
     'viral.optimizer.rec.overall': 'बेस्ट पोस्टिंग समय का पालन करें और लगातार पोस्टिंग शेड्यूल बनाए रखें',
+    'seo.analyzer.subtitle': 'पोस्ट, रील और लाइव के लिए रीयल-टाइम SEO - विवरण, कीवर्ड, हैशटैग',
+    'seo.analyzer.contentSetup': 'कंटेंट सेटअप',
+    'seo.analyzer.linkDesc.facebook': 'लिंक जोड़ने पर पेज/प्रोफ़ाइल सारांश, ग्रोथ एक्शन और कीवर्ड दिखाई देंगे।',
+    'seo.analyzer.linkDesc.instagram': 'लिंक जोड़ने पर प्रोफ़ाइल सारांश, ग्रोथ एक्शन और कीवर्ड दिखाई देंगे।',
+    'seo.analyzer.linkButton': 'लिंक करें',
+    'seo.analyzer.aiError': 'AI प्रोसेस नहीं कर पाया। फ़ॉलबैक परिणाम दिखा रहा है।',
+    'seo.analyzer.pageAuditTitle': 'पेज ऑडिट - ग्रोथ और होम',
+    'seo.analyzer.pageAuditDesc': 'आपके लिंक के आधार पर: क्या बदलें, कौन से कीवर्ड इस्तेमाल करें।',
+    'seo.analyzer.keywordsTitle': 'पेज पर रखने वाले कीवर्ड (स्कोर %)',
+    'seo.analyzer.growthActionsTitle': 'फॉलोअर्स और पहुंच बढ़ाने के लिए आवश्यक बदलाव',
+    'seo.analyzer.actions.where': 'कहाँ',
+    'seo.analyzer.actions.action': 'क्या करें',
+    'seo.analyzer.actions.reason': 'क्यों',
+    'seo.analyzer.missingElementsTitle': 'पेज/सेटिंग्स में कमी (सारांश)',
+    'seo.analyzer.postTimeTitle': 'पोस्ट का समय - कब पोस्ट करें',
+    'seo.analyzer.postTimeDesc': 'जब आपके दर्शक सबसे अधिक सक्रिय होते हैं - इन समय पर पोस्ट करने से पहुंच बढ़ती है।',
+    'seo.analyzer.activeTimeTitle': 'पीक सक्रिय समय (अनुसंधान-आधारित)',
+    'seo.analyzer.timezoneNote': 'अपने टाइमज़ोन के अनुसार पोस्ट शेड्यूल करें।',
+    'seo.analyzer.exactTimeNote': 'सटीक समय के लिए: फेसबुक/इंस्टाग्राम इनसाइट्स "When your fans are online" देखें।',
+    'seo.analyzer.linkFirstHint': 'पोस्ट का समय और टिप्स देखने के लिए कृपया ऊपर लिंक डालें और "लिंक करें" पर क्लिक करें।',
+    'seo.analyzer.autoDescTitle': 'स्वचालित विवरण (Automatic Descriptions)',
+    'seo.analyzer.autoDescDesc': 'विवरण में जोड़ने के लिए क्लिक करें।',
+    'seo.analyzer.fillTitleHint': 'कृपया टाइटल या कीवर्ड भरें।',
+    'seo.analyzer.hashtagsTitle': 'वायरल हैशटैग',
+    'seo.analyzer.hashtagsDesc': 'जोड़ने के लिए क्लिक करें। हरा = उच्च, एम्बर = मध्यम।',
+    'seo.analyzer.fillKeywordsHint': 'कृपया कीवर्ड भरें।',
+    'seo.analyzer.viralKeywordsTitle': 'वायरल कीवर्ड',
+    'seo.analyzer.viralKeywordsDesc': 'जोड़ने के लिए क्लिक करें। प्रत्येक कीवर्ड में वायरल स्कोर % शामिल है।',
+    'seo.analyzer.keywordsHint': 'कीवर्ड या टाइटल टाइप करें।',
+    'yt.seo.bestPostingTime.loading': 'चैनल एनालाइज करके बेस्ट टाइम निकाल रहे हैं...',
+    'yt.seo.bestPostingTime.highViewsDays': 'ज्यादा व्यूज वाले दिन',
+    'yt.seo.bestPostingTime.highViewsHours': 'ज्यादा व्यूज वाले समय (बजे)',
+    'yt.seo.bestPostingTime.topSlots': 'टॉप स्लॉट्स (दिन + समय)',
+    'yt.seo.bestPostingTime.videosAnalyzed': 'वीडियो एनालाइज किए।',
+    'yt.seo.competitor.addKeyword': 'जोड़ें',
+    'yt.seo.thumbnail.improvementTitle': 'क्या सुधारें',
+    'yt.seo.chinki.thinking': 'चिंकी सोच रही है...',
+    'yt.seo.chinki.placeholder': 'मुझे क्या सुधारना चाहिए? मुझसे पूछें...',
+    'yt.seo.chinki.subtitle': '24 • YouTube SEO के लिए एक्सपर्ट AI असिस्टेंट',
+    'yt.seo.chinki.speakTitle': 'चिंकी को सुनें',
+    'yt.seo.chinki.welcome': 'नमस्ते! मैं चिंकी हूं, आपकी YouTube SEO के लिए AI असिस्टेंट। मैं आपको टाइटल, डिस्क्रिप्शन, थंबनेल और कीवर्ड्स पर लाइव गाइड कर सकती हूं। सुधार के लिए मुझसे कुछ भी पूछें।',
+    'sidebar.accessLoading': 'एक्सेस लोड हो रहा है...',
   },
   hinglish: {
     'navbar.features': 'Features',
@@ -399,6 +526,48 @@ const TRANSLATIONS: TranslationTable = {
     'viral.optimizer.rec.thumb': 'Face clearly visible hona chahiye aur high contrast colors use karein',
     'viral.optimizer.rec.title': 'Title mein numbers ya sawal add karein aur emotional words use karein',
     'viral.optimizer.rec.overall': 'Best posting times follow karein aur consistent schedule maintain karein',
+    'seo.analyzer.subtitle': 'Real-time SEO for posts, reels & live — description, keywords, hashtags',
+    'seo.analyzer.contentSetup': 'Content Setup',
+    'seo.analyzer.linkDesc.facebook': 'Link dalne par page/profile ka summary, growth tips sab dikhega.',
+    'seo.analyzer.linkDesc.instagram': 'Link dalne par profile ka summary, growth tips sab dikhega.',
+    'seo.analyzer.linkButton': 'Link karein',
+    'seo.analyzer.aiError': 'AI nahi chal paya. Fallback results dikha raha hai.',
+    'seo.analyzer.pageAuditTitle': 'Page Audit — Growth & Home',
+    'seo.analyzer.pageAuditDesc': 'Link ke hisaab se: kya badlav karein, kaun se keywords use karein.',
+    'seo.analyzer.keywordsTitle': 'Page pe kaun se keywords rakhne chahiye (score %)',
+    'seo.analyzer.growthActionsTitle': 'Followers & reach badhane ke liye actions',
+    'seo.analyzer.actions.where': 'Jahan',
+    'seo.analyzer.actions.action': 'Kya karein',
+    'seo.analyzer.actions.reason': 'Kyun',
+    'seo.analyzer.missingElementsTitle': 'Page me kami / Settings me kami (summary)',
+    'seo.analyzer.postTimeTitle': 'Post time — kab post karein',
+    'seo.analyzer.postTimeDesc': 'Is page ke viewers kab online rehte hain — zyada reach ke liye best time.',
+    'seo.analyzer.activeTimeTitle': 'Peak active times (research-based)',
+    'seo.analyzer.timezoneNote': 'Apne timezone ke hisaab se post schedule karein.',
+    'seo.analyzer.exactTimeNote': 'Exact time ke liye: Facebook/Instagram Insights dekhein.',
+    'seo.analyzer.linkFirstHint': 'Pehle link daalein aur "Link karein" dabayein, phir details dikhenge.',
+    'seo.analyzer.autoDescTitle': 'Automatic Descriptions',
+    'seo.analyzer.autoDescDesc': 'Click karke description me add ho jayega.',
+    'seo.analyzer.fillTitleHint': 'Title ya keywords bharein.',
+    'seo.analyzer.hashtagsTitle': 'Viral Hashtags',
+    'seo.analyzer.hashtagsDesc': 'Click karke add karein. Green = high, amber = medium.',
+    'seo.analyzer.fillKeywordsHint': 'Keywords bharein.',
+    'seo.analyzer.viralKeywordsTitle': 'Viral Keywords',
+    'seo.analyzer.viralKeywordsDesc': 'Click karke keywords me add karein.',
+    'seo.analyzer.keywordsHint': 'Keyword ya title type karein.',
+    'yt.seo.bestPostingTime.loading': 'Channel analyze karke best time nikal rahe hain…',
+    'yt.seo.bestPostingTime.highViewsDays': 'Zyada views wale din',
+    'yt.seo.bestPostingTime.highViewsHours': 'Zyada views wale time (baje)',
+    'yt.seo.bestPostingTime.topSlots': 'Top slots (din + time)',
+    'yt.seo.bestPostingTime.videosAnalyzed': 'videos analyze kiye.',
+    'yt.seo.competitor.addKeyword': 'add karein',
+    'yt.seo.thumbnail.improvementTitle': 'Kya kami hai / Improvements',
+    'yt.seo.chinki.thinking': 'Chinki is thinking...',
+    'yt.seo.chinki.placeholder': 'What should I improve? Ask me...',
+    'yt.seo.chinki.subtitle': '24 • Multilingual AI assistant for YouTube SEO',
+    'yt.seo.chinki.speakTitle': 'Listen to Chinki',
+    'yt.seo.chinki.welcome': 'Hi! I am Chinki, your AI assistant for YouTube SEO. I can guide you live on titles, descriptions, thumbnails and keywords. Ask me anything you want to improve.',
+    'sidebar.accessLoading': 'Access load ho raha hai…',
   },
   es: {
     'navbar.features': 'Funciones',

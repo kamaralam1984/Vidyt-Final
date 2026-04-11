@@ -16,9 +16,12 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
+import { useTranslations } from '@/context/translations';
+
 const DEBOUNCE_MS = 500;
 
 export default function InstagramSEOPage() {
+  const { t } = useTranslations();
   const [caption, setCaption] = useState('');
   const [keywords, setKeywords] = useState('');
   const [contentType, setContentType] = useState<'post' | 'reel' | 'story' | 'live'>('post');
@@ -175,7 +178,7 @@ export default function InstagramSEOPage() {
             <Instagram className="w-8 h-8 text-pink-500" />
             <div>
               <h1 className="text-2xl font-bold text-white">Instagram Live SEO Analyzer</h1>
-              <p className="text-sm text-[#AAAAAA]">Real-time SEO for post, reels, story & live — caption, keywords, hashtags (YouTube page jaisa)</p>
+              <p className="text-sm text-[#AAAAAA]">{t('seo.analyzer.subtitle')}</p>
             </div>
           </motion.div>
 
@@ -183,7 +186,7 @@ export default function InstagramSEOPage() {
             <motion.div className="lg:col-span-2 space-y-4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  <FileText className="w-5 h-5" /> Content setup
+                  <FileText className="w-5 h-5" /> {t('seo.analyzer.contentSetup')}
                 </h2>
                 <div className="flex gap-2 p-1 bg-[#212121] rounded-lg mb-4">
                   {(['post', 'reel', 'story', 'live'] as const).map((type) => (
@@ -219,8 +222,8 @@ export default function InstagramSEOPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-[#AAAAAA] mb-1">Instagram Profile link</label>
-                    <p className="text-xs text-[#666] mb-1">Link dalne par profile ka summary, kya badlav karne hain, growth tips — sab YouTube page jaisa dikhega.</p>
+                    <label className="block text-sm text-[#AAAAAA] mb-1">{t('seo.analyzer.linkDesc.instagram')}</label>
+                    <p className="text-xs text-[#666] mb-1">{t('seo.analyzer.linkDesc.instagram')}</p>
                     <div className="flex gap-2">
                       <input
                         value={instagramProfileUrl}
@@ -234,7 +237,7 @@ export default function InstagramSEOPage() {
                         disabled={!instagramProfileUrl.trim() || profileSummaryLoading}
                         className="px-4 py-2.5 bg-pink-500 hover:bg-pink-400 disabled:opacity-50 text-white rounded-lg font-medium"
                       >
-                        {profileSummaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Link karein'}
+                        {profileSummaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('seo.analyzer.linkButton')}
                       </button>
                     </div>
                     {profileSummary?.profileName && (
@@ -294,12 +297,12 @@ export default function InstagramSEOPage() {
               {profileSummary?.linked && (
                 <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                   <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-pink-500" /> Profile Audit — Growth &amp; Home
+                    <BarChart3 className="w-5 h-5 text-pink-500" /> {t('seo.analyzer.pageAuditTitle')}
                   </h2>
-                  <p className="text-xs text-[#888] mb-4">Profile link ke hisaab se: kya badlav karein, kaun se keywords rakhne chahiye — YouTube page jaisa system.</p>
+                  <p className="text-xs text-[#888] mb-4">{t('seo.analyzer.pageAuditDesc')}</p>
                   {(profileSummary?.homepageKeywords?.length ?? 0) > 0 && (
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-emerald-400 mb-2">Profile / bio me kaun kaun se keywords rakhne chahiye (score %)</p>
+                      <p className="text-sm font-semibold text-emerald-400 mb-2">{t('seo.analyzer.keywordsTitle')}</p>
                       <div className="flex flex-wrap gap-2">
                         {(profileSummary.homepageKeywords || []).map((item, i) => (
                           <span key={i} className="px-2 py-1 rounded text-sm border bg-[#212121] text-emerald-400 border-emerald-500/30">
@@ -311,13 +314,13 @@ export default function InstagramSEOPage() {
                   )}
                   {(profileSummary?.growthActions?.length ?? 0) > 0 && (
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-amber-400 mb-2">Kya badlav karne ki zarurat hai — followers &amp; reach badhane ke liye</p>
+                      <p className="text-sm font-semibold text-amber-400 mb-2">{t('seo.analyzer.growthActionsTitle')}</p>
                       <div className="space-y-3">
                         {(profileSummary.growthActions || []).map((g, i) => (
                           <div key={i} className="p-3 rounded-lg bg-[#212121]/80 border border-[#333]">
-                            <p className="text-white font-medium text-sm mb-1"><span className="text-amber-400">Jahan:</span> {g.where}</p>
-                            <p className="text-[#CCC] text-sm mb-1"><span className="text-emerald-400">Kya karein:</span> {g.action}</p>
-                            <p className="text-[#888] text-xs"><span className="text-[#666]">Kyun:</span> {g.reason}</p>
+                            <p className="text-white font-medium text-sm mb-1"><span className="text-amber-400">{t('seo.analyzer.actions.where')}:</span> {g.where}</p>
+                            <p className="text-[#CCC] text-sm mb-1"><span className="text-emerald-400">{t('seo.analyzer.actions.action')}:</span> {g.action}</p>
+                            <p className="text-[#888] text-xs"><span className="text-[#666]">{t('seo.analyzer.actions.reason')}:</span> {g.reason}</p>
                           </div>
                         ))}
                       </div>
@@ -325,7 +328,7 @@ export default function InstagramSEOPage() {
                   )}
                   {(profileSummary?.recommendedKeywords?.length ?? 0) > 0 && (
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-white mb-2">Recommended keywords (caption/bio me use karein)</p>
+                      <p className="text-sm font-semibold text-white mb-2">{t('seo.analyzer.recommendedKeywordsTitle')}</p>
                       <div className="flex flex-wrap gap-2">
                         {(profileSummary.recommendedKeywords || []).map((item, i) => (
                           <button key={i} type="button" onClick={() => addKeywordToField(item.keyword)} className="px-2 py-1 bg-[#212121] text-emerald-400 rounded text-sm border border-emerald-500/30 hover:bg-[#2a2a2a]">
@@ -337,7 +340,7 @@ export default function InstagramSEOPage() {
                   )}
                   {((profileSummary?.profileKami?.length ?? 0) > 0 || (profileSummary?.settingKami?.length ?? 0) > 0) && (
                     <div className="pt-4 border-t border-[#333]">
-                      <p className="text-xs font-semibold text-[#AAA] mb-2">Profile me kami / Settings me kami (summary)</p>
+                      <p className="text-xs font-semibold text-[#AAA] mb-2">{t('seo.analyzer.missingElementsTitle')}</p>
                       <ul className="text-xs text-[#888] space-y-1 list-disc list-inside">
                         {(profileSummary.profileKami || []).map((k, i) => <li key={`p-${i}`}>{k}</li>)}
                         {(profileSummary.settingKami || []).map((k, i) => <li key={`s-${i}`}>{k}</li>)}
@@ -349,9 +352,9 @@ export default function InstagramSEOPage() {
 
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <FileText className="w-5 h-5" /> 5 Automatic captions {contentType !== 'post' && `(${contentType.charAt(0).toUpperCase() + contentType.slice(1)})`}
+                  <FileText className="w-5 h-5" /> {t('seo.analyzer.autoDescTitle')} {contentType !== 'post' && `(${contentType.charAt(0).toUpperCase() + contentType.slice(1)})`}
                 </h2>
-                <p className="text-xs text-[#888] mb-3">Click karke caption me add ho jayega.</p>
+                <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.autoDescDesc')}</p>
                 {loadingDescriptions ? (
                   <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
                 ) : descriptions.length > 0 ? (
@@ -366,15 +369,15 @@ export default function InstagramSEOPage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-[#666] text-sm">Caption ya keywords bharein.</p>
+                  <p className="text-[#666] text-sm">{t('seo.analyzer.fillTitleHint')}</p>
                 )}
               </div>
 
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <Hash className="w-5 h-5" /> 25 Viral hashtags {contentType !== 'post' && `(${contentType})`}
+                  <Hash className="w-5 h-5" /> {t('seo.analyzer.hashtagsTitle')} {contentType !== 'post' && `(${contentType})`}
                 </h2>
-                <p className="text-xs text-[#888] mb-3">Click karke caption me add. Green = high, amber = medium.</p>
+                <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.hashtagsDesc')}</p>
                 {loadingHashtags ? (
                   <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
                 ) : hashtags.length > 0 ? (
@@ -386,15 +389,15 @@ export default function InstagramSEOPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[#666] text-sm">Keywords bharein.</p>
+                  <p className="text-[#666] text-sm">{t('seo.analyzer.fillKeywordsHint')}</p>
                 )}
               </div>
 
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <Search className="w-5 h-5" /> Viral Keywords
+                  <Search className="w-5 h-5" /> {t('seo.analyzer.viralKeywordsTitle')}
                 </h2>
-                <p className="text-xs text-[#888] mb-3">Click karke Keywords me add karein. Har keyword ke saath %.</p>
+                <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.viralKeywordsDesc')}</p>
                 {loadingKeywords ? (
                   <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
                 ) : (keywordData?.viralKeywords?.length ?? 0) > 0 ? (
@@ -407,7 +410,7 @@ export default function InstagramSEOPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[#666] text-sm">Keyword ya caption type karein.</p>
+                  <p className="text-[#666] text-sm">{t('seo.analyzer.keywordsHint')}</p>
                 )}
               </div>
             </motion.div>

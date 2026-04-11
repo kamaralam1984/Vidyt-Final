@@ -17,9 +17,12 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
+import { useTranslations } from '@/context/translations';
+
 const DEBOUNCE_MS = 500;
 
 export default function FacebookSEOPage() {
+  const { t } = useTranslations();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [keywords, setKeywords] = useState('');
@@ -180,7 +183,7 @@ export default function FacebookSEOPage() {
             <Facebook className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="text-2xl font-bold text-white">Facebook Live SEO Analyzer</h1>
-              <p className="text-sm text-[#AAAAAA]">Real-time SEO for posts, reels & live — description, keywords, hashtags (YouTube page jaisa)</p>
+              <p className="text-sm text-[#AAAAAA]">{t('seo.analyzer.subtitle')}</p>
             </div>
           </motion.div>
 
@@ -188,7 +191,7 @@ export default function FacebookSEOPage() {
             <motion.div className="lg:col-span-2 space-y-4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  <FileText className="w-5 h-5" /> Content setup
+                  <FileText className="w-5 h-5" /> {t('seo.analyzer.contentSetup')}
                 </h2>
                 <div className="flex gap-2 p-1 bg-[#212121] rounded-lg mb-4">
                   {(['post', 'reel', 'live'] as const).map((type) => (
@@ -233,8 +236,8 @@ export default function FacebookSEOPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-[#AAAAAA] mb-1">Facebook Page link / Profile link</label>
-                    <p className="text-xs text-[#666] mb-1">Link dalne par page/profile ka summary, kya badlav karne hain, growth tips — sab YouTube jaisa dikhega.</p>
+                    <label className="block text-sm text-[#AAAAAA] mb-1">{t('seo.analyzer.linkDesc.facebook')}</label>
+                    <p className="text-xs text-[#666] mb-1">{t('seo.analyzer.linkDesc.facebook')}</p>
                     <div className="flex gap-2">
                       <input
                         value={facebookPageUrl}
@@ -248,7 +251,7 @@ export default function FacebookSEOPage() {
                         disabled={!facebookPageUrl.trim() || pageSummaryLoading}
                         className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg font-medium"
                       >
-                        {pageSummaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Link karein'}
+                        {pageSummaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('seo.analyzer.linkButton')}
                       </button>
                     </div>
                     {pageSummary?.pageName && (
@@ -263,7 +266,7 @@ export default function FacebookSEOPage() {
                           )}
                         </p>
                         {pageSummary.aiError && (
-                          <p className="text-xs text-amber-400">AI nahi chal paya: {pageSummary.aiError}. Fallback result dikhaya. Super Admin → API keys check karein.</p>
+                          <p className="text-xs text-amber-400">{t('seo.analyzer.aiError')} {pageSummary.aiError}.</p>
                         )}
                       </div>
                     )}
@@ -316,12 +319,12 @@ export default function FacebookSEOPage() {
               {pageSummary?.linked && (
                 <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                   <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-blue-500" /> Page Audit — Growth &amp; Home
+                    <BarChart3 className="w-5 h-5 text-blue-500" /> {t('seo.analyzer.pageAuditTitle')}
                   </h2>
-                  <p className="text-xs text-[#888] mb-4">Page/Profile link ke hisaab se: kya badlav karein, kaun se keywords rakhne chahiye — YouTube page jaisa system.</p>
+                  <p className="text-xs text-[#888] mb-4">{t('seo.analyzer.pageAuditDesc')}</p>
                   {(pageSummary?.homepageKeywords?.length ?? 0) > 0 && (
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-emerald-400 mb-2">Page pe kaun kaun se keywords rakhne chahiye (score %)</p>
+                      <p className="text-sm font-semibold text-emerald-400 mb-2">{t('seo.analyzer.keywordsTitle')}</p>
                       <div className="flex flex-wrap gap-2">
                         {(pageSummary.homepageKeywords || []).map((item, i) => (
                           <span key={i} className="px-2 py-1 rounded text-sm border bg-[#212121] text-emerald-400 border-emerald-500/30">
@@ -333,13 +336,13 @@ export default function FacebookSEOPage() {
                   )}
                   {(pageSummary?.growthActions?.length ?? 0) > 0 && (
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-amber-400 mb-2">Kya badlav karne ki zarurat hai — followers &amp; reach badhane ke liye</p>
+                      <p className="text-sm font-semibold text-amber-400 mb-2">{t('seo.analyzer.growthActionsTitle')}</p>
                       <div className="space-y-3">
                         {(pageSummary.growthActions || []).map((g, i) => (
                           <div key={i} className="p-3 rounded-lg bg-[#212121]/80 border border-[#333]">
-                            <p className="text-white font-medium text-sm mb-1"><span className="text-amber-400">Jahan:</span> {g.where}</p>
-                            <p className="text-[#CCC] text-sm mb-1"><span className="text-emerald-400">Kya karein:</span> {g.action}</p>
-                            <p className="text-[#888] text-xs"><span className="text-[#666]">Kyun:</span> {g.reason}</p>
+                            <p className="text-white font-medium text-sm mb-1"><span className="text-amber-400">{t('seo.analyzer.actions.where')}:</span> {g.where}</p>
+                            <p className="text-[#CCC] text-sm mb-1"><span className="text-emerald-400">{t('seo.analyzer.actions.action')}:</span> {g.action}</p>
+                            <p className="text-[#888] text-xs"><span className="text-[#666]">{t('seo.analyzer.actions.reason')}:</span> {g.reason}</p>
                           </div>
                         ))}
                       </div>
@@ -347,7 +350,7 @@ export default function FacebookSEOPage() {
                   )}
                   {(pageSummary?.recommendedKeywords?.length ?? 0) > 0 && (
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-white mb-2">Recommended keywords (page/caption me use karein)</p>
+                      <p className="text-sm font-semibold text-white mb-2">{t('seo.analyzer.recommendedKeywordsTitle')}</p>
                       <div className="flex flex-wrap gap-2">
                         {(pageSummary.recommendedKeywords || []).map((item, i) => (
                           <button key={i} type="button" onClick={() => addKeywordToField(item.keyword)} className="px-2 py-1 bg-[#212121] text-emerald-400 rounded text-sm border border-emerald-500/30 hover:bg-[#2a2a2a]">
@@ -359,7 +362,7 @@ export default function FacebookSEOPage() {
                   )}
                   {((pageSummary?.pageKami?.length ?? 0) > 0 || (pageSummary?.settingKami?.length ?? 0) > 0) && (
                     <div className="pt-4 border-t border-[#333]">
-                      <p className="text-xs font-semibold text-[#AAA] mb-2">Page me kami / Settings me kami (summary)</p>
+                      <p className="text-xs font-semibold text-[#AAA] mb-2">{t('seo.analyzer.missingElementsTitle')}</p>
                       <ul className="text-xs text-[#888] space-y-1 list-disc list-inside">
                         {(pageSummary.pageKami || []).map((k, i) => <li key={`p-${i}`}>{k}</li>)}
                         {(pageSummary.settingKami || []).map((k, i) => <li key={`s-${i}`}>{k}</li>)}
@@ -372,35 +375,35 @@ export default function FacebookSEOPage() {
               {/* Post time — kab post karein (is page ke viewers kab online/active) */}
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-blue-500" /> Post time — kab post karein
+                  <Clock className="w-5 h-5 text-blue-500" /> {t('seo.analyzer.postTimeTitle')}
                 </h2>
-                <p className="text-xs text-[#888] mb-4">Is page ke viewers kab online aur active rahte hain — in time pe post karke zyada reach milegi.</p>
+                <p className="text-xs text-[#888] mb-4">{t('seo.analyzer.postTimeDesc')}</p>
                 {pageSummary?.linked ? (
                   <>
                     <div className="p-4 rounded-lg bg-[#212121]/80 border border-[#333] mb-3">
-                      <p className="text-sm font-semibold text-emerald-400 mb-2">Zyada active time (research-based)</p>
+                      <p className="text-sm font-semibold text-emerald-400 mb-2">{t('seo.analyzer.activeTimeTitle')}</p>
                       <ul className="text-sm text-[#CCC] space-y-1.5">
                         <li>• <strong className="text-white">Tuesday–Thursday</strong> — sabse zyada engagement</li>
                         <li>• <strong className="text-white">9–11 AM</strong> — morning scroll, office break</li>
                         <li>• <strong className="text-white">1–3 PM</strong> — lunch break, peak activity</li>
                         <li>• <strong className="text-white">7–9 PM</strong> — evening, sabse zyada viewers online</li>
                       </ul>
-                      <p className="text-xs text-[#888] mt-3">Apne timezone ke hisaab se post schedule karein.</p>
+                      <p className="text-xs text-[#888] mt-3">{t('seo.analyzer.timezoneNote')}</p>
                     </div>
                     <p className="text-xs text-[#AAA]">
-                      <strong className="text-amber-400">Exact time apne page ke viewers ke liye:</strong> Facebook Business Suite → Page → Insights → &quot;When your fans are online&quot; dekhein. Wahan hour-by-hour dikhega kab aapke followers active rahte hain.
+                      {t('seo.analyzer.exactTimeNote')}
                     </p>
                   </>
                 ) : (
-                  <p className="text-sm text-[#666]">Pehle upar <strong className="text-[#AAA]">Facebook Page link</strong> daalein aur &quot;Link karein&quot; dabayein, phir is page ke hisaab se post time aur tips dikhenge.</p>
+                  <p className="text-sm text-[#666]">{t('seo.analyzer.linkFirstHint')}</p>
                 )}
               </div>
 
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <FileText className="w-5 h-5" /> 5 Automatic descriptions {contentType !== 'post' && `(${contentType === 'reel' ? 'Reel' : 'Live'})`}
+                  <FileText className="w-5 h-5" /> {t('seo.analyzer.autoDescTitle')} {contentType !== 'post' && `(${contentType === 'reel' ? 'Reel' : 'Live'})`}
                 </h2>
-                <p className="text-xs text-[#888] mb-3">Click karke description me add ho jayega.</p>
+                <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.autoDescDesc')}</p>
                 {loadingDescriptions ? (
                   <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
                 ) : descriptions.length > 0 ? (
@@ -415,15 +418,15 @@ export default function FacebookSEOPage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-[#666] text-sm">Title ya keywords bharein.</p>
+                  <p className="text-[#666] text-sm">{t('seo.analyzer.fillTitleHint')}</p>
                 )}
               </div>
 
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <Hash className="w-5 h-5" /> 25 Viral hashtags {contentType !== 'post' && `(${contentType})`}
+                  <Hash className="w-5 h-5" /> {t('seo.analyzer.hashtagsTitle')} {contentType !== 'post' && `(${contentType})`}
                 </h2>
-                <p className="text-xs text-[#888] mb-3">Click karke description me add. Green = high, amber = medium.</p>
+                <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.hashtagsDesc')}</p>
                 {loadingHashtags ? (
                   <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
                 ) : hashtags.length > 0 ? (
@@ -435,15 +438,15 @@ export default function FacebookSEOPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[#666] text-sm">Keywords bharein.</p>
+                  <p className="text-[#666] text-sm">{t('seo.analyzer.fillKeywordsHint')}</p>
                 )}
               </div>
 
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <Search className="w-5 h-5" /> Viral Keywords
+                  <Search className="w-5 h-5" /> {t('seo.analyzer.viralKeywordsTitle')}
                 </h2>
-                <p className="text-xs text-[#888] mb-3">Click karke Keywords me add karein. Har keyword ke saath %.</p>
+                <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.viralKeywordsDesc')}</p>
                 {loadingKeywords ? (
                   <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
                 ) : (keywordData?.viralKeywords?.length ?? 0) > 0 ? (
@@ -456,7 +459,7 @@ export default function FacebookSEOPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[#666] text-sm">Keyword ya title type karein.</p>
+                  <p className="text-[#666] text-sm">{t('seo.analyzer.keywordsHint')}</p>
                 )}
               </div>
             </motion.div>

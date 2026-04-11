@@ -31,6 +31,8 @@ import {
 import { getAuthHeaders, removeToken } from '@/utils/auth';
 import UsageBar from './UsageBar';
 
+import { useTranslations } from '@/context/translations';
+
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
@@ -39,6 +41,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProps) {
+  const { t } = useTranslations();
   const pathname = usePathname();
   const [allowedSystems, setAllowedSystems] = useState<Record<string, boolean>>({});
   const [loadingSystems, setLoadingSystems] = useState(true);
@@ -174,7 +177,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                 {!navReady ? (
                   <li className="py-6 flex flex-col items-center justify-center gap-3 text-[#666]">
                     <Loader2 className="w-8 h-8 animate-spin text-[#FF0000]/70" />
-                    <p className="text-xs text-center px-2">Access load ho raha hai…</p>
+                    <p className="text-xs text-center px-2">{t('sidebar.accessLoading')}</p>
                     <div className="w-full space-y-2 mt-2">
                       {Array.from({ length: 6 }).map((_, i) => (
                         <div key={i} className="h-10 rounded-lg bg-[#1a1a1a] animate-pulse" />

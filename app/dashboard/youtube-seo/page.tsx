@@ -45,6 +45,8 @@ import {
   Cell,
 } from 'recharts';
 
+import { useTranslations } from '@/context/translations';
+
 const CATEGORIES = [
   'Education', 'Entertainment', 'Howto & Style', 'People & Blogs', 'Science & Technology',
   'Sports', 'News & Politics', 'Music', 'Comedy', 'Film & Animation', 'Gaming', 'Other',
@@ -53,6 +55,7 @@ const CATEGORIES = [
 const DEBOUNCE_MS = 500;
 
 function YouTubeLiveSEOContent() {
+  const { t } = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -798,8 +801,7 @@ function YouTubeLiveSEOContent() {
       setChinkiMessages([
         {
           role: 'chinki',
-          text:
-            'Hi! I am Chinki, your AI assistant for YouTube SEO. I can guide you live on titles, descriptions, thumbnails and keywords. Ask me anything you want to improve.',
+          text: t('yt.seo.chinki.welcome'),
         },
       ]);
     }
@@ -1173,7 +1175,7 @@ function YouTubeLiveSEOContent() {
                       </div>
                       {ctrData.suggestions && ctrData.suggestions.length > 0 && (
                         <div className="pt-3 border-t border-[#333]">
-                          <p className="text-xs font-semibold text-amber-400 mb-2">Suggestions</p>
+                          <p className="text-xs font-semibold text-amber-400 mb-2">{t('yt.seo.thumbnail.improvementTitle')}</p>
                           <ul className="text-sm text-[#AAA] space-y-1 list-disc list-inside">
                             {ctrData.suggestions.map((s, i) => (
                               <li key={i}>{s}</li>
@@ -1256,12 +1258,12 @@ function YouTubeLiveSEOContent() {
                   {loadingBestPostingTime ? (
                     <div className="flex items-center gap-2 text-[#888]">
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="text-sm">Channel analyze karke best time nikal rahe hain…</span>
+                      <span className="text-sm">{t('yt.seo.bestPostingTime.loading')}</span>
                     </div>
                   ) : bestPostingTime?.bestSlots?.length ? (
                     <>
                       <div className="mb-3">
-                        <p className="text-sm font-semibold text-amber-400 mb-1">Zyada views wale din</p>
+                        <p className="text-sm font-semibold text-amber-400 mb-1">{t('yt.seo.bestPostingTime.highViewsDays')}</p>
                         <div className="flex flex-wrap gap-2">
                           {bestPostingTime.bestDays.map((d, i) => (
                             <span key={i} className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded text-sm font-medium">
@@ -1271,7 +1273,7 @@ function YouTubeLiveSEOContent() {
                         </div>
                       </div>
                       <div className="mb-3">
-                        <p className="text-sm font-semibold text-emerald-400 mb-1">Zyada views wale time (baje)</p>
+                        <p className="text-sm font-semibold text-emerald-400 mb-1">{t('yt.seo.bestPostingTime.highViewsHours')}</p>
                         <div className="flex flex-wrap gap-2">
                           {bestPostingTime.bestHours.map((h) => (
                             <span key={h} className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-sm font-medium">
@@ -1282,7 +1284,7 @@ function YouTubeLiveSEOContent() {
                       </div>
                       {bestPostingTime.bestSlots.length > 0 && (
                         <div className="mb-3">
-                          <p className="text-sm font-semibold text-white/90 mb-2">Top slots (din + time)</p>
+                          <p className="text-sm font-semibold text-white/90 mb-2">{t('yt.seo.bestPostingTime.topSlots')}</p>
                           <ul className="text-sm text-[#AAA] space-y-1">
                             {bestPostingTime.bestSlots.slice(0, 5).map((s, i) => (
                               <li key={i}>
@@ -1295,7 +1297,7 @@ function YouTubeLiveSEOContent() {
                       <p className="text-xs text-[#888] pt-2 border-t border-[#333]">
                         {bestPostingTime.summary?.replace(/\*\*/g, '')}
                         {bestPostingTime.totalVideosAnalyzed != null && (
-                          <span className="block mt-1"> ({bestPostingTime.totalVideosAnalyzed} videos analyze kiye.)</span>
+                          <span className="block mt-1"> ({bestPostingTime.totalVideosAnalyzed} {t('yt.seo.bestPostingTime.videosAnalyzed')})</span>
                         )}
                       </p>
                     </>
@@ -1354,7 +1356,7 @@ function YouTubeLiveSEOContent() {
                                   }}
                                   className="text-xs px-2 py-0.5 rounded bg-[#FF0000]/20 text-[#FF0000] hover:bg-[#FF0000]/30 border border-[#FF0000]/40"
                                 >
-                                  + {competitorKeyword || 'keyword'} add karein
+                                  + {competitorKeyword || 'keyword'} {t('yt.seo.competitor.addKeyword')}
                                 </button>
                               </div>
                             </div>
@@ -1410,7 +1412,7 @@ function YouTubeLiveSEOContent() {
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-sm text-[#FF0000] hover:underline"
                             >
-                              <ExternalLink className="w-4 h-4" /> YouTube par dekhein
+                              <ExternalLink className="w-4 h-4" /> YouTube
                             </a>
                           )}
                           <button
@@ -1504,7 +1506,7 @@ function YouTubeLiveSEOContent() {
                       </div>
                       {thumbnailScore.suggestions && thumbnailScore.suggestions.length > 0 && (
                         <div className="pt-3 border-t border-[#333]">
-                          <p className="text-xs font-semibold text-amber-400 mb-2">Kya kami hai / Improvements</p>
+                          <p className="text-xs font-semibold text-amber-400 mb-2">{t('yt.seo.thumbnail.improvementTitle')}</p>
                           <ul className="text-sm text-[#AAA] space-y-1">
                             {thumbnailScore.suggestions.map((s, i) => (
                               <li key={i} className="flex items-start gap-2">
@@ -1627,7 +1629,7 @@ function YouTubeLiveSEOContent() {
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-white">Chinki</p>
-                        <p className="text-xs text-[#888]">24 • Multilingual AI assistant for YouTube SEO</p>
+                        <p className="text-xs text-[#888]">{t('yt.seo.chinki.subtitle')}</p>
                       </div>
                     </div>
                     <button
@@ -1657,7 +1659,7 @@ function YouTubeLiveSEOContent() {
                     ))}
                     {chinkiLoading && (
                       <div className="flex justify-start">
-                        <div className="bg-[#212121] rounded-lg px-3 py-2 text-sm text-[#888]">Chinki is thinking...</div>
+                        <div className="bg-[#212121] rounded-lg px-3 py-2 text-sm text-[#888]">{t('yt.seo.chinki.thinking')}</div>
                       </div>
                     )}
                   </div>
@@ -1666,14 +1668,14 @@ function YouTubeLiveSEOContent() {
                       value={chinkiInput}
                       onChange={(e) => setChinkiInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChinkiMessage()}
-                      placeholder="What should I improve? Ask me..."
+                      placeholder={t('yt.seo.chinki.placeholder')}
                       className="flex-1 px-3 py-2 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] text-sm focus:ring-2 focus:ring-[#FF0000]"
                     />
                     <button
                       type="button"
                       onClick={speakChinki}
                       className="p-2 rounded-lg bg-[#212121] hover:bg-[#333] text-[#AAA]"
-                      title="Listen to Chinki"
+                      title={t('yt.seo.chinki.speakTitle')}
                     >
                       <Volume2 className="w-5 h-5" />
                     </button>
