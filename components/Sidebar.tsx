@@ -12,7 +12,6 @@ import {
   Hash,
   Clock,
   BarChart3,
-  Target,
   Facebook,
   Instagram,
   Calendar,
@@ -118,15 +117,17 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
 
   const aiStudioAllowed = aiStudioItems.length > 0;
 
-  const menuItems = [
+  const coreMenuItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard', href: '/dashboard' },
+  ];
+
+  const featureMenuItems = [
     { id: 'videos', icon: Video, label: 'My Videos', href: '/videos', platform: 'youtube' },
     { id: 'youtube_seo', icon: Search, label: 'YouTube Live SEO Analyzer', href: '/dashboard/youtube-seo', platform: 'youtube' },
     { id: 'keyword_intelligence', icon: Zap, label: 'Keyword Intelligence Engine', href: '/dashboard/keyword-intelligence', platform: 'youtube' },
     { id: 'facebook_seo', icon: Facebook, label: 'Facebook SEO Analyzer', href: '/dashboard/facebook-seo', platform: 'facebook' },
     { id: 'instagram_seo', icon: Instagram, label: 'Instagram SEO Analyzer', href: '/dashboard/instagram-seo', platform: 'instagram' },
     { id: 'viral_optimizer', icon: Zap, label: 'AI Viral Optimization Engine', href: '/dashboard/viral-optimizer', platform: 'youtube' },
-    { id: 'channel_audit', icon: Target, label: 'Channel Audit', href: '/channel-audit', platform: 'youtube' },
     { id: 'facebook_audit', icon: Facebook, label: 'Facebook Audit', href: '/facebook-audit', platform: 'facebook' },
     { id: 'trending', icon: TrendingUp, label: 'Trending', href: '/trending' },
     { id: 'hashtags', icon: Hash, label: 'Hashtags', href: '/hashtags' },
@@ -140,6 +141,8 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
       return platformControls[item.platform]?.isEnabled === true;
     });
 
+  const menuItems = [...coreMenuItems, ...featureMenuItems];
+
   return (
     <>
       <AnimatePresence>
@@ -149,7 +152,11 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
             animate={{ x: 0 }}
             exit={{ x: -256 }}
             transition={{ duration: 0.3 }}
-            className="fixed left-0 top-0 h-full w-64 bg-[#0F0F0F] shadow-lg z-40 flex flex-col"
+            className="fixed left-0 w-64 bg-[#0F0F0F] shadow-lg z-40 flex flex-col"
+            style={{
+              top: topOffset,
+              height: `calc(100vh - ${topOffset}px)`,
+            }}
           >
             <div className="flex items-center justify-between p-4 border-b border-[#212121] flex-shrink-0">
               <Link href="/dashboard" className="flex items-center gap-2 min-w-0">

@@ -1,19 +1,23 @@
 /**
  * AI Content Copilot - Enhanced with Trend Data
- * Uses API Config (DB / env) for OpenAI key so paid API works from website settings.
+ * Uses unified AI router: paid -> free -> local fallback.
  */
 
-import OpenAI from 'openai';
-import { getApiConfig } from '@/lib/apiConfig';
+import { routeAI } from '@/lib/ai-router';
 import { discoverTrends } from '@/services/trends/discovery';
 import ViralDataset from '@/models/ViralDataset';
 import connectDB from '@/lib/mongodb';
 
-async function getOpenAIClient(): Promise<OpenAI | null> {
-  const config = await getApiConfig();
-  const key = config.openaiApiKey?.trim();
-  if (!key) return null;
-  return new OpenAI({ apiKey: key });
+async function askCopilot(prompt: string, systemPrompt: string, cacheKey: string): Promise<string | null> {
+  const composed = `${systemPrompt}\n\n${prompt}`;
+  const ai = await routeAI({
+    prompt: composed,
+    timeoutMs: 12000,
+    cacheKey,
+    cacheTtlSec: 180,
+    fallbackText: '',
+  });
+  return ai.text?.trim() || null;
 }
 
 export interface ContentIdea {
@@ -63,11 +67,6 @@ export async function generateVideoIdeas(
     console.warn('Failed to fetch trends, using basic generation:', error);
   }
 
-  const openai = await getOpenAIClient();
-  if (!openai) {
-    return generateEnhancedIdeas(niche, platform, count, trendingTopics);
-  }
-
   try {
     const trendsContext = trendingTopics.length > 0
       ? `\n\nCurrent trending topics: ${trendingTopics.slice(0, 5).join(', ')}`
@@ -84,23 +83,12 @@ Each idea should include:
 
 Format as JSON array.`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert content creator and viral video strategist. Use trending topics to create relevant ideas.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 2000,
-    });
-
-    const content = response.choices[0]?.message?.content || '[]';
+    const content =
+      (await askCopilot(
+        prompt,
+        'You are an expert content creator and viral video strategist. Use trending topics to create relevant ideas.',
+        `copilot:video-ideas:${platform}:${niche}:${count}`.toLowerCase(),
+      )) || '[]';
     const ideas = JSON.parse(content);
     
     return ideas.map((idea: any) => ({
@@ -125,11 +113,6 @@ export async function generateScript(
   duration: number, // in seconds
   platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok'
 ): Promise<Script> {
-  const openai = await getOpenAIClient();
-  if (!openai) {
-    return generateBasicScript(topic, duration, platform);
-  }
-
   try {
     const prompt = `Create a ${platform} video script for "${topic}" that is ${duration} seconds long.
 Include:
@@ -140,23 +123,12 @@ Include:
 
 Format as JSON.`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a professional video script writer specializing in viral content.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
-    });
-
-    const content = response.choices[0]?.message?.content || '{}';
+    const content =
+      (await askCopilot(
+        prompt,
+        'You are a professional video script writer specializing in viral content.',
+        `copilot:script:${platform}:${topic}:${duration}`.toLowerCase(),
+      )) || '{}';
     const script = JSON.parse(content);
     
     return {
@@ -189,11 +161,6 @@ export async function optimizeTitle(
     console.warn('Failed to fetch trends for title optimization:', error);
   }
 
-  const openai = await getOpenAIClient();
-  if (!openai) {
-    return generateEnhancedTitles(originalTitle, platform, trendingKeywords);
-  }
-
   try {
     const trendsContext = trendingKeywords.length > 0
       ? `\n\nConsider incorporating these trending keywords: ${trendingKeywords.join(', ')}`
@@ -209,23 +176,12 @@ Make them:
 
 Return as JSON array of strings.`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert at creating viral video titles. Use trending keywords to maximize reach.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 500,
-    });
-
-    const content = response.choices[0]?.message?.content || '[]';
+    const content =
+      (await askCopilot(
+        prompt,
+        'You are an expert at creating viral video titles. Use trending keywords to maximize reach.',
+        `copilot:titles:${platform}:${originalTitle}`.toLowerCase(),
+      )) || '[]';
     return JSON.parse(content);
   } catch (error) {
     console.error('OpenAI API error:', error);
@@ -241,11 +197,6 @@ export async function generateHashtags(
   description: string,
   platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok'
 ): Promise<string[]> {
-  const openai = await getOpenAIClient();
-  if (!openai) {
-    return generateBasicHashtags(title, description, platform);
-  }
-
   try {
     const prompt = `Generate 20 optimized hashtags for ${platform} based on:
 Title: "${title}"
@@ -259,23 +210,12 @@ Include mix of:
 
 Return as JSON array of strings.`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert at hashtag strategy for social media.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 300,
-    });
-
-    const content = response.choices[0]?.message?.content || '[]';
+    const content =
+      (await askCopilot(
+        prompt,
+        'You are an expert at hashtag strategy for social media.',
+        `copilot:hashtags:${platform}:${title}`.toLowerCase(),
+      )) || '[]';
     return JSON.parse(content);
   } catch (error) {
     console.error('OpenAI API error:', error);
@@ -298,16 +238,6 @@ export async function repurposeVideoContent(
   suggestedHooks: string[];
   estimatedViralPotential: number;
 }> {
-  const openai = await getOpenAIClient();
-  if (!openai) {
-    return {
-      content: `Check out this amazing video about ${title}! #viral #trending`,
-      hashtags: ['viral', 'trending', targetPlatform],
-      suggestedHooks: [`You won't believe this about ${title}`],
-      estimatedViralPotential: 50
-    };
-  }
-
   try {
     const platformSpecificPrompt = {
       tiktok: 'Create a short, punchy, high-energy caption with 3-5 viral hooks for the first 3 seconds.',
@@ -331,23 +261,13 @@ Instructions:
 
 Return as JSON object with keys: "content", "hashtags" (array), "suggestedHooks" (array), "estimatedViralPotential" (number).`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a multi-platform social media strategy expert. You excel at adapting long-form content into high-performing short-form posts.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 1500,
-    });
-
-    const content = JSON.parse(response.choices[0]?.message?.content || '{}');
+    const contentText =
+      (await askCopilot(
+        prompt,
+        'You are a multi-platform social media strategy expert. You excel at adapting long-form content into high-performing short-form posts.',
+        `copilot:repurpose:${targetPlatform}:${title}`.toLowerCase(),
+      )) || '{}';
+    const content = JSON.parse(contentText);
     
     return {
       content: content.content || '',

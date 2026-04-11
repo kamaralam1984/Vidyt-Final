@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import connectDB from '@/lib/mongodb';
 import ToolRequest from '@/models/ToolRequest';
 import User from '@/models/User';
-
-// Assuming standard API key setup in .env.local
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+import { routeAI } from '@/lib/ai-router';
 
 export async function POST(req: Request) {
   try {
@@ -52,13 +47,14 @@ export async function POST(req: Request) {
     
     Output strictly as a JSON array of strings.`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
+    const ai = await routeAI({
+      prompt,
+      timeoutMs: 12000,
+      cacheKey: `generate-title:${topic}`.toLowerCase(),
+      cacheTtlSec: 120,
+      fallbackText: '{"titles":[]}',
     });
-
-    const responseText = completion.choices[0]?.message?.content || '{"titles": []}';
+    const responseText = ai.text || '{"titles": []}';
     let outputList = [];
     try {
       const parsed = JSON.parse(responseText);
@@ -76,11 +72,16 @@ export async function POST(req: Request) {
         inputData: { topic },
         generatedOutput: outputList,
         status: 'completed',
-        tokensUsed: completion.usage?.total_tokens || 0,
+        tokensUsed: 0,
       });
     }
 
-    return NextResponse.json({ success: true, titles: outputList });
+    return NextResponse.json({
+      success: true,
+      titles: outputList,
+      provider: ai.provider,
+      tier: ai.provider === 'fallback' ? 'local' : ['openai', 'gemini'].includes(ai.provider) ? 'paid' : 'free',
+    });
   } catch (error: any) {
     console.error('Title Generation Error:', error);
     return NextResponse.json({ error: 'Failed to generate titles' }, { status: 500 });

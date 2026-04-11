@@ -27,8 +27,8 @@ app.prepare().then(() => {
   const httpServer = createServer(expressApp);
 
   // Handler for all requests
-  expressApp.all('*', (req: Request, res: Response) => {
-    handle(req, res, req.url);
+  expressApp.use((req: Request, res: Response) => {
+    handle(req, res);
   });
 
   // Attach Socket.io to the HTTP server
@@ -51,4 +51,7 @@ app.prepare().then(() => {
     console.log(`> Request body size limit: 500MB`);
     console.log(`> Mode: ${dev ? 'development' : 'production'}`);
   });
+}).catch((err) => {
+  console.error('[StartupError] App failed to prepare:', err);
+  process.exit(1);
 });

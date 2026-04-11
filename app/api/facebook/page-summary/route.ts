@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { getApiConfig } from '@/lib/apiConfig';
+import { routeAI } from '@/lib/ai-router';
 
 function extractPageIdentifier(url: string): { slug: string; isProfile: boolean } | null {
   const u = url.trim().toLowerCase();
@@ -110,11 +110,13 @@ function normalizeAiError(err: unknown): string {
 async function getAIPageAudit(
   pageUrl: string,
   pageName: string,
-  meta: { title?: string; description?: string },
-  apiKey: string,
-  provider: 'openai' | 'gemini',
-  outError: { value: string }[]
-): Promise<{ homepageKeywords: { keyword: string; score: number }[]; recommendedKeywords: { keyword: string; score: number }[]; growthActions: { where: string; action: string; reason: string }[] } | null> {
+  meta: { title?: string; description?: string }
+): Promise<{
+  homepageKeywords: { keyword: string; score: number }[];
+  recommendedKeywords: { keyword: string; score: number }[];
+  growthActions: { where: string; action: string; reason: string }[];
+  provider: string;
+} | null> {
   const prompt = `You are a Facebook page SEO expert. For this Facebook page/link, suggest REAL-TIME accurate SEO data.
 
 Page URL: ${pageUrl}
@@ -156,41 +158,18 @@ Rules:
   };
 
   try {
-    if (provider === 'openai' && apiKey) {
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ apiKey });
-      const comp = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.6,
-        max_tokens: 1024,
-      });
-      const text = comp.choices[0]?.message?.content?.trim() || '';
-      return parseResponse(text);
-    }
-    if (provider === 'gemini' && apiKey) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.6, maxOutputTokens: 1024 },
-          }),
-        }
-      );
-      const data = await res.json();
-      const errMsg = data?.error?.message;
-      if (errMsg) {
-        outError.push({ value: `Gemini: ${normalizeAiError(errMsg)}` });
-        return null;
-      }
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-      return parseResponse(text);
-    }
+    const ai = await routeAI({
+      prompt,
+      timeoutMs: 12000,
+      cacheKey: `facebook-page-summary:${pageName}`.toLowerCase(),
+      cacheTtlSec: 180,
+      fallbackText: '{}',
+    });
+    const parsed = parseResponse(ai.text || '');
+    if (!parsed) return null;
+    return { ...parsed, provider: ai.provider };
   } catch (e) {
-    outError.push({ value: `${provider === 'openai' ? 'OpenAI' : 'Gemini'}: ${normalizeAiError(e)}` });
+    console.warn('facebook page ai audit fallback:', normalizeAiError(e));
   }
   return null;
 }
@@ -218,22 +197,10 @@ export async function GET(request: NextRequest) {
   const pageName = pageNameFromSlug(parsed.slug, parsed.isProfile);
 
   const meta = await fetchPageMeta(pageUrl);
-  const config = await getApiConfig().catch(() => null);
-  const openaiKey = config?.openaiApiKey?.trim();
-  const geminiKey = config?.googleGeminiApiKey?.trim();
-
-  const aiErrors: { value: string }[] = [];
   let aiResult: Awaited<ReturnType<typeof getAIPageAudit>> = null;
-  let aiProvider: 'openai' | 'gemini' | null = null;
-
-  if (openaiKey) {
-    aiResult = await getAIPageAudit(pageUrl, pageName, meta, openaiKey, 'openai', aiErrors);
-    if (aiResult) aiProvider = 'openai';
-  }
-  if (!aiResult && geminiKey) {
-    aiResult = await getAIPageAudit(pageUrl, pageName, meta, geminiKey, 'gemini', aiErrors);
-    if (aiResult) aiProvider = 'gemini';
-  }
+  let aiProvider: string | null = null;
+  aiResult = await getAIPageAudit(pageUrl, pageName, meta);
+  if (aiResult) aiProvider = aiResult.provider;
 
   let homepageKeywords: { keyword: string; score: number }[];
   let recommendedKeywords: { keyword: string; score: number }[];
@@ -252,7 +219,7 @@ export async function GET(request: NextRequest) {
 
   const pageKami: string[] = [];
   const settingKami: string[] = [];
-  const aiError = aiErrors.length > 0 ? aiErrors.map((e) => e.value).join('; ') : undefined;
+  const aiError = aiResult ? undefined : 'All AI providers unavailable. Served backend fallback.';
 
   const res = NextResponse.json({
     pageName,

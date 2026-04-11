@@ -2,7 +2,6 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { getApiConfig } from '@/lib/apiConfig';
 import { analyzeAndDraftSupportReply } from '@/services/ai/supportAI';
 import connectDB from '@/lib/mongodb';
 import ChatSession from '@/models/ChatSession';
@@ -25,9 +24,6 @@ export async function POST(req: NextRequest) {
     await connectDB();
     const userDoc = await User.findById(auth.id).select('subscription').lean() as { _id: any; subscription?: string } | null;
     if (!userDoc) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
-    const cfg = await getApiConfig();
-    if (!cfg.openaiApiKey) return NextResponse.json({ error: 'OpenAI key not configured' }, { status: 400 });
 
     const existingSessionId = String(body.sessionId || '');
     let session: any = null;
@@ -59,7 +55,6 @@ export async function POST(req: NextRequest) {
     });
 
     const ai = await analyzeAndDraftSupportReply({
-      apiKey: cfg.openaiApiKey,
       subject: 'Live support chat',
       message,
       userPlan: String(userDoc.subscription || 'free'),

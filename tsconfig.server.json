@@ -1,10 +1,17 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "CommonJS",
     "target": "ES2018",
+    "lib": ["esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
     "outDir": ".server-build",
-    "esModuleInterop": true
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": ["server.ts", "lib/**/*.ts", "workers/**/*.ts", "services/**/*.ts", "models/**/*.ts"],
   "exclude": ["node_modules", ".next"]

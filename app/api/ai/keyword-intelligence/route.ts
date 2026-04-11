@@ -3,37 +3,7 @@ export const maxDuration = 300; // 5 minutes
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { getApiConfig } from '@/lib/apiConfig';
-
-async function callOpenAI(apiKey: string, prompt: string): Promise<string> {
-  const OpenAI = (await import('openai')).default;
-  const openai = new OpenAI({ apiKey });
-  const res = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'system', content: prompt }],
-    temperature: 0.7,
-    max_tokens: 2500,
-  });
-  return res.choices[0]?.message?.content?.trim() || '{}';
-}
-
-async function callGemini(apiKey: string, prompt: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2500 },
-      }),
-    }
-  );
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error(data?.error?.message || 'Gemini no text returned');
-  return text.trim();
-}
+import { routeAI } from '@/lib/ai-router';
 
 export async function POST(request: NextRequest) {
   let parsedKeyword = 'viral content';
@@ -180,38 +150,14 @@ RULES:
 FINAL GOAL:
 Create a unified keyword intelligence system that works seamlessly across all pages, powering search suggestions, SEO optimization, viral prediction, content strategy, and analytics insights.`;
 
-    let config;
-    try {
-      config = await getApiConfig();
-    } catch {
-      return NextResponse.json({ error: 'API configuration not found' }, { status: 500 });
-    }
-
-    let text: string | null = null;
-    let fallbackUsed = false;
-
-    if (config.openaiApiKey?.trim()) {
-      try {
-        text = await callOpenAI(config.openaiApiKey, prompt);
-      } catch (err: any) {
-        console.warn('OpenAI error in Keyword Intelligence details:', err.message);
-        if (config.googleGeminiApiKey?.trim()) {
-          console.log('Falling back to Gemini...');
-          fallbackUsed = true;
-          try {
-             text = await callGemini(config.googleGeminiApiKey, prompt);
-          } catch (geminiErr: any) {
-             throw new Error(`OpenAI failed (${err.message}) and Gemini fallback failed (${geminiErr.message})`);
-          }
-        } else {
-          throw err; // Re-throw if no Gemini fallback
-        }
-      }
-    } else if (config.googleGeminiApiKey?.trim()) {
-      text = await callGemini(config.googleGeminiApiKey, prompt);
-    } else {
-      return NextResponse.json({ error: 'No AI provider configured' }, { status: 500 });
-    }
+    const ai = await routeAI({
+      prompt,
+      timeoutMs: 12000,
+      cacheKey: `keyword-intel:${platform}:${contentType}:${currentPage}:${primaryKeyword}`.toLowerCase(),
+      cacheTtlSec: 180,
+      fallbackText: '{}',
+    });
+    const text = ai.text || '{}';
 
     // Attempt to extract JSON from the response text
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -221,7 +167,12 @@ Create a unified keyword intelligence system that works seamlessly across all pa
 
     const parsedData = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
 
-    return NextResponse.json({ success: true, data: parsedData });
+    return NextResponse.json({
+      success: true,
+      data: parsedData,
+      provider: ai.provider,
+      tier: ai.provider === 'fallback' ? 'local' : ['openai', 'gemini'].includes(ai.provider) ? 'paid' : 'free',
+    });
 
   } catch (error: any) {
     console.error('Keyword intelligence API error:', error);

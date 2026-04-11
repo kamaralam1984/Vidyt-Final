@@ -1152,8 +1152,14 @@ function AuthPageContent() {
 }
 
 export default function AuthPage() {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+  
+  useEffect(() => {
+    console.log("AuthPage: Initializing with clientId:", clientId);
+  }, []);
+
   return (
-    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
+    <GoogleOAuthProvider clientId={clientId}>
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
         <AuthPageContent />
       </Suspense>

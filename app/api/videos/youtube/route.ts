@@ -6,7 +6,7 @@ import connectDB from '@/lib/mongodb';
 import Video from '@/models/Video';
 import User from '@/models/User';
 import { getUserFromRequest } from '@/lib/auth';
-import { checkLimit, getLimitExceededResponse } from '@/lib/limitChecker';
+import { checkAnalysisLimit } from '@/lib/usageCheck';
 import { extractYouTubeMetadata } from '@/services/youtube';
 import Analysis from '@/models/Analysis';
 
@@ -24,18 +24,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'YouTube URL is required' }, { status: 400 });
     }
 
-    let user = authUser ? await User.findById(authUser.id) : null;
-    if (!user) user = { _id: 'dummy', subscription: 'free' } as any;
-
-    if (!user) { // Dummy check
+    const user = authUser ? await User.findById(authUser.id) : null;
+    if (!user) {
        return NextResponse.json({ error: 'User not found' }, { status: 401 });
     }
 
-    if (!checkLimit(user, 'analyses')) {
-      return NextResponse.json(getLimitExceededResponse(), { status: 403 });
+    const planId = user.role === 'super-admin' ? 'owner' : (user.subscription || 'free');
+    const limitCheck = await checkAnalysisLimit(String(user._id), planId);
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: limitCheck.message || 'Video analysis limit reached. Please upgrade your plan.',
+          message: limitCheck.message || 'Video analysis limit reached. Please upgrade your plan.',
+          used: limitCheck.used,
+          limit: limitCheck.limit,
+          period: limitCheck.period,
+        },
+        { status: 403 }
+      );
     }
     
-    const finalUserId = authUser?.id || 'dummy';
+    const finalUserId = String(user._id);
 
     // ── Step 1: Extract basic metadata ────────────
     let metadata;
@@ -106,10 +116,9 @@ export async function POST(request: NextRequest) {
     video.analysisId = analysis._id;
     await video.save();
 
-    // Update usage stats (only count once when initialized)
+    // Keep lifetime counters in sync (limit enforcement uses DB period count).
     try {
       if (!user.usageStats) user.usageStats = { videosAnalyzed: 0, analysesThisMonth: 0, competitorsTracked: 0, hashtagsGenerated: 0 };
-      user.usageStats.analysesThisMonth = (user.usageStats.analysesThisMonth || 0) + 1;
       user.usageStats.videosAnalyzed = (user.usageStats.videosAnalyzed || 0) + 1;
       await user.save();
     } catch {}

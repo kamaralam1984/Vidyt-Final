@@ -71,15 +71,6 @@ const FEATURES = [
     gradient: 'from-rose-400 to-red-500',
     href: '/dashboard/youtube-seo?tab=titles',
   },
-  {
-    id: 'channel-audit',
-    col: 2 as const,
-    title: 'Channel Audit',
-    desc: 'Get a deep, honest review of your entire channel in minutes. See what’s working, what’s broken, and what to fix first. Turn random uploads into a focused, data‑driven strategy.',
-    icon: Gauge,
-    gradient: 'from-cyan-400 to-blue-500',
-    href: '/channel-audit',
-  },
   // Column 3
   {
     id: 'ai-shorts',
@@ -116,7 +107,6 @@ const FEATURE_TO_FLAG_MAP: Record<string, string> = {
   'keyword-research': 'keyword_research',
   'script-writer': 'script_writer',
   'title-generator': 'title_generator',
-  'channel-audit': 'channel_audit_tool',
   'ai-shorts': 'ai_shorts_clipping',
   'thumbnail-maker': 'ai_thumbnail_maker',
   'optimize': 'optimize',

@@ -7,7 +7,6 @@ import User from '@/models/User';
 import Ticket from '@/models/Ticket';
 import TicketReply from '@/models/TicketReply';
 import PlatformControl from '@/models/PlatformControl';
-import { getApiConfig } from '@/lib/apiConfig';
 import { analyzeAndDraftSupportReply } from '@/services/ai/supportAI';
 import { rateLimit, getClientIP } from '@/lib/rateLimiter';
 
@@ -62,13 +61,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'AI support auto-reply is disabled' }, { status: 400 });
     }
 
-    const cfg = await getApiConfig();
-    if (!cfg.openaiApiKey) {
-      return NextResponse.json({ error: 'OpenAI key not configured' }, { status: 400 });
-    }
-
     const ai = await analyzeAndDraftSupportReply({
-      apiKey: cfg.openaiApiKey,
       subject,
       message,
       userPlan: plan,

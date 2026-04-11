@@ -14,6 +14,35 @@ import {
   countWords,
 } from '@/lib/buildUploadSeo';
 
+function normalizeKeywords(input: string[] | string, max = 10): string {
+  const list = Array.isArray(input)
+    ? input
+    : String(input || '')
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean);
+  const unique = Array.from(new Set(list.map((x) => x.replace(/^#/, '').trim().toLowerCase()).filter(Boolean)));
+  return unique.slice(0, max).join(', ');
+}
+
+function normalizeHashtags(input: string[] | string, max = 10): string {
+  const list = Array.isArray(input)
+    ? input
+    : String(input || '')
+        .split(/[\s,]+/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+  const unique = Array.from(
+    new Set(
+      list
+        .map((x) => x.replace(/^#/, '').trim().toLowerCase())
+        .filter(Boolean)
+        .map((x) => `#${x}`),
+    ),
+  );
+  return unique.slice(0, max).join(' ');
+}
+
 interface YoutubeChannelOption {
   channelId: string;
   channelTitle: string;
@@ -152,13 +181,15 @@ export default function VideoUpload({
         if (data?.description) {
           setYtDescription(truncateToWordCount(data.description, SEO_DESCRIPTION_MAX_WORDS));
         }
-        if (typeof data?.tags === 'string') {
-          setYtTags(data.tags);
+        if (Array.isArray(data?.keywords)) {
+          setYtTags(normalizeKeywords(data.keywords, 10));
+        } else if (typeof data?.tags === 'string') {
+          setYtTags(normalizeKeywords(data.tags, 10));
         }
-        if (typeof data?.hashtagsText === 'string') {
-          setYtHashtags(data.hashtagsText);
-        } else if (Array.isArray(data?.hashtags)) {
-          setYtHashtags(data.hashtags.map((h: string) => `#${String(h).replace(/^#/, '')}`).join(' '));
+        if (Array.isArray(data?.hashtags)) {
+          setYtHashtags(normalizeHashtags(data.hashtags, 10));
+        } else if (typeof data?.hashtagsText === 'string') {
+          setYtHashtags(normalizeHashtags(data.hashtagsText, 10));
         }
         if (typeof data?.seoRankScore === 'number') {
           setSeoRankScore(data.seoRankScore);
@@ -784,7 +815,7 @@ export default function VideoUpload({
                     value={ytTags}
                     onChange={(e) => setYtTags(e.target.value)}
                     className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000]"
-                    placeholder="viral, ai, nextjs..."
+                    placeholder="Auto-filled 10 keywords by title..."
                   />
                 </div>
 
@@ -794,7 +825,7 @@ export default function VideoUpload({
                     value={ytHashtags}
                     onChange={(e) => setYtHashtags(e.target.value)}
                     className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000] min-h-[70px]"
-                    placeholder="#viral #shorts #youtube"
+                    placeholder="Auto-filled 10 hashtags by title..."
                   />
                 </div>
 

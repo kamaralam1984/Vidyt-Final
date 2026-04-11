@@ -5,6 +5,7 @@ import { requireAIToolAccess } from '@/lib/aiStudioAccess';
 import { predictBestPostingTime } from '@/services/postingTimePredictor';
 import { getApiConfig } from '@/lib/apiConfig';
 import axios from 'axios';
+import { routeAI } from '@/lib/ai-router';
 
 type Idea = {
   title: string;
@@ -51,7 +52,7 @@ async function fetchYouTubeTrendingTitles(apiKey: string, niche: string | null):
   }
 }
 
-async function buildIdeasFromAI(niche: string | null, trendingTitles: string[], config: Record<string, string>): Promise<Idea[] | null> {
+async function buildIdeasFromAI(niche: string | null, trendingTitles: string[]): Promise<Idea[] | null> {
   const nicheText = (niche || 'YouTube growth tips').trim();
   const today = new Date().toISOString().slice(0, 10);
   const trendingBlock =
@@ -81,69 +82,31 @@ Return ONLY pure JSON (no markdown) with this exact structure:
 }`;
 
   try {
-    if (config.openaiApiKey?.trim()) {
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ apiKey: config.openaiApiKey });
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.6,
-        max_tokens: 900,
-      });
-      const text = completion.choices[0]?.message?.content?.trim() || '';
-      const match = text.match(/\{[\s\S]*\}/);
-      if (!match) return null;
-      const parsed = JSON.parse(match[0].replace(/,(\\s*[}\\]])/g, '$1')) as { ideas?: { title: string; score: number; day: string; hour: number }[] };
-      if (!parsed.ideas?.length) return null;
-      return parsed.ideas.slice(0, 8).map((idea) => {
-        const time = predictBestPostingTime(nicheText, 'youtube');
-        const hour = typeof idea.hour === 'number' ? idea.hour : time.hour;
-        const day = idea.day || time.day;
-        const safeScore = Math.max(40, Math.min(100, Math.round(idea.score)));
-        return {
-          title: idea.title || nicheText,
-          score: safeScore,
-          day,
-          hour,
-          timeLabel: formatHourLabel(hour),
-        };
-      });
-    }
-
-    if (config.googleGeminiApiKey?.trim()) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
-          config.googleGeminiApiKey
-        )}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.6, maxOutputTokens: 900 },
-          }),
-        }
-      );
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-      const match = text.match(/\{[\s\S]*\}/);
-      if (!match) return null;
-      const parsed = JSON.parse(match[0].replace(/,(\\s*[}\\]])/g, '$1')) as { ideas?: { title: string; score: number; day: string; hour: number }[] };
-      if (!parsed.ideas?.length) return null;
-      return parsed.ideas.slice(0, 8).map((idea) => {
-        const time = predictBestPostingTime(nicheText, 'youtube');
-        const hour = typeof idea.hour === 'number' ? idea.hour : time.hour;
-        const day = idea.day || time.day;
-        const safeScore = Math.max(40, Math.min(100, Math.round(idea.score)));
-        return {
-          title: idea.title || nicheText,
-          score: safeScore,
-          day,
-          hour,
-          timeLabel: formatHourLabel(hour),
-        };
-      });
-    }
+    const ai = await routeAI({
+      prompt,
+      timeoutMs: 12000,
+      cacheKey: `daily-ideas:${nicheText}`.toLowerCase(),
+      cacheTtlSec: 180,
+      fallbackText: '{}',
+    });
+    const text = ai.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0].replace(/,(\\s*[}\\]])/g, '$1')) as { ideas?: { title: string; score: number; day: string; hour: number }[] };
+    if (!parsed.ideas?.length) return null;
+    return parsed.ideas.slice(0, 8).map((idea) => {
+      const time = predictBestPostingTime(nicheText, 'youtube');
+      const hour = typeof idea.hour === 'number' ? idea.hour : time.hour;
+      const day = idea.day || time.day;
+      const safeScore = Math.max(40, Math.min(100, Math.round(idea.score)));
+      return {
+        title: idea.title || nicheText,
+        score: safeScore,
+        day,
+        hour,
+        timeLabel: formatHourLabel(hour),
+      };
+    });
   } catch {
     return null;
   }
@@ -188,23 +151,12 @@ export async function POST(request: NextRequest) {
     const config = await getApiConfig();
     const ytKey = config.youtubeDataApiKey?.trim();
 
-    // If koi external key hi nahi, clearly error bhejo (taaki user configure kare)
-    if (!ytKey && !config.openaiApiKey?.trim() && !config.googleGeminiApiKey?.trim()) {
-      return NextResponse.json(
-        {
-          error:
-            'Trending Daily Ideas ke liye YouTube Data API key + OpenAI ya Gemini API key required hai. Super Admin → API Config me set karein.',
-        },
-        { status: 503 }
-      );
-    }
-
     let trendingTitles: string[] = [];
     if (ytKey) {
       trendingTitles = await fetchYouTubeTrendingTitles(ytKey, niche);
     }
 
-    const aiIdeas = await buildIdeasFromAI(niche, trendingTitles, config);
+    const aiIdeas = await buildIdeasFromAI(niche, trendingTitles);
     const ideas = aiIdeas && aiIdeas.length ? aiIdeas : buildFallbackIdeas(niche);
 
     return NextResponse.json({

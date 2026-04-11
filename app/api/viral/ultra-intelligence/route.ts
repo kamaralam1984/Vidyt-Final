@@ -3,7 +3,6 @@ export const maxDuration = 120;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { getApiConfig } from '@/lib/apiConfig';
 import { getTrendingTopics } from '@/services/trendingEngine';
 import { generateLearningInsights } from '@/services/ai/adaptiveLearning';
 import { randomUUID } from 'crypto';
@@ -11,6 +10,7 @@ import connectDB from '@/lib/mongodb';
 import Video from '@/models/Video';
 import Analysis from '@/models/Analysis';
 import User from '@/models/User';
+import { routeAI } from '@/lib/ai-router';
 
 // ─────────────────────────────────────
 // Types
@@ -21,39 +21,6 @@ interface UltraRequest {
   platform?: 'youtube' | 'facebook' | 'instagram' | 'tiktok' | 'shorts';
   region?: string;
   language?: string;
-}
-
-// ─────────────────────────────────────
-// AI helpers
-// ─────────────────────────────────────
-async function callOpenAI(apiKey: string, prompt: string, maxTokens = 2000): Promise<string> {
-  const OpenAI = (await import('openai')).default;
-  const openai = new OpenAI({ apiKey });
-  const res = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.85,
-    max_tokens: maxTokens,
-  });
-  return res.choices[0]?.message?.content?.trim() || '{}';
-}
-
-async function callGemini(apiKey: string, prompt: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.85, maxOutputTokens: 2000 },
-      }),
-    }
-  );
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error(data?.error?.message || 'Gemini no text');
-  return text.trim();
 }
 
 function safeParseJson(text: string): Record<string, unknown> {
@@ -272,45 +239,31 @@ export async function POST(request: NextRequest) {
     }));
 
     // ── 2. AI content generation ─────────────────────────────────────────────
-    let config;
     let primaryApiStatus: 'success' | 'fail' = 'fail';
     let secondaryApiStatus: 'used' | 'fallback' = 'fallback';
     let fallbackMode: 'yes' | 'no' = 'yes';
-
     let aiJson: Record<string, unknown> = {};
-
-    try {
-      config = await getApiConfig();
-    } catch {
-      config = {};
-    }
-
     const prompt = buildMasterPrompt(topic, platform, region, language, year);
-
-    if ((config as any)?.openaiApiKey?.trim()) {
-      try {
-        const text = await callOpenAI((config as any).openaiApiKey, prompt, 3000);
-        aiJson = safeParseJson(text);
-        if (Object.keys(aiJson).length > 3) {
-          primaryApiStatus = 'success';
-          fallbackMode = 'no';
-        }
-      } catch {
+    const ai = await routeAI({
+      prompt,
+      timeoutMs: 15000,
+      cacheKey: `ultra-intel:${platform}:${topic}:${region}:${language}`.toLowerCase(),
+      cacheTtlSec: 180,
+      fallbackText: '{}',
+    });
+    aiJson = safeParseJson(ai.text || '{}');
+    if (Object.keys(aiJson).length > 3) {
+      fallbackMode = 'no';
+      if (['openai', 'gemini'].includes(ai.provider)) {
+        primaryApiStatus = 'success';
+      } else {
         primaryApiStatus = 'fail';
+        secondaryApiStatus = 'used';
       }
-    }
-
-    if (fallbackMode === 'yes' && (config as any)?.googleGeminiApiKey?.trim()) {
-      try {
-        const text = await callGemini((config as any).googleGeminiApiKey, prompt);
-        aiJson = safeParseJson(text);
-        if (Object.keys(aiJson).length > 3) {
-          secondaryApiStatus = 'used';
-          fallbackMode = 'no';
-        }
-      } catch {
-        secondaryApiStatus = 'fallback';
-      }
+    } else {
+      primaryApiStatus = 'fail';
+      secondaryApiStatus = 'fallback';
+      fallbackMode = 'yes';
     }
 
     // ── 3. Merge AI output with engine data + fallback fill ───────────────────

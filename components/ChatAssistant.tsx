@@ -3,6 +3,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { useState } from 'react';
+import axios from 'axios';
+import { getAuthHeaders } from '@/utils/auth';
 
 interface ChatAssistantProps {
   isOpen: boolean;
@@ -14,23 +16,41 @@ export default function ChatAssistant({ isOpen, onToggle }: ChatAssistantProps) 
     { role: 'assistant', content: 'Hello! I\'m your AI assistant. How can I help optimize your videos today?' },
   ]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    const msg = input.trim();
+    if (!msg || loading) return;
 
-    setMessages([...messages, { role: 'user', content: input }]);
+    setMessages((prev) => [...prev, { role: 'user', content: msg }]);
     setInput('');
-
-    // Simulate AI response
-    setTimeout(() => {
+    setLoading(true);
+    try {
+      const res = await axios.post(
+        '/api/assistant/chat',
+        { message: msg },
+        { headers: getAuthHeaders() },
+      );
+      const reply = String(res.data?.reply || '').trim();
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'I can help you analyze your video performance, suggest improvements, and answer questions about viral content optimization. What would you like to know?',
+          content:
+            reply || 'I can help with plan usage, tools, and optimization. Tell me your exact goal and I will guide step by step.',
         },
       ]);
-    }, 1000);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'I cannot reply right now. Please try again in a moment.',
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -88,13 +108,14 @@ export default function ChatAssistant({ isOpen, onToggle }: ChatAssistantProps) 
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Type your message..."
                   className="flex-1 px-4 py-2 border border-[#212121] rounded-lg bg-[#0F0F0F] text-white focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
                 />
                 <button
                   onClick={handleSend}
-                  className="p-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors"
+                  disabled={loading || !input.trim()}
+                  className="p-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors disabled:opacity-50"
                 >
                   <Send className="w-5 h-5" />
                 </button>

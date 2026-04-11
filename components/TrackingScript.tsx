@@ -8,13 +8,37 @@ import { getAuthHeaders } from '@/utils/auth';
 
 let sessionId: string | null = null;
 
+function safeSessionGet(key: string): string | null {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSessionSet(key: string, value: string): void {
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // Ignore storage-denied environments.
+  }
+}
+
+function safeLocalGet(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 function getOrCreateSessionId() {
   if (typeof window === 'undefined') return null;
   if (sessionId) return sessionId;
-  let sid = sessionStorage.getItem('vb_session_id');
+  let sid = safeSessionGet('vb_session_id');
   if (!sid) {
     sid = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    sessionStorage.setItem('vb_session_id', sid);
+    safeSessionSet('vb_session_id', sid);
   }
   sessionId = sid;
   return sid;
@@ -60,7 +84,7 @@ export default function TrackingScript() {
       const sid = getOrCreateSessionId();
       if (!sid) return;
       
-      const token = localStorage.getItem('token');
+      const token = safeLocalGet('token');
       if (!token) return;
 
       // Use fetch with keepalive for reliable tracking during unload with headers

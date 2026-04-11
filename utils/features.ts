@@ -14,7 +14,6 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'facebook_seo', label: 'Facebook SEO Analyzer', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'instagram_seo', label: 'Instagram SEO Analyzer', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'viral_optimizer', label: 'AI Viral Optimization Engine', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
-  { id: 'channel_audit', label: 'Channel Audit', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'facebook_audit', label: 'Facebook Audit', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'trending', label: 'Trending', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'hashtags', label: 'Hashtags', group: 'sidebar', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },

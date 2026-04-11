@@ -212,7 +212,11 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const setLocale = (next: LocaleState) => {
     setLocaleState(next);
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore when browser blocks storage.
+      }
     }
   };
 

@@ -2,6 +2,7 @@
  * Ad revenue estimation based on platform, niche, and views.
  * Data-backed by industry average RPM (Revenue Per Mille) values.
  */
+export { PLAN_PRICES } from './planPricing';
 
 export interface RevenueFactors {
   platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok';
@@ -84,4 +85,11 @@ export function calculateTotalRevenue(payments: any[]) {
     let total = 0;
     payments.forEach(p => { if (p.status === 'success') total += p.amount; });
     return { total };
+}
+
+export function estimateUserRevenue(planId: string | undefined, billingPeriod: string | undefined, status: string | undefined = 'active'): number {
+  if (status !== 'active') return 0;
+  const plan = String(planId || 'free').toLowerCase();
+  const p = PLAN_PRICES[plan] || PLAN_PRICES.free;
+  return billingPeriod === 'year' ? p.year : p.month;
 }

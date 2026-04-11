@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 import connectDB from '@/lib/mongodb';
 import ToolRequest from '@/models/ToolRequest';
 import User from '@/models/User';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+import { routeAI } from '@/lib/ai-router';
 
 export async function POST(req: Request) {
   try {
@@ -43,13 +39,14 @@ export async function POST(req: Request) {
     The hashtags should include a mix of broad, high-volume tags, and specific long-tail tags.
     Output strictly as a JSON array of strings containing the hashtags (include the # symbol).`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
+    const ai = await routeAI({
+      prompt,
+      timeoutMs: 12000,
+      cacheKey: `generate-tags:${topic}`.toLowerCase(),
+      cacheTtlSec: 120,
+      fallbackText: '{"hashtags":[]}',
     });
-
-    const responseText = completion.choices[0]?.message?.content || '{"hashtags": []}';
+    const responseText = ai.text || '{"hashtags": []}';
     let outputList = [];
     
     try {
@@ -66,11 +63,16 @@ export async function POST(req: Request) {
         inputData: { topic },
         generatedOutput: outputList,
         status: 'completed',
-        tokensUsed: completion.usage?.total_tokens || 0,
+        tokensUsed: 0,
       });
     }
 
-    return NextResponse.json({ success: true, hashtags: outputList });
+    return NextResponse.json({
+      success: true,
+      hashtags: outputList,
+      provider: ai.provider,
+      tier: ai.provider === 'fallback' ? 'local' : ['openai', 'gemini'].includes(ai.provider) ? 'paid' : 'free',
+    });
   } catch (error) {
     console.error('Hashtag Generation Error:', error);
     return NextResponse.json({ error: 'Failed to generate hashtags' }, { status: 500 });

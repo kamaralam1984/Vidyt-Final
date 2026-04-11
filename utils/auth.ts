@@ -7,7 +7,11 @@
  */
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('token');
+  try {
+    return window.localStorage.getItem('token');
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -15,7 +19,11 @@ export function getToken(): string | null {
  */
 export function setToken(token: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('token', token);
+  try {
+    window.localStorage.setItem('token', token);
+  } catch {
+    // Ignore storage-denied environments.
+  }
 }
 
 /**
@@ -23,7 +31,11 @@ export function setToken(token: string): void {
  */
 export function removeToken(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('token');
+  try {
+    window.localStorage.removeItem('token');
+  } catch {
+    // Ignore storage-denied environments.
+  }
 }
 
 /**

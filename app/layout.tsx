@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
 import TrackingScript from "@/components/TrackingScript";
 import PWARegister from "@/components/PWARegister";
 import CookieConsent from "@/components/CookieConsent";
 
-const inter = Inter({ subsets: ["latin"] });
+
 
 export const viewport: Viewport = {
   themeColor: "#0F0F0F",
@@ -48,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className="font-sans antialiased bg-[#0F0F0F] text-white">
         <LocaleProvider>
           <PWARegister />
           <TrackingScript />

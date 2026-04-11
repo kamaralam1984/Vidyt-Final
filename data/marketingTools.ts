@@ -128,29 +128,6 @@ export const MARKETING_TOOLS: Record<string, MarketingTool> = {
     iconName: 'Type',
     gradient: 'from-rose-400 to-red-500',
   },
-  'channel-audit': {
-    id: 'channel-audit',
-    title: 'Channel Audit',
-    seoTitle: 'YouTube Channel Audit Tool | Deep Channel Analysis',
-    seoDescription: 'Get a comprehensive audit of your YouTube channel. Identify what is working and what is holding you back.',
-    heroHeadline: 'Fix Your Channel and Unlock Hidden Growth',
-    heroSubheadline: 'Get a deep, honest review of your entire channel’s health in under 60 seconds.',
-    content: `
-      Is your channel stuck? You might be doing everything "right" but still seeing flat growth. Often, the problem is hidden in the patterns—meta-data inconsistency, poor brand identity, or a niche that's too broad. ViralBoost AI's Channel Audit tool performs a deep-scan of your last 30-50 videos to find the friction points stopping your growth.
-
-      We provide a "Channel Health Score" alongside specific recommendations for your bio, banner, video frequency, and metadata optimization. We also identify your "Power Videos"—the ones that the algorithm loves—and explain why they worked so you can replicate that success. 
-
-      A professional channel audit usually costs hundreds of dollars. With ViralBoost AI, you get an automated, data-driven audit included in your subscription. This level of clarity is invaluable for creators who want to treat their channel like a serious business. Stop throwing spaghetti at the wall. Get a clear, actionable plan to polish your channel into a professional brand that attracts high-value advertisers and a loyal audience. The path from hobbyist to full-time creator begins with a transparent understanding of where you are right now.
-    `,
-    howItWorks: [
-      { step: 'Connect Channel', description: 'Securely link your YouTube channel (or search for your handle).' },
-      { step: 'Deep Scan', description: 'The AI analyzes your metadata, branding, and performance data.' },
-      { step: 'Get Report', description: 'Receive a full PDF-style report with actionable growth tips.' }
-    ],
-    appUrl: '/channel-audit',
-    iconName: 'Gauge',
-    gradient: 'from-cyan-400 to-blue-500',
-  },
   'ai-shorts': {
     id: 'ai-shorts',
     title: 'AI Shorts Clipping',

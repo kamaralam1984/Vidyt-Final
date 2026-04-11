@@ -55,14 +55,41 @@ export async function POST(request: NextRequest) {
     const seoPack = rank1Mode ? enhanceForRankMode(basePack) : basePack;
 
     const tags = commaSeparatedYoutubeTags(seoPack, rank1Mode ? 40 : 30);
-    const hashtagsText = seoPack.hashtags.map((h) => `#${h}`).join(' ');
+    const keywordList = Array.from(
+      new Set(
+        [
+          ...seoPack.trendingTags.map((t) => t.keyword),
+          ...titleAnalysis.keywords,
+          ...seoPack.hashtags,
+          title,
+        ]
+          .map((x) => String(x || '').trim().replace(/^#/, '').toLowerCase())
+          .filter(Boolean),
+      ),
+    ).slice(0, 10);
+    const hashtagList = Array.from(
+      new Set(
+        [
+          ...seoPack.hashtags,
+          ...keywordList.slice(0, 5),
+          'viral',
+          'youtube',
+          'shorts',
+        ]
+          .map((x) => String(x || '').trim().replace(/^#/, '').toLowerCase())
+          .filter(Boolean)
+          .map((x) => `#${x}`),
+      ),
+    ).slice(0, 10);
+    const hashtagsText = hashtagList.join(' ');
     const seoRankScoreBase = estimateSeoRankScore(titleAnalysis.score, trendingScore, viralProbability);
     const seoRankScore = rank1Mode ? Math.min(99, Math.max(90, seoRankScoreBase + 4)) : seoRankScoreBase;
 
     return NextResponse.json({
       description: seoPack.description,
       tags,
-      hashtags: seoPack.hashtags,
+      keywords: keywordList,
+      hashtags: hashtagList,
       hashtagsText,
       seoRankScore,
       rank1Mode,

@@ -459,7 +459,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               </p>
               <div className="space-y-4">
                 {[
-                  'Personalized Channel Audits',
+                  'YouTube SEO & channel insights',
                   'AI-Driven Content Strategy',
                   'Retention & Watch Time Optimization',
                 ].map((item, i) => (

@@ -2,7 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
-import { getApiConfig } from '@/lib/apiConfig';
+import { askSecureChatbot } from '@/lib/secureChatbot';
+import { getUserFromRequest } from '@/lib/auth';
 
 const CHINKI_SYSTEM = `You are Chinki, a 24-year-old female AI assistant for Vid YT. You are an expert in YouTube viral optimization.
 
@@ -38,46 +39,6 @@ RULES:
    - Missing trending elements
    - Poor pacing/timing`;
 
-async function callOpenAI(apiKey: string, system: string, userContent: string): Promise<string> {
-  const OpenAI = (await import('openai')).default;
-  const openai = new OpenAI({ apiKey });
-  const res = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: userContent },
-    ],
-    temperature: 0.7,
-    max_tokens: 1024,
-  });
-  return res.choices[0]?.message?.content?.trim() || 'Sorry, I couldn’t generate a response.';
-}
-
-async function callGemini(apiKey: string, system: string, userContent: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: `${system}\n\nUser: ${userContent}` },
-            ],
-          },
-        ],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-      }),
-    }
-  );
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error(data?.error?.message || 'Gemini no text');
-  return text.trim();
-}
-
 export async function POST(request: NextRequest) {
   const denied = await denyIfNoFeature(request, 'youtube_seo');
   if (denied) return denied;
@@ -110,33 +71,18 @@ export async function POST(request: NextRequest) {
       ? `Current upload context:\n${contextStr}\n\nUser message: ${message}`
       : message;
 
-    const config = await getApiConfig();
-    const hasGemini = !!config.googleGeminiApiKey?.trim();
-    const hasOpenAI = !!config.openaiApiKey?.trim();
-    let reply: string;
+    const auth = await getUserFromRequest(request);
+    const secured = await askSecureChatbot({
+      botName: 'Chinki',
+      question: message,
+      plan: auth?.subscription || 'free',
+      functions: ['youtube_seo', 'title_optimization', 'keyword_intelligence', 'thumbnail_feedback'],
+      behaviorPrompt: CHINKI_SYSTEM,
+      context: userContent,
+      localFallback: getFallbackReply(message, context),
+    });
 
-    try {
-      if (hasGemini) {
-        reply = await callGemini(config.googleGeminiApiKey!, CHINKI_SYSTEM, userContent);
-      } else if (hasOpenAI) {
-        reply = await callOpenAI(config.openaiApiKey!, CHINKI_SYSTEM, userContent);
-      } else {
-        reply = getFallbackReply(message, context);
-      }
-    } catch (aiError) {
-      console.error('Chinki AI call failed:', aiError);
-      if (hasGemini && hasOpenAI) {
-        try {
-          reply = await callOpenAI(config.openaiApiKey!, CHINKI_SYSTEM, userContent);
-        } catch {
-          reply = getFallbackReply(message, context);
-        }
-      } else {
-        reply = getFallbackReply(message, context);
-      }
-    }
-
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply: secured.reply, provider: secured.provider, tier: secured.tier });
   } catch (e) {
     console.error('Chinki API error:', e);
     return NextResponse.json({

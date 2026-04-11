@@ -7,7 +7,6 @@ import Ticket from '@/models/Ticket';
 import TicketReply from '@/models/TicketReply';
 import User from '@/models/User';
 import PlatformControl from '@/models/PlatformControl';
-import { getApiConfig } from '@/lib/apiConfig';
 import { analyzeAndDraftSupportReply } from '@/services/ai/supportAI';
 import { rateLimit, getClientIP } from '@/lib/rateLimiter';
 import { enqueueAiJob } from '@/lib/queue';
@@ -104,30 +103,26 @@ export async function POST(req: NextRequest) {
 
         // Trigger AI auto-reply with AI category/confidence.
         if (isAiAllowed) {
-            const apiConfig = await getApiConfig();
-            if (apiConfig.openaiApiKey) {
-                const ai = await analyzeAndDraftSupportReply({
-                    apiKey: apiConfig.openaiApiKey,
-                    subject,
-                    message,
-                    userPlan: plan,
-                    confidenceThreshold: 0.75,
+            const ai = await analyzeAndDraftSupportReply({
+                subject,
+                message,
+                userPlan: plan,
+                confidenceThreshold: 0.75,
+            });
+            ticket.category = ai.category;
+            ticket.aiConfidence = ai.confidence;
+            ticket.aiAutoReplied = ai.shouldAutoReply;
+            ticket.assignedToAdmin = !ai.shouldAutoReply;
+            if (ai.shouldAutoReply && ai.aiReply) {
+                await TicketReply.create({
+                    ticketId: ticket._id,
+                    sender: 'ai',
+                    message: ai.aiReply,
+                    tokenUsage: ai.tokenUsage || undefined,
                 });
-                ticket.category = ai.category;
-                ticket.aiConfidence = ai.confidence;
-                ticket.aiAutoReplied = ai.shouldAutoReply;
-                ticket.assignedToAdmin = !ai.shouldAutoReply;
-                if (ai.shouldAutoReply && ai.aiReply) {
-                    await TicketReply.create({
-                        ticketId: ticket._id,
-                        sender: 'ai',
-                        message: ai.aiReply,
-                        tokenUsage: ai.tokenUsage || undefined,
-                    });
-                    ticket.aiLastReplyAt = new Date();
-                }
-                await ticket.save();
+                ticket.aiLastReplyAt = new Date();
             }
+            await ticket.save();
         }
 
         // Optional async processing in queue for production scale.

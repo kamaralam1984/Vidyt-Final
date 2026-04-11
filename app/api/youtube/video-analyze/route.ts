@@ -3,38 +3,9 @@ export const maxDuration = 300; // 5 minutes
 
 import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
-import { getApiConfig } from '@/lib/apiConfig';
 import { transcribeAudio } from '@/lib/transcription';
-
-async function callOpenAI(apiKey: string, prompt: string): Promise<string> {
-  const OpenAI = (await import('openai')).default;
-  const openai = new OpenAI({ apiKey });
-  const res = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.7,
-    max_tokens: 1024,
-  });
-  return res.choices[0]?.message?.content?.trim() || '{}';
-}
-
-async function callGemini(apiKey: string, prompt: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-      }),
-    }
-  );
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error(data?.error?.message || 'Gemini no text');
-  return text.trim();
-}
+import { routeAI } from '@/lib/ai-router';
+import { getApiConfig } from '@/lib/apiConfig';
 
 function parseSuggestions(text: string): { title: string; description: string; keywords: string[]; hashtags: string[] } {
   const fallback = {
@@ -47,11 +18,13 @@ function parseSuggestions(text: string): { title: string; description: string; k
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return fallback;
     const parsed = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1')) as Record<string, unknown>;
+    const keywords = Array.isArray(parsed.keywords) ? (parsed.keywords as string[]) : fallback.keywords;
+    const hashtags = Array.isArray(parsed.hashtags) ? (parsed.hashtags as string[]) : fallback.hashtags;
     return {
       title: (parsed.title as string) || fallback.title,
       description: (parsed.description as string) || fallback.description,
-      keywords: Array.isArray(parsed.keywords) ? (parsed.keywords as string[]) : fallback.keywords,
-      hashtags: Array.isArray(parsed.hashtags) ? (parsed.hashtags as string[]) : fallback.hashtags,
+      keywords: Array.from(new Set(keywords.map((k) => String(k).replace(/^#/, '').trim().toLowerCase()).filter(Boolean))).slice(0, 10),
+      hashtags: Array.from(new Set(hashtags.map((h) => `#${String(h).replace(/^#/, '').trim().toLowerCase()}`))).slice(0, 10),
     };
   } catch {
     return fallback;
@@ -127,53 +100,21 @@ RULES:
 
 Return ONLY valid JSON with keys: title (string), description (string), keywords (array of strings), hashtags (array of strings with #). No markdown, no code block.`;
 
-    let text: string | null = null;
-
-    if (config.openaiApiKey?.trim()) {
-      try {
-        text = await callOpenAI(config.openaiApiKey, prompt);
-      } catch (openaiErr) {
-        console.error('Video analyze OpenAI error:', openaiErr);
-        const fallback = getFallbackSuggestions(topicHint);
-        return NextResponse.json({
-          suggestions: fallback,
-          message: 'AI suggestion failed. Using default suggestions. Check your OpenAI key in Super Admin.',
-          transcript: transcript || undefined,
-          openAiKeyConfigured: true,
-          transcriptionError: transcriptionError || (openaiErr instanceof Error ? openaiErr.message : undefined),
-        });
-      }
-    } else if (config.googleGeminiApiKey?.trim()) {
-      try {
-        text = await callGemini(config.googleGeminiApiKey, prompt);
-      } catch (geminiErr) {
-        console.error('Video analyze Gemini error:', geminiErr);
-        const fallback = getFallbackSuggestions(topicHint);
-        return NextResponse.json({
-          suggestions: fallback,
-          message: 'AI suggestion failed. Using default suggestions. Check your Gemini key in Super Admin.',
-          transcript: transcript || undefined,
-          openAiKeyConfigured: false,
-          transcriptionError: transcriptionError || (geminiErr instanceof Error ? geminiErr.message : undefined),
-        });
-      }
-    } else {
-      const fallback = getFallbackSuggestions(topicHint);
-      return NextResponse.json({
-        suggestions: fallback,
-        message: 'Set OpenAI or Gemini in Super Admin for AI-powered suggestions.',
-        transcript: undefined,
-        openAiKeyConfigured: false,
-        transcriptionError: transcriptionError || 'OpenAI API key not set. Add it in Super Admin → API keys for audio transcription.',
-      });
-    }
-
-    const suggestions = text ? parseSuggestions(text) : getFallbackSuggestions(topicHint);
+    const ai = await routeAI({
+      prompt,
+      timeoutMs: 12000,
+      fallbackText: JSON.stringify(getFallbackSuggestions(topicHint)),
+      cacheKey: `video-analyze:${topicHint}:${hasContent ? 'transcript' : 'topic'}`,
+      cacheTtlSec: 180,
+    });
+    const suggestions = parseSuggestions(ai.text || JSON.stringify(getFallbackSuggestions(topicHint)));
     const openAiKeyConfigured = Boolean(config.openaiApiKey?.trim());
     return NextResponse.json({
       suggestions,
       fromTranscript: hasContent,
       transcript: transcript || undefined,
+      provider: ai.provider,
+      tier: ai.provider === 'fallback' ? 'local' : ['openai', 'gemini'].includes(ai.provider) ? 'paid' : 'free',
       openAiKeyConfigured,
       transcriptionError: transcriptionError || undefined,
     });

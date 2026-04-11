@@ -4,6 +4,14 @@ import type { IPlan } from '@/models/Plan';
 import { PLAN_PRICES_USD, isValidPlan } from '@/utils/currency';
 import { yearlyUsdFromMonthly as yearlyFromMonthlyPure, usdAmountForBilling as usdAmountForBillingPure, type BillingPeriod as BillingPeriodPure } from '@/lib/planPricingMath';
 
+export const PLAN_PRICES: Record<string, { month: number; year: number }> = {
+  free: { month: 0, year: 0 },
+  starter: { month: 3, year: 30 },
+  pro: { month: 15, year: 150 },
+  enterprise: { month: 25, year: 250 },
+  custom: { month: 50, year: 500 },
+};
+
 export type BillingPeriod = BillingPeriodPure;
 
 export interface ActivePlanPricing {

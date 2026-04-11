@@ -749,9 +749,9 @@ export default function SuperAdminPage() {
                       <Wand2 className="w-4 h-4" />
                       <span>AI Viral Optimization Engine</span>
                     </button>
-                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/channel-audit')}>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/dashboard/youtube-seo')}>
                       <MonitorPlay className="w-4 h-4" />
-                      <span>Channel Audit</span>
+                      <span>YouTube SEO (channel tools)</span>
                     </button>
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/facebook-audit')}>
                       <Facebook className="w-4 h-4" />
@@ -1036,7 +1036,7 @@ export default function SuperAdminPage() {
                   { key: 'keyword_research', label: 'Keyword Research' },
                   { key: 'script_writer', label: 'Script Writer' },
                   { key: 'title_generator', label: 'Title Generator' },
-                  { key: 'channel_audit', label: 'Channel Audit' },
+                  { key: 'channel_audit', label: 'YouTube SEO / Channel tools' },
                   { key: 'ai_shorts_clipping', label: 'AI Shorts Clipping' },
                   { key: 'ai_thumbnail_maker', label: 'AI Thumbnail Maker' },
                   { key: 'optimize', label: 'Optimize' },

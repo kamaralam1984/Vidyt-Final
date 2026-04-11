@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { getApiConfig } from '@/lib/apiConfig';
+import { routeAI } from '@/lib/ai-router';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -39,9 +39,7 @@ type AiResult = {
 async function getAIBestPostingTime(
   platform: 'facebook' | 'instagram',
   pageUrl: string,
-  pageName: string,
-  apiKey: string,
-  provider: 'openai' | 'gemini'
+  pageName: string
 ): Promise<AiResult | null> {
   const platformLabel = platform === 'facebook' ? 'Facebook' : 'Instagram';
   const prompt = `You are a ${platformLabel} growth expert. For this ${platformLabel} page/profile, suggest the best posting times based on when the target audience is most active.
@@ -66,42 +64,18 @@ Rules:
 - slots: list 3-6 best (day, hour) combinations with share as percentage score.`;
 
   try {
-    if (provider === 'openai' && apiKey) {
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ apiKey });
-      const comp = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.5,
-        max_tokens: 512,
-      });
-      const text = comp.choices[0]?.message?.content?.trim() || '';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0].replace(/,(\s*[}\]])/g, '$1')) as AiResult;
-        return parsed;
-      }
-    }
-    if (provider === 'gemini' && apiKey) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.5, maxOutputTokens: 512 },
-          }),
-        }
-      );
-      const data = await res.json();
-      if (data?.error?.message) return null;
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0].replace(/,(\s*[}\]])/g, '$1')) as AiResult;
-        return parsed;
-      }
+    const ai = await routeAI({
+      prompt,
+      timeoutMs: 12000,
+      cacheKey: `social-posting-time:${platform}:${pageName}`.toLowerCase(),
+      cacheTtlSec: 180,
+      fallbackText: '{}',
+    });
+    const text = ai.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0].replace(/,(\s*[}\]])/g, '$1')) as AiResult;
+      return parsed;
     }
   } catch (_) {}
   return null;
@@ -132,14 +106,7 @@ export async function GET(request: NextRequest) {
         .join(' ')
     : 'Page';
 
-  const config = await getApiConfig().catch(() => null);
-  const openaiKey = config?.openaiApiKey?.trim();
-  const geminiKey = config?.googleGeminiApiKey?.trim();
-
-  const aiResult =
-    (openaiKey && (await getAIBestPostingTime(platform, url, pageName, openaiKey, 'openai'))) ||
-    (geminiKey && (await getAIBestPostingTime(platform, url, pageName, geminiKey, 'gemini'))) ||
-    null;
+  const aiResult = await getAIBestPostingTime(platform, url, pageName);
 
   if (!aiResult?.bestDays?.length && !aiResult?.bestHours?.length && !aiResult?.slots?.length) {
     const fallbackDays = platform === 'facebook' ? ['Tuesday', 'Wednesday', 'Thursday'] : ['Monday', 'Wednesday', 'Friday'];

@@ -5,20 +5,36 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Cookie } from 'lucide-react';
 import Link from 'next/link';
 
+function getStoredConsent(): string | null {
+  try {
+    return window.localStorage.getItem('cookieConsent');
+  } catch {
+    return null;
+  }
+}
+
+function setStoredConsent(value: string): void {
+  try {
+    window.localStorage.setItem('cookieConsent', value);
+  } catch {
+    // If storage is blocked, do not crash UI.
+  }
+}
+
 export default function CookieConsent() {
   const [showBanner, setShowBanner] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
 
   useEffect(() => {
     // Check if user has already made a choice
-    const consent = localStorage.getItem('cookieConsent');
+    const consent = getStoredConsent();
     if (!consent) {
       setShowBanner(true);
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem('cookieConsent', JSON.stringify({
+    setStoredConsent(JSON.stringify({
       accepted: true,
       timestamp: new Date().toISOString(),
       analytics: true,
@@ -29,7 +45,7 @@ export default function CookieConsent() {
   };
 
   const handleReject = () => {
-    localStorage.setItem('cookieConsent', JSON.stringify({
+    setStoredConsent(JSON.stringify({
       accepted: false,
       timestamp: new Date().toISOString(),
       analytics: false,
@@ -40,7 +56,7 @@ export default function CookieConsent() {
   };
 
   const handleSavePreferences = (prefs: { analytics: boolean; marketing: boolean }) => {
-    localStorage.setItem('cookieConsent', JSON.stringify({
+    setStoredConsent(JSON.stringify({
       accepted: true,
       timestamp: new Date().toISOString(),
       analytics: prefs.analytics,

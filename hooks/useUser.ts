@@ -24,7 +24,14 @@ export function useUser() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      if (!isAuthenticated()) {
+      let hasAuth = false;
+      try {
+        hasAuth = isAuthenticated();
+      } catch {
+        hasAuth = false;
+      }
+
+      if (!hasAuth) {
         setSession({
           user: null,
           role: 'guest',

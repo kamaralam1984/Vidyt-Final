@@ -96,6 +96,7 @@ function jsonError(request: NextRequest, message: string, status: number): NextR
  */
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
   const enableTestAuthHeader =
     process.env.ENABLE_TEST_AUTH_HEADER === 'true' || process.env.NODE_ENV === 'test';
   // Optional: test-only logging for header visibility issues.
@@ -270,5 +271,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*', '/admin/:path*', '/dashboard/:path*', '/user/:path*', '/login', '/auth'],
+  matcher: [
+    '/api/:path*',
+    '/admin/:path*',
+    '/dashboard/:path*',
+    '/user/:path*',
+    '/login',
+    '/auth',
+  ],
 };
