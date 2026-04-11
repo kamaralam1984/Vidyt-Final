@@ -76,7 +76,26 @@ type TranslationKey =
   | 'home.resources.subtitle'
   | 'home.extension.title'
   | 'home.extension.subtitle'
-  | 'home.extension.cta';
+  | 'home.extension.cta'
+  | 'viral.optimizer.missingElements'
+  | 'viral.optimizer.recommendations'
+  | 'shorts.startTime'
+  | 'shorts.endTime'
+  | 'shorts.totalLength'
+  | 'shorts.selected'
+  | 'shorts.percentage'
+  | 'shorts.autoHint'
+  | 'shorts.manualHint'
+  | 'viral.optimizer.hookLow'
+  | 'viral.optimizer.thumbLow'
+  | 'viral.optimizer.titleLow'
+  | 'viral.optimizer.hashtagLow'
+  | 'viral.optimizer.overallLow'
+  | 'home.feature.currentPlanNote'
+  | 'viral.optimizer.rec.hook'
+  | 'viral.optimizer.rec.thumb'
+  | 'viral.optimizer.rec.title'
+  | 'viral.optimizer.rec.overall';
 
 type TranslationTable = Record<LanguageCode, Partial<Record<TranslationKey, string>>>;
 
@@ -161,6 +180,25 @@ const TRANSLATIONS: TranslationTable = {
     'home.extension.title': 'Vid YT Browser Extension',
     'home.extension.subtitle': 'Optimise your videos directly on YouTube. Coming soon to Chrome Web Store.',
     'home.extension.cta': 'Join the Waitlist',
+    'viral.optimizer.missingElements': 'Missing Elements',
+    'viral.optimizer.recommendations': 'Recommendations',
+    'shorts.startTime': 'Start Time (seconds)',
+    'shorts.endTime': 'End Time (seconds)',
+    'shorts.totalLength': 'Total Length',
+    'shorts.selected': 'Selected',
+    'shorts.percentage': 'Percentage',
+    'shorts.autoHint': 'Providing a link will download the video and create shorts from viral scenes.',
+    'shorts.manualHint': 'Paste the link and preview the video below.',
+    'viral.optimizer.hookLow': 'Hook Score is low - add a face or action in the first 3 seconds',
+    'viral.optimizer.thumbLow': 'Thumbnail Score is low - needs better contrast and face visibility',
+    'viral.optimizer.titleLow': 'Title Score is low - add emotional triggers and keywords',
+    'viral.optimizer.hashtagLow': 'Few Hashtags - use at least 15-20 hashtags',
+    'viral.optimizer.overallLow': 'Overall Viral Score is low - make the improvements above',
+    'home.feature.currentPlanNote': 'Based on your current plan, only enabled features are shown here.',
+    'viral.optimizer.rec.hook': 'Add eye-catching elements in the first 3 seconds',
+    'viral.optimizer.rec.thumb': 'Ensure face is clearly visible and use high contrast colors',
+    'viral.optimizer.rec.title': 'Add numbers or questions and use emotional words',
+    'viral.optimizer.rec.overall': 'Follow best posting times and maintain consistent schedule',
   },
   hi: {
     'navbar.features': 'फ़ीचर्स',
@@ -242,6 +280,25 @@ const TRANSLATIONS: TranslationTable = {
     'home.extension.title': 'Vid YT ब्राउज़र एक्सटेंशन',
     'home.extension.subtitle': 'सीधे YouTube पर अपने वीडियो ऑप्टिमाइज़ करें। जल्द ही Chrome वेब स्टोर पर आ रहा है।',
     'home.extension.cta': 'वेटलिस्ट जॉइन करें',
+    'viral.optimizer.missingElements': 'क्या कमी है?',
+    'viral.optimizer.recommendations': 'सुझाव',
+    'shorts.startTime': 'शुरू करने का समय (सेकंड)',
+    'shorts.endTime': 'खत्म होने का समय (सेकंड)',
+    'shorts.totalLength': 'कुल लंबाई',
+    'shorts.selected': 'चुना हुआ',
+    'shorts.percentage': 'प्रतिशत',
+    'shorts.autoHint': 'लिंक डालने पर वीडियो डाउनलोड करके वायरल सीन से शॉर्ट्स बनेंगे।',
+    'shorts.manualHint': 'लिंक पेस्ट करें और नीचे वीडियो प्रिव्यू देखें।',
+    'viral.optimizer.hookLow': 'हुक स्कोर कम है - पहले 3 सेकंड में चेहरा या एक्शन जोड़ें',
+    'viral.optimizer.thumbLow': 'थंबनेल स्कोर कम है - बेहतर कंट्रास्ट और चेहरे की विजिबिलिटी चाहिए',
+    'viral.optimizer.titleLow': 'टाइटल स्कोर कम है - इमोशनल ट्रिगर और कीवर्ड जोड़ें',
+    'viral.optimizer.hashtagLow': 'हैशटैग कम हैं - कम से कम 15-20 हैशटैग इस्तेमाल करें',
+    'viral.optimizer.overallLow': 'ओवरऑल वायरल स्कोर कम है - ऊपर दिए गए सुधार करें',
+    'home.feature.currentPlanNote': 'आपके वर्तमान प्लान के अनुसार, यहाँ केवल सक्षम फ़ीचर्स दिखाए गए हैं।',
+    'viral.optimizer.rec.hook': 'पहले 3 सेकंड में ध्यान आकर्षित करने वाले तत्व जोड़ें',
+    'viral.optimizer.rec.thumb': 'सुनिश्चित करें कि चेहरा स्पष्ट रूप से दिखाई दे और हाई कंट्रास्ट रंग इस्तेमाल करें',
+    'viral.optimizer.rec.title': 'टाइटल में नंबर या सवाल जोड़ें और इमोशनल शब्दों का इस्तेमाल करें',
+    'viral.optimizer.rec.overall': 'बेस्ट पोस्टिंग समय का पालन करें और लगातार पोस्टिंग शेड्यूल बनाए रखें',
   },
   hinglish: {
     'navbar.features': 'Features',
@@ -323,6 +380,25 @@ const TRANSLATIONS: TranslationTable = {
     'home.extension.title': 'Vid YT Browser Extension',
     'home.extension.subtitle': 'Optimise your videos directly on YouTube. Coming soon to Chrome Web Store.',
     'home.extension.cta': 'Waitlist join karein',
+    'viral.optimizer.missingElements': 'Kya kami hai? (Missing Elements)',
+    'viral.optimizer.recommendations': 'Recommendations (Sujhav)',
+    'shorts.startTime': 'Start Time (Second)',
+    'shorts.endTime': 'End Time (Second)',
+    'shorts.totalLength': 'Kul lambai',
+    'shorts.selected': 'Chuna hua',
+    'shorts.percentage': 'Pratishat',
+    'shorts.autoHint': 'Link dalne par video download karke viral scenes se shorts banenge.',
+    'shorts.manualHint': 'Link paste karein aur video preview dekhein.',
+    'viral.optimizer.hookLow': 'Hook Score kam hai - pehle 3 second mein face ya action add karein',
+    'viral.optimizer.thumbLow': 'Thumbnail Score kam hai - behtar contrast aur face visibility chahiye',
+    'viral.optimizer.titleLow': 'Title Score kam hai - emotional triggers aur keywords add karein',
+    'viral.optimizer.hashtagLow': 'Hashtags kam hain - kam se kam 15-20 hashtags use karein',
+    'viral.optimizer.overallLow': 'Overall Viral Score kam hai - upar diye gaye improvements karein',
+    'home.feature.currentPlanNote': 'Your current plan ke hisaab se sirf enabled features yahan show ho rahe hain.',
+    'viral.optimizer.rec.hook': 'Pehle 3 second mein eye-catching elements add karein',
+    'viral.optimizer.rec.thumb': 'Face clearly visible hona chahiye aur high contrast colors use karein',
+    'viral.optimizer.rec.title': 'Title mein numbers ya sawal add karein aur emotional words use karein',
+    'viral.optimizer.rec.overall': 'Best posting times follow karein aur consistent schedule maintain karein',
   },
   es: {
     'navbar.features': 'Funciones',

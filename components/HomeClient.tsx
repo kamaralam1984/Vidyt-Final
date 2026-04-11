@@ -268,7 +268,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             </p>
             {planFeatures && (
               <p className="mt-2 text-sm text-[#888888]">
-                Your current plan ke hisaab se sirf enabled features yahan show ho rahe hain.
+                {t('home.feature.currentPlanNote')}
               </p>
             )}
           </motion.div>

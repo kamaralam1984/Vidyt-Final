@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Film, Upload, Copy, Download, Loader2, Play, Pause } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
+import { useTranslations } from '@/context/translations';
 
 interface Clip {
   id: string;
@@ -155,6 +156,7 @@ export default function ShortsCreatorPage() {
   const [sourceYoutubeUrl, setSourceYoutubeUrl] = useState<string | null>(null);
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('9:16');
+  const { t } = useTranslations();
 
   // Manual mode states
   const [manualVideoLink, setManualVideoLink] = useState('');
@@ -453,7 +455,7 @@ export default function ShortsCreatorPage() {
                     placeholder="https://www.youtube.com/watch?v=..."
                     className="w-full px-4 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white placeholder-[#666]"
                   />
-                  <p className="text-xs text-[#666] mt-1">Link dalne par video download karke viral scenes se shorts banenge.</p>
+                  <p className="text-xs text-[#666] mt-1">{t('shorts.autoHint')}</p>
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm text-[#AAAAAA] mb-1">Ya video file upload karein</label>
@@ -509,7 +511,7 @@ export default function ShortsCreatorPage() {
                     placeholder="https://www.youtube.com/watch?v=..."
                     className="w-full px-4 py-3 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white placeholder-[#666]"
                   />
-                  <p className="text-xs text-[#666] mt-1">Link paste karein aur video preview dekhein.</p>
+                  <p className="text-xs text-[#666] mt-1">{t('shorts.manualHint')}</p>
                 </div>
 
                 {manualError && (
@@ -538,7 +540,7 @@ export default function ShortsCreatorPage() {
                         <div className="bg-[#0F0F0F] border border-[#212121] rounded-lg p-4 space-y-4">
                           <div>
                             <div className="flex justify-between mb-2">
-                              <label className="text-sm text-[#AAAAAA] font-semibold">Start Time (सेकंड)</label>
+                              <label className="text-sm text-[#AAAAAA] font-semibold">{t('shorts.startTime')}</label>
                               <span className="text-white font-bold">{startTime.toFixed(1)}s</span>
                             </div>
                             <input
@@ -559,7 +561,7 @@ export default function ShortsCreatorPage() {
 
                           <div>
                             <div className="flex justify-between mb-2">
-                              <label className="text-sm text-[#AAAAAA] font-semibold">End Time (सेकंड)</label>
+                              <label className="text-sm text-[#AAAAAA] font-semibold">{t('shorts.endTime')}</label>
                               <span className="text-white font-bold">{endTime.toFixed(1)}s</span>
                             </div>
                             <input
@@ -580,15 +582,15 @@ export default function ShortsCreatorPage() {
 
                           <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[#212121]">
                             <div className="bg-[#181818] rounded p-3 text-center">
-                              <p className="text-xs text-[#888] mb-1">कुल लंबाई</p>
+                              <p className="text-xs text-[#888] mb-1">{t('shorts.totalLength')}</p>
                               <p className="text-lg font-bold text-white">{videoDuration.toFixed(1)}s</p>
                             </div>
                             <div className="bg-[#181818] rounded p-3 text-center">
-                              <p className="text-xs text-[#888] mb-1">चुना हुआ</p>
+                              <p className="text-xs text-[#888] mb-1">{t('shorts.selected')}</p>
                               <p className="text-lg font-bold text-[#FF0000]">{(endTime - startTime).toFixed(1)}s</p>
                             </div>
                             <div className="bg-[#181818] rounded p-3 text-center">
-                              <p className="text-xs text-[#888] mb-1">प्रतिशत</p>
+                              <p className="text-xs text-[#888] mb-1">{t('shorts.percentage')}</p>
                               <p className="text-lg font-bold text-emerald-400">
                                 {((endTime - startTime) / videoDuration * 100).toFixed(1)}%
                               </p>

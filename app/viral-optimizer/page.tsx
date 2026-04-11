@@ -7,6 +7,7 @@ import AuthGuard from '@/components/AuthGuard';
 import axios from 'axios';
 import { Youtube, Facebook, Instagram, Sparkles, AlertCircle, CheckCircle, Copy, Loader2 } from 'lucide-react';
 import { getToken, isAuthenticated } from '@/utils/auth';
+import { useTranslations } from '@/context/translations';
 
 interface OptimizationResult {
   videoTitle: string;
@@ -25,6 +26,7 @@ export default function ViralOptimizerPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<OptimizationResult | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const { t } = useTranslations();
 
   const handleAnalyze = async () => {
     if (!videoUrl.trim()) {
@@ -107,19 +109,19 @@ export default function ViralOptimizerPage() {
     const missing: string[] = [];
     
     if (analysis.hookScore < 70) {
-      missing.push('Hook Score कम है - पहले 3 सेकंड में face या action add करें');
+      missing.push(t('viral.optimizer.hookLow'));
     }
     if (analysis.thumbnailScore < 70) {
-      missing.push('Thumbnail Score कम है - बेहतर contrast और face visibility चाहिए');
+      missing.push(t('viral.optimizer.thumbLow'));
     }
     if (analysis.titleScore < 70) {
-      missing.push('Title Score कम है - emotional triggers और keywords add करें');
+      missing.push(t('viral.optimizer.titleLow'));
     }
     if (!analysis.hashtags || analysis.hashtags.length < 10) {
-      missing.push('Hashtags कम हैं - कम से कम 15-20 hashtags use करें');
+      missing.push(t('viral.optimizer.hashtagLow'));
     }
     if (analysis.viralProbability < 70) {
-      missing.push('Overall Viral Score कम है - ऊपर दिए गए improvements करें');
+      missing.push(t('viral.optimizer.overallLow'));
     }
 
     return missing;
@@ -152,29 +154,19 @@ export default function ViralOptimizerPage() {
     const recommendations: string[] = [];
     
     if (analysis.hookScore < 70) {
-      recommendations.push('✅ Video के पहले 3 सेकंड में eye-catching element add करें');
-      recommendations.push('✅ Bright colors और clear faces use करें');
-      recommendations.push('✅ Quick action या motion add करें');
+      recommendations.push('✅ ' + t('viral.optimizer.rec.hook'));
     }
     
     if (analysis.thumbnailScore < 70) {
-      recommendations.push('✅ Thumbnail में face clearly visible होना चाहिए');
-      recommendations.push('✅ High contrast colors use करें');
-      recommendations.push('✅ Text readable और bold होना चाहिए');
+      recommendations.push('✅ ' + t('viral.optimizer.rec.thumb'));
     }
     
     if (analysis.titleScore < 70) {
-      recommendations.push('✅ Title में numbers या questions add करें');
-      recommendations.push('✅ Emotional words जैसे "Amazing", "Shocking" use करें');
-      recommendations.push('✅ Title length 30-60 characters के बीच रखें');
+      recommendations.push('✅ ' + t('viral.optimizer.rec.title'));
     }
     
     if (analysis.viralProbability < 70) {
-      recommendations.push('✅ Best posting time follow करें: ' + 
-        (analysis.bestPostingTime?.day || 'Tuesday') + ' at ' + 
-        (analysis.bestPostingTime?.hour || 14) + ':00');
-      recommendations.push('✅ Trending topics के hashtags use करें');
-      recommendations.push('✅ Consistent posting schedule maintain करें');
+      recommendations.push('✅ ' + t('viral.optimizer.rec.overall'));
     }
 
     return recommendations;
@@ -324,7 +316,7 @@ export default function ViralOptimizerPage() {
                   <div className="flex items-center gap-2 mb-4">
                     <AlertCircle className="w-6 h-6 text-[#FF0000]" />
                     <h2 className="text-xl font-bold text-white">
-                      क्या कमी है? (Missing Elements)
+                      {t('viral.optimizer.missingElements')}
                     </h2>
                   </div>
                   <ul className="space-y-2">
@@ -477,7 +469,7 @@ export default function ViralOptimizerPage() {
                   <div className="flex items-center gap-2 mb-4">
                     <CheckCircle className="w-6 h-6 text-[#10b981]" />
                     <h2 className="text-xl font-bold text-white">
-                      Recommendations (सुझाव)
+                      {t('viral.optimizer.recommendations')}
                     </h2>
                   </div>
                   <ul className="space-y-2">
