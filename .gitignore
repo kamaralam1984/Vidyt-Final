@@ -28,8 +28,18 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+next-env.d.ts
 
-# vercel
+# junk files
+*.txt
+*-player-script.js
+test*.js
+check_*.js
+diagnostic_build.txt
+build_output.txt
+build_output_current.txt
+final_ts_check.txt
+ts_errors.txt
 .vercel
 
 # typescript
