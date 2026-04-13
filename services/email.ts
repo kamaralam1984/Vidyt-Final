@@ -551,6 +551,232 @@ export async function sendUpsellEmail(
 }
 
 /**
+ * Send Welcome Email to new visitors/users with platform features overview
+ */
+export async function sendWelcomeEmail(
+  email: string,
+  userName?: string
+): Promise<boolean> {
+  try {
+    const baseUrl = getEmailBaseUrl();
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/><style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f0f0f0;margin:0;padding:24px;color:#111}
+.wrap{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.hdr{background:#0F0F0F;color:#fff;padding:28px;text-align:center}
+.badge{display:inline-block;background:#FF0000;color:#fff;font-size:12px;font-weight:700;letter-spacing:.06em;padding:6px 14px;border-radius:999px;margin-top:12px}
+.body{padding:28px}
+h1{font-size:22px;margin:0 0 8px;color:#111}
+.sub{color:#555;font-size:14px;margin:0 0 24px}
+.feat{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:12px}
+.feat h3{font-size:14px;margin:0 0 6px;color:#111}
+.feat p{font-size:13px;color:#666;margin:0}
+.cta{display:inline-block;padding:14px 36px;background:#FF0000;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;margin:20px 0}
+.foot{text-align:center;padding:16px 24px 24px;font-size:12px;color:#888}
+</style></head><body>
+<div class="wrap">
+<div class="hdr">${getEmailLogoHtml()}<p style="margin:12px 0 0;font-size:15px;opacity:.95">Vid YT</p><div class="badge">Welcome to Vid YT!</div></div>
+<div class="body">
+<h1>Welcome${userName ? `, ${userName}` : ''}! 🎉</h1>
+<p class="sub">We're excited to have you on board. Vid YT is the ultimate YouTube growth platform with AI-powered tools to supercharge your channel.</p>
+
+<div class="feat"><h3>🔍 AI Video Analyzer</h3><p>Deep-dive into any YouTube video's performance, SEO, tags, and viral potential with our AI engine.</p></div>
+<div class="feat"><h3>📊 Channel Audit & Analytics</h3><p>Get a complete audit of any YouTube channel with growth insights, subscriber trends, and content strategy recommendations.</p></div>
+<div class="feat"><h3>🏷️ Smart Tag & Hashtag Generator</h3><p>Generate optimized tags, hashtags, and SEO keywords that boost your video's discoverability.</p></div>
+<div class="feat"><h3>📝 AI Script & Title Generator</h3><p>Create viral-worthy scripts, titles, descriptions, and thumbnails ideas powered by AI.</p></div>
+<div class="feat"><h3>📈 Competitor Tracking</h3><p>Track your competitors' videos, growth patterns, and strategies in real-time.</p></div>
+<div class="feat"><h3>📅 Schedule & Auto-Post</h3><p>Schedule your content and auto-publish to YouTube with SEO-optimized metadata.</p></div>
+<div class="feat"><h3>🎬 Shorts & Clip Creator</h3><p>Convert long videos into viral short-form content automatically.</p></div>
+
+<div style="text-align:center;margin-top:24px">
+<a href="${baseUrl}/ai" class="cta">Explore All AI Tools →</a>
+</div>
+
+<p style="font-size:13px;color:#888;margin-top:24px;text-align:center">Upgrade to Pro for unlimited access to all features, bulk analysis, and priority AI processing.</p>
+</div>
+<div class="foot">© ${new Date().getFullYear()} Vid YT · Your YouTube Growth Partner</div>
+</div></body></html>`;
+
+    return await sendMail({
+      to: email,
+      subject: 'Welcome to Vid YT — Your YouTube Growth Journey Starts Now! 🚀',
+      html,
+      text: `Welcome${userName ? `, ${userName}` : ''}!\n\nVid YT is the ultimate YouTube growth platform.\n\nOur Features:\n- AI Video Analyzer\n- Channel Audit & Analytics\n- Smart Tag & Hashtag Generator\n- AI Script & Title Generator\n- Competitor Tracking\n- Schedule & Auto-Post\n- Shorts & Clip Creator\n\nExplore now: ${baseUrl}/ai\n\n© Vid YT`,
+    });
+  } catch (error) {
+    console.error('❌ Welcome email error:', error);
+    return false;
+  }
+}
+
+/** Marketing drip email content sequences for free users */
+const DRIP_SEQUENCES = [
+  {
+    type: 'feature_drip_1',
+    subject: 'Did you try our AI Video Analyzer? 🔍',
+    heading: 'Unlock Hidden Insights from Any Video',
+    body: 'Paste any YouTube URL and get instant AI-powered analysis — viral score, SEO audit, tag suggestions, and competitor benchmarks. Most creators miss 60% of optimization opportunities. Our AI catches them all.',
+    cta: 'Try AI Analyzer Now',
+    ctaUrl: '/ai/video-analyzer',
+  },
+  {
+    type: 'feature_drip_2',
+    subject: 'Generate Perfect Tags & Titles with AI 🏷️',
+    heading: 'Stop Guessing — Let AI Optimize Your SEO',
+    body: 'Our AI Tag Generator analyzes top-performing videos in your niche and generates highly relevant tags, titles, and descriptions. Creators using our tool see 3x more impressions on average.',
+    cta: 'Generate Tags Free',
+    ctaUrl: '/ai/tag-generator',
+  },
+  {
+    type: 'feature_drip_3',
+    subject: 'Track Your Competitors Like a Pro 📊',
+    heading: 'Know Exactly What Your Competitors Are Doing',
+    body: 'Add any competitor channel and track their uploads, view counts, growth rate, and content strategy in real-time. Get alerts when they post new videos and learn from their best-performing content.',
+    cta: 'Start Tracking Competitors',
+    ctaUrl: '/ai/competitor-tracker',
+  },
+  {
+    type: 'feature_drip_4',
+    subject: 'Create Viral Scripts with AI ✍️',
+    heading: 'AI-Written Scripts That Keep Viewers Watching',
+    body: 'Our AI Script Generator creates engaging video scripts based on proven viral patterns. Just enter your topic and get a full script with hooks, storytelling structure, and CTAs that boost watch time.',
+    cta: 'Generate a Script',
+    ctaUrl: '/ai/script-generator',
+  },
+  {
+    type: 'feature_drip_5',
+    subject: 'You\'re Missing Out — Here\'s What Pro Users Get 🚀',
+    heading: 'Upgrade to Pro & Unlock Full Power',
+    body: 'Free plan users can only scratch the surface. Pro members get: unlimited AI analyses, bulk video processing, priority AI queue, advanced competitor tracking, API access, white-label reports, and dedicated support. Don\'t let your competitors outgrow you.',
+    cta: 'See Pro Plans',
+    ctaUrl: '/pricing',
+  },
+];
+
+/**
+ * Send a drip marketing email (feature showcase) to free users.
+ * dripIndex: 0-4 (maps to feature_drip_1 through feature_drip_5)
+ */
+export async function sendDripEmail(
+  email: string,
+  userName: string | undefined,
+  dripIndex: number
+): Promise<boolean> {
+  try {
+    const drip = DRIP_SEQUENCES[dripIndex];
+    if (!drip) return false;
+    const baseUrl = getEmailBaseUrl();
+    const fullCtaUrl = `${baseUrl}${drip.ctaUrl}`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/><style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f0f0f0;margin:0;padding:24px;color:#111}
+.wrap{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.hdr{background:#0F0F0F;color:#fff;padding:24px;text-align:center}
+.body{padding:28px}
+h1{font-size:20px;margin:0 0 12px;color:#111}
+.cta{display:inline-block;padding:14px 36px;background:#FF0000;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;margin:20px 0}
+.foot{text-align:center;padding:16px 24px;font-size:12px;color:#888}
+.unsub{color:#999;font-size:11px;text-align:center;margin-top:8px}
+</style></head><body>
+<div class="wrap">
+<div class="hdr">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:.9">Vid YT</p></div>
+<div class="body">
+<h1>${drip.heading}</h1>
+<p>Hi ${userName || 'there'},</p>
+<p style="font-size:15px;line-height:1.6;color:#333">${drip.body}</p>
+<div style="text-align:center"><a href="${fullCtaUrl}" class="cta">${drip.cta} →</a></div>
+${dripIndex < 4 ? '<p style="font-size:13px;color:#999;margin-top:20px">More tips coming your way — stay tuned!</p>' : ''}
+</div>
+<div class="foot">© ${new Date().getFullYear()} Vid YT<div class="unsub">You are receiving this because you signed up on Vid YT. Upgrade to a paid plan to stop receiving these emails.</div></div>
+</div></body></html>`;
+
+    return await sendMail({
+      to: email,
+      subject: `${drip.subject} - Vid YT`,
+      html,
+      text: `${drip.heading}\n\nHi ${userName || 'there'},\n\n${drip.body}\n\n${drip.cta}: ${fullCtaUrl}\n\n© Vid YT`,
+    });
+  } catch (error) {
+    console.error('❌ Drip email error:', error);
+    return false;
+  }
+}
+
+/**
+ * Send Upgrade suggestion email for paid users (suggest next tier)
+ */
+export async function sendUpgradeSuggestionEmail(
+  email: string,
+  userName: string | undefined,
+  currentPlan: string
+): Promise<boolean> {
+  try {
+    const baseUrl = getEmailBaseUrl();
+    const upgradePath: Record<string, { next: string; features: string[] }> = {
+      starter: {
+        next: 'Pro',
+        features: [
+          'Unlimited AI video analyses per day',
+          'Bulk video processing (up to 50 at once)',
+          'Advanced competitor tracking with alerts',
+          'Priority AI queue — 3x faster results',
+          'API access for automation',
+        ],
+      },
+      pro: {
+        next: 'Enterprise',
+        features: [
+          'White-label reports with your branding',
+          'Dedicated account manager',
+          'Custom API rate limits',
+          'Team collaboration (up to 10 members)',
+          'Advanced analytics dashboard',
+          'Priority 24/7 support',
+        ],
+      },
+    };
+
+    const upgrade = upgradePath[currentPlan];
+    if (!upgrade) return false;
+
+    const featuresHtml = upgrade.features
+      .map((f) => `<li style="padding:6px 0;font-size:14px;color:#333">${f}</li>`)
+      .join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/><style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f0f0f0;margin:0;padding:24px;color:#111}
+.wrap{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.hdr{background:linear-gradient(135deg,#0F0F0F 0%,#1a1a2e 100%);color:#fff;padding:28px;text-align:center}
+.badge{display:inline-block;background:#f59e0b;color:#000;font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;margin-top:12px}
+.body{padding:28px}
+h1{font-size:20px;margin:0 0 8px}
+.cta{display:inline-block;padding:14px 36px;background:#FF0000;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;margin:20px 0}
+.foot{text-align:center;padding:16px 24px;font-size:12px;color:#888}
+</style></head><body>
+<div class="wrap">
+<div class="hdr">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:.9">Vid YT</p><div class="badge">EXCLUSIVE UPGRADE OFFER</div></div>
+<div class="body">
+<h1>Ready for ${upgrade.next}? 🚀</h1>
+<p>Hi ${userName || 'there'},</p>
+<p style="font-size:15px;color:#333">You've been using the <strong>${currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</strong> plan — great choice! But you could be doing so much more with <strong>${upgrade.next}</strong>:</p>
+<ul style="list-style:none;padding:0;margin:20px 0">${upgrade.features.map((f) => `<li style="padding:8px 0;font-size:14px;color:#333;border-bottom:1px solid #f0f0f0">✅ ${f}</li>`).join('')}</ul>
+<div style="text-align:center"><a href="${baseUrl}/pricing" class="cta">Upgrade to ${upgrade.next} →</a></div>
+</div>
+<div class="foot">© ${new Date().getFullYear()} Vid YT · Your YouTube Growth Partner</div>
+</div></body></html>`;
+
+    return await sendMail({
+      to: email,
+      subject: `Unlock ${upgrade.next} Features — Special Offer Inside! 🚀 - Vid YT`,
+      html,
+      text: `Ready for ${upgrade.next}?\n\nYou're on the ${currentPlan} plan. Upgrade to ${upgrade.next} for:\n${upgrade.features.map((f) => `- ${f}`).join('\n')}\n\nUpgrade: ${baseUrl}/pricing\n\n© Vid YT`,
+    });
+  } catch (error) {
+    console.error('❌ Upgrade suggestion email error:', error);
+    return false;
+  }
+}
+
+/**
  * Send Account Deletion Verification Code
  */
 export async function sendAccountDeletionVerificationEmail(

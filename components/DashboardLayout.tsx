@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-[#0F0F0F]">
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <GlobalLimitHandler />
         <Navbar />
         <Sidebar

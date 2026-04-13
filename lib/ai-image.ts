@@ -83,8 +83,18 @@ export async function generateAIImage(
   // This is a reliable way to ensure NO ERROR is shown to the user.
   try {
     const seed = Math.floor(Math.random() * 1000000);
-    // Trim prompt for pollinations reliability
-    const shortPrompt = prompt.length > 200 ? prompt.substring(0, 200) : prompt;
+    // Extract the key scene/topic from complex prompt for Pollinations (handles simple prompts better)
+    // Keep topic-related parts, remove text overlay instructions
+    const cleanedPrompt = prompt
+      .replace(/BOLD 3D TEXT:.*?\./gs, '')
+      .replace(/TITLE TEXT:.*?\./gs, '')
+      .replace(/BOTTOM BAR:.*?\./gs, '')
+      .replace(/PROFESSIONAL TEXT:.*?\./gs, '')
+      .replace(/Text must be.*?\./g, '')
+      .replace(/\n+/g, ' ')
+      .trim();
+    // Use up to 500 chars for better topic accuracy
+    const shortPrompt = cleanedPrompt.length > 500 ? cleanedPrompt.substring(0, 500) : cleanedPrompt;
     const encodedPrompt = encodeURIComponent(shortPrompt);
     const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&nologo=true&seed=${seed}`;
     

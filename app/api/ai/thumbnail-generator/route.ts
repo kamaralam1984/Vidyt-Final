@@ -5,7 +5,6 @@ import { requireAIToolAccess } from '@/lib/aiStudioAccess';
 import connectDB from '@/lib/mongodb';
 import AIThumbnail from '@/models/AIThumbnail';
 import { getApiConfig } from '@/lib/apiConfig';
-import OpenAI from 'openai';
 import { generateAIImage } from '@/lib/ai-image';
 
 interface ThumbnailInput {
@@ -102,18 +101,73 @@ function generateHookText(input: ThumbnailInput): string {
 }
 
 function generateImagePrompt(input: ThumbnailInput, text: string): string {
-  const { niche, topic, emotion } = input;
-  const template = NICHE_TEMPLATES[niche as keyof typeof NICHE_TEMPLATES] || NICHE_TEMPLATES.news;
-  
-  const visual_elements = template.visuals[Math.floor(Math.random() * template.visuals.length)];
-  
-  return `YouTube thumbnail 16:9 aspect ratio, cinematic hyper-realistic style. 
-Bold text "${text}" in massive font, center-focused, with red glow effect.
-Background: dramatic ${visual_elements} scene, slightly blurred for depth.
-Color scheme: high contrast red, yellow, black, white.
-Effects: light flares, subtle motion blur, depth shadows, gradient overlay.
-Style: MrBeast-style high impact, viral YouTube thumbnail, professional photography quality.
-Emotion: ${emotion}, niche: ${niche}`;
+  const { niche, topic, emotion, video_title } = input;
+  const topicDesc = topic || video_title || 'viral content';
+
+  // Build a scene description from the actual topic — this is what makes the image topic-accurate
+  const sceneFromTopic = buildSceneFromTopic(topicDesc, emotion);
+
+  return `Ultra high quality cinematic scene, 16:9 aspect ratio, 8K resolution, hyper-realistic digital art.
+
+MAIN SCENE: ${sceneFromTopic}
+
+The image must be DIRECTLY about "${topicDesc}". Show a dramatic realistic scene that clearly represents ${topicDesc}. The viewer should immediately understand this is about ${topicDesc} by looking at the image.
+
+STYLE: Hyper-realistic digital art, Hollywood blockbuster movie poster quality. High contrast, saturated vibrant colors, dramatic cinematic lighting, volumetric light rays.
+MOOD: ${emotion}, intense, powerful, dramatic.
+EFFECTS: Cinematic lens flares, particle embers, volumetric fog, depth of field, film grain, professional color grading.`;
+}
+
+function buildSceneFromTopic(topic: string, emotion: string): string {
+  const t = topic.toLowerCase();
+
+  // War/Military topics
+  if (/war|attack|military|army|soldier|bomb|missile|strike|conflict|battle|defense/.test(t)) {
+    return `A dramatic war/conflict scene related to "${topic}". Show soldiers, military vehicles, explosions, smoke, fire, and dramatic orange-red sky. A central military figure standing powerfully. Rubble, destruction, and urgency. War photography style.`;
+  }
+  // Politics/News
+  if (/politic|election|president|minister|government|vote|leader|modi|trump|biden/.test(t)) {
+    return `A powerful political scene related to "${topic}". A leader/politician at a podium with dramatic flags in background. Serious expression, intense lighting, crowd silhouettes. News broadcast quality.`;
+  }
+  // Technology/AI
+  if (/tech|ai|artificial|robot|code|software|computer|phone|iphone|gadget/.test(t)) {
+    return `A futuristic technology scene related to "${topic}". Holographic displays, neon blue circuits, a person interacting with advanced tech. Cyberpunk lighting, high-tech environment.`;
+  }
+  // Gaming
+  if (/game|gaming|pubg|fortnite|minecraft|gta|valorant|esport/.test(t)) {
+    return `An intense gaming scene related to "${topic}". Game characters in action, neon lights, motion blur, competitive gaming atmosphere. RGB lighting, dark background with vibrant accents.`;
+  }
+  // Sports
+  if (/sport|football|cricket|soccer|basketball|tennis|ipl|match|player/.test(t)) {
+    return `A dramatic sports scene related to "${topic}". An athlete in peak action, stadium lights, crowd blur, sweat and intensity. Sports photography, frozen action moment.`;
+  }
+  // Food/Cooking
+  if (/food|cook|recipe|chef|restaurant|baking|kitchen/.test(t)) {
+    return `A stunning food/cooking scene related to "${topic}". Beautifully plated food, steam rising, warm kitchen lighting. Professional food photography, rustic background, appetizing colors.`;
+  }
+  // Music
+  if (/music|song|singer|concert|album|rapper|dj|beat/.test(t)) {
+    return `A dramatic music/concert scene related to "${topic}". Stage lights, crowd silhouettes, neon colors, smoke machine effects. A performer on stage with dramatic spotlights.`;
+  }
+  // Fitness
+  if (/fitness|gym|workout|yoga|weight|muscle|exercise/.test(t)) {
+    return `An intense fitness scene related to "${topic}". A person working out with dramatic gym lighting, sweat, determination. Dark moody background with spotlights.`;
+  }
+  // Travel
+  if (/travel|tour|destination|adventure|explore/.test(t)) {
+    return `A breathtaking travel scene related to "${topic}". Stunning landscape, golden hour lighting, a traveler overlooking epic scenery. Drone shot quality, vibrant colors.`;
+  }
+  // Finance/Crypto
+  if (/crypto|bitcoin|stock|market|invest|trading|money|finance/.test(t)) {
+    return `A dramatic finance scene related to "${topic}". Trading charts, green/red candles, golden coins, a person analyzing data on multiple screens. Dark room with screen glow.`;
+  }
+  // Beauty/Fashion
+  if (/beauty|makeup|skincare|fashion|model/.test(t)) {
+    return `A glamorous beauty/fashion scene related to "${topic}". Professional beauty photography, perfect lighting, luxury aesthetic. Soft bokeh background, high-end magazine quality.`;
+  }
+
+  // Default: topic-specific dramatic scene
+  return `A dramatic, visually stunning cinematic scene directly about "${topic}". The image must clearly show what ${topic} is about. ${emotion} mood, epic composition, cinematic lighting, professional movie poster quality. Show specific elements, objects, and scenes that represent ${topic}.`;
 }
 
 function generateVariations(mainText: string, input: ThumbnailInput): string[] {
@@ -174,10 +228,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { videoTitle, topic, emotion, niche, generateImage } = body;
-    
-    if (!videoTitle?.trim()) {
-      return NextResponse.json({ error: 'Video title is required' }, { status: 400 });
+    const { videoTitle, topic, emotion, niche, generateImage, customPrompt } = body;
+
+    if (!videoTitle?.trim() && !customPrompt?.trim()) {
+      return NextResponse.json({ error: 'Video title or custom prompt is required' }, { status: 400 });
     }
 
     const input: ThumbnailInput = {
@@ -190,7 +244,9 @@ export async function POST(request: NextRequest) {
     
     const triggers = analyzeEmotionalTriggers(input);
     const thumbnail_text = generateHookText(input);
-    const image_prompt = generateImagePrompt(input, thumbnail_text);
+    const image_prompt = customPrompt?.trim()
+      ? `YouTube thumbnail 16:9 aspect ratio. ${customPrompt.trim()}`
+      : generateImagePrompt(input, thumbnail_text);
     const variations = generateVariations(thumbnail_text, input);
     
     const all_texts = [thumbnail_text, ...variations];

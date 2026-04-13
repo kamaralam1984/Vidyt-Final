@@ -138,7 +138,7 @@ async function callMistral(prompt: string, key: string): Promise<string> {
 }
 
 async function callCohere(prompt: string, key: string): Promise<string> {
-  const res = await fetch('https://api.cohere.ai/v1/generate', {
+  const res = await fetch('https://api.cohere.com/v1/generate', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -228,7 +228,7 @@ export interface AIRouterResult {
 }
 
 export async function routeAI(options: AIRouterOptions): Promise<AIRouterResult> {
-  const { prompt, systemPrompt, cacheKey, cacheTtlSec = 300, timeoutMs = 5000, fallbackText } = options;
+  const { prompt, systemPrompt, cacheKey, cacheTtlSec = 300, timeoutMs = 30000, fallbackText } = options;
 
   // 1. Check cache first
   if (cacheKey) {
@@ -240,17 +240,17 @@ export async function routeAI(options: AIRouterOptions): Promise<AIRouterResult>
   const { getApiConfig } = await import('./apiConfig');
   const config = await getApiConfig();
 
-  // Priority list: name → caller function
+  // Priority list: name → caller function (all keys from getApiConfig which checks DB first, then env)
   const providers: Array<{ name: string; key: string; call: (p: string, k: string) => Promise<string> }> = [
     { name: 'openai', key: config.openaiApiKey, call: (p, k) => callOpenAI(p, k, systemPrompt) },
     { name: 'gemini', key: config.googleGeminiApiKey, call: callGemini },
-    { name: 'groq', key: process.env.GROQ_API_KEY || '', call: callGroq },
-    { name: 'openrouter', key: process.env.OPENROUTER_API_KEY || '', call: callOpenRouter },
-    { name: 'mistral', key: process.env.MISTRAL_API_KEY || '', call: callMistral },
-    { name: 'cohere', key: process.env.COHERE_API_KEY || '', call: callCohere },
-    { name: 'deepseek', key: process.env.DEEPSEEK_API_KEY || '', call: callDeepSeek },
-    { name: 'together', key: process.env.TOGETHER_API_KEY || '', call: callTogetherAI },
-    { name: 'huggingface', key: process.env.HUGGINGFACE_API_KEY || '', call: callHuggingFace },
+    { name: 'groq', key: config.groqApiKey || process.env.GROQ_API_KEY || '', call: callGroq },
+    { name: 'openrouter', key: config.openrouterApiKey || process.env.OPENROUTER_API_KEY || '', call: callOpenRouter },
+    { name: 'mistral', key: config.mistralApiKey || process.env.MISTRAL_API_KEY || '', call: callMistral },
+    { name: 'cohere', key: config.cohereApiKey || process.env.COHERE_API_KEY || '', call: callCohere },
+    { name: 'deepseek', key: config.deepseekApiKey || process.env.DEEPSEEK_API_KEY || '', call: callDeepSeek },
+    { name: 'together', key: config.togetherApiKey || process.env.TOGETHER_API_KEY || '', call: callTogetherAI },
+    { name: 'huggingface', key: config.huggingfaceApiKey || process.env.HUGGINGFACE_API_KEY || '', call: callHuggingFace },
   ];
 
   // 3. Try each provider with circuit breaker + timeout + retry
@@ -314,16 +314,24 @@ export async function checkAllAIHealth(): Promise<Record<string, { status: 'ok' 
   const { getApiConfig } = await import('./apiConfig');
   const config = await getApiConfig();
 
+  const groqKey = config.groqApiKey || process.env.GROQ_API_KEY || '';
+  const openrouterKey = config.openrouterApiKey || process.env.OPENROUTER_API_KEY || '';
+  const mistralKey = config.mistralApiKey || process.env.MISTRAL_API_KEY || '';
+  const cohereKey = config.cohereApiKey || process.env.COHERE_API_KEY || '';
+  const deepseekKey = config.deepseekApiKey || process.env.DEEPSEEK_API_KEY || '';
+  const togetherKey = config.togetherApiKey || process.env.TOGETHER_API_KEY || '';
+  const huggingfaceKey = config.huggingfaceApiKey || process.env.HUGGINGFACE_API_KEY || '';
+
   const providers = [
     { name: 'openai', key: config.openaiApiKey, url: 'https://api.openai.com/v1/models', headers: { Authorization: `Bearer ${config.openaiApiKey}` } },
     { name: 'gemini', key: config.googleGeminiApiKey, url: `https://generativelanguage.googleapis.com/v1beta/models?key=${config.googleGeminiApiKey}`, headers: {} },
-    { name: 'groq', key: process.env.GROQ_API_KEY || '', url: 'https://api.groq.com/openai/v1/models', headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` } },
-    { name: 'openrouter', key: process.env.OPENROUTER_API_KEY || '', url: 'https://openrouter.ai/api/v1/models', headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` } },
-    { name: 'mistral', key: process.env.MISTRAL_API_KEY || '', url: 'https://api.mistral.ai/v1/models', headers: { Authorization: `Bearer ${process.env.MISTRAL_API_KEY}` } },
-    { name: 'cohere', key: process.env.COHERE_API_KEY || '', url: 'https://api.cohere.ai/v1/models', headers: { Authorization: `Bearer ${process.env.COHERE_API_KEY}` } },
-    { name: 'deepseek', key: process.env.DEEPSEEK_API_KEY || '', url: 'https://api.deepseek.com/v1/models', headers: { Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}` } },
-    { name: 'together', key: process.env.TOGETHER_API_KEY || '', url: 'https://api.together.xyz/v1/models', headers: { Authorization: `Bearer ${process.env.TOGETHER_API_KEY}` } },
-    { name: 'huggingface', key: process.env.HUGGINGFACE_API_KEY || '', url: 'https://huggingface.co/api/whoami-v2', headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` } },
+    { name: 'groq', key: groqKey, url: 'https://api.groq.com/openai/v1/models', headers: { Authorization: `Bearer ${groqKey}` } },
+    { name: 'openrouter', key: openrouterKey, url: 'https://openrouter.ai/api/v1/models', headers: { Authorization: `Bearer ${openrouterKey}` } },
+    { name: 'mistral', key: mistralKey, url: 'https://api.mistral.ai/v1/models', headers: { Authorization: `Bearer ${mistralKey}` } },
+    { name: 'cohere', key: cohereKey, url: 'https://api.cohere.com/v1/models', headers: { Authorization: `Bearer ${cohereKey}` } },
+    { name: 'deepseek', key: deepseekKey, url: 'https://api.deepseek.com/v1/models', headers: { Authorization: `Bearer ${deepseekKey}` } },
+    { name: 'together', key: togetherKey, url: 'https://api.together.xyz/v1/models', headers: { Authorization: `Bearer ${togetherKey}` } },
+    { name: 'huggingface', key: huggingfaceKey, url: 'https://huggingface.co/api/whoami-v2', headers: { Authorization: `Bearer ${huggingfaceKey}` } },
   ];
 
   const results: Record<string, { status: 'ok' | 'fail' | 'no-key'; latencyMs?: number }> = {};

@@ -28,14 +28,16 @@ async function fetchChannelDataFromYouTube(
   channelUrl: string,
   apiKey: string,
   range: string = 'month'
-): Promise<{ 
-  channelTitle: string; 
-  subscriberCount: number; 
+): Promise<{
+  channelTitle: string;
+  subscriberCount: number;
   totalWatchTime: number;
   totalLikes: number;
-  videos: { videoId: string; title: string; views: number; publishedAt: Date; duration: number; viralScore: number }[]; 
-  subscriberGrowthData: { date: string; count: number }[]; 
-  viewsGrowthData: { date: string; views: number }[] 
+  videos: any[];
+  subscriberGrowthData: { date: string; count: number; gained?: number }[];
+  viewsGrowthData: { date: string; views: number }[];
+  range: string;
+  videosInRange: number;
 } | null> {
   const identifier = extractChannelIdFromUrl(channelUrl);
   if (!identifier) return null;
@@ -92,58 +94,89 @@ async function fetchChannelDataFromYouTube(
         };
         videos = (videosRes.data?.items || []).map((v: any) => {
           const views = parseInt(v.statistics?.viewCount || '0', 10);
+          const likes = parseInt(v.statistics?.likeCount || '0', 10);
+          const comments = parseInt(v.statistics?.commentCount || '0', 10);
           const duration = parseDuration(v.contentDetails?.duration || '');
-          totalLikes += parseInt(v.statistics?.likeCount || '0', 10);
+          totalLikes += likes;
+          const engagementRate = views > 0 ? Math.round(((likes + comments) / views) * 10000) / 100 : 0;
           return {
             videoId: v.id,
             title: v.snippet?.title || 'Video',
             views,
+            likes,
+            comments,
+            engagementRate,
             publishedAt: v.snippet?.publishedAt ? new Date(v.snippet.publishedAt) : new Date(),
             duration,
-            viralScore: Math.min(100, Math.round((views / 1000) * 0.5 + (duration > 0 && duration <= 90 ? 20 : 0))),
+            viralScore: Math.min(100, Math.round(
+              (views > 0 ? Math.min(40, views / 5000) : 0) +
+              (engagementRate > 5 ? 30 : engagementRate > 2 ? 20 : engagementRate > 0.5 ? 10 : 0) +
+              (duration > 0 && duration <= 90 ? 20 : duration <= 300 ? 10 : 5) +
+              (comments > 10 ? 10 : comments > 0 ? 5 : 0)
+            )),
           };
         });
       }
     }
 
-    // Refined simulation for public view
-    const count = range === 'today' ? 24 : range === 'week' ? 7 : range === 'year' ? 12 : 30;
-    const unit = range === 'today' ? 'hour' : range === 'year' ? 'month' : 'day';
-    
-    const viewsGrowthData = [];
-    const subscriberGrowthData = [];
+    // Build growth data from videos filtered by selected range
+    const viewsGrowthData: { date: string; views: number }[] = [];
+    const subscriberGrowthData: { date: string; count: number; gained?: number }[] = [];
+
+    // Sort all videos oldest first
+    const sortedAll = [...videos].sort((a: any, b: any) =>
+      new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()
+    );
+
+    // Filter strictly by range
     const now = new Date();
+    const rangeMs = range === 'today' ? 24*60*60*1000 : range === 'week' ? 7*24*60*60*1000 : range === 'year' ? 365*24*60*60*1000 : 30*24*60*60*1000;
+    const rangeStart = new Date(now.getTime() - rangeMs);
+    const rangeVideos = sortedAll.filter((v: any) => new Date(v.publishedAt) >= rangeStart);
 
-    for (let i = 0; i < count; i++) {
-        const d = new Date(now);
-        if (unit === 'hour') d.setHours(d.getHours() - (count - 1 - i));
-        else if (unit === 'month') d.setMonth(d.getMonth() - (count - 1 - i));
-        else d.setDate(d.getDate() - (count - 1 - i));
+    // Recalculate stats for ONLY the filtered range
+    let rangeWatchTime = 0;
+    let rangeLikes = 0;
+    let rangeViews = 0;
 
-        const ts = d.toISOString();
-        const viewsFactor = (totalViews / 1000) / count;
-        const v = Math.round(viewsFactor);
-        viewsGrowthData.push({ date: ts, views: v });
-        
-        totalWatchTime += v * 3;
-        totalLikes += Math.round(v * 0.03);
+    if (rangeVideos.length > 0) {
+      const totalEstSubsGained = rangeVideos.reduce((s: number, v: any) => {
+        const cr = v.engagementRate > 5 ? 0.008 : v.engagementRate > 2 ? 0.004 : v.engagementRate > 0.5 ? 0.002 : 0.001;
+        return s + Math.round(v.views * cr) + (v.likes || 0) * 0.01 + (v.comments || 0) * 0.05;
+      }, 0);
 
-        const avgDailySubs = Math.max(10, (subscriberCount / 2000) / count);
-        
-        subscriberGrowthData.push({
-            date: ts,
-            count: subscriberCount - Math.round(avgDailySubs * (count - 1 - i)),
-        });
+      let cumSubs = Math.max(0, subscriberCount - Math.round(totalEstSubsGained));
+
+      rangeVideos.forEach((v: any) => {
+        const cr = v.engagementRate > 5 ? 0.008 : v.engagementRate > 2 ? 0.004 : v.engagementRate > 0.5 ? 0.002 : 0.001;
+        const gained = Math.round(v.views * cr) + Math.round((v.likes || 0) * 0.01) + Math.round((v.comments || 0) * 0.05);
+        cumSubs = Math.min(subscriberCount, cumSubs + gained);
+        rangeViews += v.views;
+        rangeLikes += v.likes || 0;
+        rangeWatchTime += Math.round(v.views * (v.duration || 180) / 60);
+
+        viewsGrowthData.push({ date: new Date(v.publishedAt).toISOString(), views: v.views });
+        subscriberGrowthData.push({ date: new Date(v.publishedAt).toISOString(), count: cumSubs, gained });
+      });
+
+      totalWatchTime = rangeWatchTime;
+      totalLikes = rangeLikes;
+    } else {
+      // No videos in this range — show message
+      viewsGrowthData.push({ date: now.toISOString(), views: 0 });
+      subscriberGrowthData.push({ date: now.toISOString(), count: subscriberCount, gained: 0 });
     }
 
-    return { 
-      channelTitle, 
-      subscriberCount, 
-      totalWatchTime: Math.round(totalWatchTime), 
-      totalLikes: Math.round(totalLikes), 
-      videos, 
-      subscriberGrowthData, 
-      viewsGrowthData 
+    return {
+      channelTitle,
+      subscriberCount,
+      totalWatchTime: Math.round(totalWatchTime),
+      totalLikes: Math.round(totalLikes),
+      videos: rangeVideos.length > 0 ? rangeVideos : videos,
+      subscriberGrowthData,
+      viewsGrowthData,
+      range,
+      videosInRange: rangeVideos.length,
     };
   } catch (err) {
     console.error('Public fetch error:', err);
@@ -244,8 +277,8 @@ export async function POST(request: NextRequest) {
       const real = await fetchChannelDataFromYouTube(channelUrl, apiKey, range);
       if (real) {
         const videos = real.videos;
-        const subscriberGrowthData = real.subscriberGrowthData.map((d: any) => ({ timestamp: new Date(d.date), count: d.count }));
-        const viewsGrowthData = real.viewsGrowthData.map((d: any) => ({ timestamp: new Date(d.date), views: d.views }));
+        const subscriberGrowthData = real.subscriberGrowthData.map((d: any) => ({ date: new Date(d.date).toISOString(), count: d.count }));
+        const viewsGrowthData = real.viewsGrowthData.map((d: any) => ({ date: new Date(d.date).toISOString(), views: d.views }));
         const aiInsights = generateYouTubeInsights(videos);
 
         await YoutubeGrowth.findOneAndUpdate(

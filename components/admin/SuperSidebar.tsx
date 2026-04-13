@@ -16,6 +16,9 @@ import {
   Package,
   SearchCode,
   Sparkles,
+  Network,
+  ShieldAlert,
+  Workflow,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -27,9 +30,12 @@ const NAV_ITEMS = [
   { href: '/admin/super/revenue', label: 'Revenue', icon: DollarSign },
   { href: '/admin/super/live', label: 'Live Tracking', icon: Radio },
   { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
-  { href: '/admin/super/support', label: 'Support Queue', icon: Headphones },
+  { href: '/admin/super/support', label: 'Support Tickets', icon: Headphones },
   { href: '/admin/super/ai-monitoring', label: 'AI Monitoring', icon: Cpu },
   { href: '/admin/super/channel-audit', label: 'Channel Intelligence', icon: SearchCode, isPremium: true },
+  { href: '/admin/super/workflows', label: 'Workflows & Map', icon: Workflow },
+  { href: '/admin/super/api-map', label: 'API Map', icon: Network },
+  { href: '/admin/super/system', label: 'System Manager', icon: ShieldAlert },
 ];
 
 export default function SuperSidebar() {

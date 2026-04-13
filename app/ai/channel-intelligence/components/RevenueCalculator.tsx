@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { DollarSign, TrendingUp } from 'lucide-react';
+import { DollarSign, TrendingUp, Info } from 'lucide-react';
 
 interface ChannelData {
   channelId: string;
@@ -19,7 +19,6 @@ interface Props {
   channel: ChannelData;
 }
 
-// CPM ranges by niche (in USD)
 const cpmByNiche: Record<string, { low: number; avg: number; high: number }> = {
   Technology: { low: 4, avg: 8, high: 15 },
   Gaming: { low: 2, avg: 5, high: 10 },
@@ -37,180 +36,133 @@ const cpmByNiche: Record<string, { low: number; avg: number; high: number }> = {
   default: { low: 2, avg: 4, high: 8 },
 };
 
+function formatMoney(n: number): string {
+  if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return '$' + (n / 1000).toFixed(1) + 'K';
+  return '$' + n.toFixed(0);
+}
+
 export default function RevenueCalculator({ channel }: Props) {
   const [customCPM, setCustomCPM] = useState<number | null>(null);
-
   const nicheData = cpmByNiche[channel.niche] || cpmByNiche.default;
 
   const revenues = useMemo(() => {
     const views30days = channel.avgViewsPerVideo * channel.uploadFrequency;
-    const views90days = views30days * 3;
-    const views365days = views30days * 12;
-
-    const cpmToUse = {
+    const cpm = {
       low: customCPM || nicheData.low,
       avg: customCPM || nicheData.avg,
       high: customCPM || nicheData.high,
     };
 
+    const calc = (views: number) => ({
+      low: (views / 1000) * cpm.low,
+      avg: (views / 1000) * cpm.avg,
+      high: (views / 1000) * cpm.high,
+    });
+
     return {
-      daily: {
-        low: (channel.avgViewsPerVideo / 1000) * cpmToUse.low,
-        avg: (channel.avgViewsPerVideo / 1000) * cpmToUse.avg,
-        high: (channel.avgViewsPerVideo / 1000) * cpmToUse.high,
-      },
-      monthly: {
-        low: (views30days / 1000) * cpmToUse.low,
-        avg: (views30days / 1000) * cpmToUse.avg,
-        high: (views30days / 1000) * cpmToUse.high,
-      },
-      quarterly: {
-        low: (views90days / 1000) * cpmToUse.low,
-        avg: (views90days / 1000) * cpmToUse.avg,
-        high: (views90days / 1000) * cpmToUse.high,
-      },
-      yearly: {
-        low: (views365days / 1000) * cpmToUse.low,
-        avg: (views365days / 1000) * cpmToUse.avg,
-        high: (views365days / 1000) * cpmToUse.high,
-      },
+      daily: calc(channel.avgViewsPerVideo),
+      monthly: calc(views30days),
+      quarterly: calc(views30days * 3),
+      yearly: calc(views30days * 12),
     };
   }, [channel, customCPM, nicheData]);
 
-  const revenueBreakdown = [
-    {
-      period: 'Daily',
-      data: revenues.daily,
-      icon: '📅',
-    },
-    {
-      period: 'Monthly',
-      data: revenues.monthly,
-      icon: '📊',
-    },
-    {
-      period: 'Quarterly',
-      data: revenues.quarterly,
-      icon: '📈',
-    },
-    {
-      period: 'Yearly',
-      data: revenues.yearly,
-      icon: '🎯',
-    },
+  const periods = [
+    { key: 'monthly', label: 'Monthly', data: revenues.monthly, highlight: true },
+    { key: 'yearly', label: 'Yearly', data: revenues.yearly, highlight: false },
+    { key: 'daily', label: 'Per Video', data: revenues.daily, highlight: false },
+    { key: 'quarterly', label: 'Quarterly', data: revenues.quarterly, highlight: false },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
+      {/* Revenue Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        {periods.map((p) => (
+          <div
+            key={p.key}
+            className={`bg-[#111] rounded-xl border p-4 sm:p-5 transition ${
+              p.highlight ? 'border-green-500/30 ring-1 ring-green-500/10' : 'border-[#1f1f1f] hover:border-[#333]'
+            }`}
+          >
+            <p className="text-[10px] text-[#555] uppercase tracking-wider font-bold mb-2">{p.label}</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-400 mb-3">
+              {formatMoney(p.data.avg)}
+            </p>
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px]">
+                <span className="text-red-400">Low</span>
+                <span className="text-red-400 font-bold">{formatMoney(p.data.low)}</span>
+              </div>
+              <div className="flex justify-between text-[10px]">
+                <span className="text-blue-400">High</span>
+                <span className="text-blue-400 font-bold">{formatMoney(p.data.high)}</span>
+              </div>
+            </div>
+            {/* Mini bar */}
+            <div className="mt-2 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-red-500 via-green-500 to-blue-500"
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* CPM Settings */}
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 shadow-xl">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-green-400" />
+      <div className="bg-[#111] rounded-2xl border border-[#1f1f1f] p-4 sm:p-5">
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-green-400" />
           CPM Settings
         </h3>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-2">
-              Niche-based CPM Range: ${nicheData.low} - ${nicheData.high}
+            <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-2">
+              Niche CPM: ${nicheData.low} - ${nicheData.high} (avg ${nicheData.avg})
             </label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <p className="text-xs text-gray-500 mb-1">Custom CPM (leave empty for average)</p>
-                <input
-                  type="number"
-                  value={customCPM || ''}
-                  onChange={(e) =>
-                    setCustomCPM(e.target.value ? parseFloat(e.target.value) : null)
-                  }
-                  placeholder={`Default: $${nicheData.avg}`}
-                  className="w-full px-3 py-2 bg-slate-700/30 border border-slate-600/50 rounded-lg text-white text-sm focus:outline-none focus:border-green-500/50"
-                />
-              </div>
-              <div className="flex-1 text-right">
-                <p className="text-xs text-gray-500 mb-1">Avg Monthly Views</p>
-                <p className="text-lg font-bold text-green-400">
-                  {(channel.avgViewsPerVideo * channel.uploadFrequency / 1000).toFixed(0)}K
-                </p>
-              </div>
+            <input
+              type="number"
+              value={customCPM || ''}
+              onChange={(e) => setCustomCPM(e.target.value ? parseFloat(e.target.value) : null)}
+              placeholder={`Default: $${nicheData.avg}`}
+              className="w-full px-3 py-2 bg-[#0a0a0a] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition"
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <div>
+              <p className="text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Monthly Views</p>
+              <p className="text-lg font-bold text-green-400">
+                {((channel.avgViewsPerVideo * channel.uploadFrequency) / 1000).toFixed(0)}K
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Uploads/mo</p>
+              <p className="text-lg font-bold text-white">{channel.uploadFrequency.toFixed(1)}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Revenue Breakdown */}
-      <div className="space-y-4">
-        {revenueBreakdown.map((item, idx) => (
-          <div
-            key={idx}
-            className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 shadow-xl"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-semibold">{item.icon} {item.period} Revenue</h3>
-              <span className="text-2xl font-bold text-green-400">
-                ${item.data.avg.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-              </span>
-            </div>
-
-            {/* Range Display */}
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-red-500/10 rounded-lg p-3 border border-red-500/20">
-                  <p className="text-xs text-gray-400 mb-1">Low Range</p>
-                  <p className="text-sm font-bold text-red-400">
-                    ${item.data.low.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                  </p>
-                </div>
-                <div className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
-                  <p className="text-xs text-gray-400 mb-1">Mid Range</p>
-                  <p className="text-sm font-bold text-green-400">
-                    ${item.data.avg.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                  </p>
-                </div>
-                <div className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
-                  <p className="text-xs text-gray-400 mb-1">High Range</p>
-                  <p className="text-sm font-bold text-blue-400">
-                    ${item.data.high.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="relative h-2 bg-slate-700/30 rounded-full overflow-hidden">
-                <div
-                  className="absolute h-full bg-gradient-to-r from-red-500 via-green-500 to-blue-500"
-                  style={{
-                    width: '100%',
-                  }}
-                ></div>
-                <div
-                  className="absolute h-full w-2 bg-white border-l-2 border-white"
-                  style={{
-                    left: `${((item.data.avg - item.data.low) / (item.data.high - item.data.low)) * 100}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Info */}
-            <p className="text-xs text-gray-500 mt-3">
-              💡 Based on YouTube Partner Program estimates. Actual earnings may vary based on engagement, viewer location, and content type.
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Key Factors */}
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6 shadow-xl">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-cyan-400" />
+      {/* Revenue Factors */}
+      <div className="bg-[#111] rounded-2xl border border-[#1f1f1f] p-4 sm:p-5">
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <Info className="w-4 h-4 text-[#555]" />
           Revenue Factors
         </h3>
-        <ul className="space-y-2 text-sm text-gray-400">
-          <li>✓ CPM varies by niche, location of viewers, and seasonality</li>
-          <li>✓ Engagement rate affects ad rates (higher engagement = higher CPM)</li>
-          <li>✓ Content type impacts monetization (educational content = higher CPM)</li>
-          <li>✓ Time of year affects CPM (Q4 holiday season typically highest)</li>
-        </ul>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {[
+            'CPM varies by niche, viewer location, and seasonality',
+            'Higher engagement = higher ad rates from advertisers',
+            'Educational & business content earns the highest CPM',
+            'Q4 (Oct-Dec) typically has 2-3x higher CPM rates',
+          ].map((text, i) => (
+            <p key={i} className="text-[11px] text-[#555] flex items-start gap-2">
+              <span className="text-green-500 shrink-0 mt-0.5">*</span> {text}
+            </p>
+          ))}
+        </div>
       </div>
     </div>
   );

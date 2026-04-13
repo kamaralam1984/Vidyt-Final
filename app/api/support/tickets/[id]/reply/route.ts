@@ -45,10 +45,17 @@ export async function POST(
             });
         }
 
-        if (isAdmin && (status || priority)) {
-            if (status) ticket.status = status;
-            if (priority) ticket.priority = priority;
-            await ticket.save();
+        if (status || priority) {
+            // Admins can update any status/priority
+            // Regular users can only close their own tickets
+            if (isAdmin) {
+                if (status) ticket.status = status;
+                if (priority) ticket.priority = priority;
+                await ticket.save();
+            } else if (status === 'closed' && ticket.userId.toString() === user._id.toString()) {
+                ticket.status = 'closed';
+                await ticket.save();
+            }
         }
 
         return NextResponse.json({ success: true });

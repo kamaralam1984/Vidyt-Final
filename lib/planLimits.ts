@@ -476,7 +476,7 @@ export function getHashtagCount(planId: string | undefined): number {
   return n < 0 ? UNLIMITED_CAP : n;
 }
 
-/** For backward compatibility: numeric limits used by stripe/usage APIs */
+/** For backward compatibility: numeric limits used by payment/usage APIs */
 export function getSubscriptionLimitsForApi(planId: string | undefined): {
   videos: number;
   analyses: number;

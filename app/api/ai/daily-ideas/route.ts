@@ -6,6 +6,7 @@ import { predictBestPostingTime } from '@/services/postingTimePredictor';
 import { getApiConfig } from '@/lib/apiConfig';
 import axios from 'axios';
 import { routeAI } from '@/lib/ai-router';
+import { routeYouTubeSearch } from '@/lib/youtube-router';
 
 type Idea = {
   title: string;
@@ -23,28 +24,14 @@ function formatHourLabel(hour: number): string {
   return `${h - 12} PM`;
 }
 
-async function fetchYouTubeTrendingTitles(apiKey: string, niche: string | null): Promise<string[]> {
+async function fetchYouTubeTrendingTitles(_apiKey: string, niche: string | null): Promise<string[]> {
   try {
-    // Use search endpoint scoped by niche + recency
     const q = (niche && niche.trim()) || 'trending India news';
-    const res = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-      params: {
-        key: apiKey,
-        part: 'snippet',
-        type: 'video',
-        q,
-        maxResults: 20,
-        regionCode: 'IN',
-        order: 'viewCount',
-        publishedAfter: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // last 3 days
-      },
-      timeout: 10000,
-    });
-    const items = res.data?.items || [];
+    // Use YouTube router with failover (YouTube API → SerpApi → RapidAPI)
+    const { results } = await routeYouTubeSearch(q, 20);
     const titles: string[] = [];
-    for (const it of items) {
-      const t = it?.snippet?.title as string | undefined;
-      if (t && !titles.includes(t)) titles.push(t);
+    for (const item of results) {
+      if (item.title && !titles.includes(item.title)) titles.push(item.title);
     }
     return titles.slice(0, 20);
   } catch {

@@ -62,12 +62,15 @@ export async function GET(request: Request) {
     }
 
 
-    // Growth data: last 30 days new users per day
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // Growth data: based on range parameter
+    const url = new URL(request.url);
+    const range = url.searchParams.get('range') || '30d';
+    const rangeDays = range === '7d' ? 7 : range === '90d' ? 90 : range === '365d' ? 365 : range === 'all' ? 3650 : 30;
+    const rangeStart = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
     
     const [growthData, activeUsersTrend, weekdayActivity] = await Promise.all([
       User.aggregate([
-        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        { $match: { createdAt: { $gte: rangeStart } } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
@@ -77,7 +80,7 @@ export async function GET(request: Request) {
         { $sort: { _id: 1 } },
       ]),
       UserSession.aggregate([
-        { $match: { loginTime: { $gte: thirtyDaysAgo } } },
+        { $match: { loginTime: { $gte: rangeStart } } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m-%d', date: '$loginTime' } },
@@ -88,7 +91,7 @@ export async function GET(request: Request) {
         { $sort: { _id: 1 } },
       ]),
       UserSession.aggregate([
-        { $match: { loginTime: { $gte: thirtyDaysAgo } } },
+        { $match: { loginTime: { $gte: rangeStart } } },
         {
           $project: {
             dayOfWeek: { $dayOfWeek: '$loginTime' }, // 1 (Sun) to 7 (Sat)

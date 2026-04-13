@@ -415,28 +415,32 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { id: 'script-writer', title: 'YouTube Script Writer', desc: 'Turn any topic into a ready-to-record YouTube script with hooks, sections and CTAs.', href: '/ai/script-generator' },
-              { id: 'daily-ideas', title: 'Video Ideas & Hooks Generator', desc: 'Daily viral ideas, hooks and angles optimized for your niche.', href: '/ai/script-generator?mode=ideas' },
-              { id: 'keyword-research', title: 'YouTube Keyword Research', desc: 'Discover high-intent YouTube keywords based on real search data.', href: '/dashboard/youtube-seo?tab=keywords' },
-              { id: 'title-generator', title: 'Title & CTR Optimization', desc: 'Turn boring titles into click‑worthy headlines with AI title scoring.', href: '/dashboard/youtube-seo?tab=titles' },
-              { id: 'thumbnail-maker', title: 'AI Thumbnail Optimization', desc: 'Optimize thumbnails for CTR and compare which version is stronger.', href: '/dashboard/youtube-seo?tab=thumbnails' },
-              { id: 'ai-shorts', title: 'Shorts & Clip Generator', desc: 'Auto‑clip long videos into Shorts that hook viewers in the first 3 seconds.', href: '/ai/shorts-creator' },
-            ].map((tool, index) => (
-              <motion.div
-                key={tool.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-[#181818] border border-[#262626] rounded-xl p-6 hover:border-[#FF0000] transition-all"
-              >
-                <h3 className="text-xl font-semibold text-white mb-2">{tool.title}</h3>
-                <p className="text-sm text-[#AAAAAA] mb-4">{tool.desc}</p>
-                <Link href={`/tools/${tool.id}`} className="inline-flex items-center gap-1 text-sm text-[#FF0000] hover:text-[#CC0000]">
-                  Start using this tool <ArrowRight className="w-4 h-4" />
-                </Link>
-              </motion.div>
-            ))}
+              { id: 'script-writer', title: 'YouTube Script Writer', desc: 'Turn any topic into a ready-to-record YouTube script with viral hooks, sections, CTAs, and SEO optimization. Powered by AI with 9 provider failover.', icon: Brain },
+              { id: 'daily-ideas', title: 'Video Ideas & Hooks Generator', desc: 'Get daily viral video ideas with viral score %, best posting time, and trending analysis. AI analyzes YouTube trends for your niche.', icon: Sparkles },
+              { id: 'keyword-research', title: 'YouTube Keyword Research', desc: 'Discover high-intent YouTube keywords with search volume, competition, and viral scores. AI-powered keyword intelligence for ranking #1.', icon: TrendingUp },
+              { id: 'title-generator', title: 'Title & CTR Optimization', desc: 'Boost your CTR to 11.8%+ with AI title scoring, A/B testing, power word suggestions, and 7-factor CTR prediction analysis.', icon: Zap },
+              { id: 'thumbnail-maker', title: 'AI Thumbnail Generator', desc: 'Create film-poster quality thumbnails in 8 art styles. Upload your photo — AI adds VFX, 3D text overlay, and cinematic effects.', icon: Globe },
+              { id: 'ai-shorts', title: 'Shorts & Clip Generator', desc: 'Auto-clip long videos into viral Shorts. AI detects key moments, adds text overlay, music, voiceover, and exports in 9:16 format.', icon: Play },
+            ].map((tool, index) => {
+              const Icon = tool.icon;
+              return (
+                <motion.div
+                  key={tool.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.05 }}
+                  className="bg-[#181818] border border-[#262626] rounded-xl p-6 hover:border-[#FF0000]/60 transition-all group"
+                >
+                  <Icon className="w-8 h-8 text-[#FF0000] mb-4" />
+                  <h3 className="text-xl font-bold text-white mb-2">{tool.title}</h3>
+                  <p className="text-sm text-[#AAAAAA] mb-4 leading-relaxed">{tool.desc}</p>
+                  <Link href={`/tools/${tool.id}`} className="inline-flex items-center gap-1 text-sm text-[#FF0000] font-semibold hover:text-[#FF4444] transition">
+                    Learn more & try free <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -505,9 +509,9 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              { title: 'The SEO Playbook', desc: 'Everything you need to rank #1 on YouTube search.', icon: Globe },
-              { title: 'Viral Hooks Library', desc: '100+ proven hooks to skyrocket your retention.', icon: Sparkles },
-              { title: 'Creator Blog', desc: 'Latest tips and trends from the world of content creation.', icon: Crown, href: '/blog' },
+              { title: 'The SEO Playbook', desc: 'Everything you need to rank #1 on YouTube search. AI-powered title, description, keyword, and thumbnail optimization.', icon: Globe, href: '/dashboard/youtube-seo', cta: 'Try SEO Analyzer' },
+              { title: 'Viral Hooks Library', desc: '10 AI-generated viral hooks with psychology triggers for any topic. Boost your first 3-second retention rate.', icon: Sparkles, href: '/ai/hook-generator', cta: 'Generate Hooks' },
+              { title: 'Creator Blog', desc: 'Latest tips, trending strategies, and growth hacks from the world of content creation.', icon: Crown, href: '/blog', cta: 'Read Blog' },
             ].map((res, i) => (
               <motion.div
                 key={i}
@@ -520,13 +524,9 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 <res.icon className="w-10 h-10 text-[#FF0000] mb-6" />
                 <h3 className="text-xl font-bold text-white mb-3">{res.title}</h3>
                 <p className="text-[#AAAAAA] mb-6">{res.desc}</p>
-                {res.href ? (
-                  <Link href={res.href} className="text-[#FF0000] font-semibold flex items-center gap-2">
-                    Read more <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                ) : (
-                  <span className="text-white/40 text-sm font-medium">Coming Soon</span>
-                )}
+                <Link href={res.href} className="text-[#FF0000] font-semibold flex items-center gap-2">
+                  {res.cta} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
               </motion.div>
             ))}
           </div>
@@ -640,6 +640,83 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       </section>
 
+      {/* How It Works */}
+      <section className="py-24 px-6 bg-[#0F0F0F]">
+        <div className="max-w-6xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">How It Works</h2>
+            <p className="text-[#AAAAAA] text-lg max-w-2xl mx-auto">Start creating viral content in 3 simple steps — no credit card required</p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { step: '01', title: 'Paste Your Link', desc: 'Enter your YouTube channel URL or video link. Our AI instantly analyzes your content, titles, thumbnails, and keywords.', color: '#FF0000' },
+              { step: '02', title: 'Get AI Recommendations', desc: 'Receive viral title suggestions, trending hashtags, optimal posting times, and thumbnail improvements — all powered by 9 AI providers.', color: '#3EA6FF' },
+              { step: '03', title: 'Grow & Go Viral', desc: 'Apply the recommendations, schedule your optimized content, and watch your views, subscribers, and engagement skyrocket.', color: '#2BA640' },
+            ].map((item, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
+                className="relative bg-[#181818] border border-[#212121] rounded-2xl p-8 text-center hover:border-[#333] transition">
+                <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center text-2xl font-black text-white" style={{ background: `${item.color}20`, color: item.color }}>
+                  {item.step}
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                <p className="text-[#AAAAAA] text-sm leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats / Social Proof */}
+      <section className="py-16 px-6 bg-[#181818] border-y border-[#212121]">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {[
+              { value: '50,000+', label: 'Videos Analyzed', color: '#FF0000' },
+              { value: '10,000+', label: 'Active Creators', color: '#3EA6FF' },
+              { value: '95%', label: 'SEO Accuracy', color: '#2BA640' },
+              { value: '3x', label: 'Avg. View Increase', color: '#FFD700' },
+            ].map((stat, i) => (
+              <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                <p className="text-3xl md:text-4xl font-black mb-1" style={{ color: stat.color }}>{stat.value}</p>
+                <p className="text-[#AAAAAA] text-sm">{stat.label}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section — AdSense Friendly */}
+      <section id="faq" className="py-24 px-6 bg-[#0F0F0F]">
+        <div className="max-w-3xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Frequently Asked Questions</h2>
+            <p className="text-[#AAAAAA]">Everything you need to know about VidYT</p>
+          </motion.div>
+          <div className="space-y-4">
+            {[
+              { q: 'Is VidYT free to use?', a: 'Yes! VidYT offers a free plan with 5 video analyses per month, basic viral score prediction, thumbnail analysis, title optimization, and hashtag generation. Upgrade to Pro for unlimited access.' },
+              { q: 'How does VidYT help my videos go viral?', a: 'VidYT uses AI to analyze your titles, descriptions, thumbnails, hashtags, and posting times. It compares your content against top-performing videos and gives actionable recommendations to boost CTR, engagement, and views.' },
+              { q: 'Which platforms does VidYT support?', a: 'VidYT supports YouTube, YouTube Shorts, Facebook, Instagram Reels, and TikTok. Each platform has its own SEO analyzer with platform-specific recommendations.' },
+              { q: 'How accurate is the CTR prediction?', a: 'Our CTR prediction uses 7 scoring factors including title curiosity, keyword relevance, thumbnail quality, and description optimization. Creators who follow our recommendations see 11.8%+ CTR improvement on average.' },
+              { q: 'Can I generate AI thumbnails?', a: 'Yes! VidYT includes an AI Thumbnail Generator that creates cinematic, film-poster quality thumbnails in 8 different art styles. You can upload your photos and AI will composite them with VFX effects.' },
+              { q: 'Is my data safe with VidYT?', a: 'Absolutely. We use enterprise-grade encryption, follow GDPR and CCPA regulations, and never share your data with third parties. You can request data deletion anytime from Settings.' },
+              { q: 'How does the Content Calendar work?', a: 'Schedule your videos with optimized titles, descriptions, and hashtags. Choose Public, Unlisted, or Private visibility. Videos are automatically uploaded to your YouTube channel at the scheduled time.' },
+              { q: 'What AI providers does VidYT use?', a: 'VidYT uses a 9-provider AI failover chain including OpenAI, Google Gemini, Groq, and more. This ensures 99.9% uptime — if one provider fails, the next one takes over seamlessly.' },
+            ].map((faq, i) => (
+              <motion.details key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}
+                className="group bg-[#181818] border border-[#212121] rounded-xl overflow-hidden">
+                <summary className="flex items-center justify-between p-5 cursor-pointer text-white font-semibold hover:bg-[#1a1a1a] transition">
+                  <span>{faq.q}</span>
+                  <span className="text-[#FF0000] text-xl ml-4 group-open:rotate-45 transition-transform">+</span>
+                </summary>
+                <p className="px-5 pb-5 text-[#AAAAAA] text-sm leading-relaxed">{faq.a}</p>
+              </motion.details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
       <section className="py-24 px-6 bg-gradient-to-r from-[#FF0000] to-[#CC0000]">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h2
@@ -697,21 +774,27 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
                 <li><Link href="/pricing" className="hover:text-white transition-colors">Plans</Link></li>
+                <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
+                <li><Link href="/tools/youtube-title-generator" className="hover:text-white transition-colors">Free SEO Tools</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-[#AAAAAA] text-sm">
-                <li><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
+                <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
                 <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
                 <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+                <li><Link href="/support" className="hover:text-white transition-colors">Support</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-[#AAAAAA] text-sm">
-                <li><Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link></li>
-                <li><Link href="/terms" className="hover:text-white transition-colors">Terms</Link></li>
+                <li><Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link href="/cookie-policy" className="hover:text-white transition-colors">Cookie Policy</Link></li>
+                <li><Link href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link></li>
+                <li><Link href="/data-requests" className="hover:text-white transition-colors">Data Requests</Link></li>
                 <li><Link href="/security" className="hover:text-white transition-colors">Security</Link></li>
               </ul>
             </div>

@@ -179,11 +179,52 @@ const LocaleContext = createContext<LocaleContextValue>({
 
 const STORAGE_KEY = 'viralboost-locale';
 
+/**
+ * Map Cloudflare country codes (ISO 3166-1 alpha-2) to our supported locale countryCode.
+ * Countries not listed here fall through to browser-language detection or default US/en.
+ */
+const COUNTRY_TO_LOCALE: Record<string, string> = {
+  // English-speaking
+  US: 'US', GB: 'GB', AU: 'AU', CA: 'CA', SG: 'SG', NZ: 'AU', IE: 'GB', ZA: 'GB',
+  // India
+  IN: 'IN',
+  // Spanish-speaking
+  ES: 'ES', MX: 'MX', AR: 'MX', CO: 'MX', CL: 'MX', PE: 'MX', VE: 'MX', EC: 'MX',
+  // Arabic-speaking
+  AE: 'AE', SA: 'AE', QA: 'AE', KW: 'AE', BH: 'AE', OM: 'AE', EG: 'AE', JO: 'AE', LB: 'AE', IQ: 'AE',
+  // Indonesia
+  ID: 'ID',
+  // Pakistan / Urdu
+  PK: 'PK',
+  // Europe (default EUR)
+  DE: 'EU', FR: 'EU', IT: 'EU', NL: 'EU', BE: 'EU', AT: 'EU', PT: 'EU', GR: 'EU', FI: 'EU', SE: 'EU', NO: 'EU', DK: 'EU', PL: 'EU', CZ: 'EU', RO: 'EU', HU: 'EU', BG: 'EU', HR: 'EU', SK: 'EU', SI: 'EU', LT: 'EU', LV: 'EU', EE: 'EU', LU: 'EU', MT: 'EU', CY: 'EU',
+};
+
+/**
+ * Map browser language prefixes to locale countryCode
+ */
+const LANG_TO_LOCALE: Record<string, string> = {
+  hi: 'IN',
+  es: 'ES',
+  ar: 'AE',
+  id: 'ID',
+  ur: 'PK',
+};
+
+/** Read a cookie value by name */
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<LocaleState>(DEFAULT_LOCALE);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // 1. Check localStorage (user's explicit choice takes priority)
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -197,12 +238,37 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
-    // Fallback: try browser language
+
+    // 2. Auto-detect from Cloudflare country cookie (set by middleware)
     try {
-      const lang = navigator.language || 'en-US';
-      if (lang.startsWith('hi') || lang.endsWith('IN')) {
-        const india = SUPPORTED_LOCALES.find((l) => l.countryCode === 'IN');
-        if (india) setLocaleState(india);
+      const detectedCountry = getCookie('detected-country');
+      if (detectedCountry) {
+        const mappedCode = COUNTRY_TO_LOCALE[detectedCountry];
+        if (mappedCode) {
+          const match = SUPPORTED_LOCALES.find((l) => l.countryCode === mappedCode);
+          if (match) {
+            setLocaleState(match);
+            // Save so user doesn't re-detect every time
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(match));
+            return;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // 3. Fallback: browser language detection (broader than before)
+    try {
+      const lang = (navigator.language || 'en-US').toLowerCase();
+      const langPrefix = lang.split('-')[0];
+      const mappedCode = LANG_TO_LOCALE[langPrefix];
+      if (mappedCode) {
+        const match = SUPPORTED_LOCALES.find((l) => l.countryCode === mappedCode);
+        if (match) {
+          setLocaleState(match);
+          return;
+        }
       }
     } catch {
       // ignore

@@ -1,4 +1,13 @@
 User-agent: *
 Allow: /
+Allow: /k/
+Allow: /tools/
+Allow: /blog/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/
+
+User-agent: Googlebot
+Allow: /
 
 Sitemap: https://vidyt.com/sitemap.xml

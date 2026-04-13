@@ -27,6 +27,15 @@ const SECTION_ICONS: Record<string, string> = {
   yt_seo_channel_summary:   '📡',
   yt_seo_viral_probability: '🔥',
   yt_seo_chinki:            '🤖',
+  yt_seo_video_analyze:     '🎥',
+  // Channel Intelligence sections
+  ci_channel_input:         '🔍',
+  ci_channel_overview:      '📋',
+  ci_ranking_panel:         '🏅',
+  ci_revenue_calculator:    '💰',
+  ci_ai_insights:           '🧠',
+  ci_growth_prediction:     '📈',
+  ci_competitor_comparison: '⚔️',
 };
 
 interface SectionFeature {
@@ -55,7 +64,7 @@ export default function YtSeoSectionControl() {
       const res = await fetch('/api/admin/features', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (data.features) {
-        const ytSections = data.features.filter((f: any) => f.group === 'yt_seo_sections');
+        const ytSections = data.features.filter((f: any) => f.group === 'yt_seo_sections' || f.group === 'channel_intelligence');
         setSections(ytSections);
       }
     } catch {
@@ -143,8 +152,8 @@ export default function YtSeoSectionControl() {
             <Youtube className="w-7 h-7 text-[#FF0000]" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">YouTube SEO Analyzer — Section Controls</h1>
-            <p className="text-xs text-[#666] mt-0.5">Har section ke liye role-based visibility control karen</p>
+            <h1 className="text-xl font-bold text-white">YouTube SEO & Channel Intelligence — Section Controls</h1>
+            <p className="text-xs text-[#666] mt-0.5">Control role-based visibility for each section across YouTube SEO Analyzer and Channel Intelligence pages</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -176,11 +185,11 @@ export default function YtSeoSectionControl() {
       <div className="bg-blue-900/10 border border-blue-900/30 rounded-xl p-4 flex gap-3 text-xs">
         <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-blue-100 font-semibold mb-1">Kaise kaam karta hai?</p>
+          <p className="text-blue-100 font-semibold mb-1">How does it work?</p>
           <p className="text-[#888] leading-relaxed">
-            Har row ek section hai YouTube SEO Analyzer page ka. <strong>Global Toggle</strong> se section poori tarah disable ho jata hai (kisi ko nahi dikhta). 
-            <strong> Role toggles</strong> se aap control kar sakte hain ki kaunse role ko wo section dikhega. 
-            Super Admin ko hamesha sab dikhta hai.
+            Each row is a section of the YouTube SEO Analyzer page. <strong>Global Toggle</strong> disables the section entirely (hidden for all).
+            <strong>Role toggles</strong> control which roles can see each section.
+            Super Admin always has full access.
           </p>
         </div>
       </div>
@@ -201,67 +210,77 @@ export default function YtSeoSectionControl() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1A1A1A]">
-              {sections.map(section => (
-                <tr key={section.id} className="hover:bg-[#1A1A1A] transition-colors group">
-                  {/* Section Name */}
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{SECTION_ICONS[section.id] || '⚙️'}</span>
-                      <div>
-                        <p className={`text-sm font-semibold transition-colors ${section.enabled ? 'text-white group-hover:text-[#FF0000]' : 'text-[#555] line-through'}`}>
-                          {section.label.replace('YT SEO: ', '')}
-                        </p>
-                        <p className="text-[9px] text-[#444] font-mono">{section.id}</p>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Global Toggle */}
-                  <td className="p-4 text-center">
-                    <button
-                      onClick={() => toggleEnabled(section.id)}
-                      title={section.enabled ? 'Click to globally disable' : 'Click to globally enable'}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all focus:outline-none shadow-inner
-                        ${section.enabled ? 'bg-[#FF0000]' : 'bg-[#2A2A2A]'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-all
-                        ${section.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                    <p className={`text-[9px] mt-1 font-bold ${section.enabled ? 'text-green-500' : 'text-[#555]'}`}>
-                      {section.enabled ? 'ON' : 'OFF'}
-                    </p>
-                  </td>
-
-                  {/* Role Toggles */}
-                  {ROLES.map(role => {
-                    const has = section.allowedRoles.includes(role.id);
-                    return (
-                      <td key={role.id} className="p-3 text-center">
-                        <button
-                          onClick={() => toggleRole(section.id, role.id)}
-                          disabled={!section.enabled}
-                          title={`${has ? 'Remove' : 'Grant'} ${role.label} access`}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all border
-                            ${!section.enabled
-                              ? 'opacity-20 cursor-not-allowed bg-[#0F0F0F] border-transparent'
-                              : has
-                              ? 'border-transparent shadow-sm shadow-black/30'
-                              : 'bg-[#0F0F0F] border-[#212121] hover:border-[#444] text-[#333]'
-                            }`}
-                          style={has && section.enabled ? { backgroundColor: `${role.color}25`, borderColor: `${role.color}50`, color: role.color } : {}}
-                        >
-                          {has ? <Check className="w-4 h-4 stroke-[3]" /> : <X className="w-4 h-4" />}
-                        </button>
+              {(() => {
+                const groups = [
+                  { key: 'yt_seo_', label: 'YouTube SEO Analyzer', items: sections.filter(s => s.id.startsWith('yt_seo_')) },
+                  { key: 'ci_', label: 'Channel Intelligence', items: sections.filter(s => s.id.startsWith('ci_')) },
+                ];
+                return groups.filter(g => g.items.length > 0).map(group => (
+                  <React.Fragment key={group.key}>
+                    <tr className="bg-[#0A0A0A]">
+                      <td colSpan={2 + ROLES.length} className="px-4 py-2.5">
+                        <p className="text-[10px] font-bold text-[#FF0000] uppercase tracking-widest">{group.label}</p>
                       </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                    </tr>
+                    {group.items.map(section => (
+                      <tr key={section.id} className="hover:bg-[#1A1A1A] transition-colors group">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{SECTION_ICONS[section.id] || '⚙️'}</span>
+                            <div>
+                              <p className={`text-sm font-semibold transition-colors ${section.enabled ? 'text-white group-hover:text-[#FF0000]' : 'text-[#555] line-through'}`}>
+                                {section.label.replace('YT SEO: ', '').replace('Channel Intelligence: ', '')}
+                              </p>
+                              <p className="text-[9px] text-[#444] font-mono">{section.id}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <button
+                            onClick={() => toggleEnabled(section.id)}
+                            title={section.enabled ? 'Click to globally disable' : 'Click to globally enable'}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all focus:outline-none shadow-inner
+                              ${section.enabled ? 'bg-[#FF0000]' : 'bg-[#2A2A2A]'}`}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-all
+                              ${section.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                          </button>
+                          <p className={`text-[9px] mt-1 font-bold ${section.enabled ? 'text-green-500' : 'text-[#555]'}`}>
+                            {section.enabled ? 'ON' : 'OFF'}
+                          </p>
+                        </td>
+                        {ROLES.map(role => {
+                          const has = section.allowedRoles.includes(role.id);
+                          return (
+                            <td key={role.id} className="p-3 text-center">
+                              <button
+                                onClick={() => toggleRole(section.id, role.id)}
+                                disabled={!section.enabled}
+                                title={`${has ? 'Remove' : 'Grant'} ${role.label} access`}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all border
+                                  ${!section.enabled
+                                    ? 'opacity-20 cursor-not-allowed bg-[#0F0F0F] border-transparent'
+                                    : has
+                                    ? 'border-transparent shadow-sm shadow-black/30'
+                                    : 'bg-[#0F0F0F] border-[#212121] hover:border-[#444] text-[#333]'
+                                  }`}
+                                style={has && section.enabled ? { backgroundColor: `${role.color}25`, borderColor: `${role.color}50`, color: role.color } : {}}
+                              >
+                                {has ? <Check className="w-4 h-4 stroke-[3]" /> : <X className="w-4 h-4" />}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ));
+              })()}
 
               {sections.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-[#555]">
-                    No YT SEO sections found. Features might not be initialized yet.
+                  <td colSpan={2 + ROLES.length} className="p-12 text-center text-[#555]">
+                    No sections found. Features might not be initialized yet.
                   </td>
                 </tr>
               )}

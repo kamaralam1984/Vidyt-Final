@@ -7,16 +7,11 @@ import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import {
-  Search,
-  BarChart3,
-  FileText,
-  Instagram,
-  Loader2,
-  Hash,
+  Search, BarChart3, FileText, Instagram, Loader2, Hash, Clock, Copy, Check, Sparkles, RefreshCw, Zap,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-
 import { useTranslations } from '@/context/translations';
+import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
 
 const DEBOUNCE_MS = 500;
 
@@ -25,6 +20,7 @@ export default function InstagramSEOPage() {
   const [caption, setCaption] = useState('');
   const [keywords, setKeywords] = useState('');
   const [contentType, setContentType] = useState<'post' | 'reel' | 'story' | 'live'>('post');
+  const [copiedItem, setCopiedItem] = useState<string | null>(null);
 
   const [seoData, setSeoData] = useState<{ seoScore: number; breakdown: Record<string, { score: number; label: string }> } | null>(null);
   const [descriptions, setDescriptions] = useState<{ text: string; seoScore: number }[]>([]);
@@ -38,11 +34,8 @@ export default function InstagramSEOPage() {
 
   const [instagramProfileUrl, setInstagramProfileUrl] = useState('');
   const [profileSummary, setProfileSummary] = useState<{
-    profileName?: string;
-    followersCount?: number;
-    postsCount?: number;
-    profileKami?: string[];
-    settingKami?: string[];
+    profileName?: string; followersCount?: number; postsCount?: number;
+    profileKami?: string[]; settingKami?: string[];
     homepageKeywords?: { keyword: string; score: number }[];
     growthActions?: { where: string; action: string; reason: string }[];
     recommendedKeywords?: { keyword: string; score: number }[];
@@ -50,85 +43,58 @@ export default function InstagramSEOPage() {
   } | null>(null);
   const [profileSummaryLoading, setProfileSummaryLoading] = useState(false);
 
+  const hasAnyInput = Boolean(caption.trim() || keywords.trim());
+  const tagCount = keywords.split(/[,;\n]/).map(k => k.trim()).filter(Boolean).length;
+
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedItem(label);
+    setTimeout(() => setCopiedItem(null), 2000);
+  };
+
   const fetchSeo = useCallback(async () => {
+    if (!hasAnyInput) { setSeoData(null); return; }
+    if (caption.trim()) autoCreateSeoPage(caption.split(' ').slice(0, 5).join(' '));
     setLoadingSeo(true);
     try {
-      const res = await axios.get(
-        `/api/instagram/seo?caption=${encodeURIComponent(caption)}&keywords=${encodeURIComponent(keywords)}`,
-        { headers: getAuthHeaders() }
-      );
+      const res = await axios.get(`/api/instagram/seo?caption=${encodeURIComponent(caption)}&keywords=${encodeURIComponent(keywords)}`, { headers: getAuthHeaders() });
       setSeoData(res.data);
-    } catch {
-      setSeoData(null);
-    } finally {
-      setLoadingSeo(false);
-    }
-  }, [caption, keywords]);
+    } catch { setSeoData(null); } finally { setLoadingSeo(false); }
+  }, [caption, keywords, hasAnyInput]);
 
   const fetchDescriptions = useCallback(async () => {
+    if (!caption.trim() && !keywords.trim()) { setDescriptions([]); return; }
     setLoadingDescriptions(true);
     try {
-      const res = await axios.get(
-        `/api/instagram/descriptions?caption=${encodeURIComponent(caption)}&keywords=${encodeURIComponent(keywords)}&contentType=${contentType}`,
-        { headers: getAuthHeaders() }
-      );
+      const res = await axios.get(`/api/instagram/descriptions?caption=${encodeURIComponent(caption)}&keywords=${encodeURIComponent(keywords)}&contentType=${contentType}`, { headers: getAuthHeaders() });
       setDescriptions(res.data.descriptions || []);
-    } catch {
-      setDescriptions([]);
-    } finally {
-      setLoadingDescriptions(false);
-    }
+    } catch { setDescriptions([]); } finally { setLoadingDescriptions(false); }
   }, [caption, keywords, contentType]);
 
   const fetchHashtags = useCallback(async () => {
     const kw = keywords.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean)[0] || caption.split(/\s+/).slice(0, 2).join(' ') || '';
-    if (!kw) {
-      setHashtags([]);
-      return;
-    }
+    if (!kw) { setHashtags([]); return; }
     setLoadingHashtags(true);
     try {
       const res = await axios.get(`/api/instagram/hashtags?keyword=${encodeURIComponent(kw)}&contentType=${contentType}`, { headers: getAuthHeaders() });
       setHashtags(res.data.hashtags || []);
-    } catch {
-      setHashtags([]);
-    } finally {
-      setLoadingHashtags(false);
-    }
+    } catch { setHashtags([]); } finally { setLoadingHashtags(false); }
   }, [keywords, caption, contentType]);
 
   const fetchKeywords = useCallback(async () => {
+    if (!hasAnyInput) { setKeywordData(null); return; }
     const kw = keywords.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean)[0] || '';
     setLoadingKeywords(true);
     try {
       const res = await axios.get(`/api/instagram/keywords?keyword=${encodeURIComponent(kw)}&caption=${encodeURIComponent(caption)}`, { headers: getAuthHeaders() });
       setKeywordData(res.data);
-    } catch {
-      setKeywordData(null);
-    } finally {
-      setLoadingKeywords(false);
-    }
-  }, [keywords, caption]);
+    } catch { setKeywordData(null); } finally { setLoadingKeywords(false); }
+  }, [keywords, caption, hasAnyInput]);
 
-  useEffect(() => {
-    const t = setTimeout(fetchSeo, DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [fetchSeo]);
-
-  useEffect(() => {
-    const t = setTimeout(fetchDescriptions, DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [fetchDescriptions]);
-
-  useEffect(() => {
-    const t = setTimeout(fetchHashtags, DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [fetchHashtags]);
-
-  useEffect(() => {
-    const t = setTimeout(() => { if (keywords.trim() || caption.trim()) fetchKeywords(); }, DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [keywords, caption, fetchKeywords]);
+  useEffect(() => { if (!hasAnyInput) { setSeoData(null); return; } const tm = setTimeout(fetchSeo, DEBOUNCE_MS); return () => clearTimeout(tm); }, [hasAnyInput, fetchSeo]);
+  useEffect(() => { if (!hasAnyInput) { setDescriptions([]); return; } const tm = setTimeout(fetchDescriptions, DEBOUNCE_MS); return () => clearTimeout(tm); }, [hasAnyInput, fetchDescriptions]);
+  useEffect(() => { if (!hasAnyInput) { setHashtags([]); return; } const tm = setTimeout(fetchHashtags, DEBOUNCE_MS); return () => clearTimeout(tm); }, [hasAnyInput, fetchHashtags]);
+  useEffect(() => { if (!hasAnyInput) { setKeywordData(null); return; } const tm = setTimeout(fetchKeywords, DEBOUNCE_MS); return () => clearTimeout(tm); }, [hasAnyInput, fetchKeywords]);
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem('instagram-seo-profile-url') : null;
@@ -137,52 +103,58 @@ export default function InstagramSEOPage() {
 
   const saveInstagramProfileUrl = (url: string) => {
     setInstagramProfileUrl(url);
+    setProfileSummary(null);
     if (typeof window !== 'undefined') localStorage.setItem('instagram-seo-profile-url', url);
   };
 
   const fetchProfileSummary = useCallback(async () => {
     const url = instagramProfileUrl.trim();
-    if (!url) {
-      setProfileSummary(null);
-      return;
-    }
+    if (!url) { setProfileSummary(null); return; }
     setProfileSummaryLoading(true);
     setProfileSummary(null);
     try {
       const res = await axios.get(`/api/instagram/page-summary?profileUrl=${encodeURIComponent(url)}&_t=${Date.now()}`, { headers: getAuthHeaders() });
       setProfileSummary(res.data);
-    } catch {
-      setProfileSummary(null);
-    } finally {
-      setProfileSummaryLoading(false);
-    }
+    } catch { setProfileSummary(null); } finally { setProfileSummaryLoading(false); }
   }, [instagramProfileUrl]);
 
   const breakdownChartData = seoData?.breakdown
     ? Object.entries(seoData.breakdown).map(([name, v]) => ({ name: name.replace(/([A-Z])/g, ' $1').trim(), score: v.score }))
     : [];
 
-  const addKeywordToField = (kw: string) => {
-    const current = keywords.trim();
-    setKeywords(current ? `${current}, ${kw}` : kw);
-  };
-
+  const addKeywordToField = (kw: string) => { const c = keywords.trim(); setKeywords(c ? `${c}, ${kw}` : kw); };
   const addDescriptionToField = (text: string) => setCaption((prev) => (prev ? `${prev}\n\n${text}` : text));
   const addHashtagToField = (tag: string) => setCaption((prev) => (prev ? `${prev} ${tag}` : tag));
+
+  const seoScore = seoData?.seoScore ?? 0;
+  const scoreColor = seoScore >= 70 ? 'text-emerald-400' : seoScore >= 40 ? 'text-amber-400' : 'text-red-400';
+  const barBg = seoScore >= 70 ? 'bg-emerald-500' : seoScore >= 40 ? 'bg-amber-500' : 'bg-red-500';
 
   return (
     <AuthGuard>
       <DashboardLayout>
         <div className="p-6 max-w-[1600px] mx-auto">
-          <motion.div className="flex items-center gap-3 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Instagram className="w-8 h-8 text-pink-500" />
-            <div>
-              <h1 className="text-2xl font-bold text-white">Instagram Live SEO Analyzer</h1>
-              <p className="text-sm text-[#AAAAAA]">{t('seo.analyzer.subtitle')}</p>
+          {/* Animated Header */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative mb-6 rounded-2xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-pink-600/10 via-purple-500/5 to-pink-600/10 animate-pulse" />
+            <div className="relative bg-[#0F0F0F]/80 backdrop-blur-xl border border-pink-500/20 rounded-2xl p-6">
+              <div className="flex items-center gap-4">
+                <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}
+                  className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 via-purple-500 to-orange-400 flex items-center justify-center shadow-lg shadow-pink-500/30">
+                  <Instagram className="w-6 h-6 text-white" />
+                </motion.div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-400 to-orange-400">
+                    Instagram Live SEO Analyzer
+                  </h1>
+                  <p className="text-sm text-[#888] mt-0.5">{t('seo.analyzer.subtitle')}</p>
+                </div>
+              </div>
             </div>
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* LEFT COLUMN */}
             <motion.div className="lg:col-span-2 space-y-4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
@@ -190,53 +162,61 @@ export default function InstagramSEOPage() {
                 </h2>
                 <div className="flex gap-2 p-1 bg-[#212121] rounded-lg mb-4">
                   {(['post', 'reel', 'story', 'live'] as const).map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setContentType(type)}
-                      className={`flex-1 py-2 px-2 rounded-md text-sm font-medium transition ${contentType === type ? 'bg-pink-500 text-white' : 'text-[#AAA] hover:text-white hover:bg-[#333]'}`}
-                    >
+                    <button key={type} type="button" onClick={() => setContentType(type)}
+                      className={`flex-1 py-2 px-2 rounded-md text-sm font-medium transition ${contentType === type ? 'bg-pink-500 text-white' : 'text-[#AAA] hover:text-white hover:bg-[#333]'}`}>
                       {type.charAt(0).toUpperCase() + type.slice(1)}
                     </button>
                   ))}
                 </div>
                 <div className="space-y-4">
+                  {/* Caption with counter + AI Generate */}
                   <div>
-                    <label className="block text-sm text-[#AAAAAA] mb-1">Caption</label>
-                    <textarea
-                      value={caption}
-                      onChange={(e) => setCaption(e.target.value)}
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm text-[#AAAAAA]">Caption</label>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-mono ${caption.length >= 50 ? 'text-emerald-400' : 'text-[#666]'}`}>
+                          {caption.length} chars {caption.length >= 50 ? '✓' : caption.length > 0 ? '(50+ ideal)' : ''}
+                        </span>
+                        <button type="button" onClick={fetchDescriptions} disabled={!caption.trim() && !keywords.trim() || loadingDescriptions}
+                          className="text-xs flex items-center gap-1 text-pink-400 hover:text-pink-300 transition disabled:opacity-50">
+                          {loadingDescriptions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} AI Generate
+                        </button>
+                      </div>
+                    </div>
+                    <textarea value={caption} onChange={(e) => setCaption(e.target.value)}
                       placeholder={contentType === 'reel' ? 'Reel caption...' : contentType === 'story' ? 'Story text...' : contentType === 'live' ? 'Live caption...' : 'Post caption...'}
-                      rows={5}
-                      className="w-full px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-pink-500 resize-none"
-                    />
+                      rows={5} className="w-full px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-pink-500 resize-none" />
                   </div>
+
+                  {/* Keywords with counter + AI Generate */}
                   <div>
-                    <label className="block text-sm text-[#AAAAAA] mb-1">Keywords / Hashtags (comma or newline)</label>
-                    <textarea
-                      value={keywords}
-                      onChange={(e) => setKeywords(e.target.value)}
-                      placeholder="viral, instagram, reels, trending, explore"
-                      rows={2}
-                      className="w-full px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-pink-500 resize-none"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm text-[#AAAAAA]">Keywords / Hashtags</label>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-mono ${tagCount >= 5 ? 'text-emerald-400' : 'text-[#666]'}`}>
+                          {tagCount} tags {tagCount >= 5 ? '✓' : tagCount > 0 ? '(5+ ideal)' : ''}
+                        </span>
+                        <button type="button" onClick={fetchHashtags} disabled={(!keywords.trim() && !caption.trim()) || loadingHashtags}
+                          className="text-xs flex items-center gap-1 text-pink-400 hover:text-pink-300 transition disabled:opacity-50">
+                          {loadingHashtags ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} AI Generate
+                        </button>
+                      </div>
+                    </div>
+                    <textarea value={keywords} onChange={(e) => setKeywords(e.target.value)}
+                      placeholder="viral, instagram, reels, trending, explore" rows={2}
+                      className="w-full px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-pink-500 resize-none" />
                   </div>
+
+                  {/* Profile Link */}
                   <div>
-                    <label className="block text-sm text-[#AAAAAA] mb-1">{t('seo.analyzer.linkDesc.instagram')}</label>
-                    <p className="text-xs text-[#666] mb-1">{t('seo.analyzer.linkDesc.instagram')}</p>
+                    <label className="block text-sm text-[#AAAAAA] mb-1">Instagram Profile Link</label>
+                    <p className="text-xs text-[#666] mb-2">{t('seo.analyzer.linkDesc.instagram')}</p>
                     <div className="flex gap-2">
-                      <input
-                        value={instagramProfileUrl}
-                        onChange={(e) => saveInstagramProfileUrl(e.target.value)}
+                      <input value={instagramProfileUrl} onChange={(e) => saveInstagramProfileUrl(e.target.value)}
                         placeholder="https://www.instagram.com/username"
-                        className="flex-1 px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-pink-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={fetchProfileSummary}
-                        disabled={!instagramProfileUrl.trim() || profileSummaryLoading}
-                        className="px-4 py-2.5 bg-pink-500 hover:bg-pink-400 disabled:opacity-50 text-white rounded-lg font-medium"
-                      >
+                        className="flex-1 px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-pink-500" />
+                      <button type="button" onClick={fetchProfileSummary} disabled={!instagramProfileUrl.trim() || profileSummaryLoading}
+                        className="px-4 py-2.5 bg-pink-500 hover:bg-pink-400 disabled:opacity-50 text-white rounded-lg font-medium">
                         {profileSummaryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('seo.analyzer.linkButton')}
                       </button>
                     </div>
@@ -253,37 +233,38 @@ export default function InstagramSEOPage() {
               </div>
             </motion.div>
 
+            {/* RIGHT COLUMN */}
             <motion.div className="lg:col-span-3 space-y-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+              {/* SEO Score */}
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5" /> SEO Score
+                  <BarChart3 className="w-5 h-5 text-pink-500" /> SEO Score
                 </h2>
-                {loadingSeo ? (
-                  <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
-                ) : (
+                {loadingSeo ? <Loader2 className="w-8 h-8 animate-spin text-pink-500" /> : (
                   <>
                     <div className="flex items-baseline gap-2 mb-4">
-                      <span className="text-4xl font-bold text-white">{seoData?.seoScore ?? 0}</span>
+                      <span className={`text-4xl font-black ${scoreColor}`}>{seoScore}</span>
                       <span className="text-[#AAAAAA]">/ 100</span>
+                      {hasAnyInput && (
+                        <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${seoScore >= 70 ? 'bg-emerald-500/20 text-emerald-400' : seoScore >= 40 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {seoScore >= 70 ? 'Good' : seoScore >= 40 ? 'Average' : 'Needs Work'}
+                        </span>
+                      )}
                     </div>
                     <div className="h-3 bg-[#212121] rounded-full overflow-hidden mb-4">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${seoData?.seoScore ?? 0}%` }}
-                        transition={{ duration: 0.6 }}
-                        className={`h-full rounded-full ${(seoData?.seoScore ?? 0) >= 70 ? 'bg-emerald-500' : (seoData?.seoScore ?? 0) >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
-                      />
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${seoScore}%` }} transition={{ duration: 0.6 }}
+                        className={`h-full rounded-full ${barBg}`} />
                     </div>
                     {breakdownChartData.length > 0 && (
-                      <div className="h-36">
+                      <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={breakdownChartData} layout="vertical" margin={{ left: 0, right: 20 }}>
                             <XAxis type="number" domain={[0, 100]} tick={{ fill: '#888', fontSize: 12 }} />
                             <YAxis type="category" dataKey="name" tick={{ fill: '#AAA', fontSize: 11 }} width={100} />
                             <Tooltip contentStyle={{ background: '#181818', border: '1px solid #333' }} />
                             <Bar dataKey="score" radius={[0, 4, 4, 0]}>
-                              {breakdownChartData.map((_, i) => (
-                                <Cell key={i} fill={breakdownChartData[i].score >= 70 ? '#10b981' : breakdownChartData[i].score >= 40 ? '#f59e0b' : '#ef4444'} />
+                              {breakdownChartData.map((entry, i) => (
+                                <Cell key={i} fill={entry.score >= 70 ? '#10b981' : entry.score >= 40 ? '#f59e0b' : '#ef4444'} />
                               ))}
                             </Bar>
                           </BarChart>
@@ -294,6 +275,7 @@ export default function InstagramSEOPage() {
                 )}
               </div>
 
+              {/* Profile Audit */}
               {profileSummary?.linked && (
                 <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                   <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -305,9 +287,7 @@ export default function InstagramSEOPage() {
                       <p className="text-sm font-semibold text-emerald-400 mb-2">{t('seo.analyzer.keywordsTitle')}</p>
                       <div className="flex flex-wrap gap-2">
                         {(profileSummary.homepageKeywords || []).map((item, i) => (
-                          <span key={i} className="px-2 py-1 rounded text-sm border bg-[#212121] text-emerald-400 border-emerald-500/30">
-                            {item.keyword} <span className="opacity-90">{item.score}%</span>
-                          </span>
+                          <span key={i} className="px-2 py-1 rounded text-sm border bg-[#212121] text-emerald-400 border-emerald-500/30">{item.keyword} <span className="opacity-90">{item.score}%</span></span>
                         ))}
                       </div>
                     </div>
@@ -350,21 +330,57 @@ export default function InstagramSEOPage() {
                 </div>
               )}
 
+              {/* Post Time */}
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <FileText className="w-5 h-5" /> {t('seo.analyzer.autoDescTitle')} {contentType !== 'post' && `(${contentType.charAt(0).toUpperCase() + contentType.slice(1)})`}
+                  <Clock className="w-5 h-5 text-pink-500" /> {t('seo.analyzer.postTimeTitle')}
                 </h2>
+                <p className="text-xs text-[#888] mb-4">{t('seo.analyzer.postTimeDesc')}</p>
+                {profileSummary?.linked ? (
+                  <>
+                    <div className="p-4 rounded-lg bg-[#212121]/80 border border-[#333] mb-3">
+                      <p className="text-sm font-semibold text-emerald-400 mb-2">{t('seo.analyzer.activeTimeTitle')}</p>
+                      <ul className="text-sm text-[#CCC] space-y-1.5">
+                        <li className="flex justify-between p-1.5 bg-[#1a1a1a] rounded"><span>Tuesday–Thursday</span> <span className="text-emerald-400 font-bold">Peak engagement</span></li>
+                        <li className="flex justify-between p-1.5 bg-[#1a1a1a] rounded"><span>11 AM – 1 PM</span> <span className="text-amber-400 font-bold">Lunch hour scroll</span></li>
+                        <li className="flex justify-between p-1.5 bg-[#1a1a1a] rounded"><span>7 – 9 PM</span> <span className="text-emerald-400 font-bold">Evening prime time</span></li>
+                        <li className="flex justify-between p-1.5 bg-[#1a1a1a] rounded"><span>Saturday 10 AM</span> <span className="text-purple-400 font-bold">Weekend explore</span></li>
+                      </ul>
+                      <p className="text-xs text-[#888] mt-3">{t('seo.analyzer.timezoneNote')}</p>
+                    </div>
+                    <p className="text-xs text-[#AAA]">{t('seo.analyzer.exactTimeNote')}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-[#666]">{t('seo.analyzer.linkFirstHint')}</p>
+                )}
+              </div>
+
+              {/* Auto Descriptions with Refresh + Copy */}
+              <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <FileText className="w-5 h-5" /> {t('seo.analyzer.autoDescTitle')} {contentType !== 'post' && `(${contentType.charAt(0).toUpperCase() + contentType.slice(1)})`}
+                  </h2>
+                  <button type="button" onClick={fetchDescriptions} disabled={(!caption.trim() && !keywords.trim()) || loadingDescriptions}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50">
+                    {loadingDescriptions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Refresh
+                  </button>
+                </div>
                 <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.autoDescDesc')}</p>
-                {loadingDescriptions ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
-                ) : descriptions.length > 0 ? (
+                {loadingDescriptions ? <Loader2 className="w-6 h-6 animate-spin text-pink-500" /> : descriptions.length > 0 ? (
                   <ul className="space-y-2 max-h-48 overflow-y-auto">
                     {descriptions.map((d, i) => (
-                      <li key={i}>
-                        <button type="button" onClick={() => addDescriptionToField(d.text)} className="w-full text-left p-3 rounded-lg bg-[#212121] hover:bg-[#2a2a2a] border border-[#333] transition">
-                          <span className="text-pink-400 font-semibold text-sm">{d.seoScore}%</span>
-                          <p className="text-sm text-[#CCC] mt-1 line-clamp-2">{d.text}</p>
-                        </button>
+                      <li key={i} className="p-3 rounded-lg bg-[#212121] hover:bg-[#2a2a2a] border border-[#333] transition">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-pink-400 font-semibold text-sm">{d.seoScore}% SEO</span>
+                          <div className="flex gap-1.5">
+                            <button type="button" onClick={() => copyText(d.text, `desc-${i}`)} className="text-xs text-[#888] hover:text-white flex items-center gap-1">
+                              {copiedItem === `desc-${i}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            </button>
+                            <button type="button" onClick={() => addDescriptionToField(d.text)} className="text-xs text-pink-400 hover:text-pink-300">Use</button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-[#CCC] line-clamp-2">{d.text}</p>
                       </li>
                     ))}
                   </ul>
@@ -373,18 +389,30 @@ export default function InstagramSEOPage() {
                 )}
               </div>
 
+              {/* Hashtags with Refresh + Copy All */}
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <Hash className="w-5 h-5" /> {t('seo.analyzer.hashtagsTitle')} {contentType !== 'post' && `(${contentType})`}
-                </h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Hash className="w-5 h-5 text-pink-500" /> {t('seo.analyzer.hashtagsTitle')} {contentType !== 'post' && `(${contentType})`}
+                  </h2>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => copyText(hashtags.map(h => h.tag).join(' '), 'all-hashtags')} disabled={hashtags.length === 0}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2A2A2A] hover:bg-[#333] rounded-lg text-xs text-[#CCC] disabled:opacity-50">
+                      {copiedItem === 'all-hashtags' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />} Copy All
+                    </button>
+                    <button type="button" onClick={fetchHashtags} disabled={loadingHashtags || (!keywords.trim() && !caption.trim())}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50">
+                      {loadingHashtags ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Refresh
+                    </button>
+                  </div>
+                </div>
                 <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.hashtagsDesc')}</p>
-                {loadingHashtags ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
-                ) : hashtags.length > 0 ? (
+                {loadingHashtags ? <Loader2 className="w-6 h-6 animate-spin text-pink-500" /> : hashtags.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {hashtags.map((h, i) => (
-                      <button key={i} type="button" onClick={() => addHashtagToField(h.tag)} className={`px-2 py-1.5 rounded text-sm font-medium transition hover:opacity-90 ${h.viralLevel === 'high' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : h.viralLevel === 'medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-[#212121] text-[#AAA] border border-[#333]'}`}>
-                        {h.tag} {h.viralScore != null && <span className="opacity-90">{h.viralScore}%</span>}
+                      <button key={i} type="button" onClick={() => addHashtagToField(h.tag)}
+                        className={`px-2.5 py-1.5 rounded-lg text-sm font-medium transition hover:scale-105 ${h.viralLevel === 'high' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : h.viralLevel === 'medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-[#212121] text-[#AAA] border border-[#333]'}`}>
+                        {h.tag} {h.viralScore != null && <span className="opacity-70 ml-1">{h.viralScore}%</span>}
                       </button>
                     ))}
                   </div>
@@ -393,21 +421,34 @@ export default function InstagramSEOPage() {
                 )}
               </div>
 
+              {/* Viral Keywords with Refresh + Progress Bars */}
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <Search className="w-5 h-5" /> {t('seo.analyzer.viralKeywordsTitle')}
-                </h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-purple-400" /> {t('seo.analyzer.viralKeywordsTitle')}
+                  </h2>
+                  <button type="button" onClick={fetchKeywords} disabled={loadingKeywords || (!keywords.trim() && !caption.trim())}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50">
+                    {loadingKeywords ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Refresh
+                  </button>
+                </div>
                 <p className="text-xs text-[#888] mb-3">{t('seo.analyzer.viralKeywordsDesc')}</p>
-                {loadingKeywords ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
-                ) : (keywordData?.viralKeywords?.length ?? 0) > 0 ? (
-                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                    {(keywordData?.viralKeywords || []).map((v, i) => (
-                      <button key={i} type="button" onClick={() => addKeywordToField(v.keyword)} className={`px-2 py-1.5 rounded text-sm border transition hover:opacity-90 ${v.viralScore >= 70 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-[#212121] text-[#AAA] border-[#333]'}`}>
-                        <span className="truncate max-w-[140px]">{v.keyword}</span>
-                        <span className="ml-1 font-semibold opacity-90">{v.viralScore}%</span>
-                      </button>
-                    ))}
+                {loadingKeywords ? <Loader2 className="w-6 h-6 animate-spin text-purple-500" /> : (keywordData?.viralKeywords?.length ?? 0) > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {(keywordData?.viralKeywords || []).map((v, i) => {
+                      const kColor = v.viralScore >= 70 ? 'text-emerald-400' : v.viralScore >= 50 ? 'text-amber-400' : 'text-red-400';
+                      const kBar = v.viralScore >= 70 ? 'bg-emerald-500' : v.viralScore >= 50 ? 'bg-amber-500' : 'bg-red-500';
+                      return (
+                        <div key={i} onClick={() => addKeywordToField(v.keyword)}
+                          className="flex items-center justify-between p-2.5 bg-[#111] border border-[#222] rounded-lg cursor-pointer hover:border-purple-500/30 transition group">
+                          <span className="text-sm text-white group-hover:text-purple-300 transition truncate">{v.keyword}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="w-14 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kBar}`} style={{ width: `${v.viralScore}%` }} /></div>
+                            <span className={`text-xs font-bold ${kColor}`}>{v.viralScore}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-[#666] text-sm">{t('seo.analyzer.keywordsHint')}</p>

@@ -2,7 +2,8 @@
  * Ad revenue estimation based on platform, niche, and views.
  * Data-backed by industry average RPM (Revenue Per Mille) values.
  */
-export { PLAN_PRICES } from './planPricing';
+import { PLAN_PRICES } from './planPricing';
+export { PLAN_PRICES };
 
 export interface RevenueFactors {
   platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok';
@@ -81,10 +82,35 @@ export function estimateAdRevenue(factors: RevenueFactors): {
 }
 
 export function calculateTotalRevenue(payments: any[]) {
-    // Keep original subscription revenue logic for dashboard compatibility
-    let total = 0;
-    payments.forEach(p => { if (p.status === 'success') total += p.amount; });
-    return { total };
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+    const startOfWeek = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let total = 0, daily = 0, yesterday = 0, weekly = 0, monthly = 0;
+    let success = 0, failed = 0, pending = 0;
+
+    payments.forEach(p => {
+        const date = new Date(p.createdAt);
+        const amount = Number(p.amount || 0);
+        const status = String(p.status || '').toLowerCase();
+
+        if (status === 'success' || status === 'captured' || status === 'completed') {
+            success++;
+            total += amount;
+            if (date >= startOfToday) daily += amount;
+            if (date >= startOfYesterday && date < startOfToday) yesterday += amount;
+            if (date >= startOfWeek) weekly += amount;
+            if (date >= startOfMonth) monthly += amount;
+        } else if (status === 'failed') {
+            failed++;
+        } else if (status === 'pending' || status === 'created' || status === 'on_profile') {
+            pending++;
+        }
+    });
+
+    return { total, daily, yesterday, weekly, monthly, success, failed, pending };
 }
 
 export function estimateUserRevenue(planId: string | undefined, billingPeriod: string | undefined, status: string | undefined = 'active'): number {

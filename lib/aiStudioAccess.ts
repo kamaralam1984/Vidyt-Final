@@ -56,45 +56,45 @@ export async function requireAIToolAccess(
       };
     }
 
+    // Super-admin always has full access to all AI tools
+    const isSuperAdmin = studio.role === 'super-admin' || studio.role === 'superadmin';
+
     const allowedRoles = doc?.allowedRoles?.length ? doc.allowedRoles : DEFAULT_TOOL_ROLES;
-    if (!allowedRoles.includes(studio.role)) {
+    if (!isSuperAdmin && !allowedRoles.includes(studio.role)) {
       return {
         allowed: false,
         status: 403,
-        error: 'Is AI tool ka access aapke role ke liye enabled nahi hai. Super Admin se baat karein.',
+        error: 'This AI tool is not enabled for your role. Contact Super Admin.',
       };
     }
 
     // 2. Check Plan-based functional access via Plan.featureFlags
-    // We get the planId from user.subscription or user.subscriptionPlan.planId
-    const planId = studio.user.subscription || 'free';
-    const plan = (await Plan.findOne({ planId }).lean()) as any;
-    
-    if (plan) {
-      const featureDef = ALL_FEATURES.find(f => f.id === featureKey);
-      const isAiStudioFeature = featureDef?.group === 'ai_studio';
-      const hasExplicitFlag = plan.featureFlags && (featureKey in plan.featureFlags);
-      const flagValue = plan.featureFlags ? (plan.featureFlags as any)[featureKey] : undefined;
+    // Super-admin bypasses plan checks entirely
+    if (!isSuperAdmin) {
+      const planId = studio.user.subscription || 'free';
+      const plan = (await Plan.findOne({ planId }).lean()) as any;
 
-      // Logic:
-      // If it's an AI Studio feature, it MUST be explicitly true in the plan.
-      // For other features, only block if explicitly false.
-      if (isAiStudioFeature) {
-        if (flagValue !== true) {
-          return {
-            allowed: false,
-            status: 403,
-            error: `Aapka current plan (${plan.label || planId}) is AI feature (${featureDef?.label || featureKey}) ko support nahi karta. Upgrade karein!`,
-          };
-        }
-      } else {
-        // For non-AI Studio features, we only block if it's explicitly set to false
-        if (flagValue === false) {
-          return {
-            allowed: false,
-            status: 403,
-            error: `Feature '${featureDef?.label || featureKey}' is disabled for your plan.`,
-          };
+      if (plan) {
+        const featureDef = ALL_FEATURES.find(f => f.id === featureKey);
+        const isAiStudioFeature = featureDef?.group === 'ai_studio';
+        const flagValue = plan.featureFlags ? (plan.featureFlags as any)[featureKey] : undefined;
+
+        if (isAiStudioFeature) {
+          if (flagValue !== true) {
+            return {
+              allowed: false,
+              status: 403,
+              error: `Your current plan (${plan.label || planId}) does not support this AI feature (${featureDef?.label || featureKey}). Please upgrade.`,
+            };
+          }
+        } else {
+          if (flagValue === false) {
+            return {
+              allowed: false,
+              status: 403,
+              error: `Feature '${featureDef?.label || featureKey}' is disabled for your plan.`,
+            };
+          }
         }
       }
     }

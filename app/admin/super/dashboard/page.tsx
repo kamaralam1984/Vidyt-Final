@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, DollarSign, TrendingUp, Activity,
-  CheckCircle2, XCircle, Clock, BarChart2
+  CheckCircle2, XCircle, Clock, BarChart2, RefreshCw, Loader2
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -100,10 +100,18 @@ export default function AdminDashboardPage() {
   return (
     <div className="p-8 space-y-8">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-white">Dashboard Overview</h1>
-        <p className="text-white/40 text-sm mt-1">Real-time stats and insights</p>
-      </motion.div>
+      <div className="flex items-center justify-between">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2">
+            <BarChart2 className="w-7 h-7 text-[#FF0000]" /> Dashboard Overview
+          </h1>
+          <p className="text-[#999] text-sm mt-1">Real-time stats and insights · Auto-refreshes every 5s</p>
+        </motion.div>
+        <button onClick={() => { fetchOverview(); fetchLive(); }}
+          className="p-2.5 bg-[#1a1a1a] border border-[#333] rounded-xl text-[#888] hover:text-white transition">
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           {error}
@@ -173,14 +181,14 @@ export default function AdminDashboardPage() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.05 + 0.3 }}
-            className="bg-[#141414] border border-white/5 rounded-2xl p-5 flex items-center gap-4"
+            className="bg-[#141414] border border-[#272727] rounded-2xl p-5 flex items-center gap-4"
           >
             <div className={`${bg} w-12 h-12 rounded-xl flex items-center justify-center`}>
               <Icon className={`w-6 h-6 ${color}`} />
             </div>
             <div>
               <p className="text-2xl font-bold text-white">{value}</p>
-              <p className="text-xs text-white/40">{label} Payments</p>
+              <p className="text-xs text-[#999]">{label} Payments</p>
             </div>
           </motion.div>
         ))}
@@ -189,9 +197,9 @@ export default function AdminDashboardPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Growth Trend */}
-        <div className="lg:col-span-2 bg-[#141414] border border-white/5 rounded-2xl p-6">
+        <div className="lg:col-span-2 bg-[#141414] border border-[#272727] rounded-2xl p-6">
           <h3 className="text-sm font-semibold text-white mb-1">User Growth (30 days)</h3>
-          <p className="text-xs text-white/30 mb-5">New registrations per day</p>
+          <p className="text-xs text-[#888] mb-5">New registrations per day</p>
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={overview?.growthTrend || []}>
               <defs>
@@ -200,14 +208,14 @@ export default function AdminDashboardPage() {
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-              <XAxis dataKey="date" tick={{ fill: '#ffffff30', fontSize: 10 }} tickLine={false} axisLine={false}
+              <CartesianGrid strokeDasharray="3 3" stroke="#272727" />
+              <XAxis dataKey="date" tick={{ fill: '#999999', fontSize: 10 }} tickLine={false} axisLine={false}
                 tickFormatter={v => new Date(v).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
               />
-              <YAxis tick={{ fill: '#ffffff30', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fill: '#999999', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8 }}
-                labelStyle={{ color: '#ffffff80', fontSize: 11 }}
+                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333333', borderRadius: 8 }}
+                labelStyle={{ color: '#CCCCCC', fontSize: 11 }}
                 itemStyle={{ fontSize: 12 }}
               />
               <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 10 }} />
@@ -218,9 +226,9 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Plan Distribution */}
-        <div className="bg-[#141414] border border-white/5 rounded-2xl p-6">
+        <div className="bg-[#141414] border border-[#272727] rounded-2xl p-6">
           <h3 className="text-sm font-semibold text-white mb-1">Plan Distribution</h3>
-          <p className="text-xs text-white/30 mb-4">Users per plan</p>
+          <p className="text-xs text-[#888] mb-4">Users per plan</p>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie
@@ -238,14 +246,14 @@ export default function AdminDashboardPage() {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8 }}
+                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333333', borderRadius: 8 }}
                 itemStyle={{ fontSize: 12, color: '#fff' }}
               />
             </PieChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap gap-2 mt-2">
             {(overview?.planDistribution || []).map((p: any) => (
-              <div key={p.plan} className="flex items-center gap-1.5 text-xs text-white/50">
+              <div key={p.plan} className="flex items-center gap-1.5 text-xs text-[#CCC]">
                 <span className="w-2 h-2 rounded-full" style={{ background: PLAN_COLORS_MAP[p.plan] || '#555' }} />
                 {p.plan} ({p.count})
               </div>

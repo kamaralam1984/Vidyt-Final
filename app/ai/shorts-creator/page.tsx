@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Film, Upload, Copy, Download, Loader2, Play, Pause } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Film, Upload, Copy, Download, Loader2, Play, Pause, Sparkles, Scissors, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useTranslations } from '@/context/translations';
@@ -115,27 +116,27 @@ function ClipPreview({
           )}
         </div>
         <div className="flex-1 space-y-2">
-          <p className="text-white font-medium">{clip.title}</p>
-          <p className="text-sm text-[#AAAAAA]">Hook: {clip.hookText}</p>
+          <p className="text-white font-bold">{clip.title}</p>
+          <p className="text-sm text-amber-400">Hook: {clip.hookText}</p>
           <div className="flex flex-wrap gap-1">
             {clip.hashtags.map((h) => (
-              <span key={h} className="text-xs text-[#FF0000]">#{h.replace('#', '')}</span>
+              <span key={h} className="text-xs px-1.5 py-0.5 bg-[#FF0000]/10 text-[#FF0000] rounded">#{h.replace('#', '')}</span>
             ))}
           </div>
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={onCopyCaption}
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#212121] rounded text-sm text-white hover:bg-[#333333]"
-            >
-              <Copy className="w-4 h-4" /> {copied ? 'Copied' : 'Copy caption'}
+          <div className="flex flex-wrap gap-2 pt-2">
+            <button onClick={onCopyCaption}
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#212121] rounded-lg text-sm text-white hover:bg-[#333] transition">
+              <Copy className="w-3.5 h-3.5" /> {copied ? 'Copied!' : 'Copy Caption'}
             </button>
-            <button
-              onClick={onDownload}
-              disabled={isDownloading || !canDownload}
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#FF0000] rounded text-sm text-white hover:bg-[#CC0000] disabled:opacity-50"
-            >
-              {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}{' '}
+            <button onClick={onDownload} disabled={isDownloading || !canDownload}
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#FF0000] rounded-lg text-sm text-white hover:bg-[#CC0000] disabled:opacity-50 transition">
+              {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
               Download
+            </button>
+            {/* Share Buttons */}
+            <button onClick={() => { const text = `${clip.title}\n\n${clip.hookText}\n\n${clip.hashtags.map(h => '#' + h.replace('#','')).join(' ')}`; if (navigator.share) navigator.share({ title: clip.title, text }); else { navigator.clipboard.writeText(text); } }}
+              className="flex items-center gap-1 px-3 py-1.5 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg text-sm hover:bg-purple-600/30 transition">
+              Share
             </button>
           </div>
         </div>
@@ -166,7 +167,24 @@ export default function ShortsCreatorPage() {
   const [endTime, setEndTime] = useState(0);
   const [manualVideoUrl, setManualVideoUrl] = useState<string | null>(null);
   const [manualDownloading, setManualDownloading] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
   const videoRefManual = useRef<HTMLVideoElement>(null);
+
+  // Video editing controls
+  const [videoQuality, setVideoQuality] = useState<'720p' | '1080p' | '4k'>('1080p');
+  const [overlayText, setOverlayText] = useState('');
+  const [textPosition, setTextPosition] = useState<'top' | 'center' | 'bottom'>('bottom');
+  const [textColor, setTextColor] = useState('#FFFFFF');
+  const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [musicVolume, setMusicVolume] = useState(50);
+  const [voiceoverFile, setVoiceoverFile] = useState<File | null>(null);
+  const [overlayImage, setOverlayImage] = useState<File | null>(null);
+  const [overlayImagePreview, setOverlayImagePreview] = useState<string | null>(null);
+  const [imagePosition, setImagePosition] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center'>('bottom-right');
+  const [colorFilter, setColorFilter] = useState<'none' | 'warm' | 'cool' | 'vintage' | 'vivid' | 'bw' | 'cinematic'>('none');
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [showEditPanel, setShowEditPanel] = useState(false);
 
   useEffect(() => {
     if (file && clips.length > 0) {
@@ -256,6 +274,14 @@ export default function ShortsCreatorPage() {
     formData.append('startTime', String(startTime));
     formData.append('endTime', String(endTime));
     formData.append('aspectRatio', aspectRatio);
+    formData.append('quality', videoQuality);
+    if (overlayText) { formData.append('overlayText', overlayText); formData.append('textPosition', textPosition); formData.append('textColor', textColor); }
+    if (musicFile) { formData.append('musicFile', musicFile); formData.append('musicVolume', String(musicVolume)); }
+    if (voiceoverFile) formData.append('voiceoverFile', voiceoverFile);
+    if (overlayImage) { formData.append('overlayImage', overlayImage); formData.append('imagePosition', imagePosition); }
+    if (colorFilter !== 'none') formData.append('colorFilter', colorFilter);
+    if (brightness !== 100) formData.append('brightness', String(brightness));
+    if (contrast !== 100) formData.append('contrast', String(contrast));
 
     try {
       const headers = getAuthHeaders() as Record<string, string>;
@@ -287,7 +313,7 @@ export default function ShortsCreatorPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file && !videoLink.trim()) {
-      alert('Video file upload karein ya YouTube video link paste karein');
+      setGlobalError('Please upload a video file or paste a YouTube video link');
       return;
     }
     setLoading(true);
@@ -307,9 +333,9 @@ export default function ShortsCreatorPage() {
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to generate clips';
       if (err.response?.status === 413) {
-        alert('File too large (413). Please try a smaller video file or use a YouTube link.');
+        setGlobalError('File too large. Please try a smaller video file or use a YouTube link.');
       } else {
-        alert(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+        setGlobalError(typeof errorMsg === 'string' ? errorMsg : 'Failed to generate clips. Try again.');
       }
     } finally {
       setLoading(false);
@@ -318,7 +344,7 @@ export default function ShortsCreatorPage() {
 
   const handleDownload = async (clip: Clip, index: number) => {
     if (!file && !sourceYoutubeUrl) {
-      alert('Download ke liye pehle video upload karein ya link se shorts banayein.');
+      setGlobalError('Please upload a video or use a link to create shorts first.');
       return;
     }
     setDownloadingIndex(index);
@@ -328,6 +354,14 @@ export default function ShortsCreatorPage() {
     formData.append('startTime', String(clip.startTime));
     formData.append('endTime', String(clip.endTime));
     formData.append('aspectRatio', aspectRatio);
+    formData.append('quality', videoQuality);
+    if (overlayText) { formData.append('overlayText', overlayText); formData.append('textPosition', textPosition); formData.append('textColor', textColor); }
+    if (musicFile) { formData.append('musicFile', musicFile); formData.append('musicVolume', String(musicVolume)); }
+    if (voiceoverFile) formData.append('voiceoverFile', voiceoverFile);
+    if (overlayImage) { formData.append('overlayImage', overlayImage); formData.append('imagePosition', imagePosition); }
+    if (colorFilter !== 'none') formData.append('colorFilter', colorFilter);
+    if (brightness !== 100) formData.append('brightness', String(brightness));
+    if (contrast !== 100) formData.append('contrast', String(contrast));
     try {
       const headers = getAuthHeaders() as Record<string, string>;
       const res = await fetch('/api/ai/shorts-creator/cut', {
@@ -347,7 +381,7 @@ export default function ShortsCreatorPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
-      alert(e.message || 'Download failed. Server may need ffmpeg.');
+      setGlobalError(e.message || 'Download failed. Server may need ffmpeg installed.');
     } finally {
       setDownloadingIndex(null);
     }
@@ -357,50 +391,46 @@ export default function ShortsCreatorPage() {
     <DashboardLayout>
       <div className="p-6">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-            <Film className="w-8 h-8 text-[#FF0000]" />
-            Shorts Creator
-          </h1>
-          <p className="text-[#AAAAAA] mb-6">
-            {mode === 'auto'
-              ? 'Video ka link paste karein ya file upload karein – viral/key moments (scene changes) se short clips banenge.'
-              : 'Video link se manually shorts banayein – apne time range chun kar segment cut karein.'}
-          </p>
+          {/* Animated Header */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative mb-6 rounded-2xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-[#FF0000]/10 to-purple-500/10 animate-pulse" />
+            <div className="relative bg-[#0F0F0F]/80 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-6">
+              <div className="flex items-center gap-4">
+                <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}
+                  className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-[#FF0000] flex items-center justify-center shadow-lg shadow-purple-500/30">
+                  <Film className="w-6 h-6 text-white" />
+                </motion.div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-white to-[#FF4444]">
+                    Shorts Creator
+                  </h1>
+                  <p className="text-sm text-[#888] mt-0.5">
+                    {mode === 'auto'
+                      ? 'Upload video or paste link — AI finds viral moments and creates short clips automatically'
+                      : 'Manually select time range from any YouTube video to cut your own shorts'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Error Banner */}
+          {globalError && (
+            <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center justify-between">
+              <span>{globalError}</span>
+              <button onClick={() => setGlobalError(null)} className="text-red-400 hover:text-white ml-4">✕</button>
+            </div>
+          )}
 
           {/* Mode Selector */}
-          <div className="flex gap-3 mb-8">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('auto');
-                setClips([]);
-              }}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                mode === 'auto'
-                  ? 'bg-[#FF0000] text-white shadow-lg shadow-red-600/30'
-                  : 'bg-[#212121] text-[#AAAAAA] hover:bg-[#2A2A2A]'
-              }`}
-            >
-              🤖 Auto Shorts
+          <div className="flex gap-3 mb-6">
+            <button type="button" onClick={() => { setMode('auto'); setClips([]); }}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${mode === 'auto' ? 'bg-gradient-to-r from-[#FF0000] to-purple-600 text-white shadow-lg shadow-red-600/20' : 'bg-[#181818] text-[#888] border border-[#333] hover:text-white'}`}>
+              <Sparkles className="w-4 h-4" /> Auto Shorts
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('manual');
-                setManualVideoLink('');
-                setManualError('');
-                setVideoDuration(0);
-                setStartTime(0);
-                setEndTime(0);
-                setManualVideoUrl(null);
-              }}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                mode === 'manual'
-                  ? 'bg-[#FF0000] text-white shadow-lg shadow-red-600/30'
-                  : 'bg-[#212121] text-[#AAAAAA] hover:bg-[#2A2A2A]'
-              }`}
-            >
-              ✂️ Manual Short
+            <button type="button" onClick={() => { setMode('manual'); setManualVideoLink(''); setManualError(''); setVideoDuration(0); setStartTime(0); setEndTime(0); setManualVideoUrl(null); }}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${mode === 'manual' ? 'bg-gradient-to-r from-[#FF0000] to-purple-600 text-white shadow-lg shadow-red-600/20' : 'bg-[#181818] text-[#888] border border-[#333] hover:text-white'}`}>
+              <Scissors className="w-4 h-4" /> Manual Short
             </button>
           </div>
 
@@ -433,6 +463,152 @@ export default function ShortsCreatorPage() {
             </div>
           </div>
 
+          {/* Video Quality + Edit Panel Toggle */}
+          <div className="mb-6 flex flex-wrap gap-3 items-center justify-between">
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-[#888] font-bold">Quality:</span>
+              {(['720p', '1080p', '4k'] as const).map(q => (
+                <button key={q} type="button" onClick={() => setVideoQuality(q)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${videoQuality === q ? 'bg-emerald-600 text-white' : 'bg-[#222] text-[#888] border border-[#333] hover:text-white'}`}>
+                  {q.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={() => setShowEditPanel(!showEditPanel)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition ${showEditPanel ? 'bg-purple-600 text-white' : 'bg-[#181818] text-[#888] border border-[#333] hover:text-white hover:border-purple-500/50'}`}>
+              <Scissors className="w-4 h-4" /> {showEditPanel ? 'Hide Editor' : 'Video Editor'}
+            </button>
+          </div>
+
+          {/* Video Editing Panel */}
+          {showEditPanel && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+              className="bg-[#181818] border border-purple-500/20 rounded-xl p-6 mb-6 space-y-5">
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <Scissors className="w-5 h-5 text-purple-400" /> Video Editor
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Text Overlay */}
+                <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-3">
+                  <h4 className="text-sm font-bold text-amber-400">Text Overlay</h4>
+                  <input value={overlayText} onChange={(e) => setOverlayText(e.target.value)}
+                    placeholder="Text to show on video..."
+                    className="w-full px-3 py-2 bg-[#0a0a0a] border border-[#333] rounded-lg text-white text-sm placeholder-[#555]" />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-[10px] text-[#888] block mb-1">Position</label>
+                      <select value={textPosition} onChange={(e) => setTextPosition(e.target.value as any)}
+                        className="w-full px-2 py-1.5 bg-[#0a0a0a] border border-[#333] rounded-lg text-white text-xs">
+                        <option value="top">Top</option>
+                        <option value="center">Center</option>
+                        <option value="bottom">Bottom</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[#888] block mb-1">Color</label>
+                      <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)}
+                        className="w-10 h-8 rounded border border-[#333] bg-transparent cursor-pointer" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Color Balance */}
+                <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-3">
+                  <h4 className="text-sm font-bold text-blue-400">Color Balance</h4>
+                  <div>
+                    <label className="text-[10px] text-[#888] block mb-1">Filter</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(['none', 'warm', 'cool', 'vintage', 'vivid', 'bw', 'cinematic'] as const).map(f => (
+                        <button key={f} type="button" onClick={() => setColorFilter(f)}
+                          className={`px-2 py-1 rounded text-[10px] font-bold capitalize ${colorFilter === f ? 'bg-blue-600 text-white' : 'bg-[#222] text-[#888] hover:text-white'}`}>
+                          {f === 'bw' ? 'B&W' : f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] text-[#888] mb-1">
+                      <span>Brightness</span><span>{brightness}%</span>
+                    </div>
+                    <input type="range" min="50" max="150" value={brightness} onChange={(e) => setBrightness(Number(e.target.value))}
+                      className="w-full h-1.5 bg-[#333] rounded-full appearance-none" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] text-[#888] mb-1">
+                      <span>Contrast</span><span>{contrast}%</span>
+                    </div>
+                    <input type="range" min="50" max="150" value={contrast} onChange={(e) => setContrast(Number(e.target.value))}
+                      className="w-full h-1.5 bg-[#333] rounded-full appearance-none" />
+                  </div>
+                </div>
+
+                {/* Music */}
+                <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-3">
+                  <h4 className="text-sm font-bold text-emerald-400">Background Music</h4>
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#0a0a0a] border border-[#333] rounded-lg cursor-pointer hover:border-emerald-500/50 text-sm text-[#888]">
+                      <input type="file" accept="audio/*" className="hidden" onChange={(e) => setMusicFile(e.target.files?.[0] || null)} />
+                      <Upload className="w-4 h-4" /> {musicFile ? musicFile.name.slice(0, 20) : 'Upload MP3/WAV'}
+                    </label>
+                    {musicFile && <button type="button" onClick={() => setMusicFile(null)} className="text-red-400 text-xs">✕</button>}
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] text-[#888] mb-1">
+                      <span>Music Volume</span><span>{musicVolume}%</span>
+                    </div>
+                    <input type="range" min="0" max="100" value={musicVolume} onChange={(e) => setMusicVolume(Number(e.target.value))}
+                      className="w-full h-1.5 bg-[#333] rounded-full appearance-none" />
+                  </div>
+                </div>
+
+                {/* Voiceover */}
+                <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-3">
+                  <h4 className="text-sm font-bold text-pink-400">Voiceover</h4>
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#0a0a0a] border border-[#333] rounded-lg cursor-pointer hover:border-pink-500/50 text-sm text-[#888]">
+                      <input type="file" accept="audio/*" className="hidden" onChange={(e) => setVoiceoverFile(e.target.files?.[0] || null)} />
+                      <Upload className="w-4 h-4" /> {voiceoverFile ? voiceoverFile.name.slice(0, 20) : 'Upload Voiceover'}
+                    </label>
+                    {voiceoverFile && <button type="button" onClick={() => setVoiceoverFile(null)} className="text-red-400 text-xs">✕</button>}
+                  </div>
+                  <p className="text-[10px] text-[#666]">Audio will be mixed with original video audio</p>
+                </div>
+
+                {/* Image Overlay */}
+                <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-3 md:col-span-2">
+                  <h4 className="text-sm font-bold text-amber-400">Image Overlay (Logo/Watermark)</h4>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center justify-center gap-2 px-4 py-2 bg-[#0a0a0a] border border-[#333] rounded-lg cursor-pointer hover:border-amber-500/50 text-sm text-[#888]">
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) { setOverlayImage(f); setOverlayImagePreview(URL.createObjectURL(f)); }
+                      }} />
+                      <Upload className="w-4 h-4" /> {overlayImage ? overlayImage.name.slice(0, 20) : 'Upload Image'}
+                    </label>
+                    {overlayImagePreview && (
+                      <div className="flex items-center gap-2">
+                        <img src={overlayImagePreview} alt="" className="w-10 h-10 rounded object-cover border border-[#333]" />
+                        <button type="button" onClick={() => { setOverlayImage(null); setOverlayImagePreview(null); }} className="text-red-400 text-xs">✕</button>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-[10px] text-[#888] block mb-1">Position</label>
+                      <select value={imagePosition} onChange={(e) => setImagePosition(e.target.value as any)}
+                        className="px-2 py-1.5 bg-[#0a0a0a] border border-[#333] rounded-lg text-white text-xs">
+                        <option value="top-left">Top Left</option>
+                        <option value="top-right">Top Right</option>
+                        <option value="bottom-left">Bottom Left</option>
+                        <option value="bottom-right">Bottom Right</option>
+                        <option value="center">Center</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* Auto Mode Form */}
           {mode === 'auto' && (
             <>
@@ -458,7 +634,7 @@ export default function ShortsCreatorPage() {
                   <p className="text-xs text-[#666] mt-1">{t('shorts.autoHint')}</p>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm text-[#AAAAAA] mb-1">Ya video file upload karein</label>
+                  <label className="block text-sm text-[#AAAAAA] mb-1">Or upload a video file</label>
                   <input
                     type="file"
                     accept="video/*"

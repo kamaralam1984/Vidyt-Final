@@ -13,7 +13,8 @@ import PostingTimeHeatmap from './PostingTimeHeatmap';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useSearchParams } from 'next/navigation';
-import { CheckCircle2, X, Copy, Zap, TrendingUp, Star, Sparkles, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle2, X, Copy, Zap, TrendingUp, Star, Sparkles, Loader2, Search, Hash, Clock, BarChart3, FileText, Image as ImageIcon, Film, Youtube, ArrowRight, CreditCard, Target } from 'lucide-react';
 
 interface AnalysisData {
   viralProbability: number;
@@ -162,6 +163,9 @@ export default function Dashboard() {
   const [youtubeGoogleConnected, setYoutubeGoogleConnected] = useState(false);
   const [allowedSystems, setAllowedSystems] = useState<Record<string, boolean>>({});
   const [scanLine, setScanLine] = useState(0);
+  const [userName, setUserName] = useState('');
+  const [userPlan, setUserPlan] = useState('free');
+  const [usageData, setUsageData] = useState<{ used: number; limit: number; label: string } | null>(null);
 
   // scan line animation
   useEffect(() => {
@@ -178,10 +182,23 @@ export default function Dashboard() {
         if (res.data.user) {
           setIsYoutubeConnected(!!res.data.user.isYoutubeConnected);
           setYoutubeGoogleConnected(!!res.data.user.youtubeGoogleConnected);
+          setUserName(res.data.user.name || res.data.user.email?.split('@')[0] || '');
+          setUserPlan(res.data.user.subscription || res.data.user.plan || 'free');
+        }
+      } catch (_) { }
+    };
+    const fetchUsage = async () => {
+      try {
+        const res = await axios.get('/api/user/usage', { headers: getAuthHeaders() });
+        if (res.data) {
+          const used = res.data.used ?? res.data.totalUsed ?? 0;
+          const limit = res.data.limit ?? res.data.totalLimit ?? 50;
+          setUsageData({ used, limit, label: res.data.label || 'AI Credits' });
         }
       } catch (_) { }
     };
     fetchUser();
+    fetchUsage();
   }, [youtubeQuery]);
 
   useEffect(() => {
@@ -354,31 +371,21 @@ export default function Dashboard() {
                   </motion.div>
 
                   <h1 className="text-4xl lg:text-5xl font-black text-white mb-3 leading-tight">
-                    Welcome to{' '}
-                    <span className="relative">
-                      <span
-                        className="bg-clip-text text-transparent"
-                        style={{ backgroundImage: 'linear-gradient(135deg, #FF0000, #FF6B6B, #FF0000)' }}
-                      >
-                        Vid YT
-                      </span>
-                      <motion.span
-                        className="absolute bottom-0 left-0 h-[2px] w-full"
-                        style={{ background: 'linear-gradient(90deg, #FF0000, transparent)' }}
-                        animate={{ scaleX: [0, 1, 0], originX: 0 }}
-                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                      />
-                    </span>
+                    {userName ? (
+                      <>Welcome, <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #FF0000, #FF6B6B, #FF0000)' }}>{userName}</span></>
+                    ) : (
+                      <>Welcome to <span className="relative"><span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #FF0000, #FF6B6B, #FF0000)' }}>Vid YT</span><motion.span className="absolute bottom-0 left-0 h-[2px] w-full" style={{ background: 'linear-gradient(90deg, #FF0000, transparent)' }} animate={{ scaleX: [0, 1, 0], originX: 0 }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} /></span></>
+                    )}
                   </h1>
                   <p className="text-[#777] text-base max-w-xl">
                     Analyze and optimize your videos for maximum viral potential using our AI-powered engine.
                   </p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-                    <StatChip icon={Zap} label="AI Analysis" value="Real-time" color="#FF0000" />
-                    <StatChip icon={TrendingUp} label="Viral Score" value="Precision" color="#8B5CF6" />
-                    <StatChip icon={Star} label="Thumbnail" value="AI Vision" color="#F59E0B" />
-                    <StatChip icon={Sparkles} label="SEO Engine" value="GPT-4" color="#10B981" />
+                    <StatChip icon={CreditCard} label="Plan" value={userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} color="#8B5CF6" />
+                    <StatChip icon={Zap} label={usageData?.label || 'Credits'} value={usageData ? `${usageData.used}/${usageData.limit}` : '—'} color="#FF0000" />
+                    <StatChip icon={Youtube} label="YouTube" value={isYoutubeConnected ? 'Connected' : 'Not Linked'} color={isYoutubeConnected ? '#10B981' : '#F59E0B'} />
+                    <StatChip icon={Sparkles} label="AI Engine" value="Active" color="#10B981" />
                   </div>
                 </div>
 
@@ -437,6 +444,61 @@ export default function Dashboard() {
                   youtubeGoogleConnected={youtubeGoogleConnected}
                   allowedSystems={allowedSystems}
                 />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Quick Actions */}
+          {!analysis && (
+            <motion.div variants={itemVariants} className="mb-8">
+              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <span className="w-1.5 h-4 rounded-full bg-red-500 inline-block" />
+                Quick Actions
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {[
+                  { href: '/dashboard/youtube-seo', icon: Search, label: 'YouTube SEO', desc: 'Live SEO Analyzer', color: '#FF0000', enabled: allowedSystems['youtube_seo'] !== false },
+                  { href: '/dashboard/keyword-intelligence', icon: Zap, label: 'Keywords', desc: 'AI Keyword Intel', color: '#8B5CF6', enabled: allowedSystems['keyword_intelligence'] !== false },
+                  { href: '/dashboard/viral-intelligence', icon: Sparkles, label: 'Ultra AI Engine', desc: 'Viral Intelligence', color: '#F59E0B', enabled: allowedSystems['viral_intelligence'] !== false },
+                  { href: '/ai/script-generator', icon: FileText, label: 'Script Gen', desc: 'AI Video Scripts', color: '#10B981', enabled: allowedSystems['script_generator'] !== false },
+                  { href: '/ai/thumbnail-generator', icon: ImageIcon, label: 'Thumbnails', desc: 'AI Generator', color: '#EC4899', enabled: allowedSystems['thumbnail_generator'] !== false },
+                  { href: '/ai/hook-generator', icon: Star, label: 'Hook Gen', desc: 'Viral Hooks', color: '#3B82F6', enabled: allowedSystems['hook_generator'] !== false },
+                  { href: '/trending', icon: TrendingUp, label: 'Trending', desc: 'Hot Topics', color: '#EF4444', enabled: allowedSystems['trending'] !== false },
+                  { href: '/hashtags', icon: Hash, label: 'Hashtags', desc: 'Viral Tags', color: '#6366F1', enabled: allowedSystems['hashtags'] !== false },
+                  { href: '/posting-time', icon: Clock, label: 'Post Time', desc: 'Best Schedule', color: '#F97316', enabled: allowedSystems['posting_time'] !== false },
+                  { href: '/analytics', icon: BarChart3, label: 'Analytics', desc: 'Channel Stats', color: '#14B8A6', enabled: allowedSystems['analytics'] !== false },
+                  { href: '/ai/shorts-creator', icon: Film, label: 'Shorts', desc: 'Auto Creator', color: '#A855F7', enabled: allowedSystems['shorts_creator'] !== false },
+                  { href: '/dashboard/viral-optimizer', icon: Target, label: 'Optimizer', desc: 'Viral Engine', color: '#DC2626', enabled: allowedSystems['viral_optimizer'] !== false },
+                ].filter(item => item.enabled).map((item, i) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                        whileHover={{ scale: 1.03, y: -2 }}
+                        className="relative p-4 rounded-xl border border-white/[0.06] cursor-pointer group overflow-hidden"
+                        style={{ background: 'rgba(15,15,15,0.95)' }}
+                      >
+                        <div className="absolute top-0 left-0 right-0 h-[1px] opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: `linear-gradient(90deg, transparent, ${item.color}80, transparent)` }} />
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: `radial-gradient(circle at center, ${item.color}08, transparent 70%)` }} />
+                        <div className="relative flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${item.color}15` }}>
+                            <Icon className="w-5 h-5" style={{ color: item.color }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-white truncate">{item.label}</p>
+                            <p className="text-[10px] text-[#666]">{item.desc}</p>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-[#333] group-hover:text-white transition-colors ml-auto flex-shrink-0" />
+                        </div>
+                      </motion.div>
+                    </Link>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -663,12 +725,12 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes shimmer {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
         }
-      `}</style>
+      ` }} />
     </div>
   );
 }

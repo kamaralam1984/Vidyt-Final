@@ -2,202 +2,257 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import DashboardLayout from '@/components/DashboardLayout';
+import { Sparkles, Download, Loader2, RefreshCw, Copy, Check, Image as ImageIcon, Zap, X, Wand2 } from 'lucide-react';
+import { getAuthHeaders } from '@/utils/auth';
+import { useTranslations } from '@/context/translations';
+import axios from 'axios';
+import { addTextOverlay } from '@/lib/textOverlay';
 
-interface ThumbnailInput {
-  video_title: string;
-  topic: string;
-  emotion: string;
-  niche: string;
-}
+const EMOTIONS = ['curiosity', 'shock', 'fear', 'urgency', 'excitement', 'anger', 'joy', 'dramatic', 'mystery', 'hype'];
+const NICHES = ['news', 'entertainment', 'gaming', 'education', 'food', 'travel', 'tech', 'fitness', 'beauty', 'music', 'finance', 'comedy'];
+const STYLES = [
+  { id: 'cinematic', label: 'Cinematic Film Poster', desc: 'Hollywood movie poster quality' },
+  { id: 'mrbeast', label: 'MrBeast Style', desc: 'Bold, colorful, expressive' },
+  { id: 'realistic', label: 'Photo Realistic', desc: 'Hyper-realistic photography' },
+  { id: 'anime', label: 'Anime / Manga', desc: 'Japanese anime art style' },
+  { id: '3d', label: '3D Render', desc: 'Pixar/3D cartoon style' },
+  { id: 'neon', label: 'Neon Cyberpunk', desc: 'Neon lights, dark futuristic' },
+  { id: 'minimal', label: 'Clean Minimal', desc: 'Simple, modern, elegant' },
+  { id: 'vintage', label: 'Retro Vintage', desc: 'Old school, film grain' },
+];
 
-interface ThumbnailOutput {
-  thumbnail_text: string;
-  image_prompt: string;
-  variations: string[];
-  ctr_scores: number[];
-  reasoning: string[];
-  design: {
-    colors: string[];
-    layout: string;
-    effects: string;
-  };
-  image_url?: string;
-  original_title?: string;
-  original_topic?: string;
-  warning?: string;
+interface GeneratedThumb {
+  url: string;
+  text: string;
+  ctr: number;
+  style: string;
+  prompt: string;
   provider?: string;
-  generationProvider?: string;
 }
 
 export default function ThumbnailGenerator() {
-  const [input, setInput] = useState<ThumbnailInput>({
-    video_title: '',
-    topic: '',
-    emotion: 'curiosity',
-    niche: 'news'
-  });
-  
-  const [images, setImages] = useState<(string | null)[]>([null, null, null]);
-
-  const [output, setOutput] = useState<ThumbnailOutput | null>(null);
+  const { t } = useTranslations();
+  const [title, setTitle] = useState('');
+  const [topic, setTopic] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [emotion, setEmotion] = useState('curiosity');
+  const [niche, setNiche] = useState('entertainment');
+  const [style, setStyle] = useState('cinematic');
+  const [images, setImages] = useState<(string | null)[]>([null, null]);
   const [loading, setLoading] = useState(false);
-  const [statusText, setStatusText] = useState('Generating Thumbnail...');
-  const [activeVariation, setActiveVariation] = useState(0);
+  const [results, setResults] = useState<GeneratedThumb[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedItem, setCopiedItem] = useState<string | null>(null);
+  const [usePromptMode, setUsePromptMode] = useState(false);
 
-  const emotions = ['curiosity', 'fear', 'urgency', 'shock', 'excitement', 'anger'];
-  const niches = ['news', 'entertainment', 'gaming', 'education'];
+  const copyText = (text: string, label: string) => {
+    try { navigator.clipboard.writeText(text); } catch {}
+    setCopiedItem(label);
+    setTimeout(() => setCopiedItem(null), 2000);
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const newImages = [...images];
-        newImages[index] = reader.result as string;
-        setImages(newImages);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const newImages = [...images];
+      newImages[index] = (reader.result as string).split(',')[1]; // base64 without prefix
+      setImages(newImages);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = [...images];
+    newImages[index] = null;
+    setImages(newImages);
+  };
+
+  const getStylePromptSuffix = () => {
+    switch (style) {
+      case 'anime': return 'anime art style, vibrant colors, manga illustration, Japanese animation quality';
+      case '3d': return '3D render, Pixar quality, smooth cartoon style, high detail CGI';
+      case 'neon': return 'neon cyberpunk style, dark background, glowing neon lights, futuristic, purple and cyan';
+      case 'minimal': return 'clean minimal design, simple modern layout, lots of whitespace, elegant typography';
+      case 'vintage': return 'retro vintage style, film grain, warm colors, 70s-80s aesthetic, old school';
+      case 'mrbeast': return 'MrBeast YouTube thumbnail style, extremely bold text, exaggerated expression, ultra colorful, high energy';
+      case 'realistic': return 'hyper-realistic photography, 8k, professional photo, studio lighting, ultra detailed';
+      default: return 'cinematic film poster, dramatic lighting, Hollywood quality, epic composition, volumetric light';
     }
   };
 
   const handleGenerate = async () => {
-    // If no images, traditional title-based generation
-    // If images, analysis-based generation
-    const hasImages = images.some(img => img !== null);
-    
+    if (!title.trim() && !customPrompt.trim() && !topic.trim()) {
+      setError('Please enter a title, topic, or custom prompt');
+      return;
+    }
+
     setLoading(true);
-    setStatusText(hasImages ? 'Analyzing Images & Improving Prompt...' : 'Generating AI Prompt...');
-    
+    setResults([]);
+    setError(null);
+
+    const hasImages = images.some(img => img !== null);
+    const validImages = images.filter(img => img !== null);
+    const styleSuffix = getStylePromptSuffix();
+
     try {
-      const endpoint = hasImages ? '/api/ai/thumbnail-from-image' : '/api/ai/thumbnail-generator';
-      const validImages = images.filter(img => img !== null);
+      // All 3 variations use the SAME topic — only angle/composition changes
+      const mainTopic = topic || title || customPrompt.split(' ').slice(0, 6).join(' ') || 'viral content';
+      const mainTitle = title || topic || 'Viral Content';
 
-      const payload = hasImages 
-        ? {
-            imageBase64: validImages, // Send all uploaded images
-            emotion: input.emotion,
-            niche: input.niche,
-            videoTitle: input.video_title, 
-            topic: input.topic, 
-            generateImage: true
-          }
-        : {
-            videoTitle: input.video_title,
-            topic: input.topic,
-            emotion: input.emotion,
-            niche: input.niche,
-            generateImage: true
-          };
+      // Build topic-locked prompts so ALL 3 images match the topic
+      const baseScenePrompt = usePromptMode && customPrompt.trim()
+        ? `${customPrompt.trim()}. Style: ${styleSuffix}`
+        : `A dramatic, cinematic scene about "${mainTopic}". ${getStylePromptSuffix()}. The image must clearly show what "${mainTopic}" is about. Hyper-realistic, 8K quality, dramatic lighting, cinematic composition.`;
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const variations = [
+        { label: STYLES.find(s => s.id === style)?.label || 'Custom', promptExtra: `Wide shot, epic composition, full scene visible.` },
+        { label: 'Close-Up Dramatic', promptExtra: `Close-up dramatic shot, intense facial expression or detail, shallow depth of field.` },
+        { label: 'Action Shot', promptExtra: `Dynamic action angle, motion blur, high energy, intense moment captured.` },
+      ];
+
+      const promises = variations.map(async (variant) => {
+        const endpoint = hasImages ? '/api/ai/thumbnail-from-image' : '/api/ai/thumbnail-generator';
+        const topicPrompt = `${baseScenePrompt} ${variant.promptExtra}`;
+
+        const payload = hasImages ? {
+          imageBase64: validImages,
+          emotion,
+          niche,
+          videoTitle: mainTitle,
+          topic: mainTopic,
+          generateImage: true,
+          customPrompt: topicPrompt,
+        } : {
+          videoTitle: mainTitle,
+          topic: mainTopic,
+          emotion,
+          niche,
+          generateImage: true,
+          customPrompt: topicPrompt,
+        };
+
+        const res = await axios.post(endpoint, payload, { headers: getAuthHeaders() });
+        return {
+          url: res.data.image_url || '',
+          text: res.data.thumbnail_text || '',
+          ctr: res.data.ctr_scores?.[0] || 75,
+          style: variant.label,
+          prompt: res.data.image_prompt || '',
+          provider: res.data.generationProvider || 'ai',
+        };
       });
 
-      const result: ThumbnailOutput = await response.json();
-      if (!response.ok) throw new Error((result as any).error || 'Generation failed');
-      
-      if (result.original_title && !input.video_title) {
-        setInput(prev => ({ ...prev, video_title: result.original_title || prev.video_title }));
-      }
-      if (result.original_topic && !input.topic) {
-        setInput(prev => ({ ...prev, topic: result.original_topic || prev.topic }));
+      const settled = await Promise.allSettled(promises);
+      const thumbs: GeneratedThumb[] = [];
+      for (const r of settled) {
+        if (r.status === 'fulfilled' && r.value.url) {
+          thumbs.push(r.value);
+        }
       }
 
-      setOutput(result);
-    } catch (error: any) {
-      console.error('Generation failed:', error);
-      alert(error.message || 'Failed to generate thumbnail');
+      if (thumbs.length === 0) {
+        setError('Image generation failed. Check if API keys are configured in Super Admin.');
+      } else {
+        // Overlay bold 3D VFX text on each thumbnail
+        const overlayText = title.trim() || topic.trim() || customPrompt.split(' ').slice(0, 5).join(' ') || 'VIRAL';
+        const withText = await Promise.all(
+          thumbs.map(async (t) => {
+            try {
+              const overlaid = await addTextOverlay(t.url, overlayText, {
+                position: 'top',
+                glowColor: '#FF4400',
+                color: '#FFFFFF',
+              });
+              return { ...t, url: overlaid };
+            } catch {
+              return t; // fallback to original if overlay fails
+            }
+          })
+        );
+        setResults(withText);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Generation failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownload = async () => {
-    if (!output?.image_url) return;
+  const handleDownload = async (url: string, index: number) => {
     try {
-      const response = await fetch(output.image_url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `thumbnail-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download failed:', error);
-      // Fallback: open in new tab
-      window.open(output.image_url, '_blank');
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `thumbnail-${index + 1}-${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, '_blank');
     }
   };
 
-  const allTexts = output ? [output.thumbnail_text, ...output.variations] : [];
-  const allScores = output ? output.ctr_scores : [];
-
   return (
-    <div className="min-h-screen bg-black text-white p-6">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-red-900/20 via-black to-yellow-900/20 animate-pulse" />
-      </div>
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        <motion.h1 
-          className="text-5xl font-bold text-center mb-8 bg-gradient-to-r from-red-500 to-yellow-500 bg-clip-text text-transparent"
-        >
-          AI Thumbnail Generator
-        </motion.h1>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Input Form */}
-          <motion.div 
-            className="backdrop-blur-lg bg-white/10 rounded-2xl p-8 border border-white/20"
-          >
-            <h2 className="text-2xl font-semibold mb-6 text-red-400">🎯 Customize Your Thumbnail</h2>
-            
-            <div className="space-y-6">
-              {/* Multi-Image Upload Area */}
+    <DashboardLayout>
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative mb-6 rounded-2xl overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-purple-500/10 to-amber-500/10 animate-pulse" />
+          <div className="relative bg-[#0F0F0F]/80 backdrop-blur-xl border border-red-500/20 rounded-2xl p-6">
+            <div className="flex items-center gap-4">
+              <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 3, repeat: Infinity }}
+                className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 via-purple-500 to-amber-500 flex items-center justify-center shadow-lg shadow-red-500/30">
+                <ImageIcon className="w-6 h-6 text-white" />
+              </motion.div>
               <div>
-                <label className="block text-sm font-medium mb-4 text-gray-300">Upload Subject Images (Up to 3)</label>
-                <div className="grid grid-cols-3 gap-4">
-                  {images.map((img, index) => (
-                    <div key={index} className="relative aspect-square border-2 border-dashed border-red-500/30 rounded-xl bg-black/30 hover:border-red-500/60 transition-all flex items-center justify-center overflow-hidden group">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleImageUpload(e, index)}
-                        className="hidden"
-                        id={`imageUpload-${index}`}
-                      />
-                      <label htmlFor={`imageUpload-${index}`} className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
+                <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-purple-400 to-amber-400">
+                  {t('ai.thumbnail.title')}
+                </h1>
+                <p className="text-sm text-[#888] mt-0.5">Create AI-powered thumbnails like ChatGPT, Gemini & Whisk</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* LEFT: Input */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Mode Toggle */}
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-4">
+              <div className="flex gap-2 p-1 bg-[#111] rounded-xl">
+                <button onClick={() => setUsePromptMode(false)}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition ${!usePromptMode ? 'bg-red-600 text-white' : 'text-[#888] hover:text-white'}`}>
+                  Title + Niche Mode
+                </button>
+                <button onClick={() => setUsePromptMode(true)}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition ${usePromptMode ? 'bg-purple-600 text-white' : 'text-[#888] hover:text-white'}`}>
+                  <Wand2 className="w-4 h-4 inline mr-1" /> Custom Prompt
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-[#181818] border border-[#212121] rounded-xl p-6 space-y-4">
+              {/* Image Upload */}
+              <div>
+                <label className="text-sm font-medium text-[#AAA] mb-2 block">Upload Photos (optional, max 2)</label>
+                <div className="flex gap-3">
+                  {images.map((img, i) => (
+                    <div key={i} className="relative w-20 h-20 rounded-xl border-2 border-dashed border-[#333] overflow-hidden group hover:border-red-500/50 transition">
+                      <input type="file" accept="image/*" className="hidden" id={`img-${i}`} onChange={(e) => handleImageUpload(e, i)} />
+                      <label htmlFor={`img-${i}`} className="cursor-pointer w-full h-full flex items-center justify-center">
                         {img ? (
-                          <div className="relative w-full h-full">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <span className="text-[10px] text-white font-bold uppercase">Change</span>
-                            </div>
-                          </div>
+                          <img src={`data:image/png;base64,${img}`} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="text-gray-500 group-hover:text-red-400 flex flex-col items-center">
-                            <span className="text-2xl">+</span>
-                            <span className="text-[10px] uppercase font-bold tracking-tighter">Image {index + 1}</span>
-                          </div>
+                          <span className="text-[#555] text-2xl">+</span>
                         )}
                       </label>
                       {img && (
-                        <button 
-                          onClick={() => {
-                            const newImages = [...images];
-                            newImages[index] = null;
-                            setImages(newImages);
-                          }}
-                          className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center shadow-lg"
-                        >
-                          ✕
+                        <button onClick={() => removeImage(i)} className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                          <X className="w-3 h-3" />
                         </button>
                       )}
                     </div>
@@ -205,184 +260,154 @@ export default function ThumbnailGenerator() {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              {usePromptMode ? (
+                /* Custom Prompt Mode */
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Video Title</label>
-                  <input
-                    type="text"
-                    value={input.video_title}
-                    onChange={(e) => setInput({ ...input, video_title: e.target.value })}
-                    className="w-full px-4 py-3 bg-black/50 border border-red-500/30 rounded-lg focus:border-red-500 focus:outline-none text-white placeholder-gray-500"
-                    placeholder="Enter your video title (optional if using images)..."
-                  />
+                  <label className="text-sm font-medium text-[#AAA] mb-1 block">Describe what you want (like ChatGPT/Gemini)</label>
+                  <textarea value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} rows={4}
+                    placeholder="e.g. A shocked face person looking at a giant gold play button floating in the sky, dramatic lightning, cinematic movie poster style..."
+                    className="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white placeholder-[#555] focus:ring-2 focus:ring-purple-500 resize-none" />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Target Topic</label>
-                  <input
-                    type="text"
-                    value={input.topic}
-                    onChange={(e) => setInput({ ...input, topic: e.target.value })}
-                    className="w-full px-4 py-3 bg-black/50 border border-red-500/30 rounded-lg focus:border-red-500 focus:outline-none text-white placeholder-gray-500"
-                    placeholder="Main topic or keyword..."
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Emotion</label>
-                  <select
-                    value={input.emotion}
-                    onChange={(e) => setInput({ ...input, emotion: e.target.value })}
-                    className="w-full px-4 py-3 bg-black/50 border border-red-500/30 rounded-lg focus:border-red-500 focus:outline-none text-white"
-                  >
-                    {emotions.map(emotion => (
-                      <option key={emotion} value={emotion}>{emotion}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Niche</label>
-                  <select
-                    value={input.niche}
-                    onChange={(e) => setInput({ ...input, niche: e.target.value })}
-                    className="w-full px-4 py-3 bg-black/50 border border-red-500/30 rounded-lg focus:border-red-500 focus:outline-none text-white"
-                  >
-                    {niches.map(niche => (
-                      <option key={niche} value={niche}>{niche}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <motion.button
-                onClick={handleGenerate}
-                disabled={loading}
-                className="w-full py-4 bg-gradient-to-r from-red-600 to-red-500 rounded-lg font-semibold text-lg hover:from-red-700 hover:to-red-600 transition-all duration-300 disabled:opacity-50 shadow-lg hover:shadow-red-500/25"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {loading ? `🔄 ${statusText}` : '⚡ Generate Thumbnail Image'}
-              </motion.button>
-            </div>
-          </motion.div>
-
-          {/* Output Section */}
-          <motion.div 
-            className="backdrop-blur-lg bg-white/10 rounded-2xl p-8 border border-white/20"
-          >
-            <h2 className="text-2xl font-semibold mb-6 text-yellow-400">🎨 Generated Final Thumbnail</h2>
-            
-            <AnimatePresence mode="wait">
-              {output ? (
-                <motion.div
-                  key="output"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="space-y-6"
-                >
-                  {/* Generated Final Image */}
-                  <div className="relative group">
-                    <div className="w-full relative aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center border border-gray-700">
-                       {output.image_url ? (
-                         <>
-                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                           <img 
-                             src={output.image_url} 
-                             alt="Generated AI Thumbnail" 
-                             className="w-full h-full object-cover"
-                             onError={(e) => {
-                               // If image fails to load, show a placeholder or error
-                               const target = e.target as HTMLImageElement;
-                               target.src = 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&w=1024&q=80';
-                             }}
-                           />
-                           {/* Overlay with Download Button */}
-                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                             <button
-                               onClick={handleDownload}
-                               className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-xl transform scale-90 group-hover:scale-100 transition-transform"
-                             >
-                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                               Download Thumbnail
-                             </button>
-                           </div>
-                         </>
-                       ) : (
-                         <div className="text-center p-6">
-                           <div className="text-4xl mb-2">⚠️</div>
-                           <p className="text-red-500 font-semibold">{output.warning || 'AI Image Generation failed'}</p>
-                           <p className="text-xs text-gray-400 mt-2">Text variations and prompts are still available below.</p>
-                         </div>
-                       )}
-                       
-                      <div className="absolute top-4 right-4 bg-green-500 text-black px-3 py-1 rounded-full font-bold text-sm shadow-md z-20">
-                        Pred. CTR: {allScores[activeVariation]}%
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Image Prompt */}
-                  <div className="bg-black/30 p-4 rounded-lg border border-yellow-500/20">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="text-sm font-semibold text-yellow-400">🧠 AI Image Generation Prompt</h4>
-                      {(output.provider || output.generationProvider) && (
-                        <div className="flex gap-2">
-                          {output.provider && (
-                            <span className="text-[9px] bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded uppercase text-blue-400 tracking-wider">
-                              Analysis: {output.provider}
-                            </span>
-                          )}
-                          {output.generationProvider && (
-                            <span className="text-[9px] bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 rounded uppercase text-purple-400 tracking-wider">
-                              Gen: {output.generationProvider}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-300 leading-relaxed font-mono">{output.image_prompt}</p>
-                  </div>
-
-                  {/* Hook texts */}
-                  <div className="space-y-3">
-                    <h4 className="text-lg font-semibold text-gray-300">✍️ Generated Title Variations</h4>
-                    {allTexts.map((text, index) => (
-                      <motion.div
-                        key={index}
-                        onClick={() => setActiveVariation(index)}
-                        className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                          activeVariation === index 
-                            ? 'bg-red-500/20 border-red-500' 
-                            : 'bg-white/5 border-gray-600 hover:bg-white/10'
-                        }`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{text}</span>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                </motion.div>
               ) : (
-                <motion.div
-                  key="placeholder"
-                  className="flex items-center justify-center h-[400px] text-gray-500"
-                >
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">🖼️</div>
-                    <p>Generated image and AI prompts will appear here</p>
+                /* Title + Niche Mode */
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-[#AAA] mb-1 block">Video Title</label>
+                    <input value={title} onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. How to Go Viral on YouTube 2025"
+                      className="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white placeholder-[#555] focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-[#AAA] mb-1 block">Topic / Keyword</label>
+                    <input value={topic} onChange={(e) => setTopic(e.target.value)}
+                      placeholder="e.g. YouTube growth, cooking, gaming"
+                      className="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white placeholder-[#555] focus:ring-2 focus:ring-red-500" />
+                  </div>
+                </>
+              )}
+
+              {/* Emotion + Niche */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[#888] mb-1 block">Emotion</label>
+                  <select value={emotion} onChange={(e) => setEmotion(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-[#111] border border-[#333] rounded-xl text-white text-sm">
+                    {EMOTIONS.map(e => <option key={e}>{e}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-[#888] mb-1 block">Niche</label>
+                  <select value={niche} onChange={(e) => setNiche(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-[#111] border border-[#333] rounded-xl text-white text-sm">
+                    {NICHES.map(n => <option key={n}>{n}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Style Selector */}
+              <div>
+                <label className="text-xs text-[#888] mb-2 block">Art Style</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {STYLES.map(s => (
+                    <button key={s.id} onClick={() => setStyle(s.id)}
+                      className={`p-2.5 rounded-xl text-left transition border ${style === s.id ? 'bg-red-500/10 border-red-500/50 text-white' : 'border-[#333] text-[#888] hover:border-[#555]'}`}>
+                      <p className="text-xs font-bold">{s.label}</p>
+                      <p className="text-[9px] opacity-60">{s.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Generate Button */}
+              <div className="flex gap-2">
+                <button onClick={handleGenerate} disabled={loading}
+                  className="flex-1 py-3.5 bg-gradient-to-r from-red-600 via-purple-600 to-amber-600 text-white rounded-xl font-black text-sm shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center justify-center gap-2 transition hover:shadow-red-500/40">
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {loading ? 'Generating 3 Variations...' : 'Generate AI Thumbnails'}
+                </button>
+                {results.length > 0 && (
+                  <button onClick={handleGenerate} disabled={loading}
+                    className="px-4 py-3.5 bg-[#222] border border-[#444] text-white rounded-xl hover:bg-[#333] transition">
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: Results */}
+          <div className="lg:col-span-3 space-y-4">
+            {error && (
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{error}</div>
+            )}
+
+            {loading && (
+              <div className="bg-[#181818] border border-[#212121] rounded-xl p-16 text-center">
+                <Loader2 className="w-12 h-12 animate-spin text-red-500 mx-auto mb-4" />
+                <p className="text-white font-bold mb-1">AI is creating 3 thumbnail variations...</p>
+                <p className="text-xs text-[#888]">Using {style} style with {emotion} emotion</p>
+              </div>
+            )}
+
+            {!loading && results.length === 0 && !error && (
+              <div className="bg-[#181818] border border-[#212121] rounded-xl p-16 text-center">
+                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+                  <ImageIcon className="w-16 h-16 text-[#333] mx-auto mb-3" />
+                </motion.div>
+                <p className="text-white font-bold mb-1">Your AI thumbnails will appear here</p>
+                <p className="text-xs text-[#888]">Enter a title or custom prompt and click Generate</p>
+              </div>
+            )}
+
+            {/* Generated Thumbnails */}
+            <AnimatePresence>
+              {results.map((thumb, i) => (
+                <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.15 }}
+                  className="bg-[#181818] border border-[#212121] rounded-xl overflow-hidden group">
+                  {/* Image */}
+                  <div className="relative aspect-video bg-[#111]">
+                    <img src={thumb.url} alt={`Thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-3">
+                      <button onClick={() => handleDownload(thumb.url, i)}
+                        className="px-5 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-red-700 transition shadow-lg">
+                        <Download className="w-4 h-4" /> Download
+                      </button>
+                    </div>
+                    {/* CTR Badge */}
+                    <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-black ${thumb.ctr >= 85 ? 'bg-emerald-500 text-white' : thumb.ctr >= 70 ? 'bg-amber-500 text-black' : 'bg-red-500 text-white'}`}>
+                      CTR: {thumb.ctr}%
+                    </div>
+                    {/* Style Badge */}
+                    <div className="absolute top-3 left-3 px-3 py-1 bg-black/70 backdrop-blur rounded-full text-xs font-bold text-white">
+                      {thumb.style}
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-bold text-white">{thumb.text}</p>
+                      <span className="text-[10px] text-[#888]">{thumb.provider}</span>
+                    </div>
+                    {/* Prompt */}
+                    <details className="group/details">
+                      <summary className="text-xs text-purple-400 cursor-pointer hover:text-purple-300">View AI Prompt</summary>
+                      <div className="mt-2 p-3 bg-[#111] rounded-lg border border-[#222]">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="text-[10px] text-[#888] font-mono leading-relaxed flex-1">{thumb.prompt.slice(0, 300)}...</p>
+                          <button onClick={() => copyText(thumb.prompt, `prompt-${i}`)} className="ml-2 flex-shrink-0">
+                            {copiedItem === `prompt-${i}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-[#666]" />}
+                          </button>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 </motion.div>
-              )}
+              ))}
             </AnimatePresence>
-          </motion.div>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

@@ -54,11 +54,20 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date();
-    const discounts = await PlanDiscount.find({ startsAt: { $lte: now }, endsAt: { $gte: now } })
-      .lean();
+    const discounts = await PlanDiscount.find({
+      startsAt: { $lte: now },
+      endsAt: { $gte: now },
+      isActive: { $ne: false },
+    }).lean();
 
     const plansWithDiscount = plans.map((plan) => {
-      const d = discounts.find((disc: any) => disc.planId === plan.id || disc.planId === plan.dbId);
+      const d = discounts.find((disc: any) => {
+        const matchesPlan = disc.planId === plan.id || disc.planId === plan.dbId;
+        if (!matchesPlan) return false;
+        // Skip if max uses reached
+        if (disc.maxUses > 0 && (disc.usageCount || 0) >= disc.maxUses) return false;
+        return true;
+      });
       if (!d) return plan;
       const discountedPrice = Math.max(0, plan.price - (plan.price * d.percentage) / 100);
       return {
@@ -66,6 +75,8 @@ export async function GET(request: NextRequest) {
         discount: {
           percentage: d.percentage,
           label: d.label || '',
+          couponCode: d.couponCode || '',
+          billingPeriod: d.billingPeriod || 'both',
           startsAt: d.startsAt,
           endsAt: d.endsAt,
           discountedPrice,

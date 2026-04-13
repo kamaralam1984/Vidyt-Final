@@ -26,6 +26,7 @@ import {
   ChevronRight,
   Info
 } from 'lucide-react';
+import { useTranslations } from '@/context/translations';
 import {
   LineChart,
   Line,
@@ -100,12 +101,119 @@ interface AnalyticsOverview {
 }
 
 export default function AnalyticsPage() {
+  const { t } = useTranslations();
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [channelUrl, setChannelUrl] = useState('');
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [channelData, setChannelData] = useState<ChannelAnalytics | null>(null);
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const downloadGrowthPdf = async () => {
+    if (!channelData || downloadingPdf) return;
+    setDownloadingPdf(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF();
+      const ch = channelData.channelInfo;
+      const perf = channelData.videoPerformance;
+
+      doc.setFontSize(20);
+      doc.setTextColor(255, 0, 0);
+      doc.text('Growth Analytics Report', 20, 25);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 33);
+      doc.line(20, 37, 190, 37);
+
+      doc.setFontSize(16);
+      doc.setTextColor(30, 30, 30);
+      doc.text(ch.title || 'Channel', 20, 48);
+
+      const stats = [
+        ['Subscribers', ch.statistics?.subscriberCount?.toLocaleString() || '0'],
+        ['Total Views', ch.statistics?.viewCount?.toLocaleString() || '0'],
+        ['Total Videos', ch.statistics?.videoCount?.toLocaleString() || '0'],
+        ['Avg Engagement', `${perf?.averageEngagementRate || 0}%`],
+        ['Growth Velocity', `${(perf?.growthVelocity || 0).toLocaleString()} views/day`],
+        ['Consistency Score', `${perf?.consistencyScore || 0}%`],
+      ];
+
+      let y = 60;
+      doc.setFontSize(13);
+      doc.setTextColor(255, 0, 0);
+      doc.text('Channel Metrics', 20, y);
+      y += 8;
+      stats.forEach(([label, value]) => {
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
+        doc.text(`${label}:`, 25, y);
+        doc.setTextColor(30, 30, 30);
+        doc.text(value, 110, y);
+        y += 7;
+      });
+
+      // Audit section
+      const audit = channelData.audit;
+      if (audit) {
+        y += 8;
+        doc.setFontSize(13);
+        doc.setTextColor(0, 150, 0);
+        doc.text('Strengths', 20, y);
+        y += 7;
+        (audit.strengths || []).forEach((s) => {
+          doc.setFontSize(9);
+          doc.setTextColor(60, 60, 60);
+          doc.text(`+ ${s}`, 25, y);
+          y += 6;
+        });
+
+        y += 4;
+        doc.setFontSize(13);
+        doc.setTextColor(255, 0, 0);
+        doc.text('Weaknesses', 20, y);
+        y += 7;
+        (audit.weaknesses || []).forEach((w) => {
+          doc.setFontSize(9);
+          doc.setTextColor(60, 60, 60);
+          doc.text(`- ${w}`, 25, y);
+          y += 6;
+        });
+
+        y += 4;
+        doc.setFontSize(13);
+        doc.setTextColor(0, 100, 200);
+        doc.text('Opportunities', 20, y);
+        y += 7;
+        (audit.opportunities || []).forEach((o) => {
+          doc.setFontSize(9);
+          doc.setTextColor(60, 60, 60);
+          doc.text(`* ${o}`, 25, y);
+          y += 6;
+        });
+      }
+
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Powered by Vid YT — Advanced Analytics', 20, 285);
+
+      doc.save(`${(ch.title || 'channel').replace(/[^a-zA-Z0-9]/g, '_')}_growth_report.pdf`);
+    } catch (err) {
+      console.error('PDF download failed:', err);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  // Load saved channel URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('analytics-channel-url');
+      if (saved) setChannelUrl(saved);
+    }
+  }, []);
 
   useEffect(() => {
     loadDashboardStats();
@@ -150,7 +258,14 @@ export default function AnalyticsPage() {
       // Refresh general stats to reflect new analysis
       loadDashboardStats();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to analyze channel');
+      const msg = err.response?.data?.error || 'Failed to analyze channel. Make sure YouTube API key is configured.';
+      setChannelData(null);
+      // Show error inline instead of alert
+      console.error('Channel analysis failed:', msg);
+      if (typeof window !== 'undefined') {
+        const el = document.getElementById('analytics-error');
+        if (el) { el.textContent = msg; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 8000); }
+      }
     } finally {
       setAnalyzing(false);
     }
@@ -161,7 +276,7 @@ export default function AnalyticsPage() {
       <DashboardLayout>
         <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
           <Loader2 className="w-12 h-12 animate-spin text-[#FF0000]" />
-          <p className="text-[#AAAAAA] animate-pulse">Loading Analytics Dashboard...</p>
+          <p className="text-[#AAAAAA] animate-pulse">{t('common.loading')}</p>
         </div>
       </DashboardLayout>
     );
@@ -171,49 +286,58 @@ export default function AnalyticsPage() {
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto space-y-8">
         
-        {/* Header & Search */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            <h1 className="text-4xl font-black text-white tracking-tight flex items-center gap-3">
-              <BarChart3 className="w-10 h-10 text-[#FF0000]" />
-              ADVANCED <span className="text-[#FF0000]">ANALYTICS</span>
-            </h1>
-            <p className="text-[#888] mt-1 text-lg">Predict. Analyze. Grow. Build your viral engine.</p>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex-1 max-w-xl self-end"
-          >
-            <form onSubmit={handleAnalyzeChannel} className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-[#FF0000] to-[#E60000] rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-              <div className="relative flex items-center bg-[#111] border border-[#222] rounded-xl overflow-hidden p-1">
-                <div className="pl-3">
-                  <Youtube className="w-5 h-5 text-[#FF0000]" />
+        {/* VFX Animated Header */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative rounded-2xl overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#FF0000]/15 via-purple-500/10 to-[#FF0000]/15 animate-pulse" />
+          <div className="relative bg-[#0F0F0F]/80 backdrop-blur-xl border border-[#FF0000]/20 rounded-2xl p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <motion.div animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.05, 1] }} transition={{ duration: 3, repeat: Infinity }}
+                  className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#FF0000] to-purple-600 flex items-center justify-center shadow-lg shadow-[#FF0000]/30">
+                  <BarChart3 className="w-7 h-7 text-white" />
+                </motion.div>
+                <div>
+                  <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-[#FF4444]">
+                    {t('analytics.title')}
+                  </h1>
+                  <p className="text-sm text-[#888] mt-0.5">{t('analytics.subtitle')}</p>
                 </div>
-                <input
-                  type="text"
+              </div>
+
+              {/* Date Range Selector */}
+              <div className="flex gap-1 p-1 bg-[#111] border border-[#333] rounded-xl">
+                {(['7d', '30d', '90d', 'all'] as const).map((range) => (
+                  <button key={range} onClick={() => setDateRange(range)}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition ${dateRange === range ? 'bg-[#FF0000] text-white' : 'text-[#888] hover:text-white'}`}>
+                    {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : range === '90d' ? '90 Days' : 'All Time'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <form onSubmit={handleAnalyzeChannel} className="mt-5 relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF0000]/30 to-purple-500/30 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition" />
+              <div className="relative flex items-center bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="pl-4"><Youtube className="w-5 h-5 text-[#FF0000]" /></div>
+                <input type="text"
                   placeholder="Paste YouTube Channel URL (@handle or link)..."
                   value={channelUrl}
-                  onChange={(e) => setChannelUrl(e.target.value)}
-                  className="bg-transparent border-none focus:ring-0 text-white px-4 py-3 w-full placeholder-[#555]"
-                />
-                <button
-                  type="submit"
-                  disabled={analyzing}
-                  className="bg-[#FF0000] hover:bg-[#E60000] text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                  {analyzing ? 'Analyzing...' : 'Analyze'}
+                  onChange={(e) => {
+                    setChannelUrl(e.target.value);
+                    if (typeof window !== 'undefined') localStorage.setItem('analytics-channel-url', e.target.value);
+                  }}
+                  className="bg-transparent border-none focus:ring-0 text-white px-4 py-3.5 w-full placeholder-[#555]" />
+                <button type="submit" disabled={analyzing}
+                  className="mr-1.5 bg-gradient-to-r from-[#FF0000] to-[#CC0000] hover:from-[#E60000] hover:to-[#AA0000] text-white px-6 py-2.5 rounded-lg font-black text-sm flex items-center gap-2 transition-all disabled:opacity-50 shadow-lg shadow-[#FF0000]/20">
+                  {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  {analyzing ? t('common.analyzing') : t('common.analyze')}
                 </button>
               </div>
             </form>
-          </motion.div>
-        </div>
+            <div id="analytics-error" style={{ display: 'none' }} className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm" />
+          </div>
+        </motion.div>
 
         <AnimatePresence mode="wait">
           {channelData ? (
@@ -276,6 +400,162 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
+              {/* Channel Health Score + Fixes + Keywords + Hashtags */}
+              {(() => {
+                const engRate = channelData.videoPerformance?.averageEngagementRate || 0;
+                const consistency = channelData.videoPerformance?.consistencyScore || 0;
+                const velocity = channelData.videoPerformance?.growthVelocity || 0;
+                const videoCount = channelData.channelInfo?.statistics?.videoCount || 0;
+                const subCount = channelData.channelInfo?.statistics?.subscriberCount || 0;
+                const strengths = channelData.audit?.strengths || [];
+                const weaknesses = channelData.audit?.weaknesses || [];
+                const opportunities = channelData.audit?.opportunities || [];
+
+                // Health factors
+                const factors = [
+                  { label: 'Engagement Rate', score: Math.min(100, Math.round(engRate * 12)), fix: 'Ask questions in videos, add polls, reply to every comment within 1 hour', setting: 'Community Tab → Posts & Polls' },
+                  { label: 'Upload Consistency', score: consistency, fix: 'Upload at least 2-3 videos per week on fixed days', setting: 'YouTube Studio → Content → Schedule' },
+                  { label: 'Growth Velocity', score: Math.min(100, Math.round(velocity / 50)), fix: 'Collaborate with similar channels, use YouTube Shorts to reach new audience', setting: 'YouTube Studio → Analytics → Reach' },
+                  { label: 'Video Library', score: Math.min(100, videoCount >= 50 ? 95 : videoCount >= 20 ? 75 : videoCount >= 10 ? 55 : 30), fix: videoCount < 20 ? 'Upload more videos — channels with 50+ videos get 3x more search traffic' : 'Good video count. Focus on quality and SEO now', setting: 'YouTube Studio → Content' },
+                  { label: 'SEO Optimization', score: strengths.length > 2 ? 80 : weaknesses.length > 2 ? 35 : 55, fix: 'Add keywords in title (first 60 chars), description (first 2 lines), tags, and closed captions', setting: 'YouTube Studio → Video Details → Tags, Description' },
+                  { label: 'Thumbnail Quality', score: weaknesses.some(w => /thumbnail/i.test(w)) ? 40 : 75, fix: 'Use bright colors, face close-up with emotion, bold 3-5 word text, high contrast', setting: 'YouTube Studio → Video Details → Thumbnail' },
+                ];
+
+                const health = Math.min(99, Math.round(factors.reduce((s, f) => s + f.score, 0) / factors.length));
+                const healthColor = health >= 75 ? 'text-emerald-400' : health >= 50 ? 'text-amber-400' : 'text-red-400';
+                const healthBar = health >= 75 ? 'from-emerald-500 to-emerald-400' : health >= 50 ? 'from-amber-500 to-amber-400' : 'from-red-500 to-red-400';
+                const healthLabel = health >= 75 ? 'Excellent' : health >= 50 ? 'Good' : 'Needs Work';
+                const weakFactors = factors.filter(f => f.score < 70);
+
+                // Generate keywords from channel data
+                const channelTitle = channelData.channelInfo?.title || '';
+                const channelDesc = channelData.channelInfo?.description || '';
+                const topVideoTitles = (channelData.recentVideos || []).slice(0, 5).map((v: any) => v.title).join(' ');
+                const allText = `${channelTitle} ${channelDesc} ${topVideoTitles}`.toLowerCase();
+                const stopWords = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','have','has','had','do','does','did','will','would','could','should','may','might','can','this','that','these','those','i','you','we','they','my','your','our','me','us','it','its','as','so','if','about','how','what','when','where','why','who','which','not','no','very','just','also','more','most','some','all','each','every']);
+                const words = allText.split(/[\s,;.!?|#@()\[\]{}]+/).filter(w => w.length > 3 && !stopWords.has(w) && !/^\d+$/.test(w));
+                const wordFreq = new Map<string, number>();
+                words.forEach(w => wordFreq.set(w, (wordFreq.get(w) || 0) + 1));
+                const topKeywords = Array.from(wordFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([w]) => w);
+                const suggestedHashtags = topKeywords.slice(0, 10).map(k => `#${k}`);
+                suggestedHashtags.push('#viral', '#trending', '#youtube', '#shorts', '#subscribe');
+
+                return (
+                  <div className="space-y-6">
+                    {/* Health Score Card */}
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                      className="relative rounded-3xl overflow-hidden bg-[#181818] border border-[#222] p-6">
+                      <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 10% 50%, ${health >= 75 ? 'rgba(16,185,129,0.05)' : health >= 50 ? 'rgba(245,158,11,0.05)' : 'rgba(239,68,68,0.05)'} 0%, transparent 60%)` }} />
+                      <div className="relative">
+                        <div className="flex items-center justify-between mb-5">
+                          <h3 className="text-lg font-black text-white flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 text-[#FF0000]" /> Channel Health Score
+                          </h3>
+                          <span className={`text-xs font-black px-3 py-1 rounded-full ${health >= 75 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : health >= 50 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                            {healthLabel}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-6 mb-6">
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}
+                            className={`text-6xl font-black ${healthColor}`}>
+                            {health}%
+                          </motion.div>
+                          <div className="flex-1">
+                            <div className="w-full h-4 bg-[#222] rounded-full overflow-hidden mb-3">
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${health}%` }} transition={{ duration: 1.2, ease: 'easeOut' }}
+                                className={`h-full rounded-full bg-gradient-to-r ${healthBar}`} />
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 text-[10px] text-[#666]">
+                              <span>Engagement: {engRate.toFixed(1)}%</span>
+                              <span>Consistency: {consistency}%</span>
+                              <span>Growth: {velocity.toLocaleString()}/day</span>
+                              <span>Videos: {videoCount.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Factor Breakdown */}
+                        <div className="space-y-2.5 mb-1">
+                          {factors.map((f, i) => {
+                            const fc = f.score >= 70 ? 'text-emerald-400' : f.score >= 50 ? 'text-amber-400' : 'text-red-400';
+                            const fb = f.score >= 70 ? 'bg-emerald-500' : f.score >= 50 ? 'bg-amber-500' : 'bg-red-500';
+                            const icon = f.score >= 70 ? '✓' : f.score >= 50 ? '⚡' : '✗';
+                            return (
+                              <div key={i}>
+                                <div className="flex justify-between text-xs mb-1">
+                                  <span className="text-[#AAA] flex items-center gap-1.5"><span className={fc}>{icon}</span> {f.label}</span>
+                                  <span className={`font-bold ${fc}`}>{f.score}%</span>
+                                </div>
+                                <div className="w-full h-1.5 bg-[#222] rounded-full overflow-hidden">
+                                  <motion.div initial={{ width: 0 }} animate={{ width: `${f.score}%` }} transition={{ delay: i * 0.1, duration: 0.6 }}
+                                    className={`h-full rounded-full ${fb}`} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* What to Fix */}
+                    {weakFactors.length > 0 && (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                        className="bg-red-500/5 border border-red-500/20 rounded-3xl p-6">
+                        <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
+                          <AlertTriangle className="w-5 h-5 text-red-400" /> What Needs Fixing ({weakFactors.length} issues)
+                        </h3>
+                        <div className="space-y-4">
+                          {weakFactors.map((f, i) => (
+                            <div key={i} className="bg-[#111] border border-[#222] rounded-xl p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-bold text-white">{f.label}</span>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${f.score < 50 ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>{f.score}%</span>
+                              </div>
+                              <p className="text-sm text-emerald-400 mb-1">→ {f.fix}</p>
+                              <p className="text-xs text-[#666]">📍 Where to set: <span className="text-[#AAA]">{f.setting}</span></p>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Recommended Keywords for Channel */}
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                      className="bg-[#181818] border border-[#222] rounded-3xl p-6">
+                      <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-purple-400" /> Recommended Keywords for This Channel
+                      </h3>
+                      <p className="text-xs text-[#888] mb-4">Use these keywords in your video titles, descriptions, and tags to rank higher in search.</p>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {topKeywords.map((kw, i) => (
+                          <span key={i} className={`px-3 py-1.5 rounded-xl text-sm font-medium border ${i < 5 ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : i < 10 ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : 'bg-[#222] text-[#AAA] border-[#333]'}`}>
+                            {i < 3 && <Zap className="w-3 h-3 inline mr-1" />}{kw}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-[#666]">💡 Top 5 keywords (purple) should be in EVERY video title. Blue keywords use in description and tags.</p>
+                    </motion.div>
+
+                    {/* Viral Hashtags for Channel */}
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                      className="bg-[#181818] border border-[#222] rounded-3xl p-6">
+                      <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-amber-400" /> Viral Hashtags for This Channel
+                      </h3>
+                      <p className="text-xs text-[#888] mb-4">Add these hashtags in your video description to get discovered by more viewers.</p>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestedHashtags.map((tag, i) => (
+                          <span key={i} className={`px-3 py-1.5 rounded-xl text-sm font-medium border ${i < 5 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : i < 10 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-[#222] text-[#AAA] border-[#333]'}`}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-[#666] mt-3">💡 Green hashtags = channel-specific (high relevance). Amber = niche. Gray = general viral tags. Use all 15 in every video.</p>
+                    </motion.div>
+                  </div>
+                );
+              })()}
+
               {/* Advanced Metrics Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <MetricCard 
@@ -315,26 +595,53 @@ export default function AnalyticsPage() {
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                        <TrendingUp className="w-5 h-5 text-[#FF0000]" /> Recent Video Velocity
                     </h3>
-                    <span className="text-xs text-[#555] uppercase font-black tracking-widest">Last 30 Videos</span>
+                    <div className="flex items-center gap-4">
+                      <span className="flex items-center gap-1.5 text-xs text-[#888]"><span className="w-2.5 h-2.5 rounded-full bg-[#FF0000]" /> Views</span>
+                      <span className="flex items-center gap-1.5 text-xs text-[#888]"><span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Engagement</span>
+                      <span className="text-xs text-[#555] uppercase font-black tracking-widest">Last 30 Videos</span>
+                    </div>
                   </div>
                   <div className="h-[350px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={(channelData.recentVideos || []).slice().reverse()}>
                         <defs>
                           <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#FF0000" stopOpacity={0.3}/>
+                            <stop offset="5%" stopColor="#FF0000" stopOpacity={0.4}/>
+                            <stop offset="50%" stopColor="#FF0000" stopOpacity={0.1}/>
                             <stop offset="95%" stopColor="#FF0000" stopOpacity={0}/>
                           </linearGradient>
+                          <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
+                          </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
-                        <XAxis dataKey="publishedAt" hide />
-                        <YAxis hide />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#111', border: '1px solid #222', borderRadius: '12px' }}
-                          labelStyle={{ color: '#888' }}
-                          formatter={(value: any) => [`${value.toLocaleString()} Views`, 'Views']}
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1a1a1a" />
+                        <XAxis
+                          dataKey="publishedAt"
+                          tick={{ fill: '#555', fontSize: 10 }}
+                          tickFormatter={(val: string) => { try { return new Date(val).toLocaleDateString('en', { month: 'short', day: 'numeric' }); } catch { return ''; } }}
+                          axisLine={{ stroke: '#222' }}
+                          tickLine={false}
+                          interval="preserveStartEnd"
                         />
-                        <Area type="monotone" dataKey="views" stroke="#FF0000" strokeWidth={3} fillOpacity={1} fill="url(#colorViews)" />
+                        <YAxis
+                          tick={{ fill: '#555', fontSize: 10 }}
+                          tickFormatter={(val: number) => val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : val >= 1000 ? `${(val / 1000).toFixed(0)}K` : `${val}`}
+                          axisLine={false}
+                          tickLine={false}
+                          width={45}
+                        />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', padding: '12px 16px' }}
+                          labelStyle={{ color: '#888', fontSize: 11, marginBottom: 4 }}
+                          labelFormatter={(val: string) => { try { return new Date(val).toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' }); } catch { return val; } }}
+                          formatter={(value: any, name: string) => [
+                            `${typeof value === 'number' ? value.toLocaleString() : value}${name === 'engagementRate' ? '%' : ''}`,
+                            name === 'views' ? '👁 Views' : '📊 Engagement'
+                          ]}
+                        />
+                        <Area type="monotone" dataKey="views" stroke="#FF0000" strokeWidth={2.5} fillOpacity={1} fill="url(#colorViews)" dot={false} activeDot={{ r: 5, fill: '#FF0000', stroke: '#fff', strokeWidth: 2 }} />
+                        <Area type="monotone" dataKey="engagementRate" stroke="#8B5CF6" strokeWidth={2} fillOpacity={1} fill="url(#colorEngagement)" dot={false} activeDot={{ r: 4, fill: '#8B5CF6', stroke: '#fff', strokeWidth: 2 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -387,8 +694,13 @@ export default function AnalyticsPage() {
                       </div>
                    </div>
 
-                   <button className="w-full py-4 bg-gradient-to-r from-[#FF0000] to-[#E60000] text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:scale-[1.02] transition-all">
-                      Download Growth PDF
+                   <button
+                      onClick={downloadGrowthPdf}
+                      disabled={downloadingPdf}
+                      className="w-full py-4 bg-gradient-to-r from-[#FF0000] to-[#E60000] text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                   >
+                      {downloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      {downloadingPdf ? t('analytics.generatingPdf') : t('analytics.downloadPdf')}
                    </button>
                 </div>
               </div>
@@ -441,8 +753,9 @@ export default function AnalyticsPage() {
                                   <span className={`text-sm font-black ${video.viralScore > 70 ? 'text-[#FF0000]' : 'text-[#AAA]'}`}>{video.viralScore}%</span>
                                </td>
                                <td className="px-8 py-4">
-                                  <button onClick={() => window.location.href = `/dashboard/viral-optimizer?title=${encodeURIComponent(video.title)}&videoId=${video.id}`} className="text-xs font-black uppercase text-[#FF0000] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                     Analyze <ChevronRight className="w-3 h-3" />
+                                  <button onClick={() => window.location.href = `/dashboard/viral-optimizer?title=${encodeURIComponent(video.title)}&videoId=${video.id}`}
+                                    className="text-xs font-black uppercase text-[#FF0000] hover:text-white bg-[#FF0000]/10 hover:bg-[#FF0000] px-3 py-1 rounded-lg flex items-center gap-1 transition-all">
+                                     {t('common.analyze')} <ChevronRight className="w-3 h-3" />
                                   </button>
                                </td>
                             </tr>
@@ -472,16 +785,52 @@ export default function AnalyticsPage() {
                    </div>
 
                    <div className="bg-[#181818] border border-[#222] rounded-3xl p-8 space-y-6">
-                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                          <BarChart3 className="w-5 h-5 text-[#FF0000]" /> Intelligence Workflow
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <BarChart3 className="w-5 h-5 text-[#FF0000]" /> Intelligence Workflow
+                        </h3>
+                        <div className="flex items-center gap-4">
+                          <span className="flex items-center gap-1.5 text-xs text-[#888]"><span className="w-2.5 h-2.5 rounded-full bg-[#FF0000]" /> Viral Score</span>
+                          <span className="flex items-center gap-1.5 text-xs text-[#888]"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Engagement</span>
+                        </div>
+                      </div>
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={overview.performanceTrend}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#222" />
-                          <XAxis dataKey="date" hide />
-                          <YAxis hide />
-                          <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #222' }} />
-                          <Bar dataKey="viralScore" fill="#FF0000" radius={[4, 4, 0, 0]} />
+                        <BarChart data={overview.performanceTrend} barGap={2}>
+                          <defs>
+                            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#FF4444" stopOpacity={1}/>
+                              <stop offset="100%" stopColor="#FF0000" stopOpacity={0.6}/>
+                            </linearGradient>
+                            <linearGradient id="barGradient2" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#10B981" stopOpacity={1}/>
+                              <stop offset="100%" stopColor="#10B981" stopOpacity={0.5}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1a1a1a" />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fill: '#555', fontSize: 10 }}
+                            tickFormatter={(val: string) => { try { return new Date(val).toLocaleDateString('en', { month: 'short', day: 'numeric' }); } catch { return val; } }}
+                            axisLine={{ stroke: '#222' }}
+                            tickLine={false}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis
+                            tick={{ fill: '#555', fontSize: 10 }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={35}
+                            domain={[0, 100]}
+                          />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', padding: '12px 16px' }}
+                            labelStyle={{ color: '#888', fontSize: 11, marginBottom: 4 }}
+                            labelFormatter={(val: string) => { try { return new Date(val).toLocaleDateString('en', { month: 'long', day: 'numeric' }); } catch { return val; } }}
+                            formatter={(value: any, name: string) => [`${value}%`, name === 'viralScore' ? '🔥 Viral Score' : '📊 Engagement']}
+                            cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                          />
+                          <Bar dataKey="viralScore" fill="url(#barGradient)" radius={[6, 6, 0, 0]} maxBarSize={20} />
+                          <Bar dataKey="engagementRate" fill="url(#barGradient2)" radius={[6, 6, 0, 0]} maxBarSize={20} />
                         </BarChart>
                       </ResponsiveContainer>
                    </div>
@@ -507,21 +856,24 @@ export default function AnalyticsPage() {
 
               {/* Promo Banner if empty */}
               {!overview || overview.totalVideos === 0 ? (
-                 <div className="bg-[#181818] border-2 border-dashed border-[#333] rounded-3xl p-16 flex flex-col items-center justify-center text-center space-y-6">
-                    <div className="w-20 h-20 bg-[#FF0000]/10 rounded-full flex items-center justify-center">
+                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                   className="relative bg-[#181818] border-2 border-dashed border-[#333] rounded-3xl p-16 flex flex-col items-center justify-center text-center space-y-6 overflow-hidden">
+                    <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(255,0,0,0.05) 0%, transparent 70%)' }} />
+                    <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}
+                      className="w-20 h-20 bg-[#FF0000]/10 rounded-full flex items-center justify-center relative">
                        <BarChart3 className="w-10 h-10 text-[#FF0000]" />
+                    </motion.div>
+                    <div className="space-y-2 relative">
+                       <h3 className="text-2xl font-bold text-white">{t('analytics.noData')}</h3>
+                       <p className="text-[#888] max-w-sm">{t('analytics.noDataDesc')}</p>
                     </div>
-                    <div className="space-y-2">
-                       <h3 className="text-2xl font-bold text-white">No analytics data yet</h3>
-                       <p className="text-[#888] max-w-sm">Link your YouTube channel or analyze a video to start gathering intelligence.</p>
-                    </div>
-                    <button 
+                    <button
                       onClick={() => document.querySelector('input')?.focus()}
-                      className="px-8 py-3 bg-[#FF0000] text-white rounded-xl font-bold hover:scale-105 transition-all shadow-xl shadow-[#FF0000]/20"
+                      className="relative px-8 py-3 bg-gradient-to-r from-[#FF0000] to-[#CC0000] text-white rounded-xl font-black hover:scale-105 transition-all shadow-xl shadow-[#FF0000]/20"
                     >
-                      Analyze First Channel
+                      {t('analytics.analyzeFirst')}
                     </button>
-                 </div>
+                 </motion.div>
               ) : null}
             </motion.div>
           )}

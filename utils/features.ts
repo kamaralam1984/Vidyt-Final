@@ -1,7 +1,7 @@
 export interface Feature {
   id: string;
   label: string;
-  group: 'sidebar' | 'dashboard' | 'other' | 'ai_studio' | 'platform' | 'yt_seo_sections';
+  group: 'sidebar' | 'dashboard' | 'other' | 'ai_studio' | 'platform' | 'yt_seo_sections' | 'channel_intelligence';
   defaultRoles: string[];
 }
 
@@ -52,7 +52,7 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'script_writer', label: 'Script Writer', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'title_generator', label: 'Title Generator', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'ai_shorts_clipping', label: 'AI Shorts Clipping', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
-  { id: 'ai_shorts_clipping', label: 'AI Shorts Clipping', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'channel_audit_tool', label: 'Channel Audit Tool', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'ai_thumbnail_maker', label: 'AI Thumbnail Maker', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'optimize', label: 'Optimize', group: 'ai_studio', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin'] },
   
@@ -93,6 +93,15 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'yt_seo_viral_probability', label: 'YT SEO: Viral Probability Dashboard',     group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_chinki',            label: 'YT SEO: Chinki AI Assistant',             group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_video_analyze',     label: 'YT SEO: Video Content Analysis & Transcription', group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+
+  // ── Channel Intelligence — Section Controls ──────────────────────────
+  { id: 'ci_channel_input',         label: 'Channel Intelligence: Channel Input Form',       group: 'channel_intelligence', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+  { id: 'ci_channel_overview',      label: 'Channel Intelligence: Channel Overview',          group: 'channel_intelligence', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+  { id: 'ci_ranking_panel',         label: 'Channel Intelligence: Channel Rank',              group: 'channel_intelligence', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+  { id: 'ci_revenue_calculator',    label: 'Channel Intelligence: Revenue Estimate',          group: 'channel_intelligence', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+  { id: 'ci_ai_insights',           label: 'Channel Intelligence: AI Insights',               group: 'channel_intelligence', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+  { id: 'ci_growth_prediction',     label: 'Channel Intelligence: Growth Prediction',         group: 'channel_intelligence', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+  { id: 'ci_competitor_comparison', label: 'Channel Intelligence: Competitor Comparison',     group: 'channel_intelligence', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
 ];
 
 

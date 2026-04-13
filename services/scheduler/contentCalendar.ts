@@ -79,6 +79,7 @@ export async function schedulePost(
     platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok';
     scheduledAt: Date;
     hashtags?: string[];
+    privacyStatus?: 'public' | 'private' | 'unlisted';
   }
 ): Promise<IScheduledPost> {
   await connectDB();
@@ -93,6 +94,7 @@ export async function schedulePost(
     scheduledAt: data.scheduledAt,
     hashtags: data.hashtags || [],
     status: 'scheduled',
+    metadata: { privacyStatus: data.privacyStatus || 'public' },
   });
 
   await post.save();

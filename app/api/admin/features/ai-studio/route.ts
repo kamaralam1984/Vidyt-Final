@@ -27,7 +27,7 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { allowedRoles } = body;
     if (!Array.isArray(allowedRoles)) return NextResponse.json({ error: 'allowedRoles array required' }, { status: 400 });
-    const valid = ['user', 'manager', 'admin', 'super-admin'];
+    const valid = ['user', 'manager', 'admin', 'enterprise', 'custom', 'super-admin'];
     const roles = allowedRoles.filter((r: string) => valid.includes(r));
     await connectDB();
     await FeatureAccess.findOneAndUpdate(

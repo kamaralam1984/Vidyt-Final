@@ -71,14 +71,47 @@ export async function GET(
       coll.countDocuments(query),
     ]);
 
+    // Fields to hide for security
+    const HIDDEN_FIELDS = new Set(['password', 'passwordHash', 'hash', 'refresh_token', 'access_token', 'token', 'secret', 'apiKey', 'otp', 'resetToken', 'verificationToken', '__v']);
+
+    // Preferred column order for users table
+    const USERS_ORDER = ['_id', 'name', 'email', 'phone', 'role', 'subscription', 'uniqueId', 'isVerified', 'isYoutubeConnected', 'createdAt', 'lastLogin'];
+
     const rows = data.map((doc) => {
       const o = doc as Record<string, unknown>;
       const out: Record<string, unknown> = { _id: o._id?.toString?.() || o._id };
-      for (const [k, v] of Object.entries(o)) {
-        if (k === '_id') continue;
+
+      // Get all keys, filter hidden ones
+      const keys = Object.keys(o).filter(k => k !== '_id' && !HIDDEN_FIELDS.has(k));
+
+      // Order columns: preferred first, then rest alphabetically
+      const orderedKeys = name === 'users'
+        ? [...USERS_ORDER.filter(k => keys.includes(k)), ...keys.filter(k => !USERS_ORDER.includes(k)).sort()]
+        : keys.sort((a, b) => {
+            // Common fields first
+            const priority = ['name', 'email', 'title', 'userId', 'status', 'platform', 'type', 'createdAt'];
+            const ai = priority.indexOf(a);
+            const bi = priority.indexOf(b);
+            if (ai !== -1 && bi !== -1) return ai - bi;
+            if (ai !== -1) return -1;
+            if (bi !== -1) return 1;
+            return a.localeCompare(b);
+          });
+
+      for (const k of orderedKeys) {
+        const v = o[k];
         if (v instanceof Date) out[k] = v.toISOString();
         else if (v && typeof v === 'object' && Object.prototype.toString.call(v) === '[object ObjectId]') out[k] = String(v);
-        else out[k] = v;
+        else if (v && typeof v === 'object' && !Array.isArray(v)) {
+          // Flatten nested objects (like youtube.access_token) but skip hidden
+          const nested = v as Record<string, unknown>;
+          const safeKeys = Object.keys(nested).filter(nk => !HIDDEN_FIELDS.has(nk));
+          if (safeKeys.length <= 3) {
+            safeKeys.forEach(nk => { out[`${k}.${nk}`] = nested[nk]; });
+          } else {
+            out[k] = `{${safeKeys.length} fields}`;
+          }
+        } else out[k] = v;
       }
       return out;
     });

@@ -2,25 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  AlertCircle,
-  Check,
-  Zap,
-  Crown,
-  Sparkles,
-  Rocket,
-  Globe,
-  Youtube,
-  Facebook,
-  Instagram,
-  Headphones,
-  Shield,
-  Save,
-  Loader2,
-  Power,
-  Edit2,
-  Plus,
-  Trash2,
-  X,
+  AlertCircle, Check, Zap, Crown, Sparkles, Rocket, Globe,
+  Youtube, Facebook, Instagram, Headphones, Shield, Save, Loader2,
+  Power, Edit2, Plus, Trash2, X, Settings, Bell, Users, Lock,
+  Wrench, ToggleLeft, ToggleRight, ChevronDown, ChevronRight,
+  AlertTriangle, RefreshCw, Eye, EyeOff,
 } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
@@ -34,7 +20,6 @@ interface PlanLimits {
 }
 
 interface PlanFeatureFlags {
-  // AI Studio Features
   daily_ideas: boolean;
   ai_coach: boolean;
   keyword_research: boolean;
@@ -44,14 +29,12 @@ interface PlanFeatureFlags {
   ai_shorts_clipping: boolean;
   ai_thumbnail_maker: boolean;
   optimize: boolean;
-  // Core Platform Features
   advancedAiViralPrediction: boolean;
   realTimeTrendAnalysis: boolean;
   bestPostingTimePredictions: boolean;
   competitorAnalysis: boolean;
   emailSupport: boolean;
   priorityProcessing: boolean;
-  // Enterprise & Advanced Features
   teamCollaboration: boolean;
   whiteLabelReports: boolean;
   customAiModelTraining: boolean;
@@ -72,12 +55,7 @@ interface Plan {
   isActive: boolean;
   features: string[];
   limits: PlanLimits;
-  limitsDisplay?: {
-    videos: string;
-    analyses: string;
-    storage: string;
-    support: string;
-  };
+  limitsDisplay?: { videos: string; analyses: string; storage: string; support: string };
   featureFlags: PlanFeatureFlags;
   _id?: string;
 }
@@ -90,28 +68,31 @@ interface PlatformControl {
   features: Record<string, boolean>;
 }
 
-interface RoleInfo {
-  color: string;
-  badgeColor: string;
-  level: number;
+function humanize(str: string): string {
+  return str.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
 }
 
-/**
- * Unified Control Panel - Manage Plans, Roles & Platforms
- * All controls in ONE page
- */
 export default function UnifiedControlPanel() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [controls, setControls] = useState<PlatformControl[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [savingPlatform, setSavingPlatform] = useState('');
   const [savingMaster, setSavingMaster] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [activeTab, setActiveTab] = useState<'plans' | 'platforms' | 'site'>('plans');
+  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
 
-  const availablePlans = ['free', 'pro', 'enterprise', 'owner'];
+  // Site controls state
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState(true);
+  const [savingSite, setSavingSite] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
+  const [announcementActive, setAnnouncementActive] = useState(false);
+
+  const availablePlans = ['free', 'starter', 'pro', 'enterprise', 'owner'];
   const defaultFeatures: Record<string, string[]> = {
     youtube: ['upload', 'seo', 'live', 'ai_engine'],
     facebook: ['seo', 'audit'],
@@ -119,97 +100,82 @@ export default function UnifiedControlPanel() {
     support: ['ai_auto_reply', 'human_support', 'priority_support', '24_7_mode'],
   };
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
+  const roleInfo: Record<string, { color: string; bg: string; level: number }> = {
+    user: { color: 'text-[#888]', bg: 'bg-[#333]', level: 1 },
+    manager: { color: 'text-[#FF0000]', bg: 'bg-[#FF0000]', level: 2 },
+    admin: { color: 'text-amber-400', bg: 'bg-amber-500', level: 3 },
+    'super-admin': { color: 'text-purple-400', bg: 'bg-purple-500', level: 4 },
+  };
+
+  const planIcons: Record<string, React.ComponentType<any>> = {
+    free: Sparkles, starter: Rocket, pro: Zap, enterprise: Crown, custom: Globe, owner: Crown,
+  };
+
+  const platformIcons: Record<string, React.ComponentType<any>> = {
+    youtube: Youtube, facebook: Facebook, instagram: Instagram, support: Headphones,
+  };
+
+  useEffect(() => { fetchAllData(); }, []);
 
   const fetchAllData = async () => {
     setLoading(true);
     setError(null);
     try {
       const [plansRes, controlsRes] = await Promise.all([
-        fetch('/api/admin/plans', {
-          headers: getAuthHeaders() as any,
-        }),
-        axios.get('/api/admin/super/controls', { headers: getAuthHeaders() }).catch(err => {
-          console.error('Controls API error:', err);
-          return { data: { controls: [] } };
-        }),
+        fetch('/api/admin/plans', { headers: getAuthHeaders() as any }),
+        axios.get('/api/admin/super/controls', { headers: getAuthHeaders() }).catch(() => ({ data: { controls: [] } })),
       ]);
 
       const plansData = await plansRes.json();
-      if (plansData.success) {
-        setPlans(plansData.plans);
-      }
+      if (plansData.success) setPlans(plansData.plans);
 
       if (controlsRes.data?.controls) {
-        const fetchedControls: PlatformControl[] = controlsRes.data.controls;
+        const fetched: PlatformControl[] = controlsRes.data.controls;
         const basePlatforms = ['youtube', 'facebook', 'instagram', 'support'];
-
-        const mergedControls = basePlatforms.map((p) => {
-          const existing = fetchedControls.find((c) => c.platform === p);
-          if (existing) {
-            return { ...existing, features: existing.features || {} };
-          }
+        setControls(basePlatforms.map(p => {
+          const existing = fetched.find(c => c.platform === p);
+          if (existing) return { ...existing, features: existing.features || {} };
           return {
-            platform: p,
-            isEnabled: true,
-            allowedPlans: availablePlans,
+            platform: p, isEnabled: true, allowedPlans: availablePlans,
             features: defaultFeatures[p].reduce((acc, curr) => ({ ...acc, [curr]: true }), {}),
           };
-        });
-
-        setControls(mergedControls);
-      } else {
-        // Fallback to default controls if API fails
-        const basePlatforms = ['youtube', 'facebook', 'instagram', 'support'];
-        const defaultControls = basePlatforms.map((p) => ({
-          platform: p,
-          isEnabled: true,
-          allowedPlans: availablePlans,
-          features: defaultFeatures[p].reduce((acc, curr) => ({ ...acc, [curr]: true }), {}),
         }));
-        setControls(defaultControls);
       }
+
+      // Load site settings
+      try {
+        const siteRes = await axios.get('/api/admin/super/controls/site-settings', { headers: getAuthHeaders() }).catch(() => null);
+        if (siteRes?.data) {
+          setMaintenanceMode(siteRes.data.maintenanceMode || false);
+          setRegistrationOpen(siteRes.data.registrationOpen !== false);
+          setAnnouncement(siteRes.data.announcement || '');
+          setAnnouncementActive(siteRes.data.announcementActive || false);
+        }
+      } catch { /* site settings endpoint may not exist yet */ }
     } catch (err: any) {
-      console.error('Fetch error:', err);
       setError(err.message || 'Failed to fetch data');
-      // Set default controls so UI still shows
-      const basePlatforms = ['youtube', 'facebook', 'instagram', 'support'];
-      const defaultControls = basePlatforms.map((p) => ({
-        platform: p,
-        isEnabled: true,
-        allowedPlans: availablePlans,
-        features: defaultFeatures[p].reduce((acc, curr) => ({ ...acc, [curr]: true }), {}),
-      }));
-      setControls(defaultControls);
     } finally {
       setLoading(false);
     }
   };
 
+  const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(null), 3000); };
+
   const handleUpdatePlanRole = async (planId: string, newRole: string) => {
-    setLoading(true);
     setError(null);
     try {
-      const plan = plans.find((p) => p.planId === planId);
-      const res = await axios.patch(`/api/admin/plans`, {
-        id: plan?._id,
-        role: newRole,
-      }, { headers: getAuthHeaders() });
+      const plan = plans.find(p => p.planId === planId);
+      const res = await axios.patch('/api/admin/plans', { id: plan?._id, role: newRole }, { headers: getAuthHeaders() });
+      if (res.data.success) { showSuccess(`${plan?.name} updated to ${newRole}`); fetchAllData(); }
+      else setError(res.data.error);
+    } catch (err: any) { setError(err.response?.data?.error || err.message); }
+  };
 
-      if (res.data.success) {
-        setSuccess(`✓ ${plan?.name} updated to ${newRole} role`);
-        setTimeout(() => setSuccess(null), 3000);
-        fetchAllData();
-      } else {
-        setError(res.data.error);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message);
-    } finally {
-      setLoading(false);
-    }
+  const handleTogglePlanActive = async (plan: Plan) => {
+    try {
+      const res = await axios.patch('/api/admin/plans', { id: plan._id, isActive: !plan.isActive }, { headers: getAuthHeaders() });
+      if (res.data.success) { showSuccess(`${plan.name} ${!plan.isActive ? 'activated' : 'deactivated'}`); fetchAllData(); }
+    } catch (err: any) { setError(err.response?.data?.error || err.message); }
   };
 
   const handleSavePlan = async () => {
@@ -217,343 +183,278 @@ export default function UnifiedControlPanel() {
     setIsSavingPlan(true);
     setError(null);
     try {
-      const res = await axios.patch(`/api/admin/plans`, {
-        id: editingPlan._id,
-        name: editingPlan.name,
-        label: editingPlan.label,
-        description: editingPlan.description,
-        priceMonthly: editingPlan.priceMonthly,
-        priceYearly: editingPlan.priceYearly,
-        features: editingPlan.features,
-        role: editingPlan.role,
-        limits: editingPlan.limits,
-        limitsDisplay: editingPlan.limitsDisplay,
-        featureFlags: editingPlan.featureFlags,
-        isActive: editingPlan.isActive,
+      const res = await axios.patch('/api/admin/plans', {
+        id: editingPlan._id, name: editingPlan.name, label: editingPlan.label,
+        description: editingPlan.description, priceMonthly: editingPlan.priceMonthly,
+        priceYearly: editingPlan.priceYearly, features: editingPlan.features,
+        role: editingPlan.role, limits: editingPlan.limits, limitsDisplay: editingPlan.limitsDisplay,
+        featureFlags: editingPlan.featureFlags, isActive: editingPlan.isActive,
       }, { headers: getAuthHeaders() });
-
-      if (res.data.success) {
-        setSuccess(`✓ ${editingPlan.name} saved successfully`);
-        setTimeout(() => setSuccess(null), 3000);
-        setEditingPlan(null);
-        fetchAllData();
-      } else {
-        setError(res.data.error);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message);
-    } finally {
-      setIsSavingPlan(false);
-    }
+      if (res.data.success) { showSuccess(`${editingPlan.name} saved`); setEditingPlan(null); fetchAllData(); }
+      else setError(res.data.error);
+    } catch (err: any) { setError(err.response?.data?.error || err.message); }
+    finally { setIsSavingPlan(false); }
   };
 
-  const handleUpdateControl = (platformIdx: number, updates: Partial<PlatformControl>) => {
-    const newControls = [...controls];
-    newControls[platformIdx] = { ...newControls[platformIdx], ...updates };
-    setControls(newControls);
+  const handleUpdateControl = (idx: number, updates: Partial<PlatformControl>) => {
+    const next = [...controls];
+    next[idx] = { ...next[idx], ...updates };
+    setControls(next);
   };
 
-  const togglePlan = (platformIdx: number, plan: string) => {
-    const currentControl = controls[platformIdx];
-    const planSet = new Set(currentControl.allowedPlans);
-    if (planSet.has(plan)) planSet.delete(plan);
-    else planSet.add(plan);
-    handleUpdateControl(platformIdx, { allowedPlans: Array.from(planSet) });
-  };
-
-  const toggleRole = (platformIdx: number, role: string) => {
-    const currentControl = controls[platformIdx];
-    const allowedRoles = currentControl.allowedRoles || ['user', 'manager', 'admin'];
-    const roleSet = new Set(allowedRoles);
-    if (roleSet.has(role)) roleSet.delete(role);
-    else roleSet.add(role);
-    handleUpdateControl(platformIdx, { allowedRoles: Array.from(roleSet) });
-  };
-
-  const toggleFeature = (platformIdx: number, featureKey: string) => {
-    const currentControl = controls[platformIdx];
-    const newFeatures = { ...currentControl.features };
-    newFeatures[featureKey] = !newFeatures[featureKey];
-    handleUpdateControl(platformIdx, { features: newFeatures });
-  };
-
-  const savePlatformConfig = async (platformIdx: number) => {
-    const control = controls[platformIdx];
+  const savePlatformConfig = async (idx: number) => {
+    const control = controls[idx];
     setSavingPlatform(control.platform);
     try {
       await axios.post('/api/admin/super/controls', control, { headers: getAuthHeaders() });
-      setSuccess(`✓ ${control.platform} saved successfully`);
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (error: any) {
-      setError(`Failed to save ${control.platform} config`);
-    } finally {
-      setSavingPlatform('');
-    }
+      showSuccess(`${control.platform} saved`);
+    } catch { setError(`Failed to save ${control.platform}`); }
+    finally { setSavingPlatform(''); }
   };
 
   const handleMasterToggle = async (enableAll: boolean) => {
-    if (!confirm(`Are you sure you want to ${enableAll ? 'ENABLE' : 'DISABLE'} all platforms globally?`))
-      return;
-
+    if (!confirm(`${enableAll ? 'ENABLE' : 'DISABLE'} all platforms globally?`)) return;
     setSavingMaster(true);
     try {
-      await axios.post(
-        '/api/admin/super/controls/master-toggle',
-        { isEnabled: enableAll },
-        { headers: getAuthHeaders() }
-      );
-      setSuccess(`✓ All platforms ${enableAll ? 'enabled' : 'disabled'}`);
-      setTimeout(() => setSuccess(null), 3000);
+      await axios.post('/api/admin/super/controls/master-toggle', { isEnabled: enableAll }, { headers: getAuthHeaders() });
+      showSuccess(`All platforms ${enableAll ? 'enabled' : 'disabled'}`);
       fetchAllData();
-    } catch (error: any) {
-      setError('Failed to execute master toggle');
-    } finally {
-      setSavingMaster(false);
-    }
+    } catch { setError('Failed to execute master toggle'); }
+    finally { setSavingMaster(false); }
   };
 
-  const roleInfo: Record<string, RoleInfo> = {
-    user: { color: '#AAAAAA', badgeColor: 'bg-gray-500', level: 1 },
-    manager: { color: '#FF0000', badgeColor: 'bg-red-500', level: 2 },
-    admin: { color: '#FFD700', badgeColor: 'bg-amber-500', level: 3 },
+  const handleSaveSiteSettings = async () => {
+    setSavingSite(true);
+    try {
+      await axios.post('/api/admin/super/controls/site-settings', {
+        maintenanceMode, registrationOpen, announcement, announcementActive,
+      }, { headers: getAuthHeaders() });
+      showSuccess('Site settings saved');
+    } catch { setError('Failed to save site settings'); }
+    finally { setSavingSite(false); }
   };
 
-  const planIcons: Record<string, React.ComponentType<any>> = {
-    free: Sparkles,
-    starter: Rocket,
-    pro: Zap,
-    enterprise: Crown,
-    custom: Globe,
-    owner: Crown,
-  };
+  const tabs = [
+    { id: 'plans' as const, label: 'Plans & Roles', icon: Zap },
+    { id: 'platforms' as const, label: 'Platforms', icon: Shield },
+    { id: 'site' as const, label: 'Site Controls', icon: Settings },
+  ];
 
-  const platformIcons: Record<string, React.ComponentType<any>> = {
-    youtube: Youtube,
-    facebook: Facebook,
-    instagram: Instagram,
-    support: Headphones,
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black p-6 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-red-500 mx-auto mb-4" />
-          <p className="text-gray-400">Loading control panel...</p>
-        </div>
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#FF0000] mx-auto mb-3" />
+        <p className="text-[#555] text-sm">Loading Control Center...</p>
       </div>
-    );
-  }
+    </div>
+  );
+
+  const activePlans = plans.filter(p => p.isActive).length;
+  const enabledPlatforms = controls.filter(c => c.isEnabled).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-2">Control Center</h1>
-          <p className="text-gray-400">Manage plans, roles, and platform controls from one place</p>
-        </div>
-
-        {/* Alert Messages */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-900/30 border border-red-500 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-red-400 font-semibold">Error</h3>
-              <p className="text-red-300 text-sm">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-4 bg-green-900/30 border border-green-500 rounded-lg flex items-center gap-2">
-            <Check className="w-5 h-5 text-green-400" />
-            <p className="text-green-400">{success}</p>
-          </div>
-        )}
-
-        {/* ============== PLANS & ROLES SECTION ============== */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Zap className="w-6 h-6 text-blue-400" /> Plans & Roles
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {plans.length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <p className="text-gray-400">No plans found</p>
-              </div>
-            ) : (
-              plans.map((plan) => {
-                const Icon = planIcons[plan.planId] || Globe;
-                const info = roleInfo[plan.role] || roleInfo.user;
-
-                return (
-                  <div key={plan.planId} className="bg-gray-800 border-2 border-gray-700 rounded-xl p-6 hover:border-gray-600 transition-all">
-                    {/* Icon & Name */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg" style={{ backgroundColor: `${info.color}20` }}>
-                          <Icon className="w-6 h-6" style={{ color: info.color }} />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                          <p className="text-gray-400 text-xs">{plan.planId}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className={`${info.badgeColor} text-white px-3 py-1 rounded-full text-xs font-semibold`}>
-                          Lvl {info.level}
-                        </span>
-                        <button
-                          onClick={() => setEditingPlan(plan)}
-                          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400"
-                          title="Edit Plan"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Price */}
-                    <div className="mb-4 pb-4 border-b border-gray-700">
-                      <div className="text-2xl font-bold text-white">
-                        ${plan.priceMonthly}
-                        <span className="text-sm text-gray-400 ml-1">/mo</span>
-                      </div>
-                    </div>
-
-                    {/* Current Role */}
-                    <div className="mb-4 pb-4 border-b border-gray-700">
-                      <div className="text-sm text-gray-400 mb-2">Current Role</div>
-                      <span className={`${info.badgeColor} text-white px-3 py-1 rounded-full text-sm font-semibold`}>
-                        {plan.role.charAt(0).toUpperCase() + plan.role.slice(1)}
-                      </span>
-                    </div>
-
-                    {/* Change Role */}
-                    <div>
-                      <div className="text-xs text-gray-400 font-semibold mb-2">Change Role</div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {['user', 'manager', 'admin'].map((role) => {
-                          const roleData = roleInfo[role];
-                          return (
-                            <button
-                              key={role}
-                              onClick={() => handleUpdatePlanRole(plan.planId, role)}
-                              disabled={loading || plan.role === role}
-                              className={`px-3 py-2 rounded text-xs font-semibold transition ${
-                                plan.role === role
-                                  ? `${roleData.badgeColor} text-white opacity-50 cursor-not-allowed`
-                                  : `${roleData.badgeColor} text-white hover:opacity-80 disabled:opacity-50`
-                              }`}
-                            >
-                              {role === 'user' ? 'User' : role === 'manager' ? 'Mgr' : 'Admin'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Status */}
-                    <div className="mt-4 pt-4 border-t border-gray-700">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-400">Status</span>
-                        <span className={`${plan.isActive ? 'text-green-400' : 'text-red-400'} font-semibold`}>
-                          {plan.isActive ? '● Active' : '● Inactive'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* ============== PLATFORM CONTROLS SECTION ============== */}
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Shield className="w-6 h-6 text-green-400" /> Platform Controls
-            </h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleMasterToggle(true)}
-                disabled={savingMaster}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 text-sm"
-              >
-                <Power className="w-4 h-4" /> Enable All
-              </button>
-              <button
-                onClick={() => handleMasterToggle(false)}
-                disabled={savingMaster}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50 text-sm"
-              >
-                <AlertCircle className="w-4 h-4" /> Disable All
-              </button>
-            </div>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+            <Wrench className="w-6 h-6 text-[#FF0000]" /> Control Center
+          </h1>
+          <p className="text-xs text-[#555] mt-1">Manage plans, platforms, and site-wide settings</p>
+        </div>
+        <button onClick={fetchAllData} className="flex items-center gap-2 px-3 py-2 bg-[#111] border border-[#1f1f1f] rounded-lg text-xs text-[#666] hover:text-white transition">
+          <RefreshCw className="w-3.5 h-3.5" /> Refresh
+        </button>
+      </div>
 
-          <div className="space-y-6">
-            {controls.map((control, idx) => {
-              const PlatformIcon = platformIcons[control.platform as keyof typeof platformIcons] || Shield;
+      {/* Alerts */}
+      {error && (
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-400 text-sm">
+          <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          <button onClick={() => setError(null)} className="ml-auto"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+      {success && (
+        <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-2 text-green-400 text-sm">
+          <Check className="w-4 h-4 shrink-0" /> {success}
+        </div>
+      )}
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-3">
+          <p className="text-[10px] text-[#555] uppercase tracking-wider font-bold">Total Plans</p>
+          <p className="text-lg font-bold text-white mt-1">{plans.length}</p>
+        </div>
+        <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-3">
+          <p className="text-[10px] text-[#555] uppercase tracking-wider font-bold">Active Plans</p>
+          <p className="text-lg font-bold text-green-400 mt-1">{activePlans}</p>
+        </div>
+        <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-3">
+          <p className="text-[10px] text-[#555] uppercase tracking-wider font-bold">Platforms</p>
+          <p className="text-lg font-bold text-blue-400 mt-1">{enabledPlatforms}/{controls.length}</p>
+        </div>
+        <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-3">
+          <p className="text-[10px] text-[#555] uppercase tracking-wider font-bold">Maintenance</p>
+          <p className={`text-lg font-bold mt-1 ${maintenanceMode ? 'text-red-400' : 'text-green-400'}`}>{maintenanceMode ? 'ON' : 'OFF'}</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 overflow-x-auto pb-1">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button key={id} onClick={() => setActiveTab(id)}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+              activeTab === id ? 'bg-[#FF0000] text-white' : 'bg-[#111] text-[#666] hover:text-white border border-[#1f1f1f]'
+            }`}>
+            <Icon className="w-3.5 h-3.5" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ══════ PLANS TAB ══════ */}
+      {activeTab === 'plans' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {plans.map(plan => {
+              const Icon = planIcons[plan.planId] || Globe;
+              const info = roleInfo[plan.role] || roleInfo.user;
+              const flagCount = plan.featureFlags ? Object.values(plan.featureFlags).filter(Boolean).length : 0;
 
               return (
-                <div key={control.platform} className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-                  {/* Card Header */}
-                  <div className="bg-gray-700/50 px-6 py-4 flex items-center justify-between border-b border-gray-700">
-                    <h3 className="text-xl font-bold flex items-center gap-3 text-white capitalize">
-                      <PlatformIcon className="w-5 h-5" />
-                      {control.platform}
-                    </h3>
-
-                    {/* Global Toggle */}
-                    <label className="flex items-center cursor-pointer gap-3">
-                      <span
-                        className={`text-sm font-medium ${control.isEnabled ? 'text-green-400' : 'text-gray-500'}`}
-                      >
-                        {control.isEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                      <div className="relative">
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={control.isEnabled}
-                          onChange={(e) => handleUpdateControl(idx, { isEnabled: e.target.checked })}
-                        />
-                        <div
-                          className={`block w-14 h-8 rounded-full transition-colors ${
-                            control.isEnabled ? 'bg-green-500' : 'bg-gray-600'
-                          }`}
-                        ></div>
-                        <div
-                          className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${
-                            control.isEnabled ? 'translate-x-6' : ''
-                          }`}
-                        ></div>
+                <div key={plan.planId} className={`bg-[#111] border rounded-xl p-4 sm:p-5 transition-all duration-300 ${
+                  plan.isActive
+                    ? 'border-amber-500/30 hover:border-amber-400/60 shadow-[0_0_15px_rgba(255,191,0,0.08)] hover:shadow-[0_0_25px_rgba(255,191,0,0.15)]'
+                    : 'border-red-500/20 opacity-60'
+                }`}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-lg bg-[#1a1a1a]">
+                        <Icon className="w-5 h-5 text-[#FF0000]" />
                       </div>
-                    </label>
+                      <div>
+                        <h3 className="text-sm font-bold text-white">{plan.name}</h3>
+                        <p className="text-[10px] text-[#444] font-mono">{plan.planId}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleTogglePlanActive(plan)} title={plan.isActive ? 'Deactivate' : 'Activate'}
+                        className="p-1.5 rounded-lg hover:bg-[#1a1a1a] transition">
+                        {plan.isActive ? <Eye className="w-3.5 h-3.5 text-green-400" /> : <EyeOff className="w-3.5 h-3.5 text-red-400" />}
+                      </button>
+                      <button onClick={() => setEditingPlan(plan)} title="Edit"
+                        className="p-1.5 rounded-lg hover:bg-[#1a1a1a] transition">
+                        <Edit2 className="w-3.5 h-3.5 text-blue-400" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Card Body */}
-                  <div className={`p-6 ${!control.isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {/* Plan Restrictions */}
+                  {/* Price */}
+                  <div className="mb-3 pb-3 border-b border-[#1a1a1a]">
+                    <span className="text-xl font-bold text-white">₹{plan.priceMonthly}</span>
+                    <span className="text-[10px] text-[#555] ml-1">/mo</span>
+                    {plan.priceYearly ? (
+                      <span className="text-[10px] text-[#444] ml-2">₹{plan.priceYearly}/yr</span>
+                    ) : null}
+                  </div>
+
+                  {/* Role + Stats */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`${info.bg} text-white px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider`}>
+                      {plan.role}
+                    </span>
+                    <span className="text-[10px] text-[#555]">{flagCount} features enabled</span>
+                  </div>
+
+                  {/* Quick Role Switch */}
+                  <div className="flex gap-1">
+                    {['user', 'manager', 'admin'].map(role => {
+                      const ri = roleInfo[role];
+                      const active = plan.role === role;
+                      return (
+                        <button key={role} onClick={() => !active && handleUpdatePlanRole(plan.planId, role)}
+                          disabled={active}
+                          className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition ${
+                            active ? `${ri.bg} text-white opacity-60` : 'bg-[#1a1a1a] text-[#666] hover:text-white hover:bg-[#252525]'
+                          }`}>
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ══════ PLATFORMS TAB ══════ */}
+      {activeTab === 'platforms' && (
+        <div className="space-y-3">
+          {/* Master Toggle */}
+          <div className="flex flex-wrap gap-2 mb-2">
+            <button onClick={() => handleMasterToggle(true)} disabled={savingMaster}
+              className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold transition disabled:opacity-50">
+              <Power className="w-3.5 h-3.5" /> Enable All
+            </button>
+            <button onClick={() => handleMasterToggle(false)} disabled={savingMaster}
+              className="flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition disabled:opacity-50">
+              <AlertCircle className="w-3.5 h-3.5" /> Disable All
+            </button>
+          </div>
+
+          {controls.map((control, idx) => {
+            const PIcon = platformIcons[control.platform] || Shield;
+            const isOpen = expandedPlatform === control.platform;
+            const featureCount = Object.values(control.features).filter(Boolean).length;
+            const totalFeatures = Object.keys(control.features).length;
+
+            return (
+              <div key={control.platform} className="bg-[#111] border border-[#1f1f1f] rounded-xl overflow-hidden">
+                {/* Platform Header */}
+                <button onClick={() => setExpandedPlatform(isOpen ? null : control.platform)}
+                  className="w-full flex items-center justify-between p-4 text-left hover:bg-[#0d0d0d] transition">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2.5 h-2.5 rounded-full ${control.isEnabled ? 'bg-green-400 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-400'}`} />
+                    <PIcon className="w-5 h-5 text-white" />
+                    <div>
+                      <span className="text-sm font-bold text-white capitalize">{control.platform}</span>
+                      <span className="text-[10px] text-[#555] ml-2">{featureCount}/{totalFeatures} features</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer" onClick={e => e.stopPropagation()}>
+                      <span className={`text-[10px] font-bold ${control.isEnabled ? 'text-green-400' : 'text-[#555]'}`}>
+                        {control.isEnabled ? 'ON' : 'OFF'}
+                      </span>
+                      <div className="relative" onClick={() => handleUpdateControl(idx, { isEnabled: !control.isEnabled })}>
+                        <div className={`w-10 h-5 rounded-full transition ${control.isEnabled ? 'bg-green-500' : 'bg-[#333]'}`} />
+                        <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${control.isEnabled ? 'translate-x-5' : ''}`} />
+                      </div>
+                    </label>
+                    {isOpen ? <ChevronDown className="w-4 h-4 text-[#555]" /> : <ChevronRight className="w-4 h-4 text-[#555]" />}
+                  </div>
+                </button>
+
+                {/* Expanded Content */}
+                {isOpen && (
+                  <div className={`border-t border-[#1a1a1a] p-4 ${!control.isEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* Plan Access */}
                       <div>
-                        <h4 className="font-semibold mb-4 text-sm text-gray-300">Plan Access</h4>
-                        <div className="space-y-3">
-                          {availablePlans.map((plan) => (
-                            <label key={plan} className="flex items-center gap-3 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={control.allowedPlans.includes(plan)}
-                                onChange={() => togglePlan(idx, plan)}
-                                className="w-4 h-4 rounded border-gray-500 text-red-500 focus:ring-red-500 accent-red-500"
-                              />
-                              <span className="text-gray-300 capitalize text-sm">{plan}</span>
+                        <h4 className="text-[10px] text-[#555] uppercase tracking-wider font-bold mb-2">Plan Access</h4>
+                        <div className="space-y-1.5">
+                          {availablePlans.map(plan => (
+                            <label key={plan} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-[#1a1a1a] transition">
+                              <input type="checkbox" checked={control.allowedPlans.includes(plan)}
+                                onChange={() => {
+                                  const s = new Set(control.allowedPlans);
+                                  s.has(plan) ? s.delete(plan) : s.add(plan);
+                                  handleUpdateControl(idx, { allowedPlans: Array.from(s) });
+                                }}
+                                className="w-3.5 h-3.5 rounded accent-[#FF0000]" />
+                              <span className="text-xs text-[#ccc] capitalize">{plan}</span>
                             </label>
                           ))}
                         </div>
@@ -561,22 +462,21 @@ export default function UnifiedControlPanel() {
 
                       {/* Role Access */}
                       <div>
-                        <h4 className="font-semibold mb-4 text-sm text-gray-300">Role Access</h4>
-                        <div className="space-y-3">
-                          {['user', 'manager', 'admin'].map((role) => {
-                            const roleData = roleInfo[role];
-                            const allowedRoles = control.allowedRoles || ['user', 'manager', 'admin'];
+                        <h4 className="text-[10px] text-[#555] uppercase tracking-wider font-bold mb-2">Role Access</h4>
+                        <div className="space-y-1.5">
+                          {['user', 'manager', 'admin'].map(role => {
+                            const ri = roleInfo[role];
+                            const allowed = control.allowedRoles || ['user', 'manager', 'admin'];
                             return (
-                              <label key={role} className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={allowedRoles.includes(role)}
-                                  onChange={() => toggleRole(idx, role)}
-                                  className="w-4 h-4 rounded border-gray-500 text-blue-500 focus:ring-blue-500 accent-blue-500"
-                                />
-                                <span className={`${roleData.badgeColor} text-white px-2 py-0.5 rounded text-xs font-semibold capitalize`}>
-                                  {role}
-                                </span>
+                              <label key={role} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-[#1a1a1a] transition">
+                                <input type="checkbox" checked={allowed.includes(role)}
+                                  onChange={() => {
+                                    const s = new Set(allowed);
+                                    s.has(role) ? s.delete(role) : s.add(role);
+                                    handleUpdateControl(idx, { allowedRoles: Array.from(s) });
+                                  }}
+                                  className="w-3.5 h-3.5 rounded accent-blue-500" />
+                                <span className={`${ri.bg} text-white px-2 py-0.5 rounded text-[9px] font-bold capitalize`}>{role}</span>
                               </label>
                             );
                           })}
@@ -585,257 +485,250 @@ export default function UnifiedControlPanel() {
 
                       {/* Feature Toggles */}
                       <div>
-                        <h4 className="font-semibold mb-4 text-sm text-gray-300">Sub-Features</h4>
-                        <div className="space-y-3">
-                          {Object.keys(control.features).map((featureKey) => (
-                            <div key={featureKey} className="flex items-center justify-between">
-                              <span className="capitalize text-sm text-gray-300">{featureKey.replace('_', ' ')}</span>
-                              <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  className="sr-only peer"
-                                  checked={!!control.features[featureKey]}
-                                  onChange={() => toggleFeature(idx, featureKey)}
-                                />
-                                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                              </label>
+                        <h4 className="text-[10px] text-[#555] uppercase tracking-wider font-bold mb-2">Features</h4>
+                        <div className="space-y-1.5">
+                          {Object.keys(control.features).map(key => (
+                            <div key={key} className="flex items-center justify-between p-1.5 rounded hover:bg-[#1a1a1a] transition">
+                              <span className="text-xs text-[#ccc]">{humanize(key)}</span>
+                              <div className="relative cursor-pointer" onClick={() => {
+                                const f = { ...control.features, [key]: !control.features[key] };
+                                handleUpdateControl(idx, { features: f });
+                              }}>
+                                <div className={`w-8 h-4 rounded-full transition ${control.features[key] ? 'bg-blue-500' : 'bg-[#333]'}`} />
+                                <div className={`absolute left-0.5 top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${control.features[key] ? 'translate-x-4' : ''}`} />
+                              </div>
                             </div>
                           ))}
                         </div>
                       </div>
                     </div>
 
-                    {/* Save Button */}
-                    <div className="mt-6 flex justify-end">
-                      <button
-                        onClick={() => savePlatformConfig(idx)}
-                        disabled={savingPlatform === control.platform}
-                        className="flex items-center gap-2 bg-white text-black hover:bg-gray-100 px-6 py-2 rounded-lg font-medium transition disabled:opacity-50"
-                      >
-                        {savingPlatform === control.platform ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Save className="w-4 h-4" />
-                        )}
-                        Save Changes
+                    <div className="mt-4 flex justify-end">
+                      <button onClick={() => savePlatformConfig(idx)} disabled={savingPlatform === control.platform}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-[#FF0000] hover:bg-[#cc0000] text-white rounded-lg text-xs font-bold transition disabled:opacity-50">
+                        {savingPlatform === control.platform ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        Save {control.platform}
                       </button>
                     </div>
                   </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ══════ SITE CONTROLS TAB ══════ */}
+      {activeTab === 'site' && (
+        <div className="space-y-3">
+          {/* Maintenance Mode */}
+          <div className={`bg-[#111] border rounded-xl p-4 sm:p-5 ${maintenanceMode ? 'border-red-500/30' : 'border-[#1f1f1f]'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-lg ${maintenanceMode ? 'bg-red-500/15' : 'bg-[#1a1a1a]'}`}>
+                  <AlertTriangle className={`w-5 h-5 ${maintenanceMode ? 'text-red-400' : 'text-[#555]'}`} />
                 </div>
-              );
-            })}
+                <div>
+                  <h3 className="text-sm font-bold text-white">Maintenance Mode</h3>
+                  <p className="text-[10px] text-[#555]">When enabled, users see a maintenance page. Only super-admins can access the site.</p>
+                </div>
+              </div>
+              <div className="relative cursor-pointer shrink-0" onClick={() => setMaintenanceMode(!maintenanceMode)}>
+                <div className={`w-12 h-6 rounded-full transition ${maintenanceMode ? 'bg-red-500' : 'bg-[#333]'}`} />
+                <div className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${maintenanceMode ? 'translate-x-6' : ''}`} />
+              </div>
+            </div>
+          </div>
+
+          {/* Registration Toggle */}
+          <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4 sm:p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-[#1a1a1a]">
+                  <Users className={`w-5 h-5 ${registrationOpen ? 'text-green-400' : 'text-[#555]'}`} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">User Registration</h3>
+                  <p className="text-[10px] text-[#555]">Control whether new users can sign up. Existing users can still log in.</p>
+                </div>
+              </div>
+              <div className="relative cursor-pointer shrink-0" onClick={() => setRegistrationOpen(!registrationOpen)}>
+                <div className={`w-12 h-6 rounded-full transition ${registrationOpen ? 'bg-green-500' : 'bg-[#333]'}`} />
+                <div className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${registrationOpen ? 'translate-x-6' : ''}`} />
+              </div>
+            </div>
+          </div>
+
+          {/* Announcement Banner */}
+          <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-[#1a1a1a]">
+                  <Bell className={`w-5 h-5 ${announcementActive ? 'text-amber-400' : 'text-[#555]'}`} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Site Announcement</h3>
+                  <p className="text-[10px] text-[#555]">Show a banner message to all users across the platform.</p>
+                </div>
+              </div>
+              <div className="relative cursor-pointer shrink-0" onClick={() => setAnnouncementActive(!announcementActive)}>
+                <div className={`w-12 h-6 rounded-full transition ${announcementActive ? 'bg-amber-500' : 'bg-[#333]'}`} />
+                <div className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${announcementActive ? 'translate-x-6' : ''}`} />
+              </div>
+            </div>
+            <textarea
+              value={announcement}
+              onChange={e => setAnnouncement(e.target.value)}
+              placeholder="e.g. We're upgrading our servers tonight at 11 PM IST. Expect brief downtime."
+              className="w-full px-3 py-2 bg-[#0a0a0a] border border-[#252525] rounded-lg text-white text-sm placeholder-[#444] focus:outline-none focus:border-amber-500/50 transition h-16 resize-none"
+            />
+          </div>
+
+          {/* Save Site Settings */}
+          <div className="flex justify-end">
+            <button onClick={handleSaveSiteSettings} disabled={savingSite}
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-[#FF0000] hover:bg-[#cc0000] text-white rounded-lg text-xs font-bold transition disabled:opacity-50">
+              {savingSite ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Save Site Settings
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
+      {/* ══════ PLAN EDITOR MODAL ══════ */}
       {editingPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-8 border-b border-gray-800 pb-4">
+          <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl w-full max-w-4xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#1a1a1a]">
               <div>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                  <Edit2 className="w-6 h-6 text-blue-400" /> Edit Plan: {editingPlan.name}
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Edit2 className="w-5 h-5 text-blue-400" /> Edit: {editingPlan.name}
                 </h2>
-                <p className="text-gray-400 text-sm mt-1">Configure pricing, limits, and features for this plan</p>
+                <p className="text-[10px] text-[#555] mt-0.5">Configure pricing, limits, and features</p>
               </div>
-              <button
-                onClick={() => setEditingPlan(null)}
-                className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-400 hover:text-white"
-              >
-                <X className="w-6 h-6" />
+              <button onClick={() => setEditingPlan(null)} className="p-2 hover:bg-[#1a1a1a] rounded-lg transition text-[#555] hover:text-white">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               {/* Basic Info */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Basic Information</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Plan Name</label>
-                  <input
-                    type="text"
-                    value={editingPlan.name}
-                    onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Display Label (e.g. Starter Plan)</label>
-                  <input
-                    type="text"
-                    value={editingPlan.label || ''}
-                    onChange={(e) => setEditingPlan({ ...editingPlan, label: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">Description</label>
-                  <textarea
-                    value={editingPlan.description || ''}
-                    onChange={(e) => setEditingPlan({ ...editingPlan, description: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition h-20"
-                  />
-                </div>
-                <div className="flex items-center gap-4">
-                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Price Monthly (USD)</label>
-                    <input
-                      type="number"
-                      value={editingPlan.priceMonthly}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, priceMonthly: parseFloat(e.target.value) })}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500"
-                    />
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-[#555] uppercase tracking-wider">Basic Information</h3>
+                {[
+                  { label: 'Plan Name', value: editingPlan.name, key: 'name' },
+                  { label: 'Display Label', value: editingPlan.label || '', key: 'label' },
+                ].map(f => (
+                  <div key={f.key}>
+                    <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">{f.label}</label>
+                    <input type="text" value={f.value}
+                      onChange={e => setEditingPlan({ ...editingPlan, [f.key]: e.target.value })}
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-[#FF0000]/50 transition" />
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Price Yearly (USD)</label>
-                    <input
-                      type="number"
-                      value={editingPlan.priceYearly || 0}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, priceYearly: parseFloat(e.target.value) })}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-red-500"
-                    />
+                ))}
+                <div>
+                  <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Description</label>
+                  <textarea value={editingPlan.description || ''}
+                    onChange={e => setEditingPlan({ ...editingPlan, description: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-[#FF0000]/50 transition h-16 resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Monthly (₹)</label>
+                    <input type="number" value={editingPlan.priceMonthly}
+                      onChange={e => setEditingPlan({ ...editingPlan, priceMonthly: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-[#FF0000]/50 transition" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Yearly (₹)</label>
+                    <input type="number" value={editingPlan.priceYearly || 0}
+                      onChange={e => setEditingPlan({ ...editingPlan, priceYearly: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-[#FF0000]/50 transition" />
                   </div>
                 </div>
               </div>
 
-                {/* Usage Limits */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Hard Usage Limits & Display</h3>
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="col-span-full bg-blue-900/10 p-3 rounded border border-blue-800/30 mb-2">
-                    <p className="text-xs text-blue-300">Numerical limits are enforced by the system. Display labels are what users see on pricing cards.</p>
+              {/* Limits */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-[#555] uppercase tracking-wider">Usage Limits</h3>
+                <p className="text-[10px] text-[#444] bg-blue-500/5 border border-blue-500/10 rounded-lg p-2">-1 = unlimited. Display labels are shown on pricing cards.</p>
+                {[
+                  { label: 'Analyses Limit', numKey: 'analysesLimit', dispKey: 'analyses' },
+                  { label: 'Title Suggestions', numKey: 'titleSuggestions', dispKey: 'videos' },
+                ].map(f => (
+                  <div key={f.numKey} className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-[#555] font-bold mb-1">{f.label}</label>
+                      <input type="number" value={(editingPlan.limits as any)[f.numKey]}
+                        onChange={e => setEditingPlan({ ...editingPlan, limits: { ...editingPlan.limits, [f.numKey]: parseInt(e.target.value) || 0 } })}
+                        className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-[#555] font-bold mb-1">Display</label>
+                      <input type="text" value={editingPlan.limitsDisplay?.[f.dispKey as keyof typeof editingPlan.limitsDisplay] || ''}
+                        onChange={e => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, [f.dispKey]: e.target.value } })}
+                        className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" placeholder="e.g. 500/mo" />
+                    </div>
+                  </div>
+                ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-[#555] font-bold mb-1">Display Storage</label>
+                    <input type="text" value={editingPlan.limitsDisplay?.storage || ''}
+                      onChange={e => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, storage: e.target.value } })}
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" placeholder="e.g. 10GB" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Analyses Limit (-1 = ∞)</label>
-                    <input
-                      type="number"
-                      value={editingPlan.limits.analysesLimit}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, limits: { ...editingPlan.limits, analysesLimit: parseInt(e.target.value) }})}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                    />
-                  </div>
-                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Analyses (e.g. 500/mo)</label>
-                    <input
-                      type="text"
-                      value={editingPlan.limitsDisplay?.analyses || ''}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, analyses: e.target.value }})}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Title Suggestions Limit</label>
-                    <input
-                      type="number"
-                      value={editingPlan.limits.titleSuggestions}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, limits: { ...editingPlan.limits, titleSuggestions: parseInt(e.target.value) }})}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                    />
-                  </div>
-                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Videos (e.g. 5 Videos)</label>
-                    <input
-                      type="text"
-                      value={editingPlan.limitsDisplay?.videos || ''}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, videos: e.target.value }})}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                    />
-                  </div>
-                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Storage (e.g. 10GB)</label>
-                    <input
-                      type="text"
-                      value={editingPlan.limitsDisplay?.storage || ''}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, storage: e.target.value }})}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                    />
-                  </div>
-                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Display Support</label>
-                    <input
-                      type="text"
-                      value={editingPlan.limitsDisplay?.support || ''}
-                      onChange={(e) => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, support: e.target.value }})}
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white"
-                    />
+                    <label className="block text-[10px] text-[#555] font-bold mb-1">Display Support</label>
+                    <input type="text" value={editingPlan.limitsDisplay?.support || ''}
+                      onChange={e => setEditingPlan({ ...editingPlan, limitsDisplay: { ...editingPlan.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, support: e.target.value } })}
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" placeholder="e.g. Priority" />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Features List */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Marketing Features List</h3>
-                <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+              <div>
+                <h3 className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2">Marketing Features</h3>
+                <div className="space-y-1.5 max-h-52 overflow-y-auto mb-2">
                   {editingPlan.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                       <input
-                        type="text"
-                        value={feature}
-                        onChange={(e) => {
-                          const newFeatures = [...editingPlan.features];
-                          newFeatures[idx] = e.target.value;
-                          setEditingPlan({ ...editingPlan, features: newFeatures });
-                        }}
-                        className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white"
-                      />
-                      <button
-                        onClick={() => {
-                          const newFeatures = editingPlan.features.filter((_, i) => i !== idx);
-                          setEditingPlan({ ...editingPlan, features: newFeatures });
-                        }}
-                        className="p-1 hover:bg-gray-800 text-red-500"
-                      >
-                        <Trash2 className="w-4 h-4" />
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <input type="text" value={feature}
+                        onChange={e => { const f = [...editingPlan.features]; f[idx] = e.target.value; setEditingPlan({ ...editingPlan, features: f }); }}
+                        className="flex-1 px-2.5 py-1.5 bg-[#111] border border-[#252525] rounded-lg text-white text-xs focus:outline-none transition" />
+                      <button onClick={() => setEditingPlan({ ...editingPlan, features: editingPlan.features.filter((_, i) => i !== idx) })}
+                        className="p-1 text-red-400 hover:bg-red-500/10 rounded transition">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
-                  <button
-                    onClick={() => setEditingPlan({ ...editingPlan, features: [...editingPlan.features, ''] })}
-                    className="w-full py-2 border-2 border-dashed border-gray-700 rounded-lg text-gray-500 hover:text-white hover:border-gray-500 transition-all text-sm flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" /> Add Feature
-                  </button>
                 </div>
+                <button onClick={() => setEditingPlan({ ...editingPlan, features: [...editingPlan.features, ''] })}
+                  className="w-full py-2 border border-dashed border-[#252525] rounded-lg text-[#555] hover:text-white hover:border-[#444] transition text-xs flex items-center justify-center gap-1">
+                  <Plus className="w-3 h-3" /> Add Feature
+                </button>
               </div>
 
               {/* Feature Flags */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Functional Feature Flags</h3>
-                <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
+              <div>
+                <h3 className="text-xs font-bold text-[#555] uppercase tracking-wider mb-2">Feature Flags</h3>
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                   {[
-                    {
-                      label: 'AI Studio Tools',
-                      flags: ['daily_ideas', 'ai_coach', 'keyword_research', 'script_writer', 'title_generator', 'channel_audit_tool', 'ai_shorts_clipping', 'ai_thumbnail_maker', 'optimize']
-                    },
-                    {
-                      label: 'Growth & Analytics',
-                      flags: ['advancedAiViralPrediction', 'realTimeTrendAnalysis', 'bestPostingTimePredictions', 'competitorAnalysis', 'advancedAnalyticsDashboard']
-                    },
-                    {
-                      label: 'Support & Enterprise',
-                      flags: ['emailSupport', 'prioritySupport24x7', 'priorityProcessing', 'teamCollaboration', 'whiteLabelReports', 'customAiModelTraining', 'dedicatedAccountManager', 'customIntegrations']
-                    }
-                  ].map((group) => (
-                    <div key={group.label} className="space-y-3">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">{group.label}</h4>
-                      <div className="grid grid-cols-1 gap-2">
-                        {group.flags.map((flag) => (
-                          <label key={flag} className="flex items-center justify-between cursor-pointer group p-2 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-gray-800">
-                            <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{flag.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}</span>
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                className="sr-only"
-                                checked={!!editingPlan.featureFlags[flag as keyof PlanFeatureFlags]}
-                                onChange={(e) => setEditingPlan({
-                                  ...editingPlan,
-                                  featureFlags: { ...editingPlan.featureFlags, [flag]: e.target.checked }
-                                })}
-                              />
-                              <div className={`block w-10 h-6 rounded-full transition-colors ${editingPlan.featureFlags[flag as keyof PlanFeatureFlags] ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
-                              <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${editingPlan.featureFlags[flag as keyof PlanFeatureFlags] ? 'translate-x-4' : ''}`}></div>
+                    { label: 'AI Studio', flags: ['daily_ideas', 'ai_coach', 'keyword_research', 'script_writer', 'title_generator', 'channel_audit_tool', 'ai_shorts_clipping', 'ai_thumbnail_maker', 'optimize'] },
+                    { label: 'Growth & Analytics', flags: ['advancedAiViralPrediction', 'realTimeTrendAnalysis', 'bestPostingTimePredictions', 'competitorAnalysis', 'advancedAnalyticsDashboard'] },
+                    { label: 'Support & Enterprise', flags: ['emailSupport', 'prioritySupport24x7', 'priorityProcessing', 'teamCollaboration', 'whiteLabelReports', 'customAiModelTraining', 'dedicatedAccountManager', 'customIntegrations'] },
+                  ].map(group => (
+                    <div key={group.label}>
+                      <p className="text-[9px] text-[#444] uppercase tracking-wider font-bold mb-1">{group.label}</p>
+                      <div className="space-y-0.5">
+                        {group.flags.map(flag => (
+                          <label key={flag} className="flex items-center justify-between cursor-pointer p-1.5 rounded hover:bg-[#111] transition">
+                            <span className="text-[11px] text-[#888]">{humanize(flag)}</span>
+                            <div className="relative" onClick={e => { e.preventDefault(); setEditingPlan({ ...editingPlan, featureFlags: { ...editingPlan.featureFlags, [flag]: !editingPlan.featureFlags[flag as keyof PlanFeatureFlags] } }); }}>
+                              <div className={`w-8 h-4 rounded-full transition ${editingPlan.featureFlags[flag as keyof PlanFeatureFlags] ? 'bg-blue-500' : 'bg-[#333]'}`} />
+                              <div className={`absolute left-0.5 top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${editingPlan.featureFlags[flag as keyof PlanFeatureFlags] ? 'translate-x-4' : ''}`} />
                             </div>
                           </label>
                         ))}
@@ -846,30 +739,16 @@ export default function UnifiedControlPanel() {
               </div>
             </div>
 
-            {/* Footer Buttons */}
-            <div className="flex justify-end gap-4 mt-12 border-t border-gray-800 pt-8">
-               <button
-                onClick={() => setEditingPlan(null)}
-                className="px-6 py-2.5 rounded-lg font-semibold text-gray-400 hover:text-white hover:bg-gray-800 transition"
-              >
+            {/* Footer */}
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-[#1a1a1a]">
+              <button onClick={() => setEditingPlan(null)}
+                className="px-5 py-2 rounded-lg text-xs font-bold text-[#666] hover:text-white hover:bg-[#1a1a1a] transition">
                 Cancel
               </button>
-              <button
-                onClick={handleSavePlan}
-                disabled={isSavingPlan}
-                className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-8 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
-              >
-                {isSavingPlan ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Saving Changes...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5" />
-                    Save Changes
-                  </>
-                )}
+              <button onClick={handleSavePlan} disabled={isSavingPlan}
+                className="flex items-center gap-1.5 px-6 py-2 bg-[#FF0000] hover:bg-[#cc0000] text-white rounded-lg text-xs font-bold transition disabled:opacity-50">
+                {isSavingPlan ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Save Changes
               </button>
             </div>
           </div>

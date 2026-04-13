@@ -740,7 +740,7 @@ export default function SuperAdminPage() {
                     </button>
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/admin/super/support')}>
                       <Headphones className="w-4 h-4" />
-                      <span>Support Queue</span>
+                      <span>Support Tickets</span>
                     </button>
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#212121]" onClick={() => router.push('/videos')}>
                       <Video className="w-4 h-4" />
@@ -954,7 +954,7 @@ export default function SuperAdminPage() {
             <Shield className="w-16 h-16 text-amber-500 mb-4" />
             <h2 className="text-xl font-bold text-white mb-2">Access denied</h2>
             <p className="text-[#AAAAAA] text-sm mb-2">
-              User details tab sirf super admin users ke liye hai. Apna role <code className="bg-[#212121] px-1 rounded">super-admin</code> set karein, phir niche &quot;Refresh&quot; dabayein.
+              This tab is only for super admin users. Set your role to <code className="bg-[#212121] px-1 rounded">super-admin</code>, then click &quot;Refresh&quot; below.
             </p>
             <p className="text-[#888] text-xs mb-4 text-left w-full max-w-md">
               <strong>Option 1 (bina mongosh):</strong> Terminal me project folder me jao, phir: <code className="block mt-1 p-2 bg-[#212121] rounded text-left break-all">node scripts/set-super-admin.js your@email.com</code>
@@ -987,11 +987,19 @@ export default function SuperAdminPage() {
               <Wand2 className="w-8 h-8 text-[#FF0000]" />
               <div>
                 <h1 className="text-2xl font-bold">AI Studio Access</h1>
-                <p className="text-sm text-[#AAAAAA]">Jin roles ko AI Studio (Script Generator, Thumbnail, Hooks, Shorts, YouTube Growth) dikhana hai, unhe select karein. Save karne par sidebar me AI Studio in users ko dikhega.</p>
+                <p className="text-sm text-[#AAAAAA]">Select which roles can access AI Studio (Script Generator, Thumbnail, Hooks, Shorts, YouTube Growth). After saving, AI Studio will appear in the sidebar for selected roles.</p>
               </div>
             </div>
             <div className="bg-[#181818] border border-[#212121] rounded-xl p-6 mb-6">
-              <p className="text-sm font-medium text-white mb-3">Allow AI Studio for these roles:</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-white">Allow AI Studio for these roles:</p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setAiStudioRoles(['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'])}
+                    className="text-[10px] px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded hover:bg-emerald-500/20">Select All</button>
+                  <button type="button" onClick={() => setAiStudioRoles([])}
+                    className="text-[10px] px-2 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20">Clear All</button>
+                </div>
+              </div>
               <div className="space-y-2">
                 {['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'].map((role) => (
                   <label key={role} className="flex items-center gap-2 cursor-pointer">
@@ -1023,10 +1031,11 @@ export default function SuperAdminPage() {
                     const data = await res.json();
                     if (res.ok) {
                       setAiStudioRoles(data.allowedRoles || aiStudioRoles);
-                      alert('AI Studio access saved.');
-                    } else alert(data.error || 'Failed to save');
-                  } catch (_) {
-                    alert('Failed to save');
+                    } else {
+                      console.error('Save failed:', data.error);
+                    }
+                  } catch (err) {
+                    console.error('Save error:', err);
                   } finally {
                     setAiStudioSaving(false);
                   }
@@ -1037,22 +1046,23 @@ export default function SuperAdminPage() {
               </button>
             </div>
             <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-              <p className="text-sm font-medium text-white mb-3">Individual AI tools ke liye roles select karein:</p>
-              <p className="text-xs text-[#888] mb-4">Har tool ke aage jin roles ko tick karenge, sirf wahi users us tool ko use kar sakenge. Agar kuch nahi select kiya to default: manager, admin, super-admin.</p>
+              <p className="text-sm font-medium text-white mb-3">Select roles for individual AI tools:</p>
+              <p className="text-xs text-[#888] mb-4">Check the roles next to each tool — only those users can access it. If nothing is selected, default roles apply: manager, admin, super-admin.</p>
               <div className="space-y-4">
                 {[
-                  { key: 'daily_ideas', label: 'Daily Ideas' },
-                  { key: 'ai_coach', label: 'AI Coach' },
-                  { key: 'keyword_research', label: 'Keyword Research' },
-                  { key: 'script_writer', label: 'Script Writer' },
-                  { key: 'title_generator', label: 'Title Generator' },
-                  { key: 'channel_audit', label: 'YouTube SEO / Channel tools' },
-                  { key: 'ai_shorts_clipping', label: 'AI Shorts Clipping' },
-                  { key: 'ai_thumbnail_maker', label: 'AI Thumbnail Maker' },
-                  { key: 'optimize', label: 'Optimize' },
+                  { key: 'daily_ideas', label: 'Daily Ideas', desc: 'AI-generated viral video ideas with posting times' },
+                  { key: 'ai_coach', label: 'AI Coach', desc: 'Personalized channel growth coaching' },
+                  { key: 'keyword_research', label: 'Keyword Research', desc: 'AI keyword intelligence with viral scores' },
+                  { key: 'script_writer', label: 'Script Writer', desc: 'Full video script generation with hooks & CTAs' },
+                  { key: 'title_generator', label: 'Title Generator', desc: 'CTR-optimized title suggestions & A/B testing' },
+                  { key: 'channel_audit', label: 'YouTube SEO / Channel Tools', desc: 'Live SEO analyzer, channel audit, Chinki AI' },
+                  { key: 'ai_shorts_clipping', label: 'AI Shorts Creator', desc: 'Auto-clip videos into viral shorts with editor' },
+                  { key: 'ai_thumbnail_maker', label: 'AI Thumbnail Generator', desc: '8 art styles, photo composite, 3D text overlay' },
+                  { key: 'optimize', label: 'Viral Optimizer', desc: 'CTR prediction, retention analysis, engagement boost' },
                 ].map((tool) => (
-                  <div key={tool.key} className="border border-[#262626] rounded-lg px-3 py-2">
-                    <p className="text-sm font-medium text-white mb-2">{tool.label}</p>
+                  <div key={tool.key} className="border border-[#262626] rounded-lg px-4 py-3 hover:border-[#444] transition">
+                    <p className="text-sm font-bold text-white">{tool.label}</p>
+                    <p className="text-[10px] text-[#888] mb-2">{(tool as any).desc}</p>
                     <div className="flex flex-wrap gap-3">
                       {['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'].map((role) => (
                         <label key={role} className="flex items-center gap-2 cursor-pointer text-xs">
@@ -1092,10 +1102,12 @@ export default function SuperAdminPage() {
                     const data = await res.json();
                     if (res.ok) {
                       if (data.features) setAiToolsAccess(data.features);
-                      alert('AI tools access saved.');
-                    } else alert(data.error || 'Failed to save');
-                  } catch (_) {
-                    alert('Failed to save');
+                      // saved
+                    } else {
+                      console.error('AI tools save failed:', data.error);
+                    }
+                  } catch (err) {
+                    console.error('AI tools save error:', err);
                   } finally {
                     setAiToolsSaving(false);
                   }
@@ -1112,7 +1124,7 @@ export default function SuperAdminPage() {
               <Settings className="w-8 h-8 text-[#FF0000]" />
               <div>
                 <h1 className="text-2xl font-bold">API Config</h1>
-                <p className="text-sm text-[#AAAAAA]">API keys yahan set karein — DB me save honge aur .env se override karenge. Agar yahan set nahi kiye to .env (e.g. YOUTUBE_API_KEY, RESEND_API_KEY, GEMINI_API_KEY) use hoga.</p>
+                <p className="text-sm text-[#AAAAAA]">Set API keys here — saved to DB and override .env values. If not set here, .env keys (e.g. YOUTUBE_API_KEY, RESEND_API_KEY, GEMINI_API_KEY) will be used.</p>
               </div>
             </div>
             {apiStatus.length > 0 && (
@@ -1176,7 +1188,7 @@ export default function SuperAdminPage() {
                     </div>
                   ))}
                   <p className="text-[11px] text-[#666] mt-2">
-                    Note: "Use hua kitna" (exact quota consumption) providers ke dashboard se hi milta hai. Yahan hum live health check aur official limit info dikhate hain.
+                    Note: Exact quota consumption is only available on provider dashboards. Here we show live health checks and official limit info.
                   </p>
                 </div>
               </div>
@@ -1209,14 +1221,15 @@ export default function SuperAdminPage() {
                     });
                     const data = await res.json();
                     if (res.ok) {
-                      alert('API config saved.');
                       setApiConfigForm({});
                       const r2 = await fetch('/api/admin/config', { headers: { Authorization: `Bearer ${token}` } });
                       const d2 = await r2.json();
                       if (d2.status) setApiConfigStatus(d2.status);
-                    } else alert(data.error || 'Failed to save');
-                  } catch (_) {
-                    alert('Failed to save');
+                    } else {
+                      console.error('API config save failed:', data.error);
+                    }
+                  } catch (err) {
+                    console.error('API config save error:', err);
                   } finally {
                     setApiConfigSaving(false);
                   }
@@ -1227,7 +1240,7 @@ export default function SuperAdminPage() {
                   { key: 'resendApiKey', label: 'Resend API Key', hint: 'Reliable emails (OTP, receipts, broadcast).', statusKey: 'resend' },
                   { key: 'openaiApiKey', label: 'OpenAI API Key', hint: 'AI Studio + Whisper captions.', statusKey: 'openai' },
                   { key: 'assemblyaiApiKey', label: 'AssemblyAI API Key', hint: 'Auto captions (Shorts) – OpenAI alternative.', statusKey: 'assemblyai' },
-                  { key: 'googleGeminiApiKey', label: 'Google Gemini API Key', hint: 'Chinki isi se baat karti hai (AI reply). OpenAI optional; Gemini set karein to Chinki turant jawab degi.', statusKey: 'gemini' },
+                  { key: 'googleGeminiApiKey', label: 'Google Gemini API Key', hint: 'Powers Chinki AI assistant replies. Set this for instant AI responses. OpenAI is optional if Gemini is configured.', statusKey: 'gemini' },
                   { key: 'sentryDsn', label: 'Sentry DSN (client)', hint: 'Frontend error tracking.', statusKey: 'sentry' },
                   { key: 'sentryServerDsn', label: 'Sentry Server DSN', hint: 'Backend error tracking.', statusKey: 'sentry' },
                   { key: 'paypalClientId', label: 'PayPal Client ID', hint: 'International payments.', statusKey: 'paypal' },
@@ -1371,13 +1384,14 @@ export default function SuperAdminPage() {
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                       body: JSON.stringify({ features: systems }),
                     });
-                    if (res.ok) alert('System configuration saved successfully.');
-                    else {
-                      const d = await res.json();
-                      alert(d.error || 'Failed to save');
+                    if (res.ok) {
+                      alert('Configuration saved successfully!');
+                    } else {
+                      const d = await res.json().catch(() => ({}));
+                      alert(d.error || 'Failed to save configuration');
                     }
-                  } catch (_) {
-                    alert('Failed to save');
+                  } catch (err) {
+                    alert('Failed to save configuration. Please try again.');
                   } finally {
                     setSystemsSaving(false);
                   }
@@ -1398,10 +1412,18 @@ export default function SuperAdminPage() {
               </div>
             ) : (
               <div className="space-y-8">
-                {['sidebar', 'dashboard'].map((group) => (
+                {[
+                  { key: 'sidebar', label: 'Sidebar Features' },
+                  { key: 'dashboard', label: 'Dashboard Widgets' },
+                  { key: 'ai_studio', label: 'AI Studio Features' },
+                  { key: 'platform', label: 'Platform Access' },
+                  { key: 'yt_seo_sections', label: 'YouTube SEO Sections' },
+                  { key: 'channel_intelligence', label: 'Channel Intelligence Sections' },
+                  { key: 'other', label: 'Other Features' },
+                ].filter(g => systems.some(s => s.group === g.key)).map(({ key: group, label: groupLabel }) => (
                   <div key={group} className="space-y-4">
                     <h2 className="text-sm font-semibold text-[#FF0000] uppercase tracking-widest border-b border-[#212121] pb-2">
-                      {group === 'sidebar' ? 'Sidebar Features' : 'Dashboard Widgets'}
+                      {groupLabel}
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {systems.filter(s => s.group === group).map((sys) => (
@@ -1473,7 +1495,7 @@ export default function SuperAdminPage() {
                 <Database className="w-8 h-8 text-[#FF0000]" />
                 <div>
                   <h1 className="text-2xl font-bold">Database Tables</h1>
-                  <p className="text-sm text-[#AAAAAA]">Sabhi tables grid view me. Partial search se data dhoondo.</p>
+                  <p className="text-sm text-[#AAAAAA]">All database tables in grid view. Use partial search to find data.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1493,6 +1515,22 @@ export default function SuperAdminPage() {
                   <RefreshCw className={`w-4 h-4 ${tableLoading ? 'animate-spin' : ''}`} />
                   Refresh
                 </button>
+                {tableData.length > 0 && (
+                  <button
+                    onClick={() => {
+                      const csv = [Object.keys(tableData[0]).join(','), ...tableData.map(row => Object.values(row).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+                      const blob = new Blob([csv], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${selectedTable}-${Date.now()}.csv`;
+                      a.click();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 text-sm"
+                  >
+                    Export CSV
+                  </button>
+                )}
               </div>
             </div>
             <div className="mb-4 flex items-center gap-3">
@@ -1524,40 +1562,58 @@ export default function SuperAdminPage() {
                   </thead>
                   <tbody>
                     {tableData.map((row, idx) => (
-                      <tr key={row._id as string || idx} className="border-b border-[#212121] hover:bg-[#202020]">
-                        {Object.entries(row).map(([k, v]) => (
-                          <td key={k} className="px-4 py-3 whitespace-nowrap max-w-xs truncate" title={String(v)}>
-                            {v != null ? String(v) : '—'}
-                          </td>
-                        ))}
+                      <tr key={row._id as string || idx} className="border-b border-[#212121] hover:bg-[#1a1a1a] transition-colors">
+                        {Object.entries(row).map(([k, v]) => {
+                          const val = v != null ? String(v) : '—';
+                          const isDate = k.includes('At') || k.includes('date') || k.includes('Date');
+                          const isBool = val === 'true' || val === 'false';
+                          const isEmail = val.includes('@') && val.includes('.');
+                          return (
+                            <td key={k} className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate text-[#CCC]" title={val}>
+                              {isBool ? (
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${val === 'true' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{val}</span>
+                              ) : isDate && val !== '—' ? (
+                                <span className="text-[#888]">{new Date(val).toLocaleDateString('en', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                              ) : isEmail ? (
+                                <span className="text-blue-400">{val}</span>
+                              ) : (
+                                val
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
             </div>
-            {tableTotal > tableLimit && (
-              <div className="mt-4 flex items-center justify-between text-sm text-[#AAAAAA]">
-                <span>Total: {tableTotal} records</span>
-                <div className="flex gap-2">
+            <div className="mt-4 flex items-center justify-between text-sm text-[#AAAAAA]">
+              <span className="text-xs">
+                Showing {Math.min((tablePage - 1) * tableLimit + 1, tableTotal)}–{Math.min(tablePage * tableLimit, tableTotal)} of <strong className="text-white">{tableTotal}</strong> records
+              </span>
+              {tableTotal > tableLimit && (
+                <div className="flex items-center gap-2">
                   <button
                     disabled={tablePage <= 1}
                     onClick={() => setTablePage((p) => p - 1)}
-                    className="px-3 py-1 rounded bg-[#333333] disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-lg bg-[#222] border border-[#333] text-[#CCC] disabled:opacity-30 hover:bg-[#333] transition text-xs"
                   >
-                    Previous
+                    ← Prev
                   </button>
-                  <span>Page {tablePage}</span>
+                  <span className="text-xs text-white font-bold">
+                    {tablePage} / {Math.ceil(tableTotal / tableLimit)}
+                  </span>
                   <button
                     disabled={tablePage * tableLimit >= tableTotal}
                     onClick={() => setTablePage((p) => p + 1)}
-                    className="px-3 py-1 rounded bg-[#333333] disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-lg bg-[#222] border border-[#333] text-[#CCC] disabled:opacity-30 hover:bg-[#333] transition text-xs"
                   >
-                    Next
+                    Next →
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ) : viewMode === 'planConfig' || viewMode.startsWith('plan-control-') ? (
           <div className="max-w-4xl mx-auto">
@@ -1590,7 +1646,7 @@ export default function SuperAdminPage() {
                 <Users className="w-8 h-8 text-[#FF0000]" />
                 <div>
                   <h1 className="text-2xl font-bold">Users</h1>
-                  <p className="text-sm text-[#AAAAAA]">Database me jo user hai woh yahan dikhega. Create User, Modify User, Role Set aur Delete.</p>
+                  <p className="text-sm text-[#AAAAAA]">Manage all users — Create, Modify, Set Roles, and Delete users from the database.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

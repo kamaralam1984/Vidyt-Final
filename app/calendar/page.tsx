@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
-import { Calendar as CalendarIcon, Plus, X, Clock, Loader2, AlertCircle, Upload, Check, File, Trash2, Sparkles, TrendingUp } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, Clock, Loader2, AlertCircle, Upload, Check, File, Trash2, Sparkles, TrendingUp, Youtube, Facebook, Instagram, Film, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { getAuthHeaders, getToken } from '@/utils/auth';
+import { useTranslations } from '@/context/translations';
 
 interface ScheduledPost {
   id: string;
@@ -25,7 +26,11 @@ interface CalendarData {
   upcomingPosts: ScheduledPost[];
 }
 
+const PLATFORM_ICON: Record<string, typeof Youtube> = { youtube: Youtube, facebook: Facebook, instagram: Instagram, tiktok: Film };
+const PLATFORM_COLOR: Record<string, string> = { youtube: 'bg-red-500', facebook: 'bg-blue-500', instagram: 'bg-pink-500', tiktok: 'bg-white/20' };
+
 export default function CalendarPage() {
+  const { t } = useTranslations();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [posts, setPosts] = useState<ScheduledPost[]>([]);
@@ -42,7 +47,9 @@ export default function CalendarPage() {
     videoUrl: '',
     videoFile: null as File | null,
     thumbnailFile: null as File | null,
+    privacyStatus: 'public' as 'public' | 'private' | 'unlisted',
   });
+  const [autoSeoLoading, setAutoSeoLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -56,6 +63,7 @@ export default function CalendarPage() {
   const titleSeoAbortRef = useRef<AbortController | null>(null);
   const titleSeoGenRef = useRef(0);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [youtubeLinked, setYoutubeLinked] = useState<boolean | null>(null);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -76,6 +84,17 @@ export default function CalendarPage() {
     void loadCalendar(monthStart, monthEnd);
   }, [year, month]);
 
+  // Check if YouTube is linked for auto-upload
+  useEffect(() => {
+    const checkYoutube = async () => {
+      try {
+        const res = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
+        setYoutubeLinked(!!res.data?.user?.youtubeGoogleConnected || !!res.data?.user?.isYoutubeConnected);
+      } catch { setYoutubeLinked(false); }
+    };
+    checkYoutube();
+  }, []);
+
   // Cleanup previews on unmount
   useEffect(() => {
     return () => {
@@ -84,9 +103,9 @@ export default function CalendarPage() {
     };
   }, []);
 
-  // Auto-generate SEO when title changes
+  // Auto-generate SEO when title changes (works with AND without video file)
   useEffect(() => {
-    if (!formData.videoFile || !formData.title.trim() || formData.title.trim().length < 2) {
+    if (!formData.title.trim() || formData.title.trim().length < 3) {
       return;
     }
 
@@ -136,8 +155,65 @@ export default function CalendarPage() {
         if (typeof data?.seoRankScore === 'number') {
           setSeoRankScore(data.seoRankScore);
         }
+
+        // If description or hashtags still empty, use AI keyword intelligence
+        if (!data?.description || !data?.hashtags?.length) {
+          try {
+            setAutoSeoLoading(true);
+            const aiRes = await axios.post('/api/ai/keyword-intelligence', {
+              primaryKeyword: formData.title.trim(),
+              currentPage: 'CONTENT_CALENDAR',
+              platform: formData.platform,
+              contentType: 'video',
+            }, { headers: getAuthHeaders(), signal: ac.signal });
+
+            if (ac.signal.aborted || myGen !== titleSeoGenRef.current) return;
+            const aiData = aiRes.data?.data;
+            if (aiData) {
+              if (!data?.description) {
+                const desc = aiData.titles?.[0] ? `${aiData.titles[0]}\n\n` : '';
+                const keywords = (aiData.viral_keywords || aiData.suggested_keywords || []).slice(0, 10).join(', ');
+                setFormData((prev) => ({
+                  ...prev,
+                  description: prev.description || `${desc}${keywords ? `Keywords: ${keywords}` : ''}`,
+                }));
+              }
+              if (!data?.hashtags?.length && aiData.hashtags?.length) {
+                setFormData((prev) => ({
+                  ...prev,
+                  hashtags: prev.hashtags || aiData.hashtags.map((h: string) => `#${h.replace(/^#/, '')}`).join(' '),
+                }));
+              }
+            }
+          } catch { /* AI fallback silent */ } finally { setAutoSeoLoading(false); }
+        }
       } catch (err: unknown) {
         if (axios.isAxiosError(err) && err.code === 'ERR_CANCELED') return;
+
+        // Fallback: try AI keyword intelligence directly
+        try {
+          setAutoSeoLoading(true);
+          const aiRes = await axios.post('/api/ai/keyword-intelligence', {
+            primaryKeyword: formData.title.trim(),
+            currentPage: 'CONTENT_CALENDAR',
+            platform: formData.platform,
+            contentType: 'video',
+          }, { headers: getAuthHeaders(), signal: ac.signal });
+
+          if (ac.signal.aborted || myGen !== titleSeoGenRef.current) return;
+          const aiData = aiRes.data?.data;
+          if (aiData) {
+            if (aiData.hashtags?.length) {
+              setFormData((prev) => ({ ...prev, hashtags: prev.hashtags || aiData.hashtags.map((h: string) => `#${h.replace(/^#/, '')}`).join(' ') }));
+            }
+            const keywords = [...(aiData.viral_keywords || []), ...(aiData.suggested_keywords || [])].slice(0, 8);
+            if (keywords.length) {
+              setFormData((prev) => ({ ...prev, description: prev.description || `${formData.title}\n\n${keywords.join(', ')}\n\n${(aiData.hashtags || []).slice(0, 10).map((h: string) => `#${h.replace(/^#/, '')}`).join(' ')}` }));
+            }
+            setSeoRankScore(aiData.keyword_scores?.[0]?.seo_score || 70);
+          }
+        } catch { /* silent */ } finally { setAutoSeoLoading(false); }
+
         console.error('Title SEO generation error:', err);
       } finally {
         if (myGen === titleSeoGenRef.current) setTitleSeoLoading(false);
@@ -148,7 +224,7 @@ export default function CalendarPage() {
       if (titleSeoDebounceRef.current) clearTimeout(titleSeoDebounceRef.current);
       titleSeoAbortRef.current?.abort();
     };
-  }, [formData.title, formData.videoFile, rank1Mode]);
+  }, [formData.title, rank1Mode]);
 
   const loadCalendar = async (startDate?: Date, endDate?: Date) => {
     try {
@@ -200,7 +276,8 @@ export default function CalendarPage() {
       if (formData.videoUrl) uploadFormData.append('videoUrl', formData.videoUrl);
       if (formData.videoFile) uploadFormData.append('videoFile', formData.videoFile);
       if (formData.thumbnailFile) uploadFormData.append('thumbnailFile', formData.thumbnailFile);
-      uploadFormData.append('hashtags', JSON.stringify(formData.hashtags.split(',').map(t => t.trim()).filter(Boolean)));
+      uploadFormData.append('hashtags', JSON.stringify(formData.hashtags.split(/[,\s]+/).map(t => t.trim()).filter(Boolean)));
+      uploadFormData.append('privacyStatus', formData.privacyStatus);
 
       await axios.post('/api/schedule/post', uploadFormData, {
         headers: {
@@ -227,6 +304,7 @@ export default function CalendarPage() {
         videoUrl: '',
         videoFile: null,
         thumbnailFile: null,
+        privacyStatus: 'public',
       });
       const monthStart = new Date(year, month, 1);
       const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
@@ -380,25 +458,30 @@ export default function CalendarPage() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-2">
-                <CalendarIcon className="w-8 h-8 text-[#FF0000]" /> Content Calendar
-              </h1>
-              <p className="text-[#AAAAAA]">
-                Schedule and manage your content posts
-              </p>
+          {/* Animated Header */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative mb-6 rounded-2xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#FF0000]/10 via-amber-500/10 to-[#FF0000]/10 animate-pulse" />
+            <div className="relative bg-[#0F0F0F]/80 backdrop-blur-xl border border-[#FF0000]/20 rounded-2xl p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}
+                    className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF0000] to-amber-600 flex items-center justify-center shadow-lg shadow-[#FF0000]/30">
+                    <CalendarIcon className="w-6 h-6 text-white" />
+                  </motion.div>
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-[#FF4444]">
+                      {t('calendar.title')}
+                    </h1>
+                    <p className="text-sm text-[#888] mt-0.5">{t('calendar.subtitle')}</p>
+                  </div>
+                </div>
+                <motion.button onClick={() => openScheduleForDay()} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#FF0000] to-[#CC0000] text-white rounded-xl font-black text-sm shadow-lg shadow-[#FF0000]/20 transition">
+                  <Plus className="w-5 h-5" /> Schedule Post
+                </motion.button>
+              </div>
             </div>
-            <motion.button
-              onClick={() => openScheduleForDay()}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-colors font-semibold"
-            >
-              <Plus className="w-5 h-5" />
-              Schedule Post
-            </motion.button>
-          </div>
+          </motion.div>
 
           {error && (
             <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 flex items-center gap-2">
@@ -407,45 +490,82 @@ export default function CalendarPage() {
             </div>
           )}
 
+          {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-[#181818] border border-[#212121] rounded-xl p-4">
-              <p className="text-xs uppercase tracking-wider text-[#888]">Scheduled</p>
-              <p className="text-2xl font-bold text-white mt-1">{calendarData?.totalScheduled ?? posts.filter((p) => p.status === 'scheduled').length}</p>
-            </div>
-            <div className="bg-[#181818] border border-[#212121] rounded-xl p-4">
-              <p className="text-xs uppercase tracking-wider text-[#888]">Posted</p>
-              <p className="text-2xl font-bold text-white mt-1">{calendarData?.totalPosted ?? posts.filter((p) => p.status === 'posted').length}</p>
-            </div>
-            <div className="bg-[#181818] border border-[#212121] rounded-xl p-4">
-              <p className="text-xs uppercase tracking-wider text-[#888]">This Month Total</p>
-              <p className="text-2xl font-bold text-white mt-1">{posts.length}</p>
-            </div>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-[#181818] border border-[#212121] rounded-xl p-5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-[#888] font-bold">Scheduled</p>
+                <p className="text-2xl font-black text-amber-400 mt-0.5">{calendarData?.totalScheduled ?? posts.filter((p) => p.status === 'scheduled').length}</p>
+              </div>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+              className="bg-[#181818] border border-[#212121] rounded-xl p-5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <Check className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-[#888] font-bold">Posted</p>
+                <p className="text-2xl font-black text-emerald-400 mt-0.5">{calendarData?.totalPosted ?? posts.filter((p) => p.status === 'posted').length}</p>
+              </div>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="bg-[#181818] border border-[#212121] rounded-xl p-5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <CalendarIcon className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-[#888] font-bold">This Month</p>
+                <p className="text-2xl font-black text-purple-400 mt-0.5">{posts.length}</p>
+              </div>
+            </motion.div>
           </div>
+
+          {/* YouTube Connection Status */}
+          {youtubeLinked === false && (
+            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-amber-400">YouTube Not Connected</p>
+                  <p className="text-xs text-[#888]">Connect your YouTube account for auto-upload. Scheduled posts will fail without it.</p>
+                </div>
+              </div>
+              <button onClick={() => window.location.href = '/api/youtube/auth'}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition flex-shrink-0">
+                <Youtube className="w-4 h-4" /> Connect YouTube
+              </button>
+            </motion.div>
+          )}
+          {youtubeLinked === true && (
+            <div className="mb-6 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-3">
+              <Check className="w-4 h-4 text-emerald-400" />
+              <p className="text-xs text-emerald-400 font-medium">YouTube connected — scheduled posts will auto-upload at the set time</p>
+            </div>
+          )}
 
           {/* Calendar View */}
           <div className="bg-[#181818] border border-[#212121] rounded-xl shadow-lg p-6 mb-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">
-                {monthNames[month]} {year}
+              <h2 className="text-2xl font-black text-white">
+                {monthNames[month]} <span className="text-[#FF0000]">{year}</span>
               </h2>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                  className="px-4 py-2 rounded-lg bg-[#212121] text-[#DDD] hover:bg-[#2A2A2A]"
-                >
-                  Previous
+                <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
+                  className="p-2.5 rounded-xl bg-[#212121] text-[#DDD] hover:bg-[#2A2A2A] hover:text-white transition">
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button
-                  onClick={() => setCurrentDate(new Date())}
-                  className="px-4 py-2 rounded-lg bg-[#FF0000] text-white hover:bg-[#CC0000]"
-                >
+                <button onClick={() => setCurrentDate(new Date())}
+                  className="px-4 py-2 rounded-xl bg-[#FF0000] text-white hover:bg-[#CC0000] font-bold text-sm transition">
                   Today
                 </button>
-                <button
-                  onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                  className="px-4 py-2 rounded-lg bg-[#212121] text-[#DDD] hover:bg-[#2A2A2A]"
-                >
-                  Next
+                <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
+                  className="p-2.5 rounded-xl bg-[#212121] text-[#DDD] hover:bg-[#2A2A2A] hover:text-white transition">
+                  <ChevronRightIcon className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -465,84 +585,143 @@ export default function CalendarPage() {
                 const day = i + 1;
                 const dayPosts = getPostsForDate(day);
                 const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
-                
+                const isSelected = selectedDay === day;
+
                 return (
-                  <div
+                  <motion.div
                     key={day}
+                    whileHover={{ scale: 1.02 }}
                     onClick={() => setSelectedDay(day)}
-                    className={`min-h-24 p-2 border border-[#212121] rounded-lg cursor-pointer transition-all ${
-                      selectedDay === day ? 'ring-1 ring-[#FF0000]/60' : ''
-                    } ${
-                      isToday ? 'bg-[#212121] border-[#FF0000]' : ''
+                    className={`min-h-24 p-2 rounded-xl cursor-pointer transition-all border ${
+                      isSelected ? 'border-[#FF0000] bg-[#FF0000]/5 shadow-lg shadow-[#FF0000]/10' :
+                      isToday ? 'border-[#FF0000]/50 bg-[#181818]' :
+                      dayPosts.length > 0 ? 'border-[#333] bg-[#151515] hover:border-[#555]' :
+                      'border-[#1a1a1a] hover:border-[#333] hover:bg-[#111]'
                     }`}
                   >
-                    <div className={`text-sm font-semibold mb-1 ${isToday ? 'text-[#FF0000]' : 'text-white'}`}>
-                      {day}
-                    </div>
-                    <div className="space-y-1">
-                      {dayPosts.slice(0, 3).map(post => (
-                        <div
-                          key={post.id}
-                          className={`text-xs p-1 rounded truncate ${
-                            post.status === 'scheduled' ? 'bg-[#212121] text-[#00FF00]' :
-                            post.status === 'posted' ? 'bg-[#212121] text-[#FF0000]' :
-                            'bg-[#212121] text-[#AAAAAA]'
-                          }`}
-                          title={post.title}
-                        >
-                          {post.platform}: {post.title.substring(0, 15)}...
-                        </div>
-                      ))}
-                      {dayPosts.length > 3 && (
-                        <div className="text-xs text-[#AAAAAA]">
-                          +{dayPosts.length - 3} more
-                        </div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-sm font-black ${isToday ? 'text-[#FF0000]' : isSelected ? 'text-white' : 'text-[#AAA]'}`}>
+                        {day}
+                      </span>
+                      {dayPosts.length > 0 && (
+                        <span className="w-5 h-5 rounded-full bg-[#FF0000]/20 text-[#FF0000] text-[10px] font-bold flex items-center justify-center">
+                          {dayPosts.length}
+                        </span>
                       )}
                     </div>
-                  </div>
+                    <div className="space-y-1">
+                      {dayPosts.slice(0, 2).map(post => {
+                        const pColor = PLATFORM_COLOR[post.platform] || 'bg-[#333]';
+                        return (
+                          <div key={post.id} className="flex items-center gap-1.5 text-[10px] truncate" title={post.title}>
+                            {post.thumbnailUrl ? (
+                              <img src={post.thumbnailUrl} alt="" className="w-4 h-3 rounded-sm object-cover flex-shrink-0" />
+                            ) : (
+                              <span className={`w-1.5 h-1.5 rounded-full ${pColor} flex-shrink-0`} />
+                            )}
+                            <span className={`truncate ${post.status === 'posted' ? 'text-emerald-400' : 'text-[#AAA]'}`}>
+                              {post.title.substring(0, 12)}{post.title.length > 12 ? '...' : ''}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {dayPosts.length > 2 && (
+                        <div className="text-[10px] text-[#666]">+{dayPosts.length - 2} more</div>
+                      )}
+                    </div>
+                  </motion.div>
                 );
               })}
             </div>
           </div>
 
           {selectedDay !== null && (
-            <div className="bg-[#181818] border border-[#212121] rounded-xl shadow-lg p-6 mb-6">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-[#181818] border border-[#212121] rounded-xl shadow-lg p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white">
+                <h2 className="text-xl font-black text-white flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 text-[#FF0000]" />
                   {monthNames[month]} {selectedDay}, {year}
                 </h2>
-                <button
-                  onClick={() => openScheduleForDay(selectedDay)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FF0000] text-white hover:bg-[#CC0000]"
-                >
-                  <Plus className="w-4 h-4" />
-                  Schedule on this day
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setSelectedDay(null)}
+                    className="p-2 rounded-lg bg-[#222] text-[#888] hover:text-white transition">
+                    <X className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => openScheduleForDay(selectedDay)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FF0000] text-white hover:bg-[#CC0000] font-bold text-sm">
+                    <Plus className="w-4 h-4" /> Schedule
+                  </button>
+                </div>
               </div>
               {selectedDayPosts.length === 0 ? (
-                <p className="text-[#AAAAAA] text-sm">No posts on this date.</p>
+                <div className="text-center py-8">
+                  <CalendarIcon className="w-10 h-10 text-[#333] mx-auto mb-2" />
+                  <p className="text-[#888] text-sm">No posts on this date. Click "Schedule" to add one.</p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {selectedDayPosts
                     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-                    .map((post) => (
-                      <div key={post.id} className="p-3 bg-[#121212] border border-[#222] rounded-lg flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-white font-medium">{post.title}</p>
-                          <p className="text-xs text-[#999] mt-1">
-                            <span className="capitalize">{post.platform}</span> · {new Date(post.scheduledAt).toLocaleTimeString()}
-                          </p>
-                        </div>
-                        {post.status === 'scheduled' && (
-                          <button onClick={() => handleCancel(post.id)} className="text-sm text-red-400 hover:text-red-300">
-                            Cancel
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                    .map((post) => {
+                      const PIcon = PLATFORM_ICON[post.platform] || CalendarIcon;
+                      const pBg = PLATFORM_COLOR[post.platform] || 'bg-[#333]';
+                      return (
+                        <motion.div key={post.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                          className="p-4 bg-[#111] border border-[#222] rounded-xl flex items-center gap-4 hover:border-[#444] transition group">
+                          {/* Thumbnail */}
+                          {post.thumbnailUrl ? (
+                            <img src={post.thumbnailUrl} alt="" className="w-20 h-12 rounded-lg object-cover flex-shrink-0 border border-[#333]" />
+                          ) : (
+                            <div className="w-20 h-12 rounded-lg bg-[#1a1a1a] border border-[#333] flex items-center justify-center flex-shrink-0">
+                              <PIcon className="w-5 h-5 text-[#555]" />
+                            </div>
+                          )}
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-bold text-sm truncate">{post.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`w-2 h-2 rounded-full ${pBg}`} />
+                              <span className="text-xs text-[#888] capitalize">{post.platform}</span>
+                              <span className="text-xs text-[#555]">·</span>
+                              <span className="text-xs text-[#888]">{new Date(post.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${post.status === 'posted' ? 'bg-emerald-500/20 text-emerald-400' : post.status === 'scheduled' ? 'bg-amber-500/20 text-amber-400' : 'bg-[#333] text-[#888]'}`}>
+                                {post.status === 'posted' ? '✓ Posted' : post.status === 'scheduled' ? '◷ Scheduled' : post.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {post.status === 'scheduled' && (
+                              <>
+                                <button onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    title: post.title,
+                                    platform: post.platform as any,
+                                    description: post.description || '',
+                                    scheduledAt: new Date(new Date(post.scheduledAt).getTime() - new Date(post.scheduledAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+                                  }));
+                                  setShowScheduleForm(true);
+                                }}
+                                  className="px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-bold hover:bg-blue-500/20 transition">
+                                  Edit
+                                </button>
+                                <button onClick={() => handleCancel(post.id)}
+                                  className="px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-xs font-bold hover:bg-red-500/20 transition">
+                                  Cancel
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
 
           {/* Scheduled Posts List */}
@@ -675,8 +854,8 @@ export default function CalendarPage() {
                   )}
 
                   {/* Rank Mode Toggle */}
-                  {formData.videoFile && (
-                    <div className="flex items-center gap-2 p-3 bg-[#212121] rounded-lg">
+                  {formData.title.trim().length > 2 && (
+                    <div className="flex items-center gap-2 p-3 bg-[#212121] rounded-xl">
                       <Sparkles className="w-4 h-4 text-[#FF0000]" />
                       <button
                         type="button"
@@ -727,10 +906,49 @@ export default function CalendarPage() {
                     </div>
                   </div>
 
+                  {/* Privacy Status */}
                   <div>
-                    <label className="block text-sm font-medium text-[#AAAAAA] mb-2">
-                      Description (Optional)
-                    </label>
+                    <label className="block text-sm font-medium text-[#AAAAAA] mb-2">Visibility</label>
+                    <div className="flex gap-2">
+                      {([
+                        { value: 'public', label: 'Public', icon: '🌍', desc: 'Everyone can see' },
+                        { value: 'unlisted', label: 'Unlisted', icon: '🔗', desc: 'Only with link' },
+                        { value: 'private', label: 'Private', icon: '🔒', desc: 'Only you' },
+                      ] as const).map((opt) => (
+                        <button key={opt.value} type="button"
+                          onClick={() => setFormData({ ...formData, privacyStatus: opt.value })}
+                          className={`flex-1 p-3 rounded-xl border text-center transition ${
+                            formData.privacyStatus === opt.value
+                              ? opt.value === 'public' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                : opt.value === 'unlisted' ? 'bg-amber-500/10 border-amber-500/50 text-amber-400'
+                                : 'bg-red-500/10 border-red-500/50 text-red-400'
+                              : 'border-[#333] text-[#888] hover:border-[#555]'
+                          }`}>
+                          <span className="text-lg">{opt.icon}</span>
+                          <p className="text-xs font-bold mt-1">{opt.label}</p>
+                          <p className="text-[9px] opacity-70">{opt.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Auto SEO Status */}
+                  {(titleSeoLoading || autoSeoLoading) && (
+                    <div className="flex items-center gap-2 p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+                      <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                      <p className="text-xs text-purple-400 font-medium">
+                        {titleSeoLoading ? 'Generating viral title SEO...' : 'AI generating keywords & hashtags...'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-[#AAAAAA]">Description</label>
+                      <span className={`text-xs font-mono ${formData.description.length >= 200 ? 'text-emerald-400' : 'text-[#666]'}`}>
+                        {formData.description.length} chars {formData.description.length >= 200 ? '✓' : ''}
+                      </span>
+                    </div>
                     <textarea
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -903,15 +1121,18 @@ export default function CalendarPage() {
                     <button
                       type="submit"
                       disabled={submitting || uploadProgress > 0}
-                      className="flex-1 px-6 py-3 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold flex items-center justify-center gap-2"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-[#FF0000] to-[#CC0000] text-white rounded-xl hover:from-[#E60000] hover:to-[#AA0000] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#FF0000]/20"
                     >
                       {submitting ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Scheduling...
+                          {formData.videoFile ? 'Uploading to YouTube...' : 'Scheduling...'}
                         </>
                       ) : (
-                        'Schedule Post'
+                        <>
+                          <CalendarIcon className="w-4 h-4" />
+                          {formData.privacyStatus === 'public' ? '🌍 Schedule & Publish' : formData.privacyStatus === 'unlisted' ? '🔗 Schedule Unlisted' : '🔒 Schedule Private'}
+                        </>
                       )}
                     </button>
                     <button

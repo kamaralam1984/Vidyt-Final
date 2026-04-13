@@ -135,6 +135,7 @@ export async function uploadScheduledPost(userId: string, post: any) {
         throw new Error(`Video file not found: ${videoFilePath}`);
     }
 
+    const privacy = post.metadata?.privacyStatus || 'public';
     const res = await youtube.videos.insert({
         part: ['snippet', 'status'],
         requestBody: {
@@ -145,7 +146,7 @@ export async function uploadScheduledPost(userId: string, post: any) {
                 categoryId: '22',
             },
             status: {
-                privacyStatus: 'public',
+                privacyStatus: privacy,
                 selfDeclaredMadeForKids: false,
             },
         },

@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Single post scheduling
-      let title, description, videoUrl, thumbnailUrl, platform, scheduledAt, hashtags;
+      let title, description, videoUrl, thumbnailUrl, platform, scheduledAt, hashtags, privacyStatus;
 
       if (formData) {
         // Handle FormData with file uploads
@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
         description = formData.get('description') as string || undefined;
         platform = formData.get('platform') as string;
         scheduledAt = formData.get('scheduledAt') as string;
+        privacyStatus = (formData.get('privacyStatus') as string) || 'public';
         videoUrl = (formData.get('videoUrl') as string) || undefined;
         const hashtagsStr = formData.get('hashtags');
         hashtags = hashtagsStr ? JSON.parse(hashtagsStr as string) : [];
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
         platform = body.platform;
         scheduledAt = body.scheduledAt;
         hashtags = body.hashtags;
+        privacyStatus = body.privacyStatus || 'public';
       }
 
       if (!title || !platform || !scheduledAt) {
@@ -138,6 +140,7 @@ export async function POST(request: NextRequest) {
         platform,
         scheduledAt: new Date(scheduledAt),
         hashtags: hashtags || [],
+        privacyStatus: privacyStatus || 'public',
       });
 
       await recordUsage(authUser.id, 'schedule_posts');

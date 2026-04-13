@@ -8,6 +8,7 @@ import { Crown, CreditCard, MessageCircle, LogOut, User, ChevronDown, Globe } fr
 import { getAuthHeaders, removeToken, decodeToken } from '@/utils/auth';
 import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 import UsageNotificationsBell from '@/components/UsageNotificationsBell';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const LOGO_SRC = '/Logo.png';
 
@@ -119,7 +120,7 @@ export default function Navbar() {
   const isSuperRoleNav = roleNormNav === 'super-admin' || roleNormNav === 'superadmin';
 
   return (
-    <nav className="fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between gap-4 px-4 bg-[#0F0F0F] border-b border-[#212121]">
+    <nav className="fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between gap-4 px-4 border-b transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
       <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
         <img src={LOGO_SRC} alt="Vid YT" className="h-[2.25rem] md:h-[3.375rem] w-auto object-contain" />
       </Link>
@@ -147,6 +148,7 @@ export default function Navbar() {
           </div>
         )}
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           <UsageNotificationsBell />
           {isSuperRoleNav && (
             <Link

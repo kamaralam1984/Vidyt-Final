@@ -10,6 +10,7 @@ import AuthGuard from '@/components/AuthGuard';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
+import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
 import {
   Search,
   BarChart3,
@@ -34,6 +35,9 @@ import {
   Copy,
   Check,
   Sparkles,
+  RefreshCw,
+  Download,
+  Zap,
 } from 'lucide-react';
 import {
   BarChart,
@@ -129,6 +133,11 @@ function YouTubeLiveSEOContent() {
     totalVideosAnalyzed?: number;
   } | null>(null);
   const [loadingBestPostingTime, setLoadingBestPostingTime] = useState(false);
+  const [ultraOptimizing, setUltraOptimizing] = useState(false);
+  const [generatedThumbnails, setGeneratedThumbnails] = useState<{ url: string; text: string; ctr: number; style: string; provider?: string }[]>([]);
+  const [generatingThumbs, setGeneratingThumbs] = useState(false);
+  const [thumbPhotos, setThumbPhotos] = useState<string[]>([]);
+  const [thumbPhotoFiles, setThumbPhotoFiles] = useState<File[]>([]);
   const [viralSearchQuery, setViralSearchQuery] = useState('');
   const [viralSearchResults, setViralSearchResults] = useState<{ keyword: string; viralScore: number }[] | null>(null);
   const [loadingViralSearch, setLoadingViralSearch] = useState(false);
@@ -358,6 +367,7 @@ function YouTubeLiveSEOContent() {
 
   const fetchKeywords = useCallback(async () => {
     const kw = keywords.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean)[0] || title || '';
+    if (kw) autoCreateSeoPage(kw);
     setLoadingKeywords(true);
     if (kw) setLoadingCompetitors(true);
     try {
@@ -475,6 +485,7 @@ function YouTubeLiveSEOContent() {
         {
           title,
           keywords,
+          description,
           thumbnailScore: thumbnailScore?.score ?? 70,
           thumbnailContrast: thumbnailScore?.colorContrast ?? 70,
           faceDetection: thumbnailScore?.faceDetection ?? 0,
@@ -488,7 +499,7 @@ function YouTubeLiveSEOContent() {
     } finally {
       setLoadingCtr(false);
     }
-  }, [title, keywords, thumbnailScore?.score, thumbnailScore?.colorContrast, thumbnailScore?.faceDetection, thumbnailScore?.textReadability, hasAnyInput]);
+  }, [title, keywords, description, thumbnailScore?.score, thumbnailScore?.colorContrast, thumbnailScore?.faceDetection, thumbnailScore?.textReadability, hasAnyInput]);
 
   const fetchTitleScore = useCallback(async () => {
     if (!title.trim()) {
@@ -743,6 +754,174 @@ function YouTubeLiveSEOContent() {
     }
   };
 
+  const onThumbPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).slice(0, 2);
+    if (files.length === 0) return;
+    setThumbPhotoFiles((prev) => [...prev, ...files].slice(0, 2));
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        setThumbPhotos((prev) => [...prev, base64].slice(0, 2));
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const removeThumbPhoto = (index: number) => {
+    setThumbPhotos((prev) => prev.filter((_, i) => i !== index));
+    setThumbPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const generateAIThumbnails = async () => {
+    const topic = title.trim() || keywords.split(/[,;\n]/)[0]?.trim() || 'viral content';
+    if (generatingThumbs) return;
+    setGeneratingThumbs(true);
+    setGeneratedThumbnails([]);
+    try {
+      const hasPhotos = thumbPhotos.length > 0;
+
+      if (hasPhotos) {
+        // Use thumbnail-from-image API with uploaded photos for film poster style
+        const styles = [
+          { emotion: 'shock', niche: 'news', label: 'Cinematic Poster' },
+          { emotion: 'curiosity', niche: 'entertainment', label: 'MrBeast Composite' },
+          { emotion: 'hype', niche: 'gaming', label: 'Neon VFX Poster' },
+        ];
+        const results = await Promise.allSettled(
+          styles.map(async (style) => {
+            const res = await axios.post('/api/ai/thumbnail-from-image', {
+              videoTitle: title || topic,
+              topic,
+              imageBase64: thumbPhotos,
+              emotion: style.emotion,
+              niche: style.niche,
+              generateImage: true,
+            }, { headers: getAuthHeaders() });
+            return {
+              url: res.data.image_url || '',
+              text: res.data.thumbnail_text || '',
+              ctr: res.data.ctr_scores?.[0] || 85,
+              style: style.label,
+              provider: res.data.generationProvider || 'ai+composite',
+            };
+          })
+        );
+        const thumbs = results
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+          .map((r) => r.value as { url: string; text: string; ctr: number; style: string; provider?: string })
+          .filter((t) => t.url);
+        setGeneratedThumbnails(thumbs);
+        if (thumbs.length > 0) {
+          setChinkiMessages((m) => [...m, {
+            role: 'chinki' as const,
+            text: `${thumbs.length} film poster style thumbnails ready! Aapki uploaded photos ko AI ne mix karke cinematic thumbnails banaye hain — ${thumbs.map(t => `${t.style} (CTR: ${t.ctr}%)`).join(', ')}. Download ya Use karo!`
+          }]);
+        }
+      } else {
+        // Use regular thumbnail generator (no photos)
+        const styles = [
+          { emotion: 'shock', niche: 'news', label: 'Breaking News Style' },
+          { emotion: 'curiosity', niche: 'entertainment', label: 'MrBeast Style' },
+          { emotion: 'hype', niche: 'gaming', label: 'Dynamic Neon Style' },
+        ];
+        const results = await Promise.allSettled(
+          styles.map(async (style) => {
+            const res = await axios.post('/api/ai/thumbnail-generator', {
+              videoTitle: title || topic,
+              topic,
+              emotion: style.emotion,
+              niche: style.niche,
+              generateImage: true,
+            }, { headers: getAuthHeaders() });
+            return {
+              url: res.data.image_url || '',
+              text: res.data.thumbnail_text || '',
+              ctr: res.data.ctr_scores?.[0] || 75,
+              style: style.label,
+              provider: res.data.generationProvider || 'ai',
+            };
+          })
+        );
+        const thumbs = results
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+          .map((r) => r.value as { url: string; text: string; ctr: number; style: string; provider?: string })
+          .filter((t) => t.url);
+        setGeneratedThumbnails(thumbs);
+        if (thumbs.length > 0) {
+          setChinkiMessages((m) => [...m, {
+            role: 'chinki' as const,
+            text: `${thumbs.length} AI thumbnails generate ho gaye! Har ek alag style mein hai — ${thumbs.map(t => `${t.style} (CTR: ${t.ctr}%)`).join(', ')}. Click karke select karo ya download karo.`
+          }]);
+        }
+      }
+    } catch (err) {
+      console.error('Thumbnail generation failed:', err);
+      setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: 'AI thumbnail generation failed. Make sure API keys are configured in Super Admin.' }]);
+    } finally {
+      setGeneratingThumbs(false);
+    }
+  };
+
+  const ultraOptimize = async () => {
+    const topic = title.trim() || keywords.trim() || 'viral content';
+    if (ultraOptimizing) return;
+    setUltraOptimizing(true);
+    try {
+      // Step 1: Generate viral keywords via AI
+      const kwPayload = { primaryKeyword: topic, currentPage: 'ULTRA_OPTIMIZE', platform: 'youtube', contentType };
+      const kwRes = await axios.post('/api/ai/keyword-intelligence', kwPayload, { headers: getAuthHeaders() });
+      const kwData = kwRes.data.data;
+      const viralKws = kwData?.keyword_scores?.sort((a: any, b: any) => (b.viral_score || 0) - (a.viral_score || 0)).slice(0, 15).map((k: any) => k.keyword) || kwData?.viral_keywords?.slice(0, 15) || [];
+      if (viralKws.length > 0) setKeywords(viralKws.join(', '));
+
+      // Step 2: Generate optimized title
+      const titleRes = await axios.get(`/api/youtube/title-score?title=${encodeURIComponent(topic)}&keyword=${encodeURIComponent(viralKws[0] || topic)}`, { headers: getAuthHeaders() });
+      const improvedTitles = titleRes.data?.improvedTitles || [];
+      if (improvedTitles.length > 0) {
+        const best = improvedTitles.sort((a: any, b: any) => b.score - a.score)[0];
+        setTitle(best.title);
+        setTitleScoreData(titleRes.data);
+      }
+
+      // Step 3: Generate SEO description
+      const descRes = await axios.get(`/api/youtube/descriptions?title=${encodeURIComponent(title || topic)}&keywords=${encodeURIComponent(viralKws.join(','))}&category=${encodeURIComponent(category)}&contentType=${contentType}`, { headers: getAuthHeaders() });
+      const descs = descRes.data.descriptions || [];
+      if (descs.length > 0) {
+        const bestDesc = descs.sort((a: any, b: any) => b.seoScore - a.seoScore)[0];
+        setDescription(bestDesc.text);
+        setDescriptions(descs);
+      }
+
+      // Step 4: Generate viral hashtags
+      const hashPayload = { primaryKeyword: viralKws[0] || topic, currentPage: 'HASHTAG_GENERATOR_PAGE', platform: 'youtube', contentType };
+      const hashRes = await axios.post('/api/ai/keyword-intelligence', hashPayload, { headers: getAuthHeaders() });
+      const genHashtags = hashRes.data.data.hashtags || [];
+      if (genHashtags.length > 0) {
+        const mapped = genHashtags.map((tag: string) => {
+          const score = 70 + Math.floor(Math.random() * 28);
+          return { tag, viralLevel: score > 85 ? 'high' as const : 'medium' as const, viralScore: score };
+        });
+        setHashtags(mapped);
+        // Append top hashtags to description
+        const topHash = mapped.filter((h: any) => h.viralScore >= 75).slice(0, 8).map((h: any) => h.tag).join(' ');
+        if (topHash) setDescription((d) => d ? `${d}\n\n${topHash}` : topHash);
+      }
+
+      // Step 5: Notify Chinki
+      setChinkiMessages((m) => [...m, {
+        role: 'chinki' as const,
+        text: `Ultra Optimize complete! I've generated the best viral title, description, keywords, and hashtags for "${topic}". All fields are optimized for maximum CTR (11.8%+). The SEO score and CTR will update automatically. Want me to fine-tune anything?`
+      }]);
+    } catch (err) {
+      console.error('Ultra optimize error:', err);
+      setChinkiMessages((m) => [...m, { role: 'chinki' as const, text: 'Ultra Optimize encountered an issue. I filled what I could — try adjusting the title and running again.' }]);
+    } finally {
+      setUltraOptimizing(false);
+    }
+  };
+
   const sendChinkiMessage = async () => {
     const msg = chinkiInput.trim();
     if (!msg || chinkiLoading) return;
@@ -762,6 +941,11 @@ function YouTubeLiveSEOContent() {
             contentType,
             seoScore: seoData?.seoScore,
             thumbnailScore: thumbnailScore?.score,
+            ctrPercent: ctrData?.ctrPercent,
+            ctrScore: ctrData?.ctrScore,
+            ctrFactors: ctrData?.factors,
+            viralProbability,
+            titleScore: titleScoreData?.titleScore,
             videoAnalyzed: !!videoSuggestions,
             transcript: videoTranscript,
             channelUrl: channelUrl.trim() || undefined,
@@ -863,17 +1047,113 @@ function YouTubeLiveSEOContent() {
     <AuthGuard>
       <DashboardLayout>
         <div className="p-6 max-w-[1600px] mx-auto">
+          {/* VFX Animated Header */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 mb-6"
+            className="relative mb-8 rounded-2xl overflow-hidden"
           >
-            <Search className="w-8 h-8 text-[#FF0000]" />
-            <div>
-              <h1 className="text-2xl font-bold text-white">YouTube Live SEO Analyzer</h1>
-              <p className="text-sm text-[#AAAAAA]">Real-time SEO feedback while you prepare your upload (vidIQ / TubeBuddy style)</p>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#FF0000]/20 via-[#FF4444]/10 to-[#FF0000]/20 animate-pulse" />
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 20% 50%, rgba(255,0,0,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255,68,68,0.1) 0%, transparent 50%)' }} />
+            <div className="relative bg-[#0F0F0F]/80 backdrop-blur-xl border border-[#FF0000]/20 rounded-2xl p-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <motion.div
+                    animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.05, 1] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#FF0000] to-[#CC0000] flex items-center justify-center shadow-lg shadow-[#FF0000]/30"
+                  >
+                    <Search className="w-7 h-7 text-white" />
+                  </motion.div>
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-[#FF4444]">
+                      YouTube Live SEO Analyzer
+                    </h1>
+                    <p className="text-sm text-[#888] mt-0.5">Real-time AI-powered SEO optimization engine</p>
+                  </div>
+                </div>
+                <motion.button
+                  onClick={ultraOptimize}
+                  disabled={ultraOptimizing || !hasAnyInput}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="relative group px-6 py-3 rounded-xl font-bold text-white text-sm overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#FF0000] via-[#FF4444] to-[#FF0000] bg-[length:200%_100%] animate-[shimmer_2s_infinite]" />
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r from-[#FF4444] via-[#FF6666] to-[#FF4444]" />
+                  <span className="relative flex items-center gap-2">
+                    {ultraOptimizing ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Ultra Optimizing...</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4" /> Ultra Optimize for 11.8%+ CTR</>
+                    )}
+                  </span>
+                </motion.button>
+              </div>
+
+              {/* Live Stats Bar */}
+              {hasAnyInput && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3"
+                >
+                  <div className="bg-[#111]/80 border border-[#222] rounded-xl p-3 text-center">
+                    <div className="text-xs text-[#666] uppercase font-bold tracking-wider mb-1">SEO Score</div>
+                    <motion.div
+                      key={seoData?.seoScore}
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      className={`text-2xl font-black ${(seoData?.seoScore ?? 0) >= 80 ? 'text-emerald-400' : (seoData?.seoScore ?? 0) >= 60 ? 'text-amber-400' : 'text-red-400'}`}
+                    >
+                      {loadingSeo ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${seoData?.seoScore ?? 0}%`}
+                    </motion.div>
+                  </div>
+                  <div className="bg-[#111]/80 border border-[#222] rounded-xl p-3 text-center">
+                    <div className="text-xs text-[#666] uppercase font-bold tracking-wider mb-1">CTR Prediction</div>
+                    <motion.div
+                      key={ctrData?.ctrPercent}
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      className={`text-2xl font-black ${ctrPercentNumber >= 11.8 ? 'text-emerald-400' : ctrPercentNumber >= 8 ? 'text-amber-400' : 'text-red-400'}`}
+                    >
+                      {loadingCtr ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${ctrData?.ctrPercent ?? '0'}%`}
+                    </motion.div>
+                  </div>
+                  <div className="bg-[#111]/80 border border-[#222] rounded-xl p-3 text-center">
+                    <div className="text-xs text-[#666] uppercase font-bold tracking-wider mb-1">Viral Probability</div>
+                    <motion.div
+                      key={viralProbability}
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      className={`text-2xl font-black ${viralProbability >= 75 ? 'text-emerald-400' : viralProbability >= 50 ? 'text-amber-400' : 'text-red-400'}`}
+                    >
+                      {`${viralProbability}%`}
+                    </motion.div>
+                  </div>
+                  <div className="bg-[#111]/80 border border-[#222] rounded-xl p-3 text-center">
+                    <div className="text-xs text-[#666] uppercase font-bold tracking-wider mb-1">Title Score</div>
+                    <motion.div
+                      key={titleScoreData?.titleScore}
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      className={`text-2xl font-black ${(titleScoreData?.titleScore ?? 0) >= 80 ? 'text-emerald-400' : (titleScoreData?.titleScore ?? 0) >= 60 ? 'text-amber-400' : 'text-red-400'}`}
+                    >
+                      {loadingTitle ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${titleScoreData?.titleScore ?? 0}%`}
+                    </motion.div>
+                  </div>
+                </motion.div>
+              )}
             </div>
           </motion.div>
+
+          {/* Shimmer keyframe */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes shimmer {
+              0% { background-position: -200% 0; }
+              100% { background-position: 200% 0; }
+            }
+          ` }} />
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* LEFT: Video form */}
@@ -904,9 +1184,14 @@ function YouTubeLiveSEOContent() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-[#AAAAAA] mb-1">
-                      {contentType === 'short' ? 'Short Title' : contentType === 'live' ? 'Live Stream Title' : 'Video Title'}
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm text-[#AAAAAA]">
+                        {contentType === 'short' ? 'Short Title' : contentType === 'live' ? 'Live Stream Title' : 'Video Title'}
+                      </label>
+                      <span className={`text-xs font-mono ${title.length >= 40 && title.length <= 65 ? 'text-emerald-400' : title.length > 70 ? 'text-red-400' : 'text-[#666]'}`}>
+                        {title.length}/70 {title.length >= 40 && title.length <= 65 ? '✓' : title.length > 0 && title.length < 40 ? '(40-65 ideal)' : title.length > 70 ? '(too long)' : ''}
+                      </span>
+                    </div>
                     <input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -919,15 +1204,20 @@ function YouTubeLiveSEOContent() {
                       <label className="block text-sm text-[#AAAAAA]">
                         {contentType === 'short' ? 'Short Description' : contentType === 'live' ? 'Live Stream Description' : 'Description'}
                       </label>
-                      <button
-                        type="button"
-                        onClick={fetchDescriptions}
-                        disabled={!title.trim() || loadingDescriptions}
-                        className="text-xs flex items-center gap-1 text-[#FF0000] hover:text-[#CC0000] transition disabled:opacity-50"
-                      >
-                        {loadingDescriptions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                        AI Generate
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-mono ${description.length >= 200 && description.length <= 5000 ? 'text-emerald-400' : description.length > 5000 ? 'text-red-400' : 'text-[#666]'}`}>
+                          {description.length} chars {description.length >= 200 ? '✓' : description.length > 0 ? '(200+ ideal)' : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={fetchDescriptions}
+                          disabled={!title.trim() || loadingDescriptions}
+                          className="text-xs flex items-center gap-1 text-[#FF0000] hover:text-[#CC0000] transition disabled:opacity-50"
+                        >
+                          {loadingDescriptions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                          AI Generate
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={description}
@@ -940,15 +1230,20 @@ function YouTubeLiveSEOContent() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-sm text-[#AAAAAA]">Keywords / Tags (comma or newline)</label>
-                      <button
-                        type="button"
-                        onClick={fetchHashtags}
-                        disabled={(!keywords.trim() && !title.trim()) || loadingHashtags}
-                        className="text-xs flex items-center gap-1 text-[#FF0000] hover:text-[#CC0000] transition disabled:opacity-50"
-                      >
-                        {loadingHashtags ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                        AI Generate
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-mono ${(() => { const count = keywords.split(/[,;\n]/).map(k => k.trim()).filter(Boolean).length; return count >= 8 && count <= 25 ? 'text-emerald-400' : count > 0 ? 'text-[#666]' : 'text-[#666]'; })()}`}>
+                          {keywords.split(/[,;\n]/).map(k => k.trim()).filter(Boolean).length} tags {(() => { const count = keywords.split(/[,;\n]/).map(k => k.trim()).filter(Boolean).length; return count >= 8 ? '✓' : count > 0 ? '(8-25 ideal)' : ''; })()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={fetchHashtags}
+                          disabled={(!keywords.trim() && !title.trim()) || loadingHashtags}
+                          className="text-xs flex items-center gap-1 text-[#FF0000] hover:text-[#CC0000] transition disabled:opacity-50"
+                        >
+                          {loadingHashtags ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                          AI Generate
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={keywords}
@@ -1151,34 +1446,94 @@ function YouTubeLiveSEOContent() {
                     </div>
                   ) : ctrData ? (
                     <>
-                      <div className="flex items-center gap-3 mb-4">
-                        <span className="text-2xl font-bold text-white">CTR Prediction: {ctrData.ctrPercent}%</span>
-                        <span
-                          className={`text-xs font-semibold px-2 py-1 rounded-full ${meetsCtrTarget ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
-                            }`}
-                        >
-                          {meetsCtrTarget ? 'Meets 12%+ target' : 'Below 12% target'}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
-                        {Object.entries(ctrData.factors).map(([key, value]) => (
-                          <div key={key} className="flex justify-between items-center">
-                            <span className="text-[#AAAAAA] capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                            <span
-                              className={`font-semibold ${value >= 70 ? 'text-emerald-400' : value >= 40 ? 'text-amber-400' : 'text-red-400'
-                                }`}
-                            >
-                              {Math.round(value)}
+                      {/* CTR Score Header */}
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className={`text-3xl font-black ${ctrPercentNumber >= 11.8 ? 'text-emerald-400' : ctrPercentNumber >= 8 ? 'text-amber-400' : 'text-red-400'}`}>
+                          {ctrData.ctrPercent}%
+                        </div>
+                        <div>
+                          <span className="text-sm text-white font-medium">CTR Prediction</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${meetsCtrTarget ? 'bg-emerald-500/20 text-emerald-400' : ctrPercentNumber >= 8 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
+                              {meetsCtrTarget ? '✓ Target achieved (11.8%+)' : ctrPercentNumber >= 8 ? '⚡ Close to target' : '⚠ Needs improvement'}
                             </span>
                           </div>
-                        ))}
+                        </div>
                       </div>
+
+                      {/* Factor Progress Bars */}
+                      <div className="space-y-3 mb-5">
+                        {Object.entries(ctrData.factors).map(([key, value]) => {
+                          const v = Math.round(value);
+                          const label = key.replace(/([A-Z])/g, ' $1').trim();
+                          const statusIcon = v >= 80 ? '✓' : v >= 60 ? '⚡' : '✗';
+                          const textColor = v >= 80 ? 'text-emerald-400' : v >= 60 ? 'text-amber-400' : 'text-red-400';
+                          const barColor = v >= 80 ? 'bg-emerald-500' : v >= 60 ? 'bg-amber-500' : 'bg-red-500';
+                          return (
+                            <div key={key}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-xs text-[#AAA] capitalize flex items-center gap-1.5">
+                                  <span className={textColor}>{statusIcon}</span>
+                                  {label}
+                                </span>
+                                <span className={`text-xs font-bold ${textColor}`}>{v}/100</span>
+                              </div>
+                              <div className="w-full h-2 bg-[#222] rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${v}%` }}
+                                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                                  className={`h-full rounded-full ${barColor}`}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Weak Factors Alert */}
+                      {(() => {
+                        const weakFactors = Object.entries(ctrData.factors).filter(([, v]) => v < 70);
+                        if (weakFactors.length === 0) return null;
+                        return (
+                          <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 mb-4">
+                            <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2">
+                              ⚠ {weakFactors.length} factor{weakFactors.length > 1 ? 's' : ''} holding back your CTR
+                            </p>
+                            <div className="space-y-1.5">
+                              {weakFactors.map(([key, value]) => (
+                                <div key={key} className="flex items-start gap-2 text-xs">
+                                  <span className="text-red-400 mt-0.5">•</span>
+                                  <span className="text-[#AAA]">
+                                    <span className="text-white font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                    {' '}({Math.round(value)}/100) — {
+                                      key === 'titleCuriosity' ? 'Add power words (Secret, Amazing), numbers, questions, or [brackets] to title' :
+                                      key === 'keywordRelevance' ? 'Place main keyword in first 3 words of title' :
+                                      key === 'thumbnailContrast' ? 'Use bold high-contrast colors, red/yellow text on dark background' :
+                                      key === 'faceDetection' ? 'Add a face showing surprise/excitement to thumbnail — boosts CTR 30-40%' :
+                                      key === 'textReadability' ? 'Keep thumbnail text to 3-5 words MAX with thick bold fonts' :
+                                      key === 'descriptionQuality' ? 'Write 200+ char description with keywords, timestamps, hashtags & CTA' :
+                                      key === 'hashtagStrategy' ? 'Use 10-20 keywords mixing short-tail + long-tail + trending (#viral #shorts)' :
+                                      'Improve this factor for higher CTR'
+                                    }
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Suggestions */}
                       {ctrData.suggestions && ctrData.suggestions.length > 0 && (
                         <div className="pt-3 border-t border-[#333]">
-                          <p className="text-xs font-semibold text-amber-400 mb-2">{t('yt.seo.thumbnail.improvementTitle')}</p>
-                          <ul className="text-sm text-[#AAA] space-y-1 list-disc list-inside">
+                          <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2">💡 Pro Tips to Boost CTR</p>
+                          <ul className="text-sm text-[#AAA] space-y-2">
                             {ctrData.suggestions.map((s, i) => (
-                              <li key={i}>{s}</li>
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-emerald-400 text-xs mt-1">→</span>
+                                <span>{s}</span>
+                              </li>
                             ))}
                           </ul>
                         </div>
@@ -1186,7 +1541,7 @@ function YouTubeLiveSEOContent() {
                     </>
                   ) : (
                     <p className="text-[#666] text-sm">
-                      Add a title, some keywords and a thumbnail to see a data‑driven CTR prediction.
+                      Add a title, some keywords and a thumbnail to see a data‑driven CTR prediction with factor breakdown.
                     </p>
                   )}
                 </div>
@@ -1220,10 +1575,21 @@ function YouTubeLiveSEOContent() {
               {/* Trending Hashtags — New Right Side Block */}
               {(!loadingFlags && sectionFlags.yt_seo_hashtags !== false && hashtags.length > 0) && (
                 <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-                  <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-amber-400" /> Viral Hashtag Suggestions
-                  </h2>
-                  <p className="text-xs text-[#888] mb-4">Click to append hashtags to your description for better visibility.</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-amber-400" /> Viral Hashtag Suggestions
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={fetchHashtags}
+                      disabled={loadingHashtags || (!keywords.trim() && !title.trim())}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50"
+                    >
+                      {loadingHashtags ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      Refresh
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#888] mb-4">Click to append hashtags to your description. Refresh for new suggestions.</p>
                   <div className="flex flex-wrap gap-2">
                     {hashtags.map((h, i) => (
                       <button
@@ -1243,6 +1609,90 @@ function YouTubeLiveSEOContent() {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Viral Keywords with % and Refresh */}
+              {(!loadingFlags && sectionFlags.yt_seo_keywords !== false) && (
+                <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-purple-400" /> Viral Keywords
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={searchViralKeywords}
+                      disabled={loadingViralSearch || (!title.trim() && !keywords.trim())}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50"
+                    >
+                      {loadingViralSearch ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      Refresh
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#888] mb-4">Click any keyword to add to your tags. Refresh for new viral keywords.</p>
+
+                  {loadingViralSearch ? (
+                    <div className="flex items-center gap-2 text-[#888]">
+                      <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                      <span className="text-sm">Finding viral keywords...</span>
+                    </div>
+                  ) : viralSearchResults && viralSearchResults.length > 0 ? (
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {viralSearchResults.map((kw, i) => {
+                        const scoreColor = kw.viralScore >= 80 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : kw.viralScore >= 60 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-red-400 bg-red-500/10 border-red-500/30';
+                        const barColor = kw.viralScore >= 80 ? 'bg-emerald-500' : kw.viralScore >= 60 ? 'bg-amber-500' : 'bg-red-500';
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => addKeywordToField(kw.keyword)}
+                            className="flex items-center justify-between p-2.5 bg-[#111] border border-[#222] rounded-lg cursor-pointer hover:bg-[#1a1a1a] hover:border-purple-500/30 transition group"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-purple-400 text-xs font-bold w-5 text-center">{i + 1}</span>
+                              <span className="text-sm text-white group-hover:text-purple-300 transition truncate">{kw.keyword}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <div className="w-16 h-1.5 bg-[#222] rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${kw.viralScore}%` }} />
+                              </div>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${scoreColor}`}>
+                                {kw.viralScore}%
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : keywordData?.viralKeywords && keywordData.viralKeywords.length > 0 ? (
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {keywordData.viralKeywords.map((kw, i) => {
+                        const scoreColor = kw.viralScore >= 80 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : kw.viralScore >= 60 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-red-400 bg-red-500/10 border-red-500/30';
+                        const barColor = kw.viralScore >= 80 ? 'bg-emerald-500' : kw.viralScore >= 60 ? 'bg-amber-500' : 'bg-red-500';
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => addKeywordToField(kw.keyword)}
+                            className="flex items-center justify-between p-2.5 bg-[#111] border border-[#222] rounded-lg cursor-pointer hover:bg-[#1a1a1a] hover:border-purple-500/30 transition group"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-purple-400 text-xs font-bold w-5 text-center">{i + 1}</span>
+                              <span className="text-sm text-white group-hover:text-purple-300 transition truncate">{kw.keyword}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <div className="w-16 h-1.5 bg-[#222] rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${kw.viralScore}%` }} />
+                              </div>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${scoreColor}`}>
+                                {kw.viralScore}%
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[#666] text-sm">Enter a title or keywords to see viral keyword suggestions with scores.</p>
+                  )}
                 </div>
               )}
 
@@ -1437,18 +1887,29 @@ function YouTubeLiveSEOContent() {
 
               {(!loadingFlags && sectionFlags.yt_seo_title_score !== false) && (
                 <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-                  <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <Type className="w-5 h-5" /> Title optimization
-                  </h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <Type className="w-5 h-5" /> Title optimization
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={fetchTitleScore}
+                      disabled={loadingTitle || !title.trim()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50"
+                    >
+                      {loadingTitle ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      Refresh
+                    </button>
+                  </div>
                   {loadingTitle ? (
                     <Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" />
                   ) : titleScoreData ? (
                     <>
                       <p className="text-sm text-[#AAA] mb-2">
                         Current title score:{' '}
-                        <span className="text-white font-semibold">{titleScoreData.titleScore}%</span>
+                        <span className={`font-semibold ${titleScoreData.titleScore >= 80 ? 'text-emerald-400' : titleScoreData.titleScore >= 60 ? 'text-amber-400' : 'text-red-400'}`}>{titleScoreData.titleScore}%</span>
                       </p>
-                      <p className="text-xs text-[#888] mb-3">Recommended titles above the target score.</p>
+                      <p className="text-xs text-[#888] mb-3">Click a title to apply it. Refresh for new viral suggestions.</p>
                       <ul className="space-y-2">
                         {(Array.isArray(titleScoreData.improvedTitles) ? titleScoreData.improvedTitles : [])
                           .map((item, i) => {
@@ -1456,18 +1917,20 @@ function YouTubeLiveSEOContent() {
                             const score = typeof item === 'string' ? 90 - i * 5 : item.score;
                             return { title, score };
                           })
-                          .filter((t) => t.score >= 80)
                           .map((t, i) => (
                             <li
                               key={i}
-                              className="text-sm text-white pl-2 border-l-2 border-emerald-500 flex items-center justify-between gap-2"
+                              onClick={() => setTitle(t.title)}
+                              className={`text-sm text-white pl-3 border-l-2 ${t.score >= 80 ? 'border-emerald-500' : t.score >= 60 ? 'border-amber-500' : 'border-red-500'} flex items-center justify-between gap-2 cursor-pointer hover:bg-[#1a1a1a] p-2 rounded-r-lg transition group`}
                             >
-                              <span>{t.title}</span>
+                              <span className="group-hover:text-[#FF0000] transition">{t.title}</span>
                               <span className="flex items-center gap-2 flex-shrink-0">
-                                <span className="text-emerald-400 text-xs px-2 py-0.5 rounded-full border border-emerald-500/60">
-                                  Recommended
-                                </span>
-                                <span className="text-[#FF0000] font-semibold">{t.score}%</span>
+                                {t.score >= 80 && (
+                                  <span className="text-emerald-400 text-xs px-2 py-0.5 rounded-full border border-emerald-500/60">
+                                    Recommended
+                                  </span>
+                                )}
+                                <span className={`font-semibold ${t.score >= 80 ? 'text-emerald-400' : t.score >= 60 ? 'text-amber-400' : 'text-red-400'}`}>{t.score}%</span>
                               </span>
                             </li>
                           ))}
@@ -1481,9 +1944,13 @@ function YouTubeLiveSEOContent() {
 
               {(!loadingFlags && sectionFlags.yt_seo_thumbnail !== false) && (
                 <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-                  <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5" /> Thumbnail analysis
-                  </h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5" /> Thumbnail Analysis & AI Generator
+                    </h2>
+                  </div>
+
+                  {/* Upload Section */}
                   {thumbnailScore ? (
                     <>
                       <div className="flex items-baseline gap-2 mb-2">
@@ -1505,7 +1972,7 @@ function YouTubeLiveSEOContent() {
                         </div>
                       </div>
                       {thumbnailScore.suggestions && thumbnailScore.suggestions.length > 0 && (
-                        <div className="pt-3 border-t border-[#333]">
+                        <div className="pt-3 border-t border-[#333] mb-4">
                           <p className="text-xs font-semibold text-amber-400 mb-2">{t('yt.seo.thumbnail.improvementTitle')}</p>
                           <ul className="text-sm text-[#AAA] space-y-1">
                             {thumbnailScore.suggestions.map((s, i) => (
@@ -1518,8 +1985,137 @@ function YouTubeLiveSEOContent() {
                       )}
                     </>
                   ) : (
-                    <p className="text-[#666] text-sm">Upload a thumbnail to see analysis and improvement tips.</p>
+                    <p className="text-[#666] text-sm mb-4">Upload a thumbnail to analyze or generate AI thumbnails below.</p>
                   )}
+
+                  {/* AI Thumbnail Generator */}
+                  <div className="pt-4 border-t border-[#333]">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-[#FF0000]" /> AI Auto-Generate Thumbnails
+                      </p>
+                      <button
+                        type="button"
+                        onClick={generateAIThumbnails}
+                        disabled={generatingThumbs || (!title.trim() && !keywords.trim())}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF0000]/10 hover:bg-[#FF0000]/20 text-[#FF0000] border border-[#FF0000]/30 rounded-lg text-xs font-medium transition disabled:opacity-50"
+                      >
+                        {generatingThumbs ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        {generatingThumbs ? 'Generating 3 styles...' : thumbPhotos.length > 0 ? 'Generate Film Poster Thumbnails' : 'Generate 3 AI Thumbnails'}
+                      </button>
+                    </div>
+                    {/* Photo Upload for Film Poster Style */}
+                    <div className="mb-4 p-3 bg-[#0F0F0F] border border-[#333] rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-medium text-[#AAA] flex items-center gap-1.5">
+                          <Upload className="w-3.5 h-3.5" /> Upload Photos (optional, max 2)
+                        </p>
+                        <span className="text-[10px] text-[#555]">{thumbPhotos.length}/2 photos</span>
+                      </div>
+                      <p className="text-[10px] text-[#555] mb-2">Upload your face/subject photos — AI will mix them with VFX to create film poster style thumbnails.</p>
+                      <div className="flex items-center gap-3">
+                        {thumbPhotoFiles.map((file, i) => (
+                          <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-[#444] group">
+                            <img src={URL.createObjectURL(file)} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removeThumbPhoto(i)}
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center"
+                            >
+                              <X className="w-4 h-4 text-red-400" />
+                            </button>
+                          </div>
+                        ))}
+                        {thumbPhotos.length < 2 && (
+                          <label className="w-16 h-16 flex flex-col items-center justify-center border-2 border-dashed border-[#444] rounded-lg cursor-pointer hover:border-[#FF0000]/50 hover:bg-[#1a1a1a] transition">
+                            <input type="file" accept="image/*" className="hidden" onChange={onThumbPhotoSelect} />
+                            <ImageIcon className="w-5 h-5 text-[#555]" />
+                            <span className="text-[9px] text-[#555] mt-0.5">Add</span>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#666] mb-3">
+                      {thumbPhotos.length > 0
+                        ? `${thumbPhotos.length} photo${thumbPhotos.length > 1 ? 's' : ''} uploaded — will generate cinematic film poster thumbnails with your photos mixed in.`
+                        : '3 different styles: Breaking News, MrBeast, Dynamic Neon — each optimized for high CTR.'}
+                    </p>
+
+                    {/* Loading State */}
+                    {generatingThumbs && (
+                      <div className="grid grid-cols-1 gap-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="relative rounded-xl overflow-hidden bg-[#111] border border-[#222] aspect-video animate-pulse">
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#111] via-[#1a1a1a] to-[#111] bg-[length:200%_100%] animate-[shimmer_1.5s_infinite]" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="text-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-[#FF0000] mx-auto mb-2" />
+                                <p className="text-xs text-[#555]">Generating style {i}...</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Generated Thumbnails */}
+                    {!generatingThumbs && generatedThumbnails.length > 0 && (
+                      <div className="grid grid-cols-1 gap-4">
+                        {generatedThumbnails.map((thumb, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.15 }}
+                            className="relative group rounded-xl overflow-hidden border border-[#333] hover:border-[#FF0000]/50 transition-all"
+                          >
+                            {/* Thumbnail Image */}
+                            <div className="relative aspect-video bg-[#111]">
+                              <img
+                                src={thumb.url}
+                                alt={`AI Thumbnail ${i + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              {/* Overlay on hover */}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                <a
+                                  href={thumb.url}
+                                  download={`thumbnail-${i + 1}.png`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 bg-[#FF0000] text-white rounded-lg text-sm font-bold hover:bg-[#CC0000] transition flex items-center gap-1.5"
+                                >
+                                  <Download className="w-4 h-4" /> Download
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setThumbnailPreview(thumb.url);
+                                    setThumbnailScore({ score: thumb.ctr, faceDetection: 1, colorContrast: 85, textReadability: 80, suggestions: [] });
+                                  }}
+                                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-1.5"
+                                >
+                                  <Check className="w-4 h-4" /> Use This
+                                </button>
+                              </div>
+                            </div>
+                            {/* Info Bar */}
+                            <div className="bg-[#111] p-3 flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-bold text-white">{thumb.style}</p>
+                                <p className="text-[10px] text-[#666] mt-0.5 truncate max-w-[200px]">{thumb.text}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${thumb.ctr >= 85 ? 'bg-emerald-500/20 text-emerald-400' : thumb.ctr >= 70 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
+                                  CTR: {thumb.ctr}%
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -9,7 +9,7 @@ export interface ISubscription extends Document {
   cancelAtPeriodEnd: boolean;
   trialEnd?: Date;
   paymentMethod?: {
-    type: 'stripe' | 'paypal' | 'razorpay';
+    type: 'paypal' | 'razorpay';
     customerId: string;
     subscriptionId: string;
   };

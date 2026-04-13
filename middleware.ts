@@ -33,7 +33,7 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
   // Content Security Policy (CSP)
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.stripe.com https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://accounts.google.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https: wss:; frame-src 'self' https://js.stripe.com https://api.razorpay.com https://checkout.razorpay.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com https://www.paypal.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://accounts.google.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https: wss:; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.paypal.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self';"
   );
 
   // CORS Headers - Allow cross-origin requests between apex and www domains
@@ -62,6 +62,17 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
     const cfCountry = request.headers.get('cf-ipcountry');
     if (cfCountry) {
       response.headers.set('X-Client-Country', cfCountry);
+      // Set country cookie for client-side locale auto-detection
+      const existingCookie = request.cookies.get('detected-country')?.value;
+      if (!existingCookie || existingCookie !== cfCountry) {
+        response.cookies.set('detected-country', cfCountry, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 30, // 30 days
+          path: '/',
+        });
+      }
     }
   }
 
@@ -125,7 +136,7 @@ export async function middleware(request: NextRequest) {
     '/api/subscriptions/plans',
     '/api/health/db', // Database health check
     '/api/payments/webhook', // Razorpay webhook (public, verified by signature)
-    '/api/payments/stripe/webhook', // Stripe webhook (public, verified by signature)
+    '/api/webhooks/paypal', // PayPal webhook (public, verified by signature)
     '/api/posting-time', // Posting time heatmap (public, general data)
     '/api/channel/videos', // Channel videos (public, uses RSS feeds)
     '/api/facebook/page/videos', // Facebook page videos (public, returns empty array - Facebook doesn't support automatic fetching)
@@ -136,7 +147,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  const publicCronRoutes = ['/api/cron/ai-retrain', '/api/cron/sync-prediction-outcomes', '/api/cron/daily'];
+  const publicCronRoutes = ['/api/cron/ai-retrain', '/api/cron/sync-prediction-outcomes', '/api/cron/daily', '/api/cron/generate-seo-pages', '/api/cron/generate-trending-pages', '/api/cron/ping-google'];
   const isPublicCron = publicCronRoutes.includes(pathname);
 
   const protectedPageRoutes = ['/admin', '/dashboard', '/user'];

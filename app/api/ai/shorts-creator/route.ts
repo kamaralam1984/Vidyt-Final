@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         await downloadYouTubeToFile(youtubeUrl, tmpPath);
       } catch (dlErr: unknown) {
         const msg = dlErr instanceof Error ? dlErr.message : 'YouTube download failed';
-        return NextResponse.json({ error: `Video link se download fail: ${msg}. Try uploading file instead.` }, { status: 400 });
+        return NextResponse.json({ error: `Video download failed: ${msg}. Try uploading the file instead.` }, { status: 400 });
       }
       const segments = await detectClipsFromVideo(tmpPath);
       await fs.unlink(tmpPath).catch(() => { });
@@ -47,13 +47,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           clips,
           youtubeUrl,
-          message: 'Video link se clips banaye gaye (viral/key moments).',
+          message: 'Clips created from viral/key moments in the video.',
         });
       }
       return NextResponse.json({
         clips: generateClipsFromSegments([{ startTime: 0, endTime: 60 }], title),
         youtubeUrl,
-        message: 'Scene detect nahi hue; default clip use kiya.',
+        message: 'Scene detection returned no segments; default clip used.',
       });
     }
 
