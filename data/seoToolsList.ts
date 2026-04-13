@@ -25,6 +25,64 @@ const targetNiches = [
 export const generateSEOToolsList = (): SEOTool[] => {
   const tools: SEOTool[] = [];
 
+  // Featured Homepage Tools
+  tools.push(
+    {
+      slug: 'script-writer',
+      toolType: 'title',
+      primaryKeyword: 'YouTube Script Writer',
+      category: 'AI Studio',
+      h1: 'Free AI YouTube Script Writer — Generate Viral Video Scripts',
+      metaTitle: 'YouTube Script Writer | AI Video Script Generator Free | VidYT',
+      metaDescription: 'Turn any topic into a ready-to-record YouTube script with viral hooks, sections, CTAs, and SEO optimization. Free AI script writer by VidYT — trusted by 10,000+ creators.'
+    },
+    {
+      slug: 'daily-ideas',
+      toolType: 'title',
+      primaryKeyword: 'Video Ideas Generator',
+      category: 'AI Studio',
+      h1: 'Daily Video Ideas & Hooks Generator — Never Run Out of Content',
+      metaTitle: 'Video Ideas Generator | Daily Viral Ideas & Hooks | VidYT',
+      metaDescription: 'Get daily viral video ideas, hooks, and angles optimized for your niche. AI analyzes YouTube trends and suggests content with viral score and best posting time.'
+    },
+    {
+      slug: 'keyword-research',
+      toolType: 'title',
+      primaryKeyword: 'YouTube Keyword Research',
+      category: 'SEO',
+      h1: 'Free YouTube Keyword Research Tool — Find Viral Keywords',
+      metaTitle: 'YouTube Keyword Research Tool | Find High-Volume Keywords | VidYT',
+      metaDescription: 'Discover high-intent YouTube keywords based on real search data. AI-powered keyword intelligence with viral scores, competition analysis, and SEO recommendations.'
+    },
+    {
+      slug: 'title-generator',
+      toolType: 'title',
+      primaryKeyword: 'Title & CTR Optimization',
+      category: 'SEO',
+      h1: 'YouTube Title & CTR Optimization — Boost Click-Through Rate to 11.8%+',
+      metaTitle: 'YouTube Title Optimizer | CTR Prediction & A/B Testing | VidYT',
+      metaDescription: 'Turn boring titles into click-worthy headlines with AI title scoring. Get CTR predictions, A/B title variants, and power word suggestions. Boost your CTR to 11.8%+.'
+    },
+    {
+      slug: 'thumbnail-maker',
+      toolType: 'title',
+      primaryKeyword: 'AI Thumbnail Optimization',
+      category: 'AI Studio',
+      h1: 'AI Thumbnail Generator & Optimizer — Film Poster Quality',
+      metaTitle: 'AI Thumbnail Generator | Create Viral YouTube Thumbnails | VidYT',
+      metaDescription: 'Generate stunning AI thumbnails in 8 art styles — Cinematic, MrBeast, Anime, Neon, and more. Upload your photo and AI creates film-poster quality thumbnails with 3D VFX text.'
+    },
+    {
+      slug: 'ai-shorts',
+      toolType: 'title',
+      primaryKeyword: 'Shorts & Clip Generator',
+      category: 'AI Studio',
+      h1: 'AI Shorts Creator — Auto-Clip Viral Moments from Long Videos',
+      metaTitle: 'YouTube Shorts Creator | Auto-Clip Viral Moments | VidYT',
+      metaDescription: 'Auto-clip long videos into viral Shorts that hook viewers in the first 3 seconds. AI detects key moments, adds text overlay, music, and exports in 9:16 format.'
+    },
+  );
+
   // Core Generic Tools
   tools.push(
     {
