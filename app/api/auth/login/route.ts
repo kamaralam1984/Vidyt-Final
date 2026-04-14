@@ -89,10 +89,13 @@ async function handleLogin(request: NextRequest) {
     }
 
     console.error('Login error:', error);
+    // Only expose the auth error message (wrong password/email). All other errors
+    // (DB quota, network, internal) must return a generic message so internal
+    // details are never leaked to users.
+    const isAuthError = /invalid email|invalid password|not found|incorrect/i.test(error.message || '');
     return NextResponse.json(
       {
-        error: error.message || 'Login failed',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: isAuthError ? (error.message || 'Login failed') : 'Login failed. Please try again.',
       },
       { status: 401 }
     );

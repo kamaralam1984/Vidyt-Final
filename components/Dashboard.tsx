@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, useAnimation, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import VideoUpload from './VideoUpload';
 import ViralScoreMeter from './ViralScoreMeter';
 import ScoreCard from './ScoreCard';
@@ -14,7 +14,13 @@ import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, X, Copy, Zap, TrendingUp, Star, Sparkles, Loader2, Search, Hash, Clock, BarChart3, FileText, Image as ImageIcon, Film, Youtube, ArrowRight, CreditCard, Target } from 'lucide-react';
+import {
+  CheckCircle2, X, Copy, Zap, TrendingUp, Star, Sparkles, Loader2,
+  Search, Hash, Clock, BarChart3, FileText, Image as ImageIcon, Film,
+  Youtube, ArrowRight, CreditCard, Target, Bell, Calendar,
+  Play, Eye, ThumbsUp, RefreshCw, ChevronRight, Flame,
+  Video, AlertCircle, ExternalLink, Activity,
+} from 'lucide-react';
 
 interface AnalysisData {
   viralProbability: number;
@@ -30,129 +36,395 @@ interface AnalysisData {
   bestPostingTime?: { day: string; hour: number; confidence: number };
 }
 
-// Floating particles
-function Particles() {
-  const particles = useMemo(() =>
-    Array.from({ length: 60 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      duration: Math.random() * 20 + 15,
-      delay: Math.random() * 10,
-      opacity: Math.random() * 0.5 + 0.1,
-    })), []);
-
-  return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {particles.map((p) => (
-        <motion.div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            left: `${p.x}%`,
-            top: `${p.y}%`,
-            width: p.size,
-            height: p.size,
-            background: `radial-gradient(circle, rgba(255,${p.id % 2 === 0 ? '50' : '100'},${p.id % 3 === 0 ? '200' : '0'},${p.opacity}), transparent)`,
-          }}
-          animate={{
-            y: [0, -80, 0],
-            x: [0, Math.random() * 40 - 20, 0],
-            opacity: [p.opacity * 0.5, p.opacity, p.opacity * 0.3, p.opacity],
-            scale: [1, 1.4, 0.8, 1],
-          }}
-          transition={{
-            duration: p.duration,
-            delay: p.delay,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// Gradient Orb background
-function GradientOrbs() {
-  return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      <motion.div
-        className="absolute -top-64 -left-64 w-[700px] h-[700px] rounded-full"
-        style={{
-          background: 'radial-gradient(circle, rgba(220,38,38,0.08) 0%, rgba(220,38,38,0.02) 50%, transparent 70%)',
-          filter: 'blur(60px)',
-        }}
-        animate={{ x: [0, 40, 0], y: [0, -30, 0], scale: [1, 1.08, 1] }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute top-1/3 -right-64 w-[600px] h-[600px] rounded-full"
-        style={{
-          background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, rgba(139,92,246,0.02) 50%, transparent 70%)',
-          filter: 'blur(60px)',
-        }}
-        animate={{ x: [0, -40, 0], y: [0, 40, 0], scale: [1, 0.9, 1] }}
-        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
-      />
-      <motion.div
-        className="absolute bottom-0 left-1/3 w-[500px] h-[500px] rounded-full"
-        style={{
-          background: 'radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)',
-          filter: 'blur(60px)',
-        }}
-        animate={{ x: [0, 30, 0], y: [0, -50, 0] }}
-        transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut', delay: 8 }}
-      />
-      {/* Grid overlay */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
-        }}
-      />
-    </div>
-  );
-}
-
-// Glowing stat chip
-function StatChip({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
-  return (
-    <motion.div
-      whileHover={{ scale: 1.05, y: -2 }}
-      className="relative flex items-center gap-3 px-4 py-3 rounded-xl border overflow-hidden"
-      style={{
-        background: 'rgba(255,255,255,0.03)',
-        borderColor: 'rgba(255,255,255,0.08)',
-        backdropFilter: 'blur(10px)',
-      }}
-    >
-      <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300"
-        style={{ background: `radial-gradient(circle at center, ${color}15, transparent 70%)` }} />
-      <div className="p-2 rounded-lg" style={{ background: `${color}20` }}>
-        <Icon className="w-4 h-4" style={{ color }} />
-      </div>
-      <div>
-        <p className="text-[10px] text-[#666] uppercase tracking-wider font-medium">{label}</p>
-        <p className="text-sm font-bold text-white">{value}</p>
-      </div>
-    </motion.div>
-  );
-}
-
 const containerVariants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
+  visible: { transition: { staggerChildren: 0.07 } },
 };
 const itemVariants = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } },
 };
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <span className="w-1 h-4 rounded-full bg-[#FF0000] inline-block" />
+      <h2 className="text-sm font-bold text-white uppercase tracking-wider">{children}</h2>
+    </div>
+  );
+}
+
+function Widget({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`relative rounded-2xl border border-white/[0.06] overflow-hidden ${className}`}
+      style={{ background: 'rgba(13,13,13,0.98)' }}>
+      <div className="absolute top-0 left-0 right-0 h-[1px]"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,0,0,0.25), transparent)' }} />
+      {children}
+    </div>
+  );
+}
+
+// ── Recent Analyzed Videos ───────────────────────────────────────────────────
+function RecentVideosWidget() {
+  const [videos, setVideos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get('/api/videos', { headers: getAuthHeaders() })
+      .then(r => setVideos((r.data.videos || []).slice(0, 5)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <Widget>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Video className="w-4 h-4 text-[#FF0000]" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Recent Analyses</span>
+          </div>
+          <Link href="/dashboard/my-videos" className="text-[10px] text-[#555] hover:text-white flex items-center gap-1 transition-colors">
+            View all <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+        {loading ? (
+          <div className="space-y-2">
+            {[1,2,3].map(i => (
+              <div key={i} className="flex items-center gap-3 p-2">
+                <div className="w-12 h-9 rounded bg-white/5 animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 bg-white/5 rounded animate-pulse w-3/4" />
+                  <div className="h-2 bg-white/[0.03] rounded animate-pulse w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : videos.length === 0 ? (
+          <div className="py-6 text-center">
+            <Video className="w-8 h-8 text-[#333] mx-auto mb-2" />
+            <p className="text-xs text-[#555]">No videos analyzed yet</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {videos.map((v) => (
+              <div key={v._id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.03] transition-colors group">
+                <div className="w-14 h-9 rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 relative">
+                  {v.thumbnailUrl ? (
+                    <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Play className="w-3 h-3 text-[#444]" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-white truncate font-medium">{v.title || 'Untitled'}</p>
+                  <p className="text-[10px] text-[#555]">
+                    {v.uploadedAt ? new Date(v.uploadedAt).toLocaleDateString('en', { month: 'short', day: 'numeric' }) : '—'}
+                  </p>
+                </div>
+                <ChevronRight className="w-3 h-3 text-[#333] group-hover:text-[#666] transition-colors shrink-0" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Widget>
+  );
+}
+
+// ── Trending Topics Widget ───────────────────────────────────────────────────
+function TrendingWidget() {
+  const [topics, setTopics] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [platform, setPlatform] = useState<'youtube'|'instagram'|'tiktok'>('youtube');
+
+  const fetch = useCallback((p: string) => {
+    setLoading(true);
+    axios.get(`/api/trending?platform=${p}`, { headers: getAuthHeaders() })
+      .then(r => setTopics((r.data.trendingTopics || []).slice(0, 6)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { fetch(platform); }, [platform, fetch]);
+
+  const tabs = [
+    { id: 'youtube', label: 'YT' },
+    { id: 'instagram', label: 'IG' },
+    { id: 'tiktok', label: 'TT' },
+  ] as const;
+
+  return (
+    <Widget>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Flame className="w-4 h-4 text-orange-400" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Trending Now</span>
+          </div>
+          <div className="flex gap-1">
+            {tabs.map(t => (
+              <button key={t.id} onClick={() => setPlatform(t.id)}
+                className={`text-[10px] px-2 py-0.5 rounded font-medium transition-colors ${
+                  platform === t.id ? 'bg-[#FF0000] text-white' : 'bg-white/[0.04] text-[#666] hover:text-white'
+                }`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {loading ? (
+          <div className="space-y-2">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="flex items-center gap-2 p-1.5">
+                <div className="w-4 h-4 bg-white/5 rounded animate-pulse shrink-0" />
+                <div className="h-3 bg-white/5 rounded animate-pulse flex-1" />
+                <div className="w-8 h-3 bg-white/[0.03] rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ) : topics.length === 0 ? (
+          <div className="py-6 text-center">
+            <Flame className="w-8 h-8 text-[#333] mx-auto mb-2" />
+            <p className="text-xs text-[#555]">No trending data</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {topics.map((t, i) => (
+              <div key={t.keyword} className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white/[0.03] transition-colors">
+                <span className="text-[10px] font-bold text-[#333] w-4 shrink-0">#{i + 1}</span>
+                <span className="text-xs text-white flex-1 truncate">{t.keyword}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <div className="w-12 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div className="h-full bg-orange-500 rounded-full" style={{ width: `${Math.min(t.score, 100)}%` }} />
+                  </div>
+                  <span className="text-[9px] text-[#555] w-6 text-right">{Math.round(t.score)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Widget>
+  );
+}
+
+// ── Scheduled Posts Widget ───────────────────────────────────────────────────
+function ScheduledPostsWidget() {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get('/api/schedule/posts?status=scheduled&limit=4', { headers: getAuthHeaders() })
+      .then(r => setPosts(r.data.posts || r.data.scheduledPosts || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <Widget>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Scheduled</span>
+          </div>
+          <Link href="/calendar" className="text-[10px] text-[#555] hover:text-white flex items-center gap-1 transition-colors">
+            Manage <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+        {loading ? (
+          <div className="space-y-2">
+            {[1,2].map(i => (
+              <div key={i} className="p-2 rounded-xl bg-white/[0.02]">
+                <div className="h-3 bg-white/5 rounded animate-pulse w-2/3 mb-1.5" />
+                <div className="h-2 bg-white/[0.03] rounded animate-pulse w-1/3" />
+              </div>
+            ))}
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="py-4 text-center">
+            <Calendar className="w-7 h-7 text-[#333] mx-auto mb-2" />
+            <p className="text-[11px] text-[#555] mb-3">No scheduled posts</p>
+            <Link href="/calendar" className="text-[11px] text-[#FF0000] hover:underline">+ Schedule a post</Link>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {posts.map((p: any) => (
+              <div key={p._id} className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-blue-500/20 transition-colors">
+                <p className="text-xs text-white truncate font-medium">{p.title || p.caption || 'Untitled'}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">
+                    {p.platform || 'youtube'}
+                  </span>
+                  <span className="text-[10px] text-[#555]">
+                    {p.scheduledAt ? new Date(p.scheduledAt).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Widget>
+  );
+}
+
+// ── Notifications Widget ─────────────────────────────────────────────────────
+function NotificationsWidget() {
+  const [notifs, setNotifs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    axios.get('/api/notifications', { headers: getAuthHeaders() })
+      .then(r => {
+        setNotifs((r.data.notifications || []).slice(0, 4));
+        setUnread(r.data.unreadCount || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <Widget>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-bold text-white uppercase tracking-wider">Notifications</span>
+            {unread > 0 && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#FF0000] text-white font-bold">{unread}</span>
+            )}
+          </div>
+        </div>
+        {loading ? (
+          <div className="space-y-2">
+            {[1,2,3].map(i => (
+              <div key={i} className="flex gap-2 p-1.5">
+                <div className="w-5 h-5 bg-white/5 rounded-full animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-3 bg-white/5 rounded animate-pulse w-4/5" />
+                  <div className="h-2 bg-white/[0.03] rounded animate-pulse w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : notifs.length === 0 ? (
+          <div className="py-4 text-center">
+            <Bell className="w-7 h-7 text-[#333] mx-auto mb-2" />
+            <p className="text-[11px] text-[#555]">All caught up!</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {notifs.map((n: any) => (
+              <div key={n._id} className={`flex items-start gap-2.5 p-2 rounded-lg transition-colors ${!n.read ? 'bg-amber-500/[0.04]' : 'hover:bg-white/[0.02]'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${!n.read ? 'bg-amber-400' : 'bg-[#333]'}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-white leading-snug">{n.message || n.title}</p>
+                  <p className="text-[10px] text-[#555] mt-0.5">
+                    {n.createdAt ? new Date(n.createdAt).toLocaleDateString('en', { month: 'short', day: 'numeric' }) : ''}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Widget>
+  );
+}
+
+// ── AI Stats Row ─────────────────────────────────────────────────────────────
+function AiStatsRow({ usageData, userPlan, isYoutubeConnected }: {
+  usageData: { used: number; limit: number; label: string } | null;
+  userPlan: string;
+  isYoutubeConnected: boolean;
+}) {
+  const pct = usageData ? Math.round((usageData.used / usageData.limit) * 100) : 0;
+  const planColor = { free: '#6b7280', starter: '#60a5fa', pro: '#a78bfa', enterprise: '#fbbf24', owner: '#f87171' }[userPlan] || '#60a5fa';
+
+  const stats = [
+    {
+      icon: CreditCard,
+      label: 'Plan',
+      value: userPlan.charAt(0).toUpperCase() + userPlan.slice(1),
+      sub: 'current plan',
+      color: planColor,
+      bg: `${planColor}15`,
+    },
+    {
+      icon: Zap,
+      label: usageData?.label || 'AI Credits',
+      value: usageData ? `${usageData.used}/${usageData.limit}` : '—',
+      sub: `${pct}% used`,
+      color: pct > 80 ? '#f87171' : '#FF0000',
+      bg: pct > 80 ? 'rgba(248,113,113,0.1)' : 'rgba(255,0,0,0.1)',
+      progress: pct,
+    },
+    {
+      icon: Youtube,
+      label: 'YouTube',
+      value: isYoutubeConnected ? 'Connected' : 'Not Linked',
+      sub: isYoutubeConnected ? 'channel active' : 'click to connect',
+      color: isYoutubeConnected ? '#10B981' : '#F59E0B',
+      bg: isYoutubeConnected ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+      href: isYoutubeConnected ? undefined : '/api/youtube/auth',
+    },
+    {
+      icon: Activity,
+      label: 'AI Engine',
+      value: 'Active',
+      sub: 'all systems go',
+      color: '#10B981',
+      bg: 'rgba(16,185,129,0.08)',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {stats.map(({ icon: Icon, label, value, sub, color, bg, progress, href }) => {
+        const inner = (
+          <motion.div
+            whileHover={{ scale: 1.02, y: -1 }}
+            className="relative p-4 rounded-xl border border-white/[0.05] overflow-hidden cursor-default"
+            style={{ background: 'rgba(15,15,15,0.9)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg }}>
+                <Icon className="w-4 h-4" style={{ color }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-[#555] uppercase tracking-wider font-medium">{label}</p>
+                <p className="text-sm font-bold text-white truncate">{value}</p>
+                <p className="text-[10px]" style={{ color: `${color}90` }}>{sub}</p>
+              </div>
+            </div>
+            {progress !== undefined && (
+              <div className="mt-3 w-full h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  className="h-full rounded-full"
+                  style={{ background: color }}
+                />
+              </div>
+            )}
+          </motion.div>
+        );
+        return href ? <a key={label} href={href}>{inner}</a> : <div key={label}>{inner}</div>;
+      })}
+    </div>
+  );
+}
+
+// ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
+  const [mounted, setMounted] = useState(false);
   const [analysis, setAnalysis] = useState<(AnalysisData & { id?: string; analysisId?: string; isPartial?: boolean }) | null>(null);
   const [loading, setLoading] = useState(false);
   const [lazyLoading, setLazyLoading] = useState<Record<string, boolean>>({});
@@ -162,18 +434,12 @@ export default function Dashboard() {
   const [isYoutubeConnected, setIsYoutubeConnected] = useState(false);
   const [youtubeGoogleConnected, setYoutubeGoogleConnected] = useState(false);
   const [allowedSystems, setAllowedSystems] = useState<Record<string, boolean>>({});
-  const [scanLine, setScanLine] = useState(0);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [userName, setUserName] = useState('');
   const [userPlan, setUserPlan] = useState('free');
   const [usageData, setUsageData] = useState<{ used: number; limit: number; label: string } | null>(null);
 
-  // scan line animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setScanLine((v) => (v + 1) % 101);
-    }, 30);
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -185,7 +451,7 @@ export default function Dashboard() {
           setUserName(res.data.user.name || res.data.user.email?.split('@')[0] || '');
           setUserPlan(res.data.user.subscription || res.data.user.plan || 'free');
         }
-      } catch (_) { }
+      } catch (_) {}
     };
     const fetchUsage = async () => {
       try {
@@ -195,7 +461,7 @@ export default function Dashboard() {
           const limit = res.data.limit ?? res.data.totalLimit ?? 50;
           setUsageData({ used, limit, label: res.data.label || 'AI Credits' });
         }
-      } catch (_) { }
+      } catch (_) {}
     };
     fetchUser();
     fetchUsage();
@@ -204,46 +470,35 @@ export default function Dashboard() {
   useEffect(() => {
     if (searchParams?.get('youtube') === 'connected') {
       setShowYoutubeSuccess(true);
-      const timer = setTimeout(() => setShowYoutubeSuccess(false), 5000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setShowYoutubeSuccess(false), 5000);
+      return () => clearTimeout(t);
     }
   }, [searchParams]);
 
   useEffect(() => {
-    const fetchSystems = async () => {
-      try {
-        const res = await axios.get('/api/features/all', { headers: getAuthHeaders() });
-        if (res.data.features) setAllowedSystems(res.data.features);
-      } catch (_) {
-        setAllowedSystems({});
-      }
-    };
-    fetchSystems();
+    axios.get('/api/features/all', { headers: getAuthHeaders() })
+      .then(r => { if (r.data.features) setAllowedSystems(r.data.features); })
+      .catch(() => setAllowedSystems({}))
+      .finally(() => setConfigLoaded(true));
   }, []);
 
-  // Lazy Loading Effect
+  // Lazy load analysis scores
   useEffect(() => {
     if (!analysis?.isPartial || !analysis?.id || !analysis?.analysisId) return;
-
     const fetchLazyData = async () => {
       const payload = { videoId: analysis.id, analysisId: analysis.analysisId };
       const headers = getAuthHeaders();
-
       setLazyLoading({ thumbnail: true, hook: true, title: true, predict: true });
-
-      // Parallel score fetching
       const results = await Promise.allSettled([
         axios.post('/api/analysis/thumbnail', payload, { headers }),
         axios.post('/api/analysis/hook', payload, { headers }),
         axios.post('/api/analysis/title', payload, { headers }),
       ]);
-
       setAnalysis(prev => {
         if (!prev) return null;
         const thumbnailData = results[0].status === 'fulfilled' ? (results[0].value as any).data : {};
         const hookData = results[1].status === 'fulfilled' ? (results[1].value as any).data : {};
         const titleData = results[2].status === 'fulfilled' ? (results[2].value as any).data : {};
-
         return {
           ...prev,
           thumbnailScore: thumbnailData.score || 0,
@@ -255,21 +510,18 @@ export default function Dashboard() {
           optimizedTitles: titleData.analysis?.optimizedTitles || prev.optimizedTitles,
         };
       });
-
       setLazyLoading(prev => ({ ...prev, thumbnail: false, hook: false, title: false }));
-
-      // Final prediction fetch
       try {
         const predictRes = await axios.post('/api/analysis/predict', payload, { headers });
-        const predictData = predictRes.data;
+        const pd = predictRes.data;
         setAnalysis(prev => prev ? {
           ...prev,
-          viralProbability: predictData.viralProbability,
-          confidenceLevel: predictData.confidenceLevel,
-          hashtags: predictData.hashtags,
-          trendingTopics: predictData.trendingTopics,
-          bestPostingTime: predictData.bestPostingTime,
-          isPartial: false // Mark as complete
+          viralProbability: pd.viralProbability,
+          confidenceLevel: pd.confidenceLevel,
+          hashtags: pd.hashtags,
+          trendingTopics: pd.trendingTopics,
+          bestPostingTime: pd.bestPostingTime,
+          isPartial: false,
         } : null);
       } catch (err) {
         console.error('Prediction fetch failed:', err);
@@ -277,163 +529,123 @@ export default function Dashboard() {
         setLazyLoading(prev => ({ ...prev, predict: false }));
       }
     };
-
     fetchLazyData();
   }, [analysis?.id, analysis?.analysisId, analysis?.isPartial]);
 
   const handleAnalysisComplete = (data: AnalysisData) => {
-    const bestPostingTime = data.bestPostingTime || data.postingTime;
+    const bestPostingTime = (data as any).bestPostingTime || (data as any).postingTime;
     setAnalysis(bestPostingTime ? { ...data, bestPostingTime } : data);
   };
 
+  if (!configLoaded) return null;
+
   return (
     <div className="flex-1 overflow-y-auto relative min-h-screen" style={{ background: '#080808' }}>
-      <GradientOrbs />
-      <Particles />
+      {/* Subtle static background grid */}
+      <div className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)`,
+          backgroundSize: '48px 48px',
+        }} />
+      {/* Red glow top-left */}
+      {mounted && (
+        <div className="fixed top-0 left-0 w-[500px] h-[300px] pointer-events-none z-0"
+          style={{ background: 'radial-gradient(ellipse at top left, rgba(220,38,38,0.05) 0%, transparent 70%)' }} />
+      )}
 
-      <div className="relative z-10 p-6 pb-12">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="max-w-7xl mx-auto"
-        >
+      <div className="relative z-10 p-6 pb-16 max-w-[1400px] mx-auto">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+
           {/* YouTube Connected Banner */}
           <AnimatePresence>
             {showYoutubeSuccess && (
               <motion.div
-                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
-                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
                 className="relative overflow-hidden rounded-2xl border border-emerald-500/30 p-4 flex items-center justify-between"
-                style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(5,150,105,0.06))' }}
+                style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05))' }}
               >
-                <div className="absolute inset-0 pointer-events-none"
-                  style={{
-                    backgroundImage: 'linear-gradient(90deg, transparent, rgba(16,185,129,0.06), transparent)',
-                    animation: 'shimmer 3s infinite',
-                  }} />
                 <div className="flex items-center gap-3">
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center"
-                  >
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  </motion.div>
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
                   <div>
-                    <p className="text-emerald-400 font-semibold">YouTube Connected!</p>
-                    <p className="text-emerald-400/60 text-xs">Your channel is now linked and ready for analysis</p>
+                    <p className="text-emerald-400 font-semibold text-sm">YouTube Connected!</p>
+                    <p className="text-emerald-400/60 text-xs">Your channel is now linked</p>
                   </div>
                 </div>
-                <button onClick={() => setShowYoutubeSuccess(false)} className="text-emerald-500/50 hover:text-emerald-400 transition-colors">
-                  <X className="w-5 h-5" />
+                <button onClick={() => setShowYoutubeSuccess(false)} className="text-emerald-500/40 hover:text-emerald-400">
+                  <X className="w-4 h-4" />
                 </button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Hero Header */}
-          <motion.div variants={itemVariants} className="mb-8">
-            <div className="relative rounded-3xl overflow-hidden border border-white/[0.06] p-8"
-              style={{
-                background: 'linear-gradient(135deg, rgba(20,20,20,0.9), rgba(10,10,10,0.95))',
-                backdropFilter: 'blur(40px)',
-              }}>
-              {/* Red accent line top */}
+          {/* ── Hero Header ─────────────────────────────────────────────── */}
+          <motion.div variants={itemVariants}>
+            <div className="relative rounded-2xl overflow-hidden border border-white/[0.06] p-6"
+              style={{ background: 'linear-gradient(135deg, rgba(18,18,18,0.98), rgba(10,10,10,0.99))' }}>
               <div className="absolute top-0 left-0 right-0 h-[1px]"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.8), rgba(220,38,38,0.4), transparent)' }} />
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.7), rgba(220,38,38,0.3), transparent)' }} />
+              <div className="absolute right-0 top-0 bottom-0 w-64 pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse at right, rgba(220,38,38,0.04), transparent 70%)' }} />
 
-              {/* Scan line */}
-              <div
-                className="absolute left-0 right-0 pointer-events-none"
-                style={{
-                  top: `${scanLine}%`,
-                  height: '1px',
-                  background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.15), transparent)',
-                  transition: 'top 0.03s linear',
-                }}
-              />
-
-              <div className="grid gap-6 lg:grid-cols-[1fr,auto]">
-                <div>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: 'auto' }}
-                    className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-full px-3 py-1 mb-4"
-                  >
+              <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+                <div className="flex-1">
+                  <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-full px-3 py-1 mb-3">
                     <motion.div
                       animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
                       transition={{ duration: 1.8, repeat: Infinity }}
                       className="w-1.5 h-1.5 rounded-full bg-red-500"
                     />
-                    <span className="text-red-400 text-xs font-semibold tracking-wider uppercase">AI Powered Engine</span>
-                  </motion.div>
-
-                  <h1 className="text-4xl lg:text-5xl font-black text-white mb-3 leading-tight">
+                    <span className="text-red-400 text-[10px] font-bold tracking-wider uppercase">AI Powered Engine</span>
+                  </div>
+                  <h1 className="text-3xl lg:text-4xl font-black text-white mb-1 leading-tight">
                     {userName ? (
-                      <>Welcome, <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #FF0000, #FF6B6B, #FF0000)' }}>{userName}</span></>
+                      <>Welcome, <span className="text-[#FF0000]">{userName}</span></>
                     ) : (
-                      <>Welcome to <span className="relative"><span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #FF0000, #FF6B6B, #FF0000)' }}>Vid YT</span><motion.span className="absolute bottom-0 left-0 h-[2px] w-full" style={{ background: 'linear-gradient(90deg, #FF0000, transparent)' }} animate={{ scaleX: [0, 1, 0], originX: 0 }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} /></span></>
+                      <>Welcome to <span className="text-[#FF0000]">Vid YT</span></>
                     )}
                   </h1>
-                  <p className="text-[#777] text-base max-w-xl">
-                    Analyze and optimize your videos for maximum viral potential using our AI-powered engine.
+                  <p className="text-[#555] text-sm">
+                    Analyze and optimize your videos for maximum viral potential.
                   </p>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-                    <StatChip icon={CreditCard} label="Plan" value={userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} color="#8B5CF6" />
-                    <StatChip icon={Zap} label={usageData?.label || 'Credits'} value={usageData ? `${usageData.used}/${usageData.limit}` : '—'} color="#FF0000" />
-                    <StatChip icon={Youtube} label="YouTube" value={isYoutubeConnected ? 'Connected' : 'Not Linked'} color={isYoutubeConnected ? '#10B981' : '#F59E0B'} />
-                    <StatChip icon={Sparkles} label="AI Engine" value="Active" color="#10B981" />
-                  </div>
                 </div>
+                <div className="flex gap-3 shrink-0">
+                  {allowedSystems['dashboard_seo_analyzer_btn'] !== false && (
+                    <Link href="/dashboard/youtube-seo"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#FF0000] text-white hover:bg-[#CC0000] transition-colors">
+                      <Search className="w-4 h-4" /> SEO Analyzer
+                    </Link>
+                  )}
+                  {allowedSystems['dashboard_ai_engine_btn'] !== false && (
+                    <Link href="/dashboard/viral-intelligence"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-white/[0.08] text-white hover:bg-white/[0.05] transition-colors">
+                      <Sparkles className="w-4 h-4 text-amber-400" /> AI Engine
+                    </Link>
+                  )}
+                </div>
+              </div>
 
-                {!analysis && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="hidden lg:block relative w-72 rounded-2xl border border-white/[0.06] p-5 overflow-hidden"
-                    style={{ background: 'rgba(255,255,255,0.02)' }}
-                  >
-                    <div className="absolute top-0 left-0 right-0 h-[1px]"
-                      style={{ background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent)' }} />
-                    <h2 className="text-xs font-bold text-[#888] uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <span className="w-1 h-3 rounded-full bg-purple-500 inline-block" />
-                      Recommended Flow
-                    </h2>
-                    <ol className="space-y-3">
-                      {[
-                        { step: '01', text: 'Upload a video to get your viral score, hook, title, and thumbnail scores.' },
-                        { step: '02', text: 'Use YouTube SEO tab to choose search-based topics with keywords and titles.' },
-                        { step: '03', text: 'Check Posting Time & Analytics pages to track and optimise performance.' },
-                      ].map((item, i) => (
-                        <motion.li
-                          key={item.step}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.4 + i * 0.1 }}
-                          className="flex gap-3"
-                        >
-                          <span className="shrink-0 w-6 h-6 rounded-full bg-white/[0.05] border border-white/10 flex items-center justify-center text-[10px] font-bold text-[#666]">
-                            {item.step}
-                          </span>
-                          <p className="text-[11px] text-[#666] leading-relaxed">{item.text}</p>
-                        </motion.li>
-                      ))}
-                    </ol>
-                  </motion.div>
-                )}
+              {/* Stats chips */}
+              <div className="mt-5">
+                <AiStatsRow
+                  usageData={usageData}
+                  userPlan={userPlan}
+                  isYoutubeConnected={isYoutubeConnected}
+                />
               </div>
             </div>
           </motion.div>
 
-          {/* Video Upload */}
+          {/* ── Video Analyzer ───────────────────────────────────────────── */}
           {allowedSystems['video_upload'] !== false && (
-            <motion.div variants={itemVariants} className="mb-8">
+            <motion.div variants={itemVariants}>
+              <SectionLabel>Video Analyzer</SectionLabel>
               <div className="relative rounded-2xl overflow-hidden border border-white/[0.06]"
-                style={{ background: 'rgba(15,15,15,0.95)', backdropFilter: 'blur(20px)' }}>
+                style={{ background: 'rgba(13,13,13,0.98)', backdropFilter: 'blur(20px)' }}>
                 <div className="absolute top-0 left-0 right-0 h-[1px]"
                   style={{ background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.6), transparent)' }} />
                 <VideoUpload
@@ -448,62 +660,7 @@ export default function Dashboard() {
             </motion.div>
           )}
 
-          {/* Quick Actions */}
-          {!analysis && (
-            <motion.div variants={itemVariants} className="mb-8">
-              <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-1.5 h-4 rounded-full bg-red-500 inline-block" />
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {[
-                  { href: '/dashboard/youtube-seo', icon: Search, label: 'YouTube SEO', desc: 'Live SEO Analyzer', color: '#FF0000', enabled: allowedSystems['youtube_seo'] !== false },
-                  { href: '/dashboard/keyword-intelligence', icon: Zap, label: 'Keywords', desc: 'AI Keyword Intel', color: '#8B5CF6', enabled: allowedSystems['keyword_intelligence'] !== false },
-                  { href: '/dashboard/viral-intelligence', icon: Sparkles, label: 'Ultra AI Engine', desc: 'Viral Intelligence', color: '#F59E0B', enabled: allowedSystems['viral_intelligence'] !== false },
-                  { href: '/ai/script-generator', icon: FileText, label: 'Script Gen', desc: 'AI Video Scripts', color: '#10B981', enabled: allowedSystems['script_generator'] !== false },
-                  { href: '/ai/thumbnail-generator', icon: ImageIcon, label: 'Thumbnails', desc: 'AI Generator', color: '#EC4899', enabled: allowedSystems['thumbnail_generator'] !== false },
-                  { href: '/ai/hook-generator', icon: Star, label: 'Hook Gen', desc: 'Viral Hooks', color: '#3B82F6', enabled: allowedSystems['hook_generator'] !== false },
-                  { href: '/trending', icon: TrendingUp, label: 'Trending', desc: 'Hot Topics', color: '#EF4444', enabled: allowedSystems['trending'] !== false },
-                  { href: '/hashtags', icon: Hash, label: 'Hashtags', desc: 'Viral Tags', color: '#6366F1', enabled: allowedSystems['hashtags'] !== false },
-                  { href: '/posting-time', icon: Clock, label: 'Post Time', desc: 'Best Schedule', color: '#F97316', enabled: allowedSystems['posting_time'] !== false },
-                  { href: '/analytics', icon: BarChart3, label: 'Analytics', desc: 'Channel Stats', color: '#14B8A6', enabled: allowedSystems['analytics'] !== false },
-                  { href: '/ai/shorts-creator', icon: Film, label: 'Shorts', desc: 'Auto Creator', color: '#A855F7', enabled: allowedSystems['shorts_creator'] !== false },
-                  { href: '/dashboard/viral-optimizer', icon: Target, label: 'Optimizer', desc: 'Viral Engine', color: '#DC2626', enabled: allowedSystems['viral_optimizer'] !== false },
-                ].filter(item => item.enabled).map((item, i) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link key={item.href} href={item.href}>
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.04 }}
-                        whileHover={{ scale: 1.03, y: -2 }}
-                        className="relative p-4 rounded-xl border border-white/[0.06] cursor-pointer group overflow-hidden"
-                        style={{ background: 'rgba(15,15,15,0.95)' }}
-                      >
-                        <div className="absolute top-0 left-0 right-0 h-[1px] opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{ background: `linear-gradient(90deg, transparent, ${item.color}80, transparent)` }} />
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{ background: `radial-gradient(circle at center, ${item.color}08, transparent 70%)` }} />
-                        <div className="relative flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${item.color}15` }}>
-                            <Icon className="w-5 h-5" style={{ color: item.color }} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-white truncate">{item.label}</p>
-                            <p className="text-[10px] text-[#666]">{item.desc}</p>
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-[#333] group-hover:text-white transition-colors ml-auto flex-shrink-0" />
-                        </div>
-                      </motion.div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Analysis Results */}
+          {/* ── Analysis Results ─────────────────────────────────────────── */}
           <AnimatePresence>
             {analysis && (
               <motion.div
@@ -512,62 +669,58 @@ export default function Dashboard() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 variants={containerVariants}
-                className="space-y-6"
+                className="space-y-5"
               >
-                {/* Analysis Result Header */}
-                <motion.div
-                  variants={itemVariants}
-                  className="relative rounded-2xl border border-white/[0.06] p-5 overflow-hidden"
-                  style={{ background: 'linear-gradient(135deg, rgba(220,38,38,0.06), rgba(139,92,246,0.04))' }}
-                >
+                {/* Analysis Header */}
+                <motion.div variants={itemVariants}
+                  className="relative rounded-2xl border border-white/[0.06] p-4 flex items-center gap-4 overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, rgba(220,38,38,0.06), rgba(139,92,246,0.04))' }}>
                   <div className="absolute top-0 left-0 right-0 h-[1px]"
                     style={{ background: 'linear-gradient(90deg, rgba(220,38,38,0.6), rgba(139,92,246,0.6), transparent)' }} />
-                  <div className="flex items-center gap-3">
-                    <motion.div
-                      animate={{ rotate: [0, 360] }}
-                      transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                      className="w-10 h-10 rounded-full border border-red-500/30 flex items-center justify-center"
-                      style={{ background: 'rgba(220,38,38,0.1)' }}
-                    >
-                      <Sparkles className="w-5 h-5 text-red-400" />
-                    </motion.div>
-                    <div>
-                      <h2 className="text-white font-bold text-lg">Analysis Complete</h2>
-                      <p className="text-[#666] text-xs">Your video has been analyzed by our AI engine</p>
-                    </div>
-                    <motion.div
-                      className="ml-auto px-4 py-1.5 rounded-full text-xs font-bold"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(220,38,38,0.2), rgba(139,92,246,0.2))',
-                        border: '1px solid rgba(220,38,38,0.3)',
-                        color: '#FF6B6B',
-                      }}
-                      animate={{ boxShadow: ['0 0 0px rgba(220,38,38,0)', '0 0 20px rgba(220,38,38,0.3)', '0 0 0px rgba(220,38,38,0)'] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      {lazyLoading.predict ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Predicting Viral Potential...
-                        </span>
-                      ) : (
-                        `Viral Score: ${analysis.viralProbability}%`
-                      )}
-                    </motion.div>
+                  <motion.div
+                    animate={{ rotate: [0, 360] }}
+                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                    className="w-9 h-9 rounded-full border border-red-500/30 flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(220,38,38,0.1)' }}
+                  >
+                    <Sparkles className="w-4 h-4 text-red-400" />
+                  </motion.div>
+                  <div className="flex-1">
+                    <h2 className="text-white font-bold">Analysis Complete</h2>
+                    <p className="text-[#555] text-xs">Your video has been analyzed by our AI engine</p>
                   </div>
+                  <motion.div
+                    className="px-4 py-1.5 rounded-full text-xs font-bold shrink-0"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(220,38,38,0.2), rgba(139,92,246,0.2))',
+                      border: '1px solid rgba(220,38,38,0.3)',
+                      color: '#FF6B6B',
+                    }}
+                    animate={{ boxShadow: ['0 0 0px rgba(220,38,38,0)', '0 0 20px rgba(220,38,38,0.3)', '0 0 0px rgba(220,38,38,0)'] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    {lazyLoading.predict ? (
+                      <span className="flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Predicting...</span>
+                    ) : (
+                      `Viral Score: ${analysis.viralProbability}%`
+                    )}
+                  </motion.div>
+                  <button onClick={() => setAnalysis(null)} className="text-[#333] hover:text-white transition-colors shrink-0">
+                    <X className="w-4 h-4" />
+                  </button>
                 </motion.div>
 
                 {/* Score cards */}
-                <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                   {allowedSystems['viral_score'] !== false && (
                     <div className="lg:col-span-2 relative rounded-2xl border border-white/[0.06] overflow-hidden"
-                      style={{ background: 'rgba(12,12,12,0.95)', backdropFilter: 'blur(20px)' }}>
+                      style={{ background: 'rgba(12,12,12,0.98)' }}>
                       <div className="absolute top-0 left-0 right-0 h-[1px]"
                         style={{ background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.5), transparent)' }} />
                       {lazyLoading.predict ? (
                         <div className="h-[300px] flex flex-col items-center justify-center gap-4">
-                           <div className="w-24 h-24 rounded-full border-4 border-red-500/20 border-t-red-500 animate-spin" />
-                           <p className="text-white font-bold animate-pulse">Calculating Viral Probability...</p>
+                          <div className="w-20 h-20 rounded-full border-4 border-red-500/20 border-t-red-500 animate-spin" />
+                          <p className="text-white font-bold animate-pulse text-sm">Calculating Viral Probability...</p>
                         </div>
                       ) : (
                         <ViralScoreMeter score={analysis.viralProbability} confidence={analysis.confidenceLevel} />
@@ -575,35 +728,26 @@ export default function Dashboard() {
                     </div>
                   )}
                   {allowedSystems['score_cards'] !== false && (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {[
                         { key: 'hook', title: 'Hook Score', score: analysis.hookScore, color: 'blue' as const },
                         { key: 'thumbnail', title: 'Thumbnail Score', score: analysis.thumbnailScore, color: 'purple' as const },
                         { key: 'title', title: 'Title Score', score: analysis.titleScore, color: 'green' as const },
                       ].map((card, i) => (
-                        <motion.div
-                          key={card.title}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
+                        <motion.div key={card.title}
+                          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.1 * i }}
                           className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
-                          style={{ background: 'rgba(12,12,12,0.95)' }}
-                        >
+                          style={{ background: 'rgba(12,12,12,0.98)' }}>
                           <div className="absolute top-0 left-0 right-0 h-[1px]"
-                            style={{
-                              background: card.color === 'blue' ?
-                                'linear-gradient(90deg, transparent, rgba(59,130,246,0.5), transparent)' :
-                                card.color === 'purple' ?
-                                  'linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent)' :
-                                  'linear-gradient(90deg, transparent, rgba(16,185,129,0.5), transparent)'
-                            }} />
+                            style={{ background: card.color === 'blue' ? 'linear-gradient(90deg, transparent, rgba(59,130,246,0.5), transparent)' : card.color === 'purple' ? 'linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent)' : 'linear-gradient(90deg, transparent, rgba(16,185,129,0.5), transparent)' }} />
                           {lazyLoading[card.key] ? (
                             <div className="p-6 h-[100px] flex items-center justify-between">
-                               <div>
-                                  <div className="w-24 h-4 bg-white/5 rounded animate-pulse mb-2" />
-                                  <div className="w-16 h-8 bg-white/10 rounded animate-pulse" />
-                               </div>
-                               <Loader2 className="w-6 h-6 text-white/20 animate-spin" />
+                              <div>
+                                <div className="w-24 h-4 bg-white/5 rounded animate-pulse mb-2" />
+                                <div className="w-16 h-8 bg-white/10 rounded animate-pulse" />
+                              </div>
+                              <Loader2 className="w-5 h-5 text-white/20 animate-spin" />
                             </div>
                           ) : (
                             <ScoreCard title={card.title} score={card.score} color={card.color} />
@@ -618,16 +762,14 @@ export default function Dashboard() {
                 {allowedSystems['title_suggestions'] !== false && (
                   <motion.div variants={itemVariants}
                     className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
-                    style={{ background: 'rgba(12,12,12,0.95)' }}>
+                    style={{ background: 'rgba(12,12,12,0.98)' }}>
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.5), transparent)' }} />
                     {lazyLoading.title ? (
-                       <div className="p-8 space-y-4">
-                          <div className="w-1/3 h-6 bg-white/10 rounded animate-pulse" />
-                          <div className="space-y-2">
-                             {[1,2,3].map(i => <div key={i} className="w-full h-12 bg-white/5 rounded-xl animate-pulse" />)}
-                          </div>
-                       </div>
+                      <div className="p-8 space-y-3">
+                        <div className="w-1/3 h-5 bg-white/10 rounded animate-pulse" />
+                        {[1,2,3].map(i => <div key={i} className="w-full h-11 bg-white/5 rounded-xl animate-pulse" />)}
+                      </div>
                     ) : analysis.optimizedTitles && (
                       <TitleSuggestions titles={analysis.optimizedTitles.slice(0, 5)} />
                     )}
@@ -638,29 +780,23 @@ export default function Dashboard() {
                 {analysis.seoDescription && (
                   <motion.div variants={itemVariants}
                     className="relative rounded-2xl border border-white/[0.06] overflow-hidden p-6"
-                    style={{ background: 'rgba(12,12,12,0.95)' }}>
+                    style={{ background: 'rgba(12,12,12,0.98)' }}>
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(16,185,129,0.5), transparent)' }} />
                     <div className="flex items-center justify-between mb-3">
-                      <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <span className="w-2 h-5 rounded-full bg-emerald-500 inline-block" />
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <span className="w-2 h-4 rounded-full bg-emerald-500 inline-block" />
                         SEO Description
-                        <span className="text-xs text-emerald-500/70 font-normal ml-1">(CTR-focused)</span>
                       </h2>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                      <button
                         type="button"
                         onClick={() => void navigator.clipboard.writeText(analysis.seoDescription || '')}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-white/10 text-white hover:border-emerald-500/40 transition-all"
-                        style={{ background: 'rgba(16,185,129,0.1)' }}
-                      >
-                        <Copy className="w-4 h-4" />
-                        Copy
-                      </motion.button>
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border border-white/10 text-white hover:border-emerald-500/40 transition-all"
+                        style={{ background: 'rgba(16,185,129,0.08)' }}>
+                        <Copy className="w-3.5 h-3.5" /> Copy
+                      </button>
                     </div>
-                    <p className="text-xs text-[#555] mb-3">Auto-generated after upload (max 200 words). Paste into YouTube or Shorts.</p>
-                    <pre className="text-sm text-[#CCCCCC] whitespace-pre-wrap font-sans leading-relaxed max-h-64 overflow-y-auto p-4 rounded-xl"
+                    <pre className="text-sm text-[#CCCCCC] whitespace-pre-wrap font-sans leading-relaxed max-h-56 overflow-y-auto p-4 rounded-xl"
                       style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
                       {analysis.seoDescription}
                     </pre>
@@ -671,16 +807,16 @@ export default function Dashboard() {
                 {allowedSystems['hashtag_recommendations'] !== false && (
                   <motion.div variants={itemVariants}
                     className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
-                    style={{ background: 'rgba(12,12,12,0.95)' }}>
+                    style={{ background: 'rgba(12,12,12,0.98)' }}>
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.5), transparent)' }} />
                     {lazyLoading.predict ? (
-                       <div className="p-8">
-                          <div className="w-48 h-6 bg-white/10 rounded animate-pulse mb-6" />
-                          <div className="flex flex-wrap gap-2">
-                             {[1,2,3,4,5,6].map(i => <div key={i} className="w-20 h-8 bg-white/5 rounded-full animate-pulse" />)}
-                          </div>
-                       </div>
+                      <div className="p-8">
+                        <div className="w-48 h-5 bg-white/10 rounded animate-pulse mb-5" />
+                        <div className="flex flex-wrap gap-2">
+                          {[1,2,3,4,5,6].map(i => <div key={i} className="w-20 h-7 bg-white/5 rounded-full animate-pulse" />)}
+                        </div>
+                      </div>
                     ) : analysis.hashtags && (
                       <HashtagRecommendations hashtags={analysis.hashtags} />
                     )}
@@ -691,7 +827,7 @@ export default function Dashboard() {
                 {analysis.trendingTopics && allowedSystems['trending_topics'] !== false && (
                   <motion.div variants={itemVariants}
                     className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
-                    style={{ background: 'rgba(12,12,12,0.95)' }}>
+                    style={{ background: 'rgba(12,12,12,0.98)' }}>
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent)' }} />
                     <TrendingTopics topics={analysis.trendingTopics} />
@@ -702,7 +838,7 @@ export default function Dashboard() {
                 {analysis.bestPostingTime && allowedSystems['posting_time_heatmap'] !== false && (
                   <motion.div variants={itemVariants}
                     className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
-                    style={{ background: 'rgba(12,12,12,0.95)' }}>
+                    style={{ background: 'rgba(12,12,12,0.98)' }}>
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.5), transparent)' }} />
                     <PostingTimeHeatmap postingTime={analysis.bestPostingTime} />
@@ -713,7 +849,7 @@ export default function Dashboard() {
                 {allowedSystems['engagement_graph'] !== false && (
                   <motion.div variants={itemVariants}
                     className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
-                    style={{ background: 'rgba(12,12,12,0.95)' }}>
+                    style={{ background: 'rgba(12,12,12,0.98)' }}>
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.5), transparent)' }} />
                     <EngagementGraph viralProbability={analysis.viralProbability} />
@@ -722,15 +858,67 @@ export default function Dashboard() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* ── Live Data Widgets (shown when no analysis) ───────────────── */}
+          {!analysis && (
+            <motion.div variants={itemVariants}>
+              <SectionLabel>Live Intelligence</SectionLabel>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <RecentVideosWidget />
+                <TrendingWidget />
+                <ScheduledPostsWidget />
+                <NotificationsWidget />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Quick Tools ──────────────────────────────────────────────── */}
+          {!analysis && (
+            <motion.div variants={itemVariants}>
+              <SectionLabel>Quick Tools</SectionLabel>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { href: '/dashboard/youtube-seo', icon: Search, label: 'YouTube SEO', color: '#FF0000', key: 'qt_youtube_seo' },
+                  { href: '/dashboard/keyword-intelligence', icon: Zap, label: 'Keywords', color: '#8B5CF6', key: 'qt_keyword_intelligence' },
+                  { href: '/dashboard/viral-intelligence', icon: Sparkles, label: 'Ultra AI', color: '#F59E0B', key: 'qt_viral_intelligence' },
+                  { href: '/ai/script-generator', icon: FileText, label: 'Script Gen', color: '#10B981', key: 'qt_script_generator' },
+                  { href: '/ai/thumbnail-generator', icon: ImageIcon, label: 'Thumbnails', color: '#EC4899', key: 'qt_thumbnail_generator' },
+                  { href: '/trending', icon: Flame, label: 'Trending', color: '#EF4444', key: 'qt_trending' },
+                  { href: '/hashtags', icon: Hash, label: 'Hashtags', color: '#6366F1', key: 'qt_hashtags' },
+                  { href: '/posting-time', icon: Clock, label: 'Post Time', color: '#F97316', key: 'qt_posting_time' },
+                  { href: '/analytics', icon: BarChart3, label: 'Analytics', color: '#14B8A6', key: 'qt_analytics' },
+                  { href: '/ai/hook-generator', icon: Star, label: 'Hook Gen', color: '#3B82F6', key: 'qt_hook_generator' },
+                  { href: '/ai/shorts-creator', icon: Film, label: 'Shorts', color: '#A855F7', key: 'qt_shorts_creator' },
+                  { href: '/dashboard/viral-optimizer', icon: Target, label: 'Optimizer', color: '#DC2626', key: 'qt_viral_optimizer' },
+                ]
+                  .filter(item => allowedSystems[item.key] !== false)
+                  .map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link key={item.href} href={item.href}>
+                        <motion.div
+                          whileHover={{ scale: 1.04, y: -2 }}
+                          whileTap={{ scale: 0.97 }}
+                          className="relative p-3 rounded-xl border border-white/[0.05] cursor-pointer group overflow-hidden text-center"
+                          style={{ background: 'rgba(13,13,13,0.98)' }}>
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ background: `radial-gradient(circle at center, ${item.color}08, transparent 70%)` }} />
+                          <div className="relative flex flex-col items-center gap-2">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${item.color}15` }}>
+                              <Icon className="w-4 h-4" style={{ color: item.color }} />
+                            </div>
+                            <p className="text-xs font-semibold text-white leading-none">{item.label}</p>
+                          </div>
+                        </motion.div>
+                      </Link>
+                    );
+                  })}
+              </div>
+            </motion.div>
+          )}
+
         </motion.div>
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      ` }} />
     </div>
   );
 }

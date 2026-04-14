@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Dashboard from '@/components/Dashboard';
 import DashboardLayout from '@/components/DashboardLayout';
 import ChatAssistant from '@/components/ChatAssistant';
@@ -10,7 +10,9 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <Dashboard />
+      <Suspense fallback={null}>
+        <Dashboard />
+      </Suspense>
       <ChatAssistant isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />
     </DashboardLayout>
   );

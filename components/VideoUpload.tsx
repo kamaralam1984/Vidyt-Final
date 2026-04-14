@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, Youtube, Facebook, Instagram, Music, Loader2, CheckCircle2, Globe, Lock, EyeOff, Share2, Copy, X, ImageIcon, Link2 } from 'lucide-react';
+import { Upload, Youtube, Facebook, Instagram, Music, Loader2, CheckCircle2, Globe, Lock, EyeOff, Share2, Copy, X, ImageIcon, Link2, Calendar, Tag, Baby } from 'lucide-react';
 import axios from 'axios';
 import { getToken, isAuthenticated, getAuthHeaders } from '@/utils/auth';
 import type { AxiosProgressEvent } from 'axios';
@@ -62,6 +62,24 @@ interface VideoUploadProps {
 
 const YT_UPLOAD_CHANNEL_STORAGE = 'youtube-upload-channel-id';
 
+const YT_CATEGORIES = [
+  { id: '1', label: 'Film & Animation' },
+  { id: '2', label: 'Autos & Vehicles' },
+  { id: '10', label: 'Music' },
+  { id: '15', label: 'Pets & Animals' },
+  { id: '17', label: 'Sports' },
+  { id: '19', label: 'Travel & Events' },
+  { id: '20', label: 'Gaming' },
+  { id: '22', label: 'People & Blogs' },
+  { id: '23', label: 'Comedy' },
+  { id: '24', label: 'Entertainment' },
+  { id: '25', label: 'News & Politics' },
+  { id: '26', label: 'Howto & Style' },
+  { id: '27', label: 'Education' },
+  { id: '28', label: 'Science & Technology' },
+  { id: '29', label: 'Nonprofits & Activism' },
+];
+
 export default function VideoUpload({
   onAnalysisComplete,
   loading,
@@ -90,6 +108,11 @@ export default function VideoUpload({
   const [seoRankScore, setSeoRankScore] = useState<number | null>(null);
   const [rank1Mode, setRank1Mode] = useState(true);
   const [ytPrivacy, setYtPrivacy] = useState<'public' | 'private' | 'unlisted'>('public');
+  const [ytCategory, setYtCategory] = useState('22');
+  const [ytMadeForKids, setYtMadeForKids] = useState(false);
+  const [ytScheduled, setYtScheduled] = useState(false);
+  const [ytPublishAt, setYtPublishAt] = useState('');
+  const [isProcessingOnYoutube, setIsProcessingOnYoutube] = useState(false);
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -409,7 +432,12 @@ export default function VideoUpload({
     formData.append('title', ytTitle);
     formData.append('description', finalDescription);
     formData.append('tags', ytTags);
-    formData.append('privacyStatus', ytPrivacy);
+    formData.append('privacyStatus', ytScheduled ? 'private' : ytPrivacy);
+    formData.append('categoryId', ytCategory);
+    formData.append('madeForKids', String(ytMadeForKids));
+    if (ytScheduled && ytPublishAt) {
+      formData.append('publishAt', new Date(ytPublishAt).toISOString());
+    }
     if (thumbnailFile && thumbnailFile.size > 0) {
       formData.append('thumbnail', thumbnailFile);
     }
@@ -428,6 +456,9 @@ export default function VideoUpload({
           if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setUploadProgress(percentCompleted);
+            if (percentCompleted === 100) {
+              setIsProcessingOnYoutube(true);
+            }
           }
         },
       });
@@ -445,6 +476,7 @@ export default function VideoUpload({
       setYoutubeUploadError(err.response?.data?.error || 'Failed to upload video to YouTube');
     } finally {
       setIsUploadingToYoutube(false);
+      setIsProcessingOnYoutube(false);
     }
   };
 
@@ -518,6 +550,17 @@ export default function VideoUpload({
         >
           <Instagram className="w-4 h-4" />
           Instagram
+        </button>
+        <button
+          onClick={() => setUploadType('tiktok')}
+          className={`py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+            uploadType === 'tiktok'
+              ? 'bg-black text-white border border-[#333]'
+              : 'bg-[#212121] text-[#AAAAAA] hover:bg-[#2A2A2A]'
+          }`}
+        >
+          <Music className="w-4 h-4" />
+          TikTok
         </button>
       </div>
 
@@ -810,8 +853,8 @@ export default function VideoUpload({
 
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">Tags (comma separated)</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={ytTags}
                     onChange={(e) => setYtTags(e.target.value)}
                     className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000]"
@@ -829,18 +872,97 @@ export default function VideoUpload({
                   />
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5" />
+                      Video Category
+                    </label>
+                    <select
+                      value={ytCategory}
+                      onChange={(e) => setYtCategory(e.target.value)}
+                      className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000]"
+                    >
+                      {YT_CATEGORIES.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider flex items-center gap-1.5">
+                      <Baby className="w-3.5 h-3.5" />
+                      Made for Kids
+                    </label>
+                    <div className="flex items-center justify-between rounded-lg border border-[#2A2A2A] bg-[#0F0F0F] px-4 py-3">
+                      <p className="text-sm text-[#CCCCCC]">Content is made for children</p>
+                      <button
+                        type="button"
+                        onClick={() => setYtMadeForKids((v) => !v)}
+                        className={`px-3 py-1 text-xs rounded font-medium ${
+                          ytMadeForKids ? 'bg-[#FF0000] text-white' : 'bg-[#212121] text-[#AAAAAA]'
+                        }`}
+                      >
+                        {ytMadeForKids ? 'YES' : 'NO'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between rounded-lg border border-[#2A2A2A] bg-[#111] px-3 py-2">
+                    <p className="text-[11px] text-[#BDBDBD] flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5" />
+                      Schedule for later (set publish date &amp; time)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setYtScheduled((v) => !v)}
+                      className={`px-2.5 py-1 text-[11px] rounded ${
+                        ytScheduled ? 'bg-[#FF0000] text-white' : 'bg-[#212121] text-[#AAAAAA]'
+                      }`}
+                    >
+                      {ytScheduled ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                  {ytScheduled && (
+                    <input
+                      type="datetime-local"
+                      value={ytPublishAt}
+                      min={new Date(Date.now() + 5 * 60000).toISOString().slice(0, 16)}
+                      onChange={(e) => setYtPublishAt(e.target.value)}
+                      className="w-full bg-[#0F0F0F] border border-[#212121] rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-1 focus:ring-[#FF0000]"
+                      required={ytScheduled}
+                    />
+                  )}
+                  {ytScheduled && (
+                    <p className="text-[11px] text-[#666]">Video will be set to Private and auto-published at the selected time.</p>
+                  )}
+                </div>
+
                 {isUploadingToYoutube ? (
                   <div className="space-y-3 pt-4">
                     <div className="flex justify-between text-sm">
-                      <span className="text-[#AAAAAA]">Uploading to YouTube...</span>
+                      {isProcessingOnYoutube ? (
+                        <span className="text-amber-400 flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Processing on YouTube… please wait
+                        </span>
+                      ) : (
+                        <span className="text-[#AAAAAA]">Uploading to YouTube...</span>
+                      )}
                       <span className="text-white font-bold">{uploadProgress}%</span>
                     </div>
                     <div className="w-full h-2 bg-[#212121] rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${uploadProgress}%` }}
-                        className="h-full bg-[#FF0000]"
-                      />
+                      {isProcessingOnYoutube ? (
+                        <div className="h-full w-full bg-amber-500 animate-pulse rounded-full" />
+                      ) : (
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${uploadProgress}%` }}
+                          className="h-full bg-[#FF0000]"
+                        />
+                      )}
                     </div>
                   </div>
                 ) : (

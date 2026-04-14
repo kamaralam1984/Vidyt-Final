@@ -112,11 +112,23 @@ Start creating viral ${kw} content today. VidYT's free plan includes 5 video ana
   return { title, metaTitle, metaDescription, content, hashtags, relatedKeywords, viralScore: score, category };
 }
 
+const MAX_SEO_PAGES = 5000; // Hard cap to prevent MongoDB Atlas storage overflow
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     let created = 0;
     const target = 100;
+
+    // If at capacity, delete oldest pages first to stay under cap
+    const totalCount = await SeoPage.countDocuments();
+    if (totalCount >= MAX_SEO_PAGES) {
+      const deleteCount = totalCount - MAX_SEO_PAGES + target;
+      const oldest = await SeoPage.find({}).sort({ createdAt: 1 }).limit(deleteCount).select('_id').lean();
+      const ids = oldest.map((d: any) => d._id);
+      if (ids.length > 0) await SeoPage.deleteMany({ _id: { $in: ids } });
+    }
+
     const allTrending: { keyword: string; score: number }[] = [];
 
     // 1) Fetch from Google Trends

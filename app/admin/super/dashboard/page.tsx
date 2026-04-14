@@ -6,7 +6,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, DollarSign, TrendingUp, Activity,
-  CheckCircle2, XCircle, Clock, BarChart2, RefreshCw, Loader2
+  CheckCircle2, XCircle, Clock, BarChart2, RefreshCw, Loader2,
+  Globe, FileText, Search, Wrench
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -34,6 +35,7 @@ const fmt = (n: number) =>
 export default function AdminDashboardPage() {
   const [overview, setOverview] = useState<any>(null);
   const [liveData, setLiveData] = useState<any>(null);
+  const [pageStats, setPageStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSocketLive, setIsSocketLive] = useState(false);
   const [error, setError] = useState<string>('');
@@ -60,10 +62,19 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  const fetchPageStats = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/admin/super/page-stats', { headers: getAuthHeaders() });
+      setPageStats(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchOverview(), fetchLive()]);
+      await Promise.all([fetchOverview(), fetchLive(), fetchPageStats()]);
       setLoading(false);
     };
     init();
@@ -95,7 +106,7 @@ export default function AdminDashboardPage() {
       };
     }
     return () => clearInterval(interval);
-  }, [fetchOverview, fetchLive]);
+  }, [fetchOverview, fetchLive, fetchPageStats]);
 
   return (
     <div className="p-8 space-y-8">
@@ -259,6 +270,72 @@ export default function AdminDashboardPage() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Page Stats */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Globe className="w-5 h-5 text-[#FF0000]" />
+          <h2 className="text-sm font-semibold text-white">Website Pages Overview</h2>
+          {pageStats?.lastChecked && (
+            <span className="text-xs text-[#666] ml-auto">
+              Last checked: {new Date(pageStats.lastChecked).toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              label: 'Total Pages',
+              value: pageStats?.totalPages ?? '—',
+              sub: 'in sitemap.xml',
+              icon: FileText,
+              color: 'text-blue-400',
+              bg: 'bg-blue-500/10',
+            },
+            {
+              label: 'Public Pages',
+              value: pageStats?.publicPages ?? '—',
+              sub: 'no login required',
+              icon: Globe,
+              color: 'text-emerald-400',
+              bg: 'bg-emerald-500/10',
+            },
+            {
+              label: 'Google Indexed',
+              value: pageStats?.googleIndexedEstimate ?? '—',
+              sub: 'submitted to GSC',
+              icon: Search,
+              color: 'text-violet-400',
+              bg: 'bg-violet-500/10',
+            },
+            {
+              label: 'SEO Pages',
+              value: pageStats?.seoPages ?? '—',
+              sub: `${pageStats?.toolsPages ?? 0} tools · ${pageStats?.keywordPages ?? 0} keywords`,
+              icon: Wrench,
+              color: 'text-amber-400',
+              bg: 'bg-amber-500/10',
+            },
+          ].map(({ label, value, sub, icon: Icon, color, bg }, i) => (
+            <motion.div
+              key={label}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05 }}
+              className="bg-[#141414] border border-[#272727] rounded-2xl p-5 flex items-center gap-4"
+            >
+              <div className={`${bg} w-12 h-12 rounded-xl flex items-center justify-center shrink-0`}>
+                <Icon className={`w-6 h-6 ${color}`} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{value?.toLocaleString?.() ?? value}</p>
+                <p className="text-xs text-[#999] font-medium">{label}</p>
+                <p className="text-xs text-[#666]">{sub}</p>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
 

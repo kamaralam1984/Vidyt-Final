@@ -1,7 +1,7 @@
 export interface Feature {
   id: string;
   label: string;
-  group: 'sidebar' | 'dashboard' | 'other' | 'ai_studio' | 'platform' | 'yt_seo_sections' | 'channel_intelligence';
+  group: 'sidebar' | 'dashboard' | 'other' | 'ai_studio' | 'platform' | 'yt_seo_sections' | 'channel_intelligence' | 'quick_tools';
   defaultRoles: string[];
 }
 
@@ -42,6 +42,8 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'dashboard_instagram_btn', label: 'Dashboard: Instagram Button', group: 'dashboard', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'dashboard_tiktok_btn', label: 'Dashboard: TikTok Button', group: 'dashboard', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
   { id: 'dashboard_analyze_btn', label: 'Dashboard: Analyze Button', group: 'dashboard', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'dashboard_seo_analyzer_btn', label: 'Dashboard: SEO Analyzer Button', group: 'dashboard', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'dashboard_ai_engine_btn', label: 'Dashboard: Ultra AI Engine Button', group: 'dashboard', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
 
   { id: 'engagement_graph', label: 'Engagement Graph', group: 'dashboard', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
 
@@ -93,6 +95,20 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'yt_seo_viral_probability', label: 'YT SEO: Viral Probability Dashboard',     group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_chinki',            label: 'YT SEO: Chinki AI Assistant',             group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_video_analyze',     label: 'YT SEO: Video Content Analysis & Transcription', group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+
+  // ── Quick Tools (Dashboard Shortcuts) ────────────────────────────────
+  { id: 'qt_youtube_seo',          label: 'Quick Tool: YouTube SEO',          group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_keyword_intelligence', label: 'Quick Tool: Keyword Intelligence',  group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_viral_intelligence',   label: 'Quick Tool: Ultra AI',              group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_script_generator',     label: 'Quick Tool: Script Generator',      group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_thumbnail_generator',  label: 'Quick Tool: Thumbnail Generator',   group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_trending',             label: 'Quick Tool: Trending',              group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_hashtags',             label: 'Quick Tool: Hashtags',              group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_posting_time',         label: 'Quick Tool: Posting Time',          group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_analytics',            label: 'Quick Tool: Analytics',             group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_hook_generator',       label: 'Quick Tool: Hook Generator',        group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_shorts_creator',       label: 'Quick Tool: Shorts Creator',        group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
+  { id: 'qt_viral_optimizer',      label: 'Quick Tool: Viral Optimizer',       group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },
 
   // ── Channel Intelligence — Section Controls ──────────────────────────
   { id: 'ci_channel_input',         label: 'Channel Intelligence: Channel Input Form',       group: 'channel_intelligence', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },

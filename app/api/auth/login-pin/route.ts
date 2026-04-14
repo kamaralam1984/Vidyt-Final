@@ -76,10 +76,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.error('Login error:', error);
+    const isAuthError = /invalid.*pin|invalid.*id|not found|incorrect/i.test(error.message || '');
     return NextResponse.json(
-      { 
-        error: error.message || 'Login failed',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      {
+        error: isAuthError ? (error.message || 'Login failed') : 'Login failed. Please try again.',
       },
       { status: 401 }
     );

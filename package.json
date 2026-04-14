@@ -6,7 +6,7 @@
     "node": ">=18.17.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS=--max_old_space_size=4096 next dev",
     "dev:ws": "ts-node --project tsconfig.server.json server.ts",
     "dev:worker": "ts-node --project tsconfig.server.json workers/aiWorker.ts",
     "dev:tracking:worker": "ts-node --project tsconfig.server.json workers/trackingWorker.ts",
@@ -15,6 +15,8 @@
     "start:ws": "NODE_ENV=production ts-node --project tsconfig.server.json server.ts",
     "start:worker": "NODE_ENV=production ts-node --project tsconfig.server.json workers/aiWorker.ts",
     "start:tracking:worker": "NODE_ENV=production ts-node --project tsconfig.server.json workers/trackingWorker.ts",
+    "dev:email:worker": "ts-node --project tsconfig.server.json workers/bulkEmailWorker.ts",
+    "start:email:worker": "NODE_ENV=production ts-node --project tsconfig.server.json workers/bulkEmailWorker.ts",
     "lint": "next lint",
     "test": "node --test tests/ai-systems.test.js tests/unit/*.unit.test.cjs",
     "test:unit": "npm run test",
@@ -74,6 +76,7 @@
     "socket.io-client": "^4.8.3",
     "tsconfig-paths": "^4.2.0",
     "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
     "ytdl-core": "npm:@distube/ytdl-core@^4.16.12",
     "zod": "^3.22.0"
   },

@@ -141,12 +141,12 @@ export async function loginUserWithPin(
 
   const token = await generateToken(authUser);
 
-  // Update last login and role in DB
+  // Update last login and role in DB (non-blocking — don't fail login if save fails)
   const normalizedPlan = normalizePlan(user.subscription);
   user.lastLogin = new Date();
   user.role = role;
   user.subscription = normalizedPlan; // Ensure normalized on login
-  await user.save();
+  user.save().catch((e: any) => console.warn('[auth] lastLogin save skipped:', e.message));
 
   return { user: authUser, token };
 }
@@ -185,12 +185,12 @@ export async function loginUser(
 
   const token = await generateToken(authUser);
 
-  // Update last login and role in DB
+  // Update last login and role in DB (non-blocking — don't fail login if save fails)
   const normalizedPlan = normalizePlan(user.subscription);
   user.lastLogin = new Date();
   user.role = role;
   user.subscription = normalizedPlan; // Ensure normalized on login
-  await user.save();
+  user.save().catch((e: any) => console.warn('[auth] lastLogin save skipped:', e.message));
 
   return { user: authUser, token };
 }

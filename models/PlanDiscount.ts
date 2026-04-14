@@ -19,7 +19,7 @@ const PlanDiscountSchema = new Schema<IPlanDiscount>(
   {
     planId: { type: String, required: true },
     label: { type: String },
-    couponCode: { type: String, uppercase: true, trim: true, sparse: true },
+    couponCode: { type: String, uppercase: true, trim: true },
     percentage: { type: Number, required: true, min: 1, max: 100 },
     billingPeriod: { type: String, enum: ['monthly', 'yearly', 'both'], default: 'both' },
     isActive: { type: Boolean, default: true },

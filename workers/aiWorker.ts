@@ -182,7 +182,7 @@ export async function processJob(job: Job) {
 export async function startAiWorker() {
   const worker = new Worker(AI_QUEUE, processJob, {
     connection: getBullConnection(),
-    concurrency: 5,
+    concurrency: 2,
   });
 
   worker.on('ready', () => console.log('[aiWorker] ready'));

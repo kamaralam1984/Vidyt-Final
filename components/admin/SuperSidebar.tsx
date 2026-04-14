@@ -19,6 +19,9 @@ import {
   Network,
   ShieldAlert,
   Workflow,
+  Mail,
+  SlidersHorizontal,
+  Server,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -35,7 +38,10 @@ const NAV_ITEMS = [
   { href: '/admin/super/channel-audit', label: 'Channel Intelligence', icon: SearchCode, isPremium: true },
   { href: '/admin/super/workflows', label: 'Workflows & Map', icon: Workflow },
   { href: '/admin/super/api-map', label: 'API Map', icon: Network },
+  { href: '/admin/super/bulk-email', label: 'Bulk Email', icon: Mail },
+  { href: '/admin/super/dashboard-control', label: 'Dashboard Control', icon: SlidersHorizontal },
   { href: '/admin/super/system', label: 'System Manager', icon: ShieldAlert },
+  { href: '/admin/super/backend-control', label: 'Backend Control', icon: Server, isPremium: true },
 ];
 
 export default function SuperSidebar() {

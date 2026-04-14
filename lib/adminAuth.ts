@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth-jwt';
+import type { NextRequest } from 'next/server';
+import { getUserFromRequest } from '@/lib/auth';
 
 const ADMIN_ROLES = new Set(['admin', 'super-admin', 'superadmin']);
 const SUPER_ADMIN_ROLES = new Set(['super-admin', 'superadmin']);
@@ -11,8 +12,8 @@ export function isSuperAdminRole(role: string | undefined | null): boolean {
   return r === 'super-admin' || r === 'superadmin';
 }
 
-export async function requireAdminAccess(request: Request) {
-  const user = await getUserFromRequest(request);
+export async function requireAdminAccess(request: NextRequest | Request) {
+  const user = await getUserFromRequest(request as NextRequest);
   if (!user) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
@@ -22,8 +23,8 @@ export async function requireAdminAccess(request: Request) {
   return { user };
 }
 
-export async function requireSuperAdminAccess(request: Request) {
-  const user = await getUserFromRequest(request);
+export async function requireSuperAdminAccess(request: NextRequest | Request) {
+  const user = await getUserFromRequest(request as NextRequest);
   if (!user) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
