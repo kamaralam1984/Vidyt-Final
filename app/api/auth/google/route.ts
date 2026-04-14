@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Google Auth error:', error);
     return NextResponse.json(
-      { error: error.message || 'Google Auth failed' },
+      { error: 'Google Sign-in failed. Please try again.' },
       { status: 500 }
     );
   }
