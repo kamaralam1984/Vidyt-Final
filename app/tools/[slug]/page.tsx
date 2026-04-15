@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { seoToolsList, SEOTool } from '@/data/seoToolsList';
-import InteractiveToolClient from './InteractiveToolClient';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import MarketingNavbar from '@/components/MarketingNavbar';
+
+const InteractiveToolClient = dynamic(() => import('./InteractiveToolClient'), {
+  loading: () => (
+    <div className="animate-pulse bg-[#181818] rounded-2xl h-48 w-full" />
+  ),
+  ssr: false,
+});
 
 // 1. Generate Static Params (100+ built-in SEO programmatic pages)
 export async function generateStaticParams() {

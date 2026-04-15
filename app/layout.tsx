@@ -1,13 +1,24 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
+import dynamic from "next/dynamic";
 
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
-import TrackingScript from "@/components/TrackingScript";
-import PWARegister from "@/components/PWARegister";
-import CookieConsent from "@/components/CookieConsent";
-import LangDirectionSetter from "@/components/LangDirectionSetter";
-import CountrySelectPopup from "@/components/CountrySelectPopup";
 import { ThemeProvider } from "@/context/ThemeContext";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  preload: true,
+});
+
+// Defer non-critical client components — keep them out of the critical JS path
+const TrackingScript = dynamic(() => import("@/components/TrackingScript"), { ssr: false });
+const PWARegister = dynamic(() => import("@/components/PWARegister"), { ssr: false });
+const CookieConsent = dynamic(() => import("@/components/CookieConsent"), { ssr: false });
+const LangDirectionSetter = dynamic(() => import("@/components/LangDirectionSetter"), { ssr: false });
+const CountrySelectPopup = dynamic(() => import("@/components/CountrySelectPopup"), { ssr: false });
 
 
 
@@ -106,11 +117,6 @@ const SOFTWARE_SCHEMA = {
     "@type": "Offer",
     "price": "0",
     "priceCurrency": "USD"
-  },
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "reviewCount": "10000"
   }
 };
 
@@ -120,7 +126,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <head>
         {/* Structured Data */}
         <script
@@ -140,7 +146,7 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className="font-sans antialiased" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      <body className="font-inter antialiased" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
         <ThemeProvider>
           <LocaleProvider>
             <LangDirectionSetter />

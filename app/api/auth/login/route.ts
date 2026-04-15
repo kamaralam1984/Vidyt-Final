@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loginUser } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import { z } from 'zod';
-import { getClientIP, trackFailure } from '@/lib/rateLimiter';
+import { getClientIP, trackFailure, rateLimit, isIPBlocked, RATE_LIMITS } from '@/lib/rateLimiter';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -12,6 +12,33 @@ const loginSchema = z.object({
 });
 
 async function handleLogin(request: NextRequest) {
+  const ip = getClientIP(request);
+
+  // Block immediately if IP is flagged
+  if (isIPBlocked(ip)) {
+    return NextResponse.json(
+      { error: 'Too many failed attempts. Try again later.' },
+      { status: 429, headers: { 'Retry-After': '3600' } }
+    );
+  }
+
+  // Strict rate limit: 5 attempts per 15 minutes per IP
+  const rl = rateLimit(`login:${ip}`, RATE_LIMITS.login);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many login attempts. Please wait before trying again.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(rl.retryAfter ?? 900),
+          'X-RateLimit-Limit': String(rl.limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil(rl.resetAt / 1000)),
+        },
+      }
+    );
+  }
+
   try {
     // Connect to database first
     try {

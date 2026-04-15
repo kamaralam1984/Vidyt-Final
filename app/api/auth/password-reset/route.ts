@@ -6,11 +6,26 @@ import User from '@/models/User';
 import crypto from 'crypto';
 import { hashPassword } from '@/lib/auth';
 import { sendPasswordResetOTP } from '@/services/email';
+import { getClientIP, rateLimit, isIPBlocked, RATE_LIMITS } from '@/lib/rateLimiter';
 
 /**
  * Request password reset
  */
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+
+  if (isIPBlocked(ip)) {
+    return NextResponse.json({ success: false, message: 'Too many requests. Try again later.' }, { status: 429 });
+  }
+
+  const rl = rateLimit(`pwd-reset:${ip}`, RATE_LIMITS.passwordReset);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { success: false, message: 'Too many reset requests. Please wait before trying again.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 3600) } }
+    );
+  }
+
   try {
     await connectDB();
 
