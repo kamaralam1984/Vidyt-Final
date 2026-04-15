@@ -9,7 +9,6 @@ import {
   Radio,
   Clock,
   ChevronRight,
-  Zap,
   BarChart2,
   Headphones,
   Cpu,
@@ -22,26 +21,70 @@ import {
   Mail,
   SlidersHorizontal,
   Server,
+  Gauge,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const NAV_ITEMS = [
-  { href: '/admin/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/super/analytics', label: 'Analytics', icon: BarChart2 },
-  { href: '/admin/super/users', label: 'Users', icon: Users },
-  { href: '/admin/super/plans', label: 'Control Center', icon: Package },
-  { href: '/admin/super/revenue', label: 'Revenue', icon: DollarSign },
-  { href: '/admin/super/live', label: 'Live Tracking', icon: Radio },
-  { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
-  { href: '/admin/super/support', label: 'Support Tickets', icon: Headphones },
-  { href: '/admin/super/ai-monitoring', label: 'AI Monitoring', icon: Cpu },
-  { href: '/admin/super/channel-audit', label: 'Channel Intelligence', icon: SearchCode, isPremium: true },
-  { href: '/admin/super/workflows', label: 'Workflows & Map', icon: Workflow },
-  { href: '/admin/super/api-map', label: 'API Map', icon: Network },
-  { href: '/admin/super/bulk-email', label: 'Bulk Email', icon: Mail },
-  { href: '/admin/super/dashboard-control', label: 'Dashboard Control', icon: SlidersHorizontal },
-  { href: '/admin/super/system', label: 'System Manager', icon: ShieldAlert },
-  { href: '/admin/super/backend-control', label: 'Backend Control', icon: Server, isPremium: true },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  isPremium?: boolean;
+};
+
+type NavSection = {
+  title: string;
+  items: NavItem[];
+};
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    title: 'Overview',
+    items: [
+      { href: '/admin/super/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/admin/super/analytics', label: 'Analytics', icon: BarChart2 },
+    ],
+  },
+  {
+    title: 'Monitoring',
+    items: [
+      { href: '/admin/super/live', label: 'Live Tracking', icon: Radio },
+      { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
+      { href: '/admin/super/ai-monitoring', label: 'AI Monitoring', icon: Cpu },
+    ],
+  },
+  {
+    title: 'Users',
+    items: [
+      { href: '/admin/super/users', label: 'Users', icon: Users },
+      { href: '/admin/super/support', label: 'Support Tickets', icon: Headphones },
+    ],
+  },
+  {
+    title: 'Plans & Revenue',
+    items: [
+      { href: '/admin/super/plans', label: 'Control Center', icon: Package },
+      { href: '/admin/super/revenue', label: 'Revenue', icon: DollarSign },
+    ],
+  },
+  {
+    title: 'Controls',
+    items: [
+      { href: '/admin/super/platform-controls', label: 'Platform Controls', icon: Gauge },
+      { href: '/admin/super/dashboard-control', label: 'Dashboard Control', icon: SlidersHorizontal },
+      { href: '/admin/super/backend-control', label: 'Backend Control', icon: Server, isPremium: true },
+      { href: '/admin/super/system', label: 'System Manager', icon: ShieldAlert },
+    ],
+  },
+  {
+    title: 'Tools',
+    items: [
+      { href: '/admin/super/bulk-email', label: 'Bulk Email', icon: Mail },
+      { href: '/admin/super/channel-audit', label: 'Channel Intelligence', icon: SearchCode, isPremium: true },
+      { href: '/admin/super/workflows', label: 'Workflows & Map', icon: Workflow },
+      { href: '/admin/super/api-map', label: 'API Map', icon: Network },
+    ],
+  },
 ];
 
 export default function SuperSidebar() {
@@ -61,30 +104,39 @@ export default function SuperSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
-          const { href, label, icon: Icon } = item;
-          const isActive = (pathname || '').startsWith(href);
-          return (
-            <motion.div key={href} whileHover={{ x: 2 }} whileTap={{ scale: 0.98 }}>
-              <Link
-                href={href}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-red-600/20 text-red-400 border border-red-500/20'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="flex-1">{label}</span>
-                {(item as any).isPremium && (
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                )}
-                {isActive && <ChevronRight className="w-3.5 h-3.5" />}
-              </Link>
-            </motion.div>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-4">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.title}>
+            <p className="px-4 mb-1 text-[10px] uppercase tracking-widest font-semibold text-white/25">
+              {section.title}
+            </p>
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const { href, label, icon: Icon } = item;
+                const isActive = (pathname || '').startsWith(href);
+                return (
+                  <motion.div key={href} whileHover={{ x: 2 }} whileTap={{ scale: 0.98 }}>
+                    <Link
+                      href={href}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-red-600/20 text-red-400 border border-red-500/20'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="flex-1">{label}</span>
+                      {item.isPremium && (
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      )}
+                      {isActive && <ChevronRight className="w-3.5 h-3.5" />}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="p-4 border-t border-white/5">

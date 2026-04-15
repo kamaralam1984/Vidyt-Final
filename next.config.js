@@ -55,9 +55,13 @@ const nextConfig = {
     return [
     ];
   },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86400,
+  },
   experimental: {
     serverActions: {
-      bodySizeLimit: '5gb',
+      bodySizeLimit: '50mb',
       allowedDevOrigins: ["192.168.0.197:3000", "localhost:3000"],
     },
     serverComponentsExternalPackages: ['@ffmpeg-installer/ffmpeg', 'fluent-ffmpeg', 'natural'],

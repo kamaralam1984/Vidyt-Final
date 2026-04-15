@@ -74,10 +74,10 @@ export default function TrackingScript() {
       track('login', pathname || '');
     }
 
-    // Heartbeat every 30 seconds to keep session alive
+    // Heartbeat every 2 minutes to keep session alive
     heartbeatRef.current = setInterval(() => {
       track('heartbeat', pathname || '');
-    }, 30000);
+    }, 120000);
 
     // Logout tracking
     const handleUnload = () => {

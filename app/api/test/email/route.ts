@@ -4,6 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
 export async function POST(request: NextRequest) {
+  const role = request.headers.get('x-user-role') || '';
+  if (role !== 'super-admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     const body = await request.json();
     const { testEmail = process.env.SMTP_USER, otp = '123456', action = 'test' } = body;
@@ -101,7 +106,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const role = request.headers.get('x-user-role') || '';
+  if (role !== 'super-admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   return NextResponse.json({
     message: 'Email diagnostics endpoint',
     instructions: 'POST to this endpoint with { testEmail, otp, action }',

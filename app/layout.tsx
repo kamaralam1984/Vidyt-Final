@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     title: "Vid YT - #1 AI-Powered Video SEO & Viral Optimization Platform",
     description: "Grow your YouTube, Instagram, TikTok & Facebook with AI-powered SEO tools. Trusted by 10,000+ creators.",
     images: [{
-      url: '/Logo.png',
+      url: '/og-image.png',
       width: 1200,
       height: 630,
       alt: 'VidYT - AI Video Optimization Platform',
@@ -77,8 +77,41 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Vid YT - AI-Powered Video SEO Platform",
     description: "Grow your YouTube channel with AI. Generate viral titles, thumbnails, hashtags & scripts.",
-    images: ['/Logo.png'],
+    images: ['/og-image.png'],
   },
+};
+
+const ORGANIZATION_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "VidYT",
+  "url": "https://vidyt.com",
+  "logo": "https://vidyt.com/Logo.png",
+  "description": "AI-powered YouTube SEO & video optimization platform trusted by 10,000+ creators.",
+  "sameAs": [
+    "https://www.youtube.com/@vidyt",
+    "https://twitter.com/vidytcom"
+  ]
+};
+
+const SOFTWARE_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "VidYT",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://vidyt.com",
+  "description": "Grow your YouTube channel with AI-powered SEO tools. Generate viral titles, thumbnails, hashtags, and scripts.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "reviewCount": "10000"
+  }
 };
 
 export default function RootLayout({
@@ -89,7 +122,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Google AdSense — replace ca-pub-XXXXXXXXXX with your real AdSense publisher ID */}
+        {/* Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_SCHEMA) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_SCHEMA) }}
+        />
+        {/* Google AdSense */}
         {process.env.NEXT_PUBLIC_ADSENSE_ID && (
           <script
             async

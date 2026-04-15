@@ -6,8 +6,9 @@ Allow: /blog/
 Disallow: /api/
 Disallow: /admin/
 Disallow: /dashboard/
-
-User-agent: Googlebot
-Allow: /
+Disallow: /login
+Disallow: /auth
+Disallow: /signup
+Disallow: /register
 
 Sitemap: https://vidyt.com/sitemap.xml

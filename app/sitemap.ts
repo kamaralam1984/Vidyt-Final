@@ -5,14 +5,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://vidyt.com";
   const now = new Date();
 
-  // 1. Core Pages (highest priority)
+  // 1. Core Pages (highest priority) — auth pages excluded (no SEO value)
   const coreRoutes = [
     { path: "", priority: 1, freq: 'daily' },
     { path: "/pricing", priority: 0.9, freq: 'weekly' },
-    { path: "/signup", priority: 0.9, freq: 'monthly' },
-    { path: "/register", priority: 0.9, freq: 'monthly' },
-    { path: "/login", priority: 0.8, freq: 'monthly' },
-    { path: "/auth", priority: 0.8, freq: 'monthly' },
   ].map(r => ({
     url: `${baseUrl}${r.path}`,
     lastModified: now,

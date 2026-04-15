@@ -43,8 +43,11 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id, x-user-role, x-user-subscription, x-test-token');
     response.headers.set('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin) {
+    // Same-origin or server-to-server request — no CORS header needed
   } else {
-    response.headers.set('Access-Control-Allow-Origin', '*');
+    // Unknown origin — deny CORS
+    response.headers.set('Access-Control-Allow-Origin', 'null');
   }
 
   // Remove sensitive headers that reveal server info
