@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import NextImage from 'next/image';
 import { Youtube, Trash2, Plus, Loader2 } from 'lucide-react';
 
 interface Channel {
@@ -104,7 +105,7 @@ export default function ChannelsPage() {
                         <div key={channel._id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
                             <div className="flex items-center gap-4 mb-6">
                                 {channel.channelThumbnail ? (
-                                    <img src={channel.channelThumbnail} alt={channel.channelTitle} className="w-16 h-16 rounded-full border border-gray-100 dark:border-gray-700" />
+                                    <NextImage src={channel.channelThumbnail} alt={channel.channelTitle} width={64} height={64} className="w-16 h-16 rounded-full border border-gray-100 dark:border-gray-700 object-cover" unoptimized />
                                 ) : (
                                     <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                                         <Youtube className="w-8 h-8 text-gray-400" />

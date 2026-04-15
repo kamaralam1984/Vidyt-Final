@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import axios from 'axios';
 import {
@@ -163,7 +164,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
           >
             <div className="flex items-center justify-between p-4 border-b border-[#212121] flex-shrink-0">
               <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-                <img src="/Logo.png" alt="Vid YT" className="h-8 w-auto object-contain max-w-[140px]" />
+                <NextImage src="/Logo.png" alt="Vid YT" width={140} height={32} className="h-8 w-auto object-contain" />
               </Link>
               <button
                 onClick={onToggle}

@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import NextImage from 'next/image';
 import Script from 'next/script';
 import axios from 'axios';
 import {
@@ -43,6 +44,21 @@ function AuthPageContent() {
   const searchParams = useSearchParams();
   const [isLogin, setIsLogin] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('uniqueIdPin');
+
+  // Silently apply referral code after signup
+  const applyReferral = async (token: string) => {
+    const refCode = searchParams?.get('ref');
+    if (!refCode || !token) return;
+    try {
+      await fetch('/api/referral/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code: refCode }),
+      });
+    } catch {
+      // silent — referral bonus is non-critical
+    }
+  };
   const { locale, setLocale } = useLocale();
 
   // Redirect /auth?mode=login to clean URL /login
@@ -327,7 +343,8 @@ function AuthPageContent() {
       if (res.data.success) {
         localStorage.setItem('token', res.data.token);
         if (res.data.user?.uniqueId) localStorage.setItem('uniqueId', res.data.user.uniqueId);
-        
+        // Apply referral bonus if coming from a ref link
+        await applyReferral(res.data.token);
         let target = '/dashboard';
         if (res.data.user?.role === 'super-admin') target = '/admin/super';
         else if (res.data.user?.uniqueId) target = `/user/${res.data.user.uniqueId}`;
@@ -492,7 +509,7 @@ function AuthPageContent() {
           className="text-center mb-8"
         >
           <Link href="/" className="inline-block mb-6">
-            <img src="/Logo.png" alt="Vid YT" className="h-72 w-auto object-contain mx-auto" />
+            <NextImage src="/Logo.png" alt="Vid YT" width={288} height={288} className="h-72 w-auto object-contain mx-auto" priority />
           </Link>
           <h1 className="text-4xl font-bold text-white mb-2">
             {isLogin ? 'Sign In' : 'Create your account'}

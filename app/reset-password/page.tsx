@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import NextImage from 'next/image';
 import axios from 'axios';
 import { Sparkles, Lock, Loader2, AlertCircle, Check, ArrowRight } from 'lucide-react';
 
@@ -102,7 +103,7 @@ export default function ResetPasswordPage() {
           className="text-center mb-8"
         >
           <Link href="/" className="inline-block mb-4">
-            <img src="/Logo.png" alt="Vid YT" className="h-72 w-auto object-contain mx-auto" />
+            <NextImage src="/Logo.png" alt="Vid YT" width={288} height={288} className="h-72 w-auto object-contain mx-auto" priority />
           </Link>
           <h1 className="text-2xl font-bold text-white mb-2">Set New Password</h1>
           <p className="text-[#AAAAAA]">Enter your new password below</p>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -95,7 +96,7 @@ export default function SuperSidebar() {
       {/* Brand */}
       <div className="h-16 flex items-center px-6 border-b border-white/5">
         <div className="flex items-center gap-2">
-          <img src="/Logo.png" alt="Vid YT" className="h-8 w-auto object-contain" />
+          <NextImage src="/Logo.png" alt="Vid YT" width={120} height={32} className="h-8 w-auto object-contain" />
           <div>
             <p className="text-sm font-bold text-white leading-none">Vid YT</p>
             <p className="text-[10px] text-red-400 uppercase tracking-widest font-medium">Super Admin</p>

@@ -57,3 +57,5 @@ mobile/android/build/
 mobile/android/local.properties
 mobile/android/*.iml
 mobile/android/.idea/
+mongod.conf
+mongodb-backup-*/

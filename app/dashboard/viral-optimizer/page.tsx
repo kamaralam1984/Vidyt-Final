@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import NextImage from 'next/image';
 import AuthGuard from '@/components/AuthGuard';
 import DashboardLayout from '@/components/DashboardLayout';
 import QuickReferenceBanner from '@/components/quick-reference-banner';
@@ -392,7 +393,7 @@ export default function ViralOptimizerPage() {
                     <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-[#333] rounded-lg cursor-pointer hover:bg-[#212121] transition">
                       <input type="file" accept="image/*" className="hidden" onChange={onThumbnailChange} />
                       {thumbnailPreview ? (
-                        <img src={thumbnailPreview} alt="Thumb" className="h-16 object-contain rounded" />
+                        <NextImage src={thumbnailPreview} alt="Thumb" width={120} height={64} className="h-16 object-contain rounded" unoptimized />
                       ) : (
                         <>
                           <Upload className="w-6 h-6 text-[#666] mb-1" />

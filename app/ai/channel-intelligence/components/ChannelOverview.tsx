@@ -1,4 +1,5 @@
 import React from 'react';
+import NextImage from 'next/image';
 import { Users, Eye, Video, TrendingUp, MessageSquare, Upload, ExternalLink } from 'lucide-react';
 
 interface ChannelData {
@@ -133,7 +134,7 @@ export default function ChannelOverview({ channel }: Props) {
                 className="flex gap-3 p-2 rounded-lg hover:bg-[#1a1a1a] transition group"
               >
                 {video.thumbnail && (
-                  <img src={video.thumbnail} alt="" className="w-24 h-14 rounded-md object-cover shrink-0" />
+                  <NextImage src={video.thumbnail} alt="" width={96} height={56} className="w-24 h-14 rounded-md object-cover shrink-0" unoptimized />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-white font-medium line-clamp-2 group-hover:text-[#FF0000] transition">{video.title}</p>

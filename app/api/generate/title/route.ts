@@ -4,8 +4,21 @@ import ToolRequest from '@/models/ToolRequest';
 import User from '@/models/User';
 import { routeAI } from '@/lib/ai-router';
 import { getWithFallback, setWithFallback } from '@/lib/in-memory-cache';
+import { rateLimit, getClientIP, isIPBlocked, RATE_LIMITS } from '@/lib/rateLimiter';
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  if (isIPBlocked(ip)) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
+  const rl = rateLimit(`gen-title:${ip}`, RATE_LIMITS.analysis);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit reached. Please wait before generating again.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 3600) } }
+    );
+  }
+
   try {
     await connectDB();
 

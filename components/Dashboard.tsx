@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import NextImage from 'next/image';
 import VideoUpload from './VideoUpload';
 import ViralScoreMeter from './ViralScoreMeter';
 import ScoreCard from './ScoreCard';
@@ -10,6 +11,8 @@ import HashtagRecommendations from './HashtagRecommendations';
 import TrendingTopics from './TrendingTopics';
 import EngagementGraph from './EngagementGraph';
 import PostingTimeHeatmap from './PostingTimeHeatmap';
+import dynamic from 'next/dynamic';
+const ReferralCard = dynamic(() => import('./ReferralCard'), { ssr: false });
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useSearchParams } from 'next/navigation';
@@ -112,7 +115,7 @@ function RecentVideosWidget() {
               <div key={v._id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.03] transition-colors group">
                 <div className="w-14 h-9 rounded-lg overflow-hidden bg-[#1a1a1a] shrink-0 relative">
                   {v.thumbnailUrl ? (
-                    <img src={v.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                    <NextImage src={v.thumbnailUrl} alt="" fill sizes="56px" className="object-cover" unoptimized />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Play className="w-3 h-3 text-[#444]" />
@@ -858,6 +861,11 @@ export default function Dashboard() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* ── Referral Card ─────────────────────────────────────────────── */}
+          <motion.div variants={itemVariants} className="max-w-sm">
+            <ReferralCard />
+          </motion.div>
 
           {/* ── Live Data Widgets (shown when no analysis) ───────────────── */}
           {!analysis && (

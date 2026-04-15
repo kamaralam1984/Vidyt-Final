@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import NextImage from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
@@ -352,21 +353,13 @@ export default function AnalyticsPage() {
               <div className="relative rounded-3xl overflow-hidden bg-[#181818] border border-[#222]">
                 {channelData.channelInfo.bannerUrl && (
                   <div className="h-48 w-full relative">
-                    <img 
-                      src={channelData.channelInfo.bannerUrl} 
-                      alt="Banner" 
-                      className="w-full h-full object-cover opacity-50 blur-sm"
-                    />
+                    <NextImage src={channelData.channelInfo.bannerUrl} alt="Banner" fill sizes="100vw" className="object-cover opacity-50 blur-sm" unoptimized />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#181818] to-transparent" />
                   </div>
                 )}
                 <div className={`${channelData.channelInfo.bannerUrl ? '-mt-16' : 'pt-8'} px-8 pb-8 flex flex-col md:flex-row items-end gap-6 relative z-10`}>
                   <div className="p-1 rounded-3xl bg-gradient-to-br from-[#FF0000] to-[#E60000] shadow-2xl">
-                    <img 
-                      src={channelData.channelInfo.thumbnails?.high?.url || channelData.channelInfo.thumbnails?.default?.url} 
-                      className="w-32 h-32 rounded-[22px] object-cover" 
-                      alt="Avatar"
-                    />
+                    <NextImage src={channelData.channelInfo.thumbnails?.high?.url || channelData.channelInfo.thumbnails?.default?.url} width={128} height={128} className="w-32 h-32 rounded-[22px] object-cover" alt="Avatar" unoptimized />
                   </div>
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-3">
@@ -730,7 +723,7 @@ export default function AnalyticsPage() {
                                <td className="px-8 py-4 max-w-md">
                                   <div className="flex items-center gap-4">
                                      <div className="w-24 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-[#111]">
-                                        <img src={video.thumbnail} alt="thumb" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                        <NextImage src={video.thumbnail} alt="thumb" width={96} height={56} className="w-full h-full object-cover group-hover:scale-110 transition-transform" unoptimized />
                                      </div>
                                      <div className="space-y-1">
                                         <p className="text-sm font-bold text-white line-clamp-1">{video.title}</p>

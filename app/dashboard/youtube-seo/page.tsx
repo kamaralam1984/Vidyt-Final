@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import NextImage from 'next/image';
 import AuthGuard from '@/components/AuthGuard';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
@@ -1267,7 +1268,7 @@ function YouTubeLiveSEOContent() {
                         Choose file
                       </label>
                       {thumbnailPreview && (
-                        <img src={thumbnailPreview} alt="Thumb" className="h-14 w-24 object-cover rounded border border-[#333]" />
+                        <NextImage src={thumbnailPreview} alt="Thumb" width={96} height={56} className="h-14 w-24 object-cover rounded border border-[#333]" unoptimized />
                       )}
                       {loadingThumb && <Loader2 className="w-5 h-5 animate-spin text-[#FF0000]" />}
                     </div>
@@ -1788,7 +1789,7 @@ function YouTubeLiveSEOContent() {
                             className="flex items-center gap-3 p-2 rounded-lg bg-[#212121] hover:bg-[#2a2a2a] cursor-pointer transition border border-transparent hover:border-[#333]"
                             onClick={() => setSelectedCompetitor(v)}
                           >
-                            {v.thumbnailUrl && <img src={v.thumbnailUrl} alt="" className="w-20 h-11 object-cover rounded flex-shrink-0" />}
+                            {v.thumbnailUrl && <NextImage src={v.thumbnailUrl} alt="" width={80} height={44} className="w-20 h-11 object-cover rounded flex-shrink-0" unoptimized />}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-white truncate">{v.title}</p>
                               <p className="text-xs text-[#888]">{v.channelTitle} · {v.views.toLocaleString()} views · {v.publishedAt ? new Date(v.publishedAt).toLocaleDateString() : ''}</p>
@@ -1834,7 +1835,7 @@ function YouTubeLiveSEOContent() {
                         </div>
                         <div className="p-4 overflow-y-auto flex-1 space-y-3">
                           {selectedCompetitor.thumbnailUrl && (
-                            <img src={selectedCompetitor.thumbnailUrl} alt="" className="w-full aspect-video object-cover rounded-lg" />
+                            <NextImage src={selectedCompetitor.thumbnailUrl} alt="" width={640} height={360} className="w-full aspect-video object-cover rounded-lg" unoptimized />
                           )}
                           <div>
                             <p className="text-white font-medium">{selectedCompetitor.title}</p>
