@@ -3,13 +3,10 @@
 import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/DashboardLayout';
+import DashboardSkeleton from '@/components/DashboardSkeleton';
 
 const Dashboard = dynamic(() => import('@/components/Dashboard'), {
-  loading: () => (
-    <div className="flex items-center justify-center h-64 text-[#717171] text-sm animate-pulse">
-      Loading dashboard…
-    </div>
-  ),
+  loading: () => <DashboardSkeleton />,
   ssr: false,
 });
 
@@ -22,7 +19,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <Suspense fallback={null}>
+      <Suspense fallback={<DashboardSkeleton />}>
         <Dashboard />
       </Suspense>
       <ChatAssistant isOpen={chatOpen} onToggle={() => setChatOpen(!chatOpen)} />

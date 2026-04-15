@@ -6,24 +6,22 @@ import connectDB from '@/lib/mongodb';
 import PlanDiscount from '@/models/PlanDiscount';
 import Plan from '@/models/Plan';
 import { yearlyUsdFromMonthly } from '@/lib/planPricing';
+import { withApiCache } from '@/lib/withApiCache';
 
-export async function GET(request: NextRequest) {
+async function plansHandler(request: NextRequest): Promise<NextResponse> {
   try {
     const url = new URL(request.url);
     const includeDiscounts = url.searchParams.get('withDiscounts') !== '0';
 
     await connectDB();
-    
-    // Fetch active plans from the database
+
     const dbPlans = await Plan.find({ isActive: true }).sort({ priceMonthly: 1 }).lean();
-    
-    // Format the dbPlans into the structure expected by the frontend
+
     const plans = dbPlans.map((p: any) => {
-      // If there's a matching hardcoded plan (like free, pro, enterprise), grab its limits
       const basePlan = SUBSCRIPTION_PLANS[p.planId];
       const priceMonthly = p.priceMonthly;
       const priceYearly = yearlyUsdFromMonthly(priceMonthly, p.priceYearly);
-      
+
       return {
         id: p.planId,
         dbId: String(p._id),
@@ -47,10 +45,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!includeDiscounts) {
-      return NextResponse.json({
-        success: true,
-        plans,
-      });
+      return NextResponse.json({ success: true, plans });
     }
 
     const now = new Date();
@@ -64,7 +59,6 @@ export async function GET(request: NextRequest) {
       const d = discounts.find((disc: any) => {
         const matchesPlan = disc.planId === plan.id || disc.planId === plan.dbId;
         if (!matchesPlan) return false;
-        // Skip if max uses reached
         if (disc.maxUses > 0 && (disc.usageCount || 0) >= disc.maxUses) return false;
         return true;
       });
@@ -84,10 +78,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      plans: plansWithDiscount,
-    });
+    return NextResponse.json({ success: true, plans: plansWithDiscount });
   } catch (error: any) {
     console.error('Get plans error:', error);
     return NextResponse.json(
@@ -97,4 +88,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-
+// Cache plans for 5 minutes — plans change rarely, this saves significant DB load
+export const GET = withApiCache(plansHandler, {
+  key: (req) => {
+    const url = new URL(req.url);
+    const withDiscounts = url.searchParams.get('withDiscounts') ?? '1';
+    return `api:plans:${withDiscounts}`;
+  },
+  ttl: 300, // 5 minutes
+  cacheControl: 'public, max-age=60, stale-while-revalidate=240',
+});

@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import ToolRequest from '@/models/ToolRequest';
 import User from '@/models/User';
 import { routeAI } from '@/lib/ai-router';
+import { getWithFallback, setWithFallback } from '@/lib/in-memory-cache';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
@@ -12,6 +13,15 @@ export async function POST(req: Request) {
 
     if (!topic) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
+    }
+
+    // Cache AI results per topic (no user context) — saves AI API cost significantly
+    const cacheKey = `gen:title:${topic.toLowerCase().trim().slice(0, 80)}`;
+    if (!userId) {
+      const cached = await getWithFallback<{ titles: string[]; provider: string }>(cacheKey);
+      if (cached) {
+        return NextResponse.json({ success: true, ...cached, fromCache: true });
+      }
     }
 
     if (userId) {
@@ -76,12 +86,18 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
+    const result = {
       titles: outputList,
       provider: ai.provider,
       tier: ai.provider === 'fallback' ? 'local' : ['openai', 'gemini'].includes(ai.provider) ? 'paid' : 'free',
-    });
+    };
+
+    // Cache anonymous results for 10 minutes
+    if (!userId) {
+      await setWithFallback(cacheKey, result, 600);
+    }
+
+    return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     console.error('Title Generation Error:', error);
     return NextResponse.json({ error: 'Failed to generate titles' }, { status: 500 });

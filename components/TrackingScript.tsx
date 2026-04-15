@@ -2,37 +2,21 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import axios from 'axios';
-
 import { getAuthHeaders } from '@/utils/auth';
 
 let sessionId: string | null = null;
 
 function safeSessionGet(key: string): string | null {
-  try {
-    return window.sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
+  try { return window.sessionStorage.getItem(key); } catch { return null; }
 }
-
 function safeSessionSet(key: string, value: string): void {
-  try {
-    window.sessionStorage.setItem(key, value);
-  } catch {
-    // Ignore storage-denied environments.
-  }
+  try { window.sessionStorage.setItem(key, value); } catch {}
 }
-
 function safeLocalGet(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+  try { return window.localStorage.getItem(key); } catch { return null; }
 }
 
-function getOrCreateSessionId() {
+function getOrCreateSessionId(): string | null {
   if (typeof window === 'undefined') return null;
   if (sessionId) return sessionId;
   let sid = safeSessionGet('vb_session_id');
@@ -44,74 +28,107 @@ function getOrCreateSessionId() {
   return sid;
 }
 
-async function track(action: string, page: string) {
+interface TrackPayload {
+  action: string;
+  page: string;
+  sessionId?: string | null;
+  meta?: Record<string, unknown>;
+}
+
+async function track(action: string, page: string, meta?: Record<string, unknown>) {
   try {
     const headers = getAuthHeaders();
-    if (!headers.Authorization) return; // Only track authenticated users
+    if (!headers.Authorization) return;
 
-    const sid = getOrCreateSessionId();
-
-    await axios.post('/api/admin/super/tracking', {
-      page,
-      sessionId: sid,
+    const payload: TrackPayload = {
       action,
-      timestamp: new Date().toISOString(),
-    }, { headers });
+      page,
+      sessionId: getOrCreateSessionId(),
+      ...(meta ? { meta } : {}),
+    };
+
+    await fetch('/api/admin/super/tracking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ ...payload, timestamp: new Date().toISOString() }),
+    });
   } catch {
-    // Silent fail
+    // Silent fail — never block UX
   }
+}
+
+/**
+ * trackEvent — global conversion event tracker.
+ * Call from anywhere in the app:
+ *   trackEvent('cta_click', { label: 'hero_signup' })
+ *   trackEvent('tool_generate', { tool: 'title-generator', plan: 'free' })
+ *   trackEvent('upgrade_prompt_shown', { source: 'feature-gate' })
+ *   trackEvent('upgrade_clicked', { source: 'pricing-page' })
+ */
+export function trackEvent(event: string, meta?: Record<string, unknown>) {
+  if (typeof window === 'undefined') return;
+  const page = window.location.pathname;
+  track(event, page, meta);
+
+  // Mirror to GA4 if available
+  try {
+    const w = window as any;
+    if (typeof w.gtag === 'function') {
+      w.gtag('event', event, {
+        page_path: page,
+        ...meta,
+      });
+    }
+  } catch {}
 }
 
 export default function TrackingScript() {
   const pathname = usePathname();
   const initialized = useRef(false);
-  const heartbeatRef = useRef<any>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Login tracking on mount
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true;
-      track('login', pathname || '');
+      track('session_start', pathname || '');
     }
 
-    // Heartbeat every 2 minutes to keep session alive
+    // Heartbeat every 2 minutes
     heartbeatRef.current = setInterval(() => {
       track('heartbeat', pathname || '');
     }, 120000);
 
-    // Logout tracking
+    // Session end tracking
     const handleUnload = () => {
       const sid = getOrCreateSessionId();
-      if (!sid) return;
-      
       const token = safeLocalGet('token');
-      if (!token) return;
-
-      // Use fetch with keepalive for reliable tracking during unload with headers
+      if (!sid || !token) return;
       fetch('/api/admin/super/tracking', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ page: pathname, sessionId: sid, action: 'logout', timestamp: new Date().toISOString() }),
-        keepalive: true
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          page: pathname,
+          sessionId: sid,
+          action: 'session_end',
+          timestamp: new Date().toISOString(),
+        }),
+        keepalive: true,
       });
     };
 
     window.addEventListener('beforeunload', handleUnload);
     return () => {
       window.removeEventListener('beforeunload', handleUnload);
-      clearInterval(heartbeatRef.current);
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
   }, []);
 
-  // Page change tracking
+  // Page navigation tracking
   useEffect(() => {
     if (initialized.current) {
-      track('page', pathname || '');
+      track('page_view', pathname || '');
     }
   }, [pathname]);
 
-  return null; // No UI — pure tracking
+  return null;
 }

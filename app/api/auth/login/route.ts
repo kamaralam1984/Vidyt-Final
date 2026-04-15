@@ -5,6 +5,7 @@ import { loginUser } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import { z } from 'zod';
 import { getClientIP, trackFailure, rateLimit, isIPBlocked, RATE_LIMITS } from '@/lib/rateLimiter';
+import { generateRefreshToken } from '@/lib/auth-jwt';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -89,13 +90,23 @@ async function handleLogin(request: NextRequest) {
         token,
       });
 
-      // Set cookie for direct API access (OAuth flows)
+      // Short-lived access token cookie (15 min) for SSR/OAuth flows
       response.cookies.set('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 15, // 15 minutes
         path: '/',
+      });
+
+      // Long-lived refresh token (30 days) — narrow path so it's not sent on every request
+      const refreshToken = await generateRefreshToken(user.id);
+      response.cookies.set('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/api/auth/refresh',
       });
 
       return response;
