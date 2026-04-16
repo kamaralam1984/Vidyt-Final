@@ -57,6 +57,7 @@
     "jose": "^6.2.1",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.0",
+    "lighthouse": "^12.8.2",
     "lucide-react": "^0.344.0",
     "mongodb": "^6.3.0",
     "mongoose": "^8.0.0",

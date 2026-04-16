@@ -23,6 +23,7 @@ import {
   SlidersHorizontal,
   Server,
   Gauge,
+  Globe,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -52,6 +53,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/super/live', label: 'Live Tracking', icon: Radio },
       { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
       { href: '/admin/super/ai-monitoring', label: 'AI Monitoring', icon: Cpu },
+      { href: '/admin/super/website-audit', label: 'Website Audit', icon: Globe, isPremium: true },
     ],
   },
   {
