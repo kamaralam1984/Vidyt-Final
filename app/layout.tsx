@@ -32,10 +32,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Vid YT - #1 AI-Powered Video SEO & Viral Optimization Platform",
+    default: "VidYT - AI-Powered Video SEO & Growth Platform",
     template: "%s | VidYT",
   },
-  description: "Grow your YouTube, Instagram, TikTok & Facebook with AI-powered SEO tools. Generate viral titles, thumbnails, hashtags, scripts, and optimize CTR to 11.8%+. Trusted by 10,000+ creators.",
+  description: "Grow your YouTube channel with AI-powered SEO tools. Generate viral titles, thumbnails, hashtags & scripts. Trusted by 10,000+ creators.",
   keywords: ["youtube seo", "viral video", "youtube title generator", "hashtag generator", "thumbnail generator", "youtube growth", "video optimization", "ai seo tools", "youtube shorts", "content creator tools"],
   manifest: "/manifest.webmanifest",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://vidyt.com"),
@@ -76,8 +76,8 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: '/',
     siteName: 'VidYT',
-    title: "Vid YT - #1 AI-Powered Video SEO & Viral Optimization Platform",
-    description: "Grow your YouTube, Instagram, TikTok & Facebook with AI-powered SEO tools. Trusted by 10,000+ creators.",
+    title: "VidYT - AI-Powered Video SEO & Growth Platform",
+    description: "Grow your YouTube channel with AI-powered SEO tools. Trusted by 10,000+ creators.",
     images: [{
       url: '/og-image.png',
       width: 1200,
