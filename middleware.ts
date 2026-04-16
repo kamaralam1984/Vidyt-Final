@@ -137,7 +137,6 @@ export async function middleware(request: NextRequest) {
     '/api/payments/verify-signup-payment', // New strict signup payment verification
     '/api/auth/me', // Allow /api/auth/me to handle auth internally
     '/api/subscriptions/plans',
-    '/api/health/db', // Database health check
     '/api/payments/webhook', // Razorpay webhook (public, verified by signature)
     '/api/webhooks/paypal', // PayPal webhook (public, verified by signature)
     '/api/posting-time', // Posting time heatmap (public, general data)
