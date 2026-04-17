@@ -1,6 +1,27 @@
 module.exports = {
   apps: [
     {
+      name: 'tracking-worker',
+      script: './node_modules/.bin/ts-node',
+      args: '--project tsconfig.server.json --transpile-only -r tsconfig-paths/register workers/trackingWorker.ts',
+      cwd: '/var/www/vidyt',
+      exec_mode: 'fork',
+      instances: 1,
+      // Worker is lightweight — cap at 512MB
+      max_memory_restart: '512M',
+      env: {
+        NODE_ENV: 'production',
+        TRACKING_WORKER_START: 'true',
+      },
+      kill_timeout: 5000,
+      min_uptime: '15s',
+      max_restarts: 20,
+      restart_delay: 3000,
+      error_file: '/home/server/.pm2/logs/tracking-worker-error.log',
+      out_file: '/home/server/.pm2/logs/tracking-worker-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    },
+    {
       name: 'vidyt',
       script: 'npm',
       args: 'start',

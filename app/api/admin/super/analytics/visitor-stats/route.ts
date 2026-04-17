@@ -73,14 +73,25 @@ export async function GET(request: Request) {
       User.countDocuments({ createdAt: { $gte: monthStart }, isDeleted: { $ne: true } }),
       // New users this year
       User.countDocuments({ createdAt: { $gte: yearStart }, isDeleted: { $ne: true } }),
-      // Top visited pages (last 7 days)
+      // Top visited pages (last 7 days) — TrackingLog primary, UserSession fallback
       TrackingLog.aggregate([
         { $match: { timestamp: { $gte: new Date(Date.now() - 7 * 86400000) } } },
         { $group: { _id: '$page', visits: { $sum: 1 }, uniqueVisitors: { $addToSet: '$userId' } } },
         { $project: { page: '$_id', visits: 1, uniqueVisitors: { $size: '$uniqueVisitors' }, _id: 0 } },
         { $sort: { visits: -1 } },
         { $limit: 15 },
-      ]),
+      ]).then(async (results: any[]) => {
+        if (results.length > 0) return results;
+        // Fallback: derive from UserSession.currentPage
+        const fallback = await UserSession.aggregate([
+          { $match: { lastSeen: { $gte: new Date(Date.now() - 7 * 86400000) }, currentPage: { $exists: true, $ne: null } } },
+          { $group: { _id: '$currentPage', visits: { $sum: 1 }, uniqueVisitors: { $addToSet: '$userId' } } },
+          { $project: { page: '$_id', visits: 1, uniqueVisitors: { $size: '$uniqueVisitors' }, _id: 0 } },
+          { $sort: { visits: -1 } },
+          { $limit: 15 },
+        ]);
+        return fallback;
+      }),
       // Average session duration (last 30 days)
       UserSession.aggregate([
         { $match: { durationSeconds: { $gt: 0 }, loginTime: { $gte: new Date(Date.now() - 30 * 86400000) } } },
