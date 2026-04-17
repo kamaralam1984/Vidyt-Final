@@ -13,20 +13,21 @@ export async function GET(request: Request) {
     const access = await requireAdminAccess(request);
     if (access.error) return access.error;
 
-    // Online: active sessions with lastSeen < 5 min ago
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // Online: active sessions with lastSeen within 10 min
+    // (30s heartbeat × 20 beats = 10 min window — resilient to 1 missed beat)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
     const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000);
 
     const [liveUsers, recentSessions] = await Promise.all([
       UserSession.find({
         isActive: true,
-        lastSeen: { $gte: fiveMinutesAgo },
+        lastSeen: { $gte: tenMinutesAgo },
       })
         .sort({ lastSeen: -1 })
         .populate('userId', 'name email subscription uniqueId')
         .lean(),
       UserSession.find({
-        lastSeen: { $gte: sixtyMinutesAgo, $lt: fiveMinutesAgo },
+        lastSeen: { $gte: sixtyMinutesAgo, $lt: tenMinutesAgo },
       })
         .sort({ lastSeen: -1 })
         .limit(10)

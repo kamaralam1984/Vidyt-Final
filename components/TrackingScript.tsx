@@ -86,6 +86,12 @@ export default function TrackingScript() {
   const pathname = usePathname();
   const initialized = useRef(false);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pathnameRef = useRef(pathname);
+
+  // Keep pathnameRef in sync so heartbeat always uses the current page
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     if (!initialized.current) {
@@ -94,9 +100,27 @@ export default function TrackingScript() {
     }
 
     // Heartbeat every 30 seconds — keeps user "online" in live dashboard
-    heartbeatRef.current = setInterval(() => {
-      track('heartbeat', pathname || '');
-    }, 30000);
+    const startHeartbeat = () => {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      heartbeatRef.current = setInterval(() => {
+        track('heartbeat', pathnameRef.current || '/');
+      }, 30000);
+    };
+    startHeartbeat();
+
+    // Tab visibility: re-send heartbeat immediately when tab becomes visible
+    // (browsers throttle/pause timers when tab is backgrounded)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        track('heartbeat', pathnameRef.current || '/');
+        startHeartbeat(); // reset interval so next beat is exactly 30s away
+      }
+    };
+
+    // Window focus: same logic for when user returns to the window
+    const handleFocus = () => {
+      track('heartbeat', pathnameRef.current || '/');
+    };
 
     // Session end tracking
     const handleUnload = () => {
@@ -107,7 +131,7 @@ export default function TrackingScript() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          page: pathname,
+          page: pathnameRef.current,
           sessionId: sid,
           action: 'session_end',
           timestamp: new Date().toISOString(),
@@ -116,8 +140,13 @@ export default function TrackingScript() {
       });
     };
 
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
     window.addEventListener('beforeunload', handleUnload);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('beforeunload', handleUnload);
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
