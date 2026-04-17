@@ -125,6 +125,38 @@ export async function POST(request: Request) {
 
     const userAgent = request.headers.get('user-agent') || undefined;
 
+    // ── Direct MongoDB write (immediate) ──────────────────────────
+    // This ensures lastSeen is always up-to-date for the live dashboard
+    // even when the BullMQ worker is not running.
+    const isEnd = normalizedAction === 'end';
+    const sessionUpdate: any = {
+      $set: {
+        lastSeen: now,
+        isActive: !isEnd,
+        ...(pagePath && !isEnd ? { currentPage: pagePath } : {}),
+        ...(geo?.country ? { country: geo.country } : {}),
+        ...(geo?.state ? { state: geo.state } : {}),
+        ...(geo?.city ? { city: geo.city } : {}),
+        ...(geo?.distanceFromAdmin != null ? { distanceFromAdmin: geo.distanceFromAdmin } : {}),
+        ...(userAgent ? { userAgent } : {}),
+        ...(ip ? { ipAddress: ip } : {}),
+      },
+      $setOnInsert: {
+        userId: decoded.id,
+        loginTime: now,
+        currentPageSince: now,
+      },
+    };
+    if (isEnd) {
+      sessionUpdate.$set.logoutTime = now;
+    }
+    await UserSession.findOneAndUpdate(
+      { sessionId: resolvedSessionId },
+      sessionUpdate,
+      { upsert: true, new: true },
+    );
+
+    // ── Enqueue for full analytics processing (async, non-blocking) ──
     const job = await enqueueTrackingEvent({
       eventId,
       userId: decoded.id,
@@ -140,9 +172,8 @@ export async function POST(request: Request) {
       city: geo?.city,
       district: geo?.district,
       distanceFromAdmin: geo?.distanceFromAdmin,
-    });
+    }).catch(() => null); // non-critical if queue is down
 
-    // Best-effort: return success even if queue is temporarily slow.
     return NextResponse.json({ success: true, sessionId: resolvedSessionId, queued: Boolean(job?.id) });
   } catch (error) {
     logError('tracking_route_failed', error, {

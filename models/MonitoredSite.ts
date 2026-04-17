@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const MonitoredSiteSchema = new mongoose.Schema({
-  url: { type: String, required: true, unique: true, trim: true },
+  url: { type: String, required: true, trim: true },
   name: { type: String, required: true, trim: true },
   description: String,
   isActive: { type: Boolean, default: true },

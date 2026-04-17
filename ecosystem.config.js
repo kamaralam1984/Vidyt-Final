@@ -15,10 +15,12 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000,
       },
+      // Wait for old process to fully release port before restarting
+      kill_timeout: 8000,
       // Restart delay to avoid crash loop
       min_uptime: '30s',
       max_restarts: 15,
-      restart_delay: 8000,
+      restart_delay: 4000,
       // Logs
       error_file: '/home/server/.pm2/logs/vidyt-error.log',
       out_file: '/home/server/.pm2/logs/vidyt-out.log',

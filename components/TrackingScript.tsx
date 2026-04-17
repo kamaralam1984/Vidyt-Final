@@ -93,10 +93,10 @@ export default function TrackingScript() {
       track('session_start', pathname || '');
     }
 
-    // Heartbeat every 2 minutes
+    // Heartbeat every 30 seconds — keeps user "online" in live dashboard
     heartbeatRef.current = setInterval(() => {
       track('heartbeat', pathname || '');
-    }, 120000);
+    }, 30000);
 
     // Session end tracking
     const handleUnload = () => {

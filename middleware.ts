@@ -143,6 +143,7 @@ export async function middleware(request: NextRequest) {
     '/api/channel/videos', // Channel videos (public, uses RSS feeds)
     '/api/facebook/page/videos', // Facebook page videos (public, returns empty array - Facebook doesn't support automatic fetching)
     '/api/admin/super/tracking', // Tracking is best-effort — route handles auth internally and skips unauthenticated events
+    '/api/health', // Public health check for login page backend indicator
   ];
 
   const isPublicRoute = publicRoutes.some(route =>

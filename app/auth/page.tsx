@@ -156,7 +156,7 @@ function AuthPageContent() {
 
     const checkDbStatus = async () => {
       try {
-        const response = await fetch('/api/health/db');
+        const response = await fetch('/api/health');
         if (response.ok) {
           setDbStatus('connected');
         } else {
@@ -289,6 +289,7 @@ function AuthPageContent() {
           if (verifyResponse.data.success) {
             localStorage.setItem('token', verifyResponse.data.token);
             if (verifyResponse.data.uniqueId) localStorage.setItem('uniqueId', verifyResponse.data.uniqueId);
+            await applyReferral(verifyResponse.data.token);
             setSuccess(`Account Created Successfully! Your Unique ID: ${verifyResponse.data.uniqueId}`);
             setTimeout(() => {
               router.push(`/user/${verifyResponse.data.uniqueId}`);
@@ -449,6 +450,7 @@ function AuthPageContent() {
           console.log('[Auth] Signup successful (Free). Redirecting...');
           localStorage.setItem('token', response.data.token);
           if (response.data.uniqueId) localStorage.setItem('uniqueId', response.data.uniqueId);
+          await applyReferral(response.data.token);
           setSuccess(`Account created! Your Unique ID: ${response.data.uniqueId}. Please save this for login.`);
           setLoading(false);
           setTimeout(() => {

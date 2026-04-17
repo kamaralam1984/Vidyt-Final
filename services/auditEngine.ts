@@ -173,10 +173,11 @@ async function runPerformanceAudit(url: string): Promise<PerformanceResult> {
     };
   } catch {
     // Lighthouse failed — derive score from response time only
-    if (result.responseTime < 500) result.score = 85;
-    else if (result.responseTime < 1000) result.score = 70;
-    else if (result.responseTime < 2000) result.score = 50;
-    else if (result.responseTime < 4000) result.score = 30;
+    if (result.responseTime < 200) result.score = 100;
+    else if (result.responseTime < 500) result.score = 92;
+    else if (result.responseTime < 1000) result.score = 78;
+    else if (result.responseTime < 2000) result.score = 55;
+    else if (result.responseTime < 4000) result.score = 35;
     else result.score = 15;
   }
 
