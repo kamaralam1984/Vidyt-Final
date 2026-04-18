@@ -80,7 +80,11 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
 
   // CORS for same-domain requests
   const origin = request?.headers.get('origin') || '';
-  if (origin.endsWith('vidyt.com') || origin.includes('localhost:3000')) {
+  const isAllowedOrigin =
+    origin === 'https://www.vidyt.com' ||
+    origin === 'https://vidyt.com' ||
+    (process.env.NODE_ENV !== 'production' && (origin === 'http://localhost:3000' || origin === 'http://127.0.0.1:3000'));
+  if (isAllowedOrigin) {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     response.headers.set(
@@ -226,6 +230,7 @@ export async function middleware(request: NextRequest) {
   const publicRoutes = [
     '/api/auth/login',
     '/api/auth/login-pin',
+    '/api/auth/logout',
     '/api/auth/google',
     '/api/auth/callback',
     '/api/auth/password-reset',

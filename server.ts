@@ -31,13 +31,23 @@ app.prepare().then(() => {
     handle(req, res);
   });
 
+  // Allowed origins for Socket.IO: production domain + localhost for dev
+  const socketOrigins = dev
+    ? ['http://localhost:3000', 'http://127.0.0.1:3000']
+    : [
+        process.env.NEXTAUTH_URL || 'https://www.vidyt.com',
+        'https://www.vidyt.com',
+        'https://vidyt.com',
+      ];
+
   // Attach Socket.io to the HTTP server
   const io = new SocketIOServer(httpServer, {
     path: '/api/socket',
     addTrailingSlash: false,
     cors: {
-      origin: process.env.NEXTAUTH_URL || '*',
+      origin: socketOrigins,
       methods: ['GET', 'POST'],
+      credentials: true,
     },
     maxHttpBufferSize: 500 * 1024 * 1024, // 500MB for socket uploads
   });

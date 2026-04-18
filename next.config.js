@@ -27,26 +27,59 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=(), payment=(), usb=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
           {
+            // Single source of truth for CSP — middleware.ts does NOT set this header.
+            // Browsers apply all CSP headers as a logical AND (most restrictive wins),
+            // so having two sources silently breaks third-party scripts.
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
+
+              // Scripts: GTM/GA inline loaders + Cloudflare Insights beacon + Razorpay checkout/risk + Google GSI
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
-                " https://cdn.jsdelivr.net" +
-                " https://checkout.razorpay.com https://api.razorpay.com https://cdn.razorpay.com" +
-                " https://www.paypal.com" +
+                " https://www.googletagmanager.com" +
+                " https://www.google-analytics.com" +
+                " https://ssl.google-analytics.com" +
+                " https://static.cloudflareinsights.com" +
+                " https://cdn.razorpay.com" +
+                " https://checkout.razorpay.com" +
+                " https://api.razorpay.com" +
+                " https://accounts.google.com",
+
+              // Styles: inline (Next.js requires unsafe-inline)
+              "style-src 'self' 'unsafe-inline'",
+
+              // XHR/fetch/WebSocket: GA, CF Insights, Razorpay, Google OAuth, Socket.IO (wss:)
+              "connect-src 'self' wss: ws:" +
+                " https://www.google-analytics.com" +
+                " https://analytics.google.com" +
+                " https://region1.google-analytics.com" +
+                " https://stats.g.doubleclick.net" +
+                " https://www.googletagmanager.com" +
+                " https://cloudflareinsights.com" +
+                " https://static.cloudflareinsights.com" +
+                " https://api.razorpay.com" +
+                " https://lumberjack.razorpay.com" +
                 " https://accounts.google.com" +
-                " https://www.googletagmanager.com https://www.google-analytics.com https://ssl.google-analytics.com" +
-                " https://static.cloudflareinsights.com https://cloudflareinsights.com",
-              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://accounts.google.com",
+                " https://oauth2.googleapis.com" +
+                " https://www.googleapis.com" +
+                " https://youtube.googleapis.com",
+
+              // Images: allow data URIs and any HTTPS image (avatars, thumbnails, etc.)
               "img-src 'self' data: blob: https:",
+
+              // Media: video/audio playback (blob: for local preview, https: for remote)
               "media-src 'self' blob: https:",
-              "font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com",
-              "connect-src 'self' https: wss:" +
-                " https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net" +
-                " https://cloudflareinsights.com https://static.cloudflareinsights.com" +
-                " https://api.razorpay.com https://checkout.razorpay.com",
-              "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.paypal.com https://accounts.google.com",
+
+              // Fonts
+              "font-src 'self' data: https://fonts.gstatic.com",
+
+              // iframes: Razorpay checkout modal + Google OAuth
+              "frame-src https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com",
+
+              // Service workers (PWA, Next.js)
               "worker-src 'self' blob:",
+
+              // Disable dangerous features
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
