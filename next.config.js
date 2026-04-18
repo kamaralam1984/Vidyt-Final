@@ -28,7 +28,29 @@ const nextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com https://www.paypal.com https://accounts.google.com https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://accounts.google.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https: wss:; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.paypal.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
+                " https://cdn.jsdelivr.net" +
+                " https://checkout.razorpay.com https://api.razorpay.com https://cdn.razorpay.com" +
+                " https://www.paypal.com" +
+                " https://accounts.google.com" +
+                " https://www.googletagmanager.com https://www.google-analytics.com https://ssl.google-analytics.com" +
+                " https://static.cloudflareinsights.com https://cloudflareinsights.com",
+              "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://accounts.google.com",
+              "img-src 'self' data: blob: https:",
+              "media-src 'self' blob: https:",
+              "font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com",
+              "connect-src 'self' https: wss:" +
+                " https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net" +
+                " https://cloudflareinsights.com https://static.cloudflareinsights.com" +
+                " https://api.razorpay.com https://checkout.razorpay.com",
+              "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.paypal.com https://accounts.google.com",
+              "worker-src 'self' blob:",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
           },
         ],
       },

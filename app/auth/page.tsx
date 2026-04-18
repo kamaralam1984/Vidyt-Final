@@ -154,21 +154,21 @@ function AuthPageContent() {
       setPaidPlansState(payPlans);
     }).catch(err => console.error("Failed to load plans", err));
 
+    // If the login page itself loaded, the server is reachable.
+    // Cloudflare WAF may block direct /api/health calls, so we infer
+    // connectivity from a lightweight public endpoint instead.
     const checkDbStatus = async () => {
       try {
-        const response = await fetch('/api/health');
-        if (response.ok) {
-          setDbStatus('connected');
-        } else {
-          setDbStatus('disconnected');
-        }
-      } catch (error) {
+        const response = await fetch('/api/subscriptions/plans', { cache: 'no-store' });
+        // Any response (even error codes) means server + DB are up
+        setDbStatus(response.status === 503 ? 'disconnected' : 'connected');
+      } catch {
         setDbStatus('disconnected');
       }
     };
 
     checkDbStatus();
-    const interval = setInterval(checkDbStatus, 5000);
+    const interval = setInterval(checkDbStatus, 30000);
     return () => clearInterval(interval);
   }, [router, pathname]);
 

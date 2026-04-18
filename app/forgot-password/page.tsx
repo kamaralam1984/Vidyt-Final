@@ -24,19 +24,15 @@ export default function ForgotPasswordPage() {
     // Check database connection status
     const checkDbStatus = async () => {
       try {
-        const response = await fetch('/api/health/db');
-        if (response.ok) {
-          setDbStatus('connected');
-        } else {
-          setDbStatus('disconnected');
-        }
-      } catch (error) {
+        const response = await fetch('/api/health', { cache: 'no-store' });
+        setDbStatus(response.status === 503 ? 'disconnected' : 'connected');
+      } catch {
         setDbStatus('disconnected');
       }
     };
 
     checkDbStatus();
-    const interval = setInterval(checkDbStatus, 5000);
+    const interval = setInterval(checkDbStatus, 30000);
     return () => clearInterval(interval);
   }, []);
 

@@ -33,8 +33,36 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
   // Content Security Policy (CSP)
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com https://www.paypal.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://accounts.google.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' https: wss:; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.paypal.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
+        " https://cdn.jsdelivr.net" +
+        " https://checkout.razorpay.com https://api.razorpay.com https://cdn.razorpay.com" +
+        " https://www.paypal.com" +
+        " https://accounts.google.com" +
+        " https://www.googletagmanager.com https://www.google-analytics.com https://ssl.google-analytics.com" +
+        " https://static.cloudflareinsights.com https://cloudflareinsights.com",
+      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://accounts.google.com",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' blob: https:",
+      "font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com",
+      "connect-src 'self' https: wss:" +
+        " https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net" +
+        " https://cloudflareinsights.com https://static.cloudflareinsights.com" +
+        " https://api.razorpay.com https://checkout.razorpay.com",
+      "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.paypal.com https://accounts.google.com",
+      "worker-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ')
   );
+
+  // Prevent Cloudflare and any proxy from caching API error responses
+  if (request?.nextUrl?.pathname.startsWith('/api/')) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+  }
 
   // CORS Headers - Allow cross-origin requests between apex and www domains
   const origin = request?.headers.get('origin') || '';
@@ -112,11 +140,21 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const hostname = request.headers.get('host') || '';
 
+  // DEBUG: log all API requests
+  if (pathname.startsWith('/api/health')) {
+    console.log('[middleware:health] pathname=', pathname, 'host=', hostname, 'method=', request.method);
+  }
+
   // Redirect non-www to www
   if (hostname === 'vidyt.com') {
     const url = request.nextUrl.clone();
     url.host = 'www.vidyt.com';
     return NextResponse.redirect(url, { status: 301 });
+  }
+
+  // Health checks are always public — explicit early return before any auth logic
+  if (pathname === '/api/health' || pathname === '/api/health/db') {
+    return nextWithHeaders(request);
   }
 
   const enableTestAuthHeader =
@@ -151,7 +189,7 @@ export async function middleware(request: NextRequest) {
     '/api/channel/videos', // Channel videos (public, uses RSS feeds)
     '/api/facebook/page/videos', // Facebook page videos (public, returns empty array - Facebook doesn't support automatic fetching)
     '/api/admin/super/tracking', // Tracking is best-effort — route handles auth internally and skips unauthenticated events
-    '/api/health', // Public health check for login page backend indicator
+    // NOTE: /api/health and /api/health/db are handled by the early-return above.
   ];
 
   const isPublicRoute = publicRoutes.some(route =>
