@@ -110,6 +110,14 @@ function jsonError(request: NextRequest, message: string, status: number): NextR
  */
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const hostname = request.headers.get('host') || '';
+
+  // Redirect non-www to www
+  if (hostname === 'vidyt.com') {
+    const url = request.nextUrl.clone();
+    url.host = 'www.vidyt.com';
+    return NextResponse.redirect(url, { status: 301 });
+  }
 
   const enableTestAuthHeader =
     process.env.ENABLE_TEST_AUTH_HEADER === 'true' || process.env.NODE_ENV === 'test';
