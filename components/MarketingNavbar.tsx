@@ -146,7 +146,7 @@ export default function MarketingNavbar() {
     closeTimer.current = setTimeout(() => {
       setFeaturesOpen(false);
       closeTimer.current = null;
-    }, 120); // thoda sa delay taaki cursor gap cross kar sake
+    }, 250);
   };
 
   useEffect(() => {
@@ -178,6 +178,7 @@ export default function MarketingNavbar() {
             type="button"
             className="group flex items-center gap-1 text-sm font-medium text-white/80 transition hover:text-white"
             onMouseEnter={openFeatures}
+            onMouseLeave={scheduleCloseFeatures}
           >
             <span>{t('navbar.features')}</span>
             <ChevronDown
@@ -281,6 +282,10 @@ export default function MarketingNavbar() {
         onMouseEnter={openFeatures}
         onMouseLeave={scheduleCloseFeatures}
       >
+        {/* invisible bridge — fills the pixel gap between nav and dropdown so mouse doesn't escape */}
+        {featuresOpen && (
+          <div className="absolute -top-3 left-0 right-0 h-3" />
+        )}
         {featuresOpen && (
           <div className="mx-auto flex max-w-6xl justify-center">
             <div
