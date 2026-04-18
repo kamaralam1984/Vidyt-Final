@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Youtube, Upload, AlertCircle, CheckCircle2, Loader2, Link as LinkIcon, FileVideo } from 'lucide-react';
+import { getAuthHeaders } from '@/utils/auth';
 
 interface Channel {
     _id: string;
@@ -39,7 +40,7 @@ export default function MultiUploadPage() {
 
     const fetchChannels = async () => {
         try {
-            const res = await fetch('/api/youtube/channels');
+            const res = await fetch('/api/youtube/channels', { headers: getAuthHeaders() });
             const data = await res.json();
             if (data.channels) {
                 setChannels(data.channels);
@@ -114,6 +115,7 @@ export default function MultiUploadPage() {
         try {
             const res = await fetch('/api/youtube/upload-multi', {
                 method: 'POST',
+                headers: getAuthHeaders(),
                 body: formData
             });
 

@@ -2,332 +2,340 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth-jwt';
 
-/**
- * Add Cloudflare & security headers to response
- */
+// ─── Cloudflare IP ranges (updated 2025) ──────────────────────────────────────
+// https://www.cloudflare.com/ips/
+const CLOUDFLARE_IP_RANGES = [
+  '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22',
+  '104.16.0.0/13', '104.24.0.0/14', '108.162.192.0/18',
+  '131.0.72.0/22', '141.101.64.0/18', '162.158.0.0/15',
+  '172.64.0.0/13', '173.245.48.0/20', '188.114.96.0/20',
+  '190.93.240.0/20', '197.234.240.0/22', '198.41.128.0/17',
+];
+
+// ─── In-memory rate limiter (Edge-compatible) ─────────────────────────────────
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function edgeRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): { allowed: boolean; remaining: number; retryAfter: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, remaining: limit - 1, retryAfter: 0 };
+  }
+
+  entry.count++;
+  const remaining = Math.max(0, limit - entry.count);
+  const allowed = entry.count <= limit;
+  const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+
+  // Cleanup old entries periodically
+  if (Math.random() < 0.005) {
+    for (const [k, v] of rateLimitStore.entries()) {
+      if (now > v.resetAt) rateLimitStore.delete(k);
+    }
+  }
+
+  return { allowed, remaining, retryAfter };
+}
+
+// ─── Security headers ──────────────────────────────────────────────────────────
+// NOTE: Content-Security-Policy is set exclusively in next.config.js headers()
+// so it applies to ALL routes uniformly. Do NOT set it here — dual-source CSP
+// causes duplicate headers; browsers apply the most-restrictive intersection,
+// silently breaking GTM / Razorpay / Cloudflare Insights.
 function addSecurityHeaders(response: NextResponse, request?: NextRequest): NextResponse {
-  // Prevent MIME type sniffing
   response.headers.set('X-Content-Type-Options', 'nosniff');
-
-  // Prevent clickjacking/framing
   response.headers.set('X-Frame-Options', 'DENY');
-
-  // Legacy XSS protection header
   response.headers.set('X-XSS-Protection', '1; mode=block');
-
-  // HSTS - Force HTTPS for 1 year
-  response.headers.set(
-    'Strict-Transport-Security',
-    'max-age=31536000; includeSubDomains; preload'
-  );
-
-  // Referrer policy
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-
-  // Permissions policy (disable unnecessary permissions)
   response.headers.set(
     'Permissions-Policy',
     'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
   );
+  // CSP is set by next.config.js headers() — not here (see comment above).
 
-  // Content Security Policy (CSP)
-  response.headers.set(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
-        " https://cdn.jsdelivr.net" +
-        " https://checkout.razorpay.com https://api.razorpay.com https://cdn.razorpay.com" +
-        " https://www.paypal.com" +
-        " https://accounts.google.com" +
-        " https://www.googletagmanager.com https://www.google-analytics.com https://ssl.google-analytics.com" +
-        " https://static.cloudflareinsights.com https://cloudflareinsights.com",
-      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://accounts.google.com",
-      "img-src 'self' data: blob: https:",
-      "media-src 'self' blob: https:",
-      "font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com",
-      "connect-src 'self' https: wss:" +
-        " https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net" +
-        " https://cloudflareinsights.com https://static.cloudflareinsights.com" +
-        " https://api.razorpay.com https://checkout.razorpay.com",
-      "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.paypal.com https://accounts.google.com",
-      "worker-src 'self' blob:",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join('; ')
-  );
-
-  // Prevent Cloudflare and any proxy from caching API error responses
+  // No-cache for API routes
   if (request?.nextUrl?.pathname.startsWith('/api/')) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.headers.set('CDN-Cache-Control', 'no-store');
+    response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
     response.headers.set('Pragma', 'no-cache');
   }
 
-  // CORS Headers - Allow cross-origin requests between apex and www domains
+  // No-cache for HTML pages (prevents browser from caching stale CSP)
+  const pathname = request?.nextUrl?.pathname ?? '';
+  const isHtmlPage = !pathname.startsWith('/api/') && !pathname.startsWith('/_next/');
+  if (isHtmlPage) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.headers.set('CDN-Cache-Control', 'no-store');
+    response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
+    response.headers.set('Vary', 'Cookie, Authorization');
+  }
+
+  // CORS for same-domain requests
   const origin = request?.headers.get('origin') || '';
-  if (origin.endsWith('vidyt.com') || origin.endsWith('localhost:3000')) {
+  if (origin.endsWith('vidyt.com') || origin.includes('localhost:3000')) {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id, x-user-role, x-user-subscription, x-test-token');
+    response.headers.set(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, x-user-id, x-user-role, x-user-subscription, x-test-token'
+    );
     response.headers.set('Access-Control-Allow-Credentials', 'true');
-  } else if (!origin) {
-    // Same-origin or server-to-server request — no CORS header needed
-  } else {
-    // Unknown origin — deny CORS
+  } else if (origin) {
     response.headers.set('Access-Control-Allow-Origin', 'null');
   }
 
-  // Remove sensitive headers that reveal server info
-  response.headers.delete('Server');
-  response.headers.delete('X-Powered-By');
-  response.headers.delete('X-AspNet-Version');
-
-  // Add Cloudflare info if available (passthrough from upstream)
+  // Cloudflare passthrough headers
   if (request) {
     const cfRay = request.headers.get('cf-ray');
-    if (cfRay) {
-      response.headers.set('X-CF-Ray', cfRay);
-    }
+    if (cfRay) response.headers.set('X-CF-Ray', cfRay);
 
     const cfCountry = request.headers.get('cf-ipcountry');
     if (cfCountry) {
       response.headers.set('X-Client-Country', cfCountry);
-      // Set country cookie for client-side locale auto-detection
       const existingCookie = request.cookies.get('detected-country')?.value;
       if (!existingCookie || existingCookie !== cfCountry) {
         response.cookies.set('detected-country', cfCountry, {
           httpOnly: false,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 30, // 30 days
+          maxAge: 60 * 60 * 24 * 30,
           path: '/',
         });
       }
     }
   }
 
+  response.headers.delete('Server');
+  response.headers.delete('X-Powered-By');
   return response;
 }
 
-/**
- * Get response with headers added
- */
-function withSecurityHeaders(response: NextResponse, request?: NextRequest): NextResponse {
-  return addSecurityHeaders(response, request);
-}
-
-/**
- * Create next response with headers
- */
 function nextWithHeaders(request: NextRequest, init?: any): NextResponse {
-  const response = NextResponse.next(init);
-  return addSecurityHeaders(response, request);
+  return addSecurityHeaders(NextResponse.next(init), request);
 }
 
-/**
- * JSON error response with headers
- */
 function jsonError(request: NextRequest, message: string, status: number): NextResponse {
-  const response = NextResponse.json({ error: message }, { status });
-  return addSecurityHeaders(response, request);
+  return addSecurityHeaders(NextResponse.json({ error: message }, { status }), request);
 }
 
-/**
- * Middleware to protect API routes & add Cloudflare security
- */
+// ─── Main middleware ───────────────────────────────────────────────────────────
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const hostname = request.headers.get('host') || '';
 
-  // DEBUG: log all API requests
-  if (pathname.startsWith('/api/health')) {
-    console.log('[middleware:health] pathname=', pathname, 'host=', hostname, 'method=', request.method);
-  }
-
-  // Redirect non-www to www
+  // ── Redirect non-www → www ──
   if (hostname === 'vidyt.com') {
     const url = request.nextUrl.clone();
     url.host = 'www.vidyt.com';
     return NextResponse.redirect(url, { status: 301 });
   }
 
-  // Health checks are always public — explicit early return before any auth logic
-  if (pathname === '/api/health' || pathname === '/api/health/db') {
-    return nextWithHeaders(request);
+  // ── CORS preflight ──
+  if (request.method === 'OPTIONS') {
+    return addSecurityHeaders(new NextResponse(null, { status: 204 }), request);
+  }
+
+  // ── Health endpoints — public but rate-limited ──
+  // No auth required. Rate-limited to stop bots polling in a tight loop.
+  // NGINX applies its own health_limit zone; this is a second layer for
+  // when requests reach Next.js directly (e.g., local dev, monitoring agents).
+  if (pathname.startsWith('/api/health')) {
+    const ip =
+      request.headers.get('cf-connecting-ip') ||
+      request.headers.get('x-real-ip') ||
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      '127.0.0.1';
+    const rl = edgeRateLimit(`health:${ip}`, 30, 60 * 1000); // 30 req/min per IP
+    if (!rl.allowed) {
+      return addSecurityHeaders(
+        NextResponse.json({ error: 'Too many requests' }, {
+          status: 429,
+          headers: { 'Retry-After': String(rl.retryAfter) },
+        }),
+        request
+      );
+    }
+    const response = nextWithHeaders(request);
+    response.headers.set('Cache-Control', 'no-store');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return response;
+  }
+
+  // ── Global API rate limiting (Edge, in-memory) ──
+  // Protects all /api/* routes from abuse before auth check
+  if (pathname.startsWith('/api/')) {
+    const ip =
+      request.headers.get('cf-connecting-ip') ||
+      request.headers.get('x-real-ip') ||
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      '127.0.0.1';
+
+    // Auth endpoints: strict — 5 req / 15 min per IP
+    if (pathname.startsWith('/api/auth/')) {
+      const rl = edgeRateLimit(`auth:${ip}`, 5, 15 * 60 * 1000);
+      if (!rl.allowed) {
+        return addSecurityHeaders(
+          NextResponse.json(
+            { error: 'Too many requests. Please try again later.' },
+            {
+              status: 429,
+              headers: {
+                'Retry-After': String(rl.retryAfter),
+                'X-RateLimit-Limit': '5',
+                'X-RateLimit-Remaining': '0',
+              },
+            }
+          ),
+          request
+        );
+      }
+    }
+
+    // General API: 60 req / min per IP
+    const rl = edgeRateLimit(`api:${ip}`, 60, 60 * 1000);
+    if (!rl.allowed) {
+      return addSecurityHeaders(
+        NextResponse.json(
+          { error: 'Rate limit exceeded.' },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(rl.retryAfter),
+              'X-RateLimit-Limit': '60',
+              'X-RateLimit-Remaining': '0',
+            },
+          }
+        ),
+        request
+      );
+    }
   }
 
   const enableTestAuthHeader =
     process.env.ENABLE_TEST_AUTH_HEADER === 'true' || process.env.NODE_ENV === 'test';
-  // Optional: test-only logging for header visibility issues.
-  if (enableTestAuthHeader && pathname.startsWith('/api/auth/')) {
-    try {
-      console.log('[middleware:test] headers', Object.fromEntries(request.headers.entries()));
-    } catch {
-      // ignore
-    }
-  }
 
-  // Public routes that don't need authentication
+  // ── Public API routes (no auth needed) ──
   const publicRoutes = [
     '/api/auth/login',
     '/api/auth/login-pin',
-    '/api/auth/register',
-    '/api/auth/google', // Google OAuth Sign-In (public, verifies Google JWT internally)
-    '/api/auth/callback', // OAuth Callbacks
-    '/api/auth/password-reset', // Password reset (public)
-    '/api/auth/send-otp', // OTP sending (public)
-    '/api/auth/verify-otp', // OTP verification (public)
-    '/api/auth/prepare-signup', // New strict signup preparation
-    '/api/auth/verify-and-pay', // New strict signup OTP verification and payment
-    '/api/payments/verify-signup-payment', // New strict signup payment verification
-    '/api/auth/me', // Allow /api/auth/me to handle auth internally
+    '/api/auth/google',
+    '/api/auth/callback',
+    '/api/auth/password-reset',
+    '/api/auth/prepare-signup',
+    '/api/auth/verify-and-pay',
+    '/api/payments/verify-signup-payment',
+    '/api/auth/me',
     '/api/subscriptions/plans',
-    '/api/payments/webhook', // Razorpay webhook (public, verified by signature)
-    '/api/webhooks/paypal', // PayPal webhook (public, verified by signature)
-    '/api/posting-time', // Posting time heatmap (public, general data)
-    '/api/channel/videos', // Channel videos (public, uses RSS feeds)
-    '/api/facebook/page/videos', // Facebook page videos (public, returns empty array - Facebook doesn't support automatic fetching)
-    '/api/admin/super/tracking', // Tracking is best-effort — route handles auth internally and skips unauthenticated events
-    // NOTE: /api/health and /api/health/db are handled by the early-return above.
+    '/api/payments/webhook',
+    '/api/webhooks/paypal',
+    '/api/posting-time',
+    '/api/channel/videos',
+    '/api/facebook/page/videos',
+    '/api/admin/super/tracking',
   ];
 
-  const isPublicRoute = publicRoutes.some(route =>
-    pathname.startsWith(route)
-  );
-
-  const publicCronRoutes = ['/api/cron/ai-retrain', '/api/cron/sync-prediction-outcomes', '/api/cron/daily', '/api/cron/generate-seo-pages', '/api/cron/generate-trending-pages', '/api/cron/ping-google'];
-  const isPublicCron = publicCronRoutes.includes(pathname);
-
-  const protectedPageRoutes = ['/admin', '/dashboard', '/user'];
-  const isProtectedPageRoute = protectedPageRoutes.some(route =>
-    pathname.startsWith(route)
-  );
-
-  // Handle OPTIONS request for CORS preflight
-  if (request.method === 'OPTIONS') {
-    const response = new NextResponse(null, { status: 204 });
-    return addSecurityHeaders(response, request);
-  }
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  const isPublicCron = [
+    '/api/cron/ai-retrain',
+    '/api/cron/sync-prediction-outcomes',
+    '/api/cron/daily',
+    '/api/cron/generate-seo-pages',
+    '/api/cron/generate-trending-pages',
+    '/api/cron/ping-google',
+  ].includes(pathname);
 
   if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/')) {
     return nextWithHeaders(request);
   }
 
-  // Check if user is already authenticated and trying to access login/auth
+  const protectedPageRoutes = ['/admin', '/dashboard', '/user'];
+  const isProtectedPageRoute = protectedPageRoutes.some(route => pathname.startsWith(route));
   const isAuthPageRoute = pathname === '/login' || pathname === '/auth';
 
-  // Check authentication for protected routes
-  const authHeader = request.headers.get('authorization');
+  // ── Token extraction ──
   let token: string | null = null;
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
     token = authHeader.substring(7);
   } else {
-    // Fallback to cookie for direct browser navigation (e.g. OAuth redirects)
-    const cookieToken = request.cookies.get('token')?.value;
-    if (cookieToken) {
-      token = cookieToken;
-    }
+    token = request.cookies.get('token')?.value ?? null;
   }
 
-  // Test-only auth fallback for integration/E2E runners.
-  // Some runtimes/clients may not reliably forward Authorization headers into middleware.
   if (!token && enableTestAuthHeader) {
-    const testToken = request.headers.get('x-test-token');
-    if (testToken) token = testToken;
-  }
-
-  // Query-string fallback (robust to header stripping).
-  if (!token && enableTestAuthHeader) {
-    const qpToken =
-      request.nextUrl.searchParams.get('test_token') ||
-      request.nextUrl.searchParams.get('token');
-    if (qpToken) token = qpToken;
+    token = request.headers.get('x-test-token') ??
+      request.nextUrl.searchParams.get('test_token') ??
+      request.nextUrl.searchParams.get('token') ?? null;
   }
 
   if (!token) {
-    // Protect key frontend panels from unauthenticated access.
     if (isProtectedPageRoute) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
-
     if (isAuthPageRoute) return nextWithHeaders(request);
-
     if (!pathname.startsWith('/api')) return nextWithHeaders(request);
-
     return jsonError(request, 'Unauthorized', 401);
   }
+
   const user = await verifyToken(token);
 
   if (!user) {
     if (isAuthPageRoute) {
-       const response = nextWithHeaders(request);
-       response.cookies.delete('token');
-       return response;
+      const response = nextWithHeaders(request);
+      response.cookies.delete('token');
+      return response;
     }
-
     if (isProtectedPageRoute) {
       const loginUrl = new URL('/login', request.url);
       const response = NextResponse.redirect(loginUrl);
       response.cookies.delete('token');
       return response;
     }
-
     return NextResponse.json(
-      {
-        error: 'Invalid or expired token',
-        message: 'Your session has expired. Please login again.'
-      },
+      { error: 'Invalid or expired token', message: 'Your session has expired. Please login again.' },
       { status: 401 }
     );
   }
 
-  // Redirect authenticated users away from login/auth
+  // ── Authenticated — redirect away from login ──
   if (isAuthPageRoute) {
     const target = user.role === 'super-admin' ? '/admin/super' : '/dashboard';
-    console.log(`[Middleware] Authenticated user ${user.email} accessing login, redirecting to ${target}`);
     return NextResponse.redirect(new URL(target, request.url));
   }
 
-  const roleNorm = String(user.role || '')
-    .toLowerCase()
-    .replace(/_/g, '-');
-  const isSuperAdminRole = roleNorm === 'super-admin' || roleNorm === 'superadmin';
+  // ── Role normalisation ──
+  const roleNorm = String(user.role || '').toLowerCase().replace(/_/g, '-');
+  const isSuperAdmin = roleNorm === 'super-admin' || roleNorm === 'superadmin';
 
-  if (pathname.startsWith('/admin/super')) {
-    console.log(`[Middleware] User: ${user.email}, Role: ${user.role}, Norm: ${roleNorm}, IsSuper: ${isSuperAdminRole}`);
-  }
-
-  // Canonical URL: /dashboard/super → /admin/super (same UI, always use admin layout + sidebar)
+  // ── Canonical URL: /dashboard/super → /admin/super ──
   if (pathname === '/dashboard/super' || pathname.startsWith('/dashboard/super/')) {
     const url = request.nextUrl.clone();
     url.pathname = pathname.replace(/^\/dashboard\/super/, '/admin/super');
-    console.log(`[Middleware] Redirecting /dashboard/super to /admin/super`);
     return NextResponse.redirect(url);
   }
 
-  // Super Admin panel: only super-admin roles (not generic admin / user)
-  const isSuperAdminPanelRoute =
-    pathname === '/admin/super' || pathname.startsWith('/admin/super/');
-  if (isSuperAdminPanelRoute && !isSuperAdminRole) {
-    console.warn(`[Middleware] Access denied for /admin/super. Role: ${user.role}. Redirecting to /dashboard`);
+  // ── Super-admin guard ──
+  const isSuperAdminRoute = pathname === '/admin/super' || pathname.startsWith('/admin/super/');
+  if (isSuperAdminRoute && !isSuperAdmin) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Add user to request headers for API routes
+  // ── Inject user headers for API routes ──
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', user.id);
   requestHeaders.set('x-user-role', user.role);
   requestHeaders.set('x-user-subscription', user.subscription);
 
-  return nextWithHeaders(request, {
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  return nextWithHeaders(request, { request: { headers: requestHeaders } });
 }
 
 export const config = {

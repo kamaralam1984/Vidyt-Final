@@ -3,7 +3,6 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from 'react';
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +10,7 @@ import Link from 'next/link';
 import NextImage from 'next/image';
 import Script from 'next/script';
 import axios from 'axios';
+// GoogleOAuthProvider / GoogleLogin removed — now using redirect-based OAuth (/api/auth/google/redirect)
 import {
   Mail, Lock, User, Loader2, AlertCircle, Check, ArrowRight,
   Wifi, WifiOff, CheckCircle, XCircle, Building, Phone, Hash,
@@ -69,6 +69,19 @@ function AuthPageContent() {
       return;
     }
   }, [pathname, searchParams, router]);
+
+  // Show Google OAuth errors returned as URL params (e.g. ?error=google_auth_failed)
+  useEffect(() => {
+    const oauthError = searchParams?.get('error');
+    if (!oauthError) return;
+    const messages: Record<string, string> = {
+      google_auth_failed: 'Google sign-in was cancelled or failed. Please try again.',
+      missing_code: 'Google sign-in did not complete. Please try again.',
+      server_configuration_error: 'Google sign-in is not configured. Contact support.',
+      auth_internal_error: 'An error occurred during Google sign-in. Please try again.',
+    };
+    setError(messages[oauthError] || 'Sign-in failed. Please try again.');
+  }, [searchParams]);
 
   useEffect(() => {
     // /login route shows login; /auth uses ?mode= param or defaults to signup
@@ -335,27 +348,6 @@ function AuthPageContent() {
     }
   };
 
-  const handleGoogleSuccess = async (credential?: string) => {
-    if (!credential) return;
-    setLoading(true);
-    setError('');
-    try {
-      const res = await axios.post('/api/auth/google', { credential });
-      if (res.data.success) {
-        localStorage.setItem('token', res.data.token);
-        if (res.data.user?.uniqueId) localStorage.setItem('uniqueId', res.data.user.uniqueId);
-        // Apply referral bonus if coming from a ref link
-        await applyReferral(res.data.token);
-        let target = '/dashboard';
-        if (res.data.user?.role === 'super-admin') target = '/admin/super';
-        else if (res.data.user?.uniqueId) target = `/user/${res.data.user.uniqueId}`;
-        window.location.href = target;
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Google login failed');
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -568,13 +560,18 @@ function AuthPageContent() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex justify-center mb-6">
-                <GoogleLogin
-                  onSuccess={(credentialResponse) => handleGoogleSuccess(credentialResponse.credential)}
-                  onError={() => { setError('Google Login Failed'); setLoading(false); }}
-                  shape="rectangular"
-                  size="large"
-                  text="signin_with"
-                />
+                <a
+                  href="/api/auth/google/redirect"
+                  className="flex items-center justify-center gap-3 w-full max-w-[400px] py-3 px-6 bg-white text-[#1F1F1F] rounded-md border border-[#DADCE0] hover:bg-[#F8F8F8] transition-colors font-medium text-sm shadow-sm"
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                    <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                  </svg>
+                  Sign in with Google
+                </a>
               </div>
               <div className="relative flex py-2 items-center">
                 <div className="flex-grow border-t border-[#333333]"></div>
@@ -900,13 +897,18 @@ function AuthPageContent() {
             {/* Registration Form */}
             <form className="space-y-4">
               <div className="flex justify-center mb-4 mt-2">
-                <GoogleLogin
-                  onSuccess={(credentialResponse) => handleGoogleSuccess(credentialResponse.credential)}
-                  onError={() => { setError('Google Signup Failed'); setLoading(false); }}
-                  shape="rectangular"
-                  size="large"
-                  text="signup_with"
-                />
+                <a
+                  href="/api/auth/google/redirect"
+                  className="flex items-center justify-center gap-3 w-full max-w-[400px] py-3 px-6 bg-white text-[#1F1F1F] rounded-md border border-[#DADCE0] hover:bg-[#F8F8F8] transition-colors font-medium text-sm shadow-sm"
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                    <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                  </svg>
+                  Sign up with Google
+                </a>
               </div>
               <div className="relative flex pb-4 items-center">
                 <div className="flex-grow border-t border-[#333333]"></div>
@@ -1171,17 +1173,9 @@ function AuthPageContent() {
 }
 
 export default function AuthPage() {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
-  
-  useEffect(() => {
-    console.log("AuthPage: Initializing with clientId:", clientId);
-  }, []);
-
   return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
-        <AuthPageContent />
-      </Suspense>
-    </GoogleOAuthProvider>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
+      <AuthPageContent />
+    </Suspense>
   );
 }

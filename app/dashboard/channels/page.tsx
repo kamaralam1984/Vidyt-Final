@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NextImage from 'next/image';
 import { Youtube, Trash2, Plus, Loader2 } from 'lucide-react';
+import { getAuthHeaders } from '@/utils/auth';
 
 interface Channel {
     _id: string;
@@ -25,7 +26,7 @@ export default function ChannelsPage() {
 
     const fetchChannels = async () => {
         try {
-            const res = await fetch('/api/youtube/channels');
+            const res = await fetch('/api/youtube/channels', { headers: getAuthHeaders() });
             const data = await res.json();
             if (data.channels) {
                 setChannels(data.channels);
@@ -47,7 +48,8 @@ export default function ChannelsPage() {
         
         try {
             const res = await fetch(`/api/youtube/channels/${channelId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: getAuthHeaders(),
             });
             const data = await res.json();
             if (data.success) {

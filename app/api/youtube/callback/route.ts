@@ -21,8 +21,9 @@ export async function GET(request: NextRequest) {
         console.log('YouTube Callback: authUser found:', !!authUser);
 
         if (!authUser) {
-            console.warn('YouTube Callback: No authUser found in request. Redirecting to login?');
-            return NextResponse.json({ error: 'Unauthorized. Please log in first.' }, { status: 401 });
+            // Cookie may have expired (15-min token cookie). Redirect to login with a message.
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            return NextResponse.redirect(`${baseUrl}/login?reason=youtube-auth-expired`);
         }
 
         // Use a fresh client to avoid any state issues
@@ -34,10 +35,7 @@ export async function GET(request: NextRequest) {
 
         const client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
-        console.log('YouTube Callback: Exchanging code for tokens...');
         const { tokens } = await client.getToken(code);
-        console.log('YouTube Callback: Tokens received successfully');
-        console.log(tokens);
 
         // 1. Store tokens in user document
         const updatedUser = await User.findByIdAndUpdate(authUser.id, {
