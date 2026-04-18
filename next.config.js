@@ -14,6 +14,10 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+          // CDN-specific no-cache headers — Cloudflare respects these even with "Cache Everything" rules
+          { key: 'CDN-Cache-Control', value: 'no-store' },
+          { key: 'Cloudflare-CDN-Cache-Control', value: 'no-store' },
+          { key: 'Surrogate-Control', value: 'no-store' },
           { key: 'Pragma', value: 'no-cache' },
           { key: 'Expires', value: '0' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
