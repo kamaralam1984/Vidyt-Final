@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { LazyMotion, domAnimation, m as motion } from 'framer-motion';
 import Link from 'next/link';
 import MarketingNavbar from '@/components/MarketingNavbar';
 import {
@@ -177,6 +177,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
   });
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <div className="min-h-screen bg-[#0F0F0F]">
       <MarketingNavbar />
       {/* Hero Section */}
@@ -187,54 +188,33 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#FF0000]/5 rounded-full blur-3xl" />
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex justify-center mb-0"
-            >
+          {/* Hero: CSS animations only — no JS opacity:0 so LCP is not blocked */}
+          <div className="animate-hero-fade">
+            <div className="flex justify-center mb-0">
               {/* Container 80% height = crop bottom 20% of logo */}
               <div className="relative overflow-hidden flex justify-center items-start h-[19rem] md:h-[26.8rem] w-full max-w-[30rem]">
                 <Image
-                  src="/Logo.png"
+                  src="/Logo.webp"
                   alt="Vid YT"
-                  width={600}
-                  height={600}
+                  width={512}
+                  height={341}
                   priority
+                  fetchPriority="high"
+                  sizes="(max-width: 768px) 288px, 480px"
                   className="h-96 md:h-[30rem] w-auto object-contain object-top"
                 />
               </div>
-            </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-6xl md:text-8xl font-bold text-white mt-0 mb-6"
-            >
+            </div>
+            <h1 className="text-6xl md:text-8xl font-bold text-white mt-0 mb-6">
               {t('hero.title.main')}{' '}
               <span className="text-[#FF0000] bg-gradient-to-r from-[#FF0000] to-[#CC0000] bg-clip-text text-transparent">
                 {t('hero.title.highlight')}
               </span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-xl md:text-2xl text-[#AAAAAA] mb-8 max-w-3xl mx-auto"
-            >
+            </h1>
+            <p className="text-xl md:text-2xl text-[#AAAAAA] mb-8 max-w-3xl mx-auto">
               {t('hero.subtitle')}
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/register"
                 className="group px-8 py-4 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-all font-semibold text-lg flex items-center gap-2 shadow-lg shadow-[#FF0000]/30"
@@ -249,8 +229,8 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 <Play className="w-5 h-5" />
                 {t('hero.cta.secondary')}
               </Link>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -956,5 +936,6 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       )}
     </div>
+    </LazyMotion>
   );
 }

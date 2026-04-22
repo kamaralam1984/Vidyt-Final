@@ -23,10 +23,12 @@ function scoreTitleCuriosity(title: string): number {
   if (/now|today|hurry|limited|last|don'?t miss|before it'?s/i.test(t)) s += 5;
   // Year in title (freshness signal)
   if (/202[4-9]|203\d/.test(t)) s += 4;
-  // Optimal length (50-60 chars)
+  // Title length scoring — YouTube allows up to 100 chars; 70 is optimal for CTR
   const len = t.length;
-  if (len >= 40 && len <= 65) s += 8;
-  else if (len >= 30 && len <= 70) s += 4;
+  if (len >= 55 && len <= 70) s += 10;        // sweet spot → best CTR
+  else if (len >= 40 && len <= 100) s += 6;   // good range (includes 70-100)
+  else if (len >= 20 && len <= 110) s += 2;   // acceptable
+  // >110 chars: no bonus (very unlikely on YouTube)
   // ALL CAPS words for emphasis (1-2 words)
   const capsWords = (t.match(/\b[A-Z]{3,}\b/g) || []).length;
   if (capsWords >= 1 && capsWords <= 3) s += 4;
@@ -171,9 +173,10 @@ export async function POST(request: NextRequest) {
       factors.hashtagStrategy * weights.hashtagStrategy
     );
 
-    // CTR mapping: score 0-100 → CTR 2%-16%
+    // CTR mapping: score 0-100 → CTR 3%-16%
+    // Minimum floor 3% — even an unoptimized title with content gets some CTR
     // High-quality content can reach 11.8%+ with score >= 82
-    const ctrPercent = Math.min(16, 2 + (ctrScore / 100) * 14).toFixed(1);
+    const ctrPercent = Math.min(16, Math.max(3, 3 + (ctrScore / 100) * 13)).toFixed(1);
 
     const suggestions: string[] = [];
     if (factors.titleCuriosity < 75) suggestions.push('Add power words (Secret, Amazing, Proven), numbers, or a question to your title for higher curiosity.');

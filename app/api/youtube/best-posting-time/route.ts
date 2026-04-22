@@ -251,7 +251,7 @@ export async function GET(request: NextRequest) {
             .join(', ')}** (UTC). Adjust these times to your local timezone.`
         : 'We did not find enough data. Upload more videos and try again for a more accurate schedule.';
 
-    // Full heatmap: every (day, hour) that has views, for grid coloring
+    // Full 168-cell heatmap so the frontend can normalize and color every (day, hour)
     const heatmapSlots = DAYS.flatMap((day) =>
       HOURS.map((hour) => {
         const key = `${day}_${hour}`;
@@ -259,7 +259,14 @@ export async function GET(request: NextRequest) {
         const share = totalViews > 0 ? Math.round((views / totalViews) * 100) : 0;
         return { day, hour, views, share };
       })
-    ).filter((s) => s.views > 0);
+    );
+
+    // Confidence reflects sample size + concentration (Herfindahl-like).
+    // Low-data channels should not claim 75%+ confidence.
+    const sampleFactor = Math.min(1, videos.length / 30); // 30+ videos = full credit
+    const topShareFrac = totalViews > 0 && topSlots.length ? topSlots[0].views / totalViews : 0;
+    const concentration = Math.min(1, topShareFrac / 0.15); // 15%+ share = full credit
+    const confidence = Math.round(40 + 55 * (0.5 * sampleFactor + 0.5 * concentration));
 
     return NextResponse.json({
       bestSlots: topSlots.map((s) => ({
@@ -273,6 +280,7 @@ export async function GET(request: NextRequest) {
       bestDays,
       bestHours,
       summary,
+      confidence,
       totalVideosAnalyzed: videos.length,
     });
   } catch (e: unknown) {

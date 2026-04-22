@@ -68,7 +68,7 @@ export async function maybeTriggerUsageAlerts(
       await sendBroadcastNotificationEmail(
         user.email,
         type === 'limit_reached' ? 'Limit Reached - Vid YT' : 'Usage Warning - Vid YT',
-        `${message}\n\nPlan details: https://vidyt.com/subscription\nUpgrade: https://vidyt.com/pricing`,
+        `${message}\n\nPlan details: https://www.vidyt.com/subscription\nUpgrade: https://www.vidyt.com/pricing`,
         user.name,
       );
     }

@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     await preview.save();
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vidyt.com';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.vidyt.com';
     const previewUrl = `${baseUrl}/preview/${shareToken}`;
 
     return NextResponse.json({

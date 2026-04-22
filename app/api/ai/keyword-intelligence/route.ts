@@ -4,6 +4,7 @@ export const maxDuration = 300; // 5 minutes
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import { routeAI } from '@/lib/ai-router';
+import { seedSeoPages } from '@/lib/seedSeoPages';
 
 export async function POST(request: NextRequest) {
   let parsedKeyword = 'viral content';
@@ -166,6 +167,20 @@ Create a unified keyword intelligence system that works seamlessly across all pa
     }
 
     const parsedData = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
+
+    // Fire-and-forget: seed SEO pages for all keywords returned by AI
+    try {
+      const allKws: string[] = [
+        parsedData.primary_keyword,
+        ...(parsedData.suggested_keywords || []),
+        ...(parsedData.long_tail_keywords || []),
+        ...(parsedData.trending_keywords || []),
+        ...(parsedData.viral_keywords || []),
+        ...(parsedData.low_competition_keywords || []),
+        ...(parsedData.best_keywords || []),
+      ].filter(Boolean);
+      if (allKws.length > 0) seedSeoPages(allKws);
+    } catch { /* silent */ }
 
     return NextResponse.json({
       success: true,

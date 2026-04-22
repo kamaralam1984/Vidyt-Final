@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Managed by husky — runs before every commit.
+# Install with: npx husky install
+npx lint-staged

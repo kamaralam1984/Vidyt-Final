@@ -1,0 +1,6 @@
+{
+  "*.{ts,tsx,js,jsx}": [
+    "next lint --fix --file"
+  ],
+  "*.{json,md,yml,yaml,css}": []
+}

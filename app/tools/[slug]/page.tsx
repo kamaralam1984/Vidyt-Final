@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return {
     title: tool.metaTitle,
     description: tool.metaDescription,
-    alternates: { canonical: `https://vidyt.com/tools/${tool.slug}` }
+    alternates: { canonical: `https://www.vidyt.com/tools/${tool.slug}` }
   };
 }
 

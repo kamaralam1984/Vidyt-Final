@@ -23,6 +23,26 @@ export default function PostingTimeHeatmap({
 }: PostingTimeHeatmapProps) {
   const [heatmap, setHeatmap] = useState<number[][]>([]);
 
+  // Percentile rank of every non-zero cell so the grid reads well regardless
+  // of how concentrated the data is. Zero stays zero (grey).
+  const percentileRank = (rawGrid: number[][]): number[][] => {
+    const flat = rawGrid.flat().filter((v) => v > 0).sort((a, b) => a - b);
+    if (flat.length === 0) return rawGrid;
+    return rawGrid.map((row) =>
+      row.map((v) => {
+        if (v <= 0) return 0;
+        // Find first index in sorted array that is >= v; rank = (index+1)/n
+        let lo = 0, hi = flat.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (flat[mid] < v) lo = mid + 1;
+          else hi = mid;
+        }
+        return Math.round(((lo + 1) / flat.length) * 100);
+      })
+    );
+  };
+
   useEffect(() => {
     // If we receive explicit slots (from link-based analysis), build heatmap directly
     if (slots && slots.length > 0) {
@@ -35,13 +55,7 @@ export default function PostingTimeHeatmap({
         });
         rawGrid.push(dayData);
       });
-      // Normalize so max cell = 100; then green/yellow/orange/grey thresholds work (share % is often 1–30)
-      let maxVal = 0;
-      rawGrid.forEach((row) => row.forEach((v) => { if (v > maxVal) maxVal = v; }));
-      const formattedHeatmap = maxVal > 0
-        ? rawGrid.map((row) => row.map((v) => Math.round((v / maxVal) * 100)))
-        : rawGrid;
-      setHeatmap(formattedHeatmap);
+      setHeatmap(percentileRank(rawGrid));
       return;
     }
 
@@ -72,7 +86,7 @@ export default function PostingTimeHeatmap({
           formattedHeatmap.push(dayData);
         });
         
-        setHeatmap(formattedHeatmap);
+        setHeatmap(percentileRank(formattedHeatmap));
       } catch (error: any) {
         // Silently handle errors - heatmap is optional
         if (error?.response?.status !== 401) {
@@ -85,10 +99,12 @@ export default function PostingTimeHeatmap({
   }, [platform, slots]);
 
   const getHeatColor = (value: number) => {
-    if (value >= 80) return 'bg-green-500';
-    if (value >= 60) return 'bg-yellow-500';
-    if (value >= 40) return 'bg-orange-500';
-    return 'bg-gray-300 dark:bg-gray-600';
+    if (value <= 0) return 'bg-gray-700/40 dark:bg-gray-700/40';
+    if (value >= 90) return 'bg-emerald-500';
+    if (value >= 75) return 'bg-lime-500';
+    if (value >= 55) return 'bg-amber-500';
+    if (value >= 35) return 'bg-orange-500';
+    return 'bg-rose-500/50';
   };
 
   return (

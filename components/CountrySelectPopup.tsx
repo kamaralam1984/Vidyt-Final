@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { LazyMotion, domAnimation, m as motion, AnimatePresence } from 'framer-motion';
 import { Globe, X } from 'lucide-react';
 import { useLocale, SUPPORTED_LOCALES, type LocaleState } from '@/context/LocaleContext';
 
@@ -37,6 +37,7 @@ export default function CountrySelectPopup() {
   };
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <AnimatePresence>
       {show && (
         <motion.div
@@ -90,5 +91,6 @@ export default function CountrySelectPopup() {
         </motion.div>
       )}
     </AnimatePresence>
+    </LazyMotion>
   );
 }

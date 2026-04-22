@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { LazyMotion, domAnimation, m as motion, AnimatePresence } from 'framer-motion';
 import { X, Cookie } from 'lucide-react';
 import Link from 'next/link';
 
@@ -161,6 +161,7 @@ function CookiePreferences({
   const [marketing, setMarketing] = useState(false);
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -247,5 +248,6 @@ function CookiePreferences({
         </div>
       </motion.div>
     </motion.div>
+    </LazyMotion>
   );
 }

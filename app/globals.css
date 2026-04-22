@@ -445,3 +445,12 @@ html[dir="rtl"] aside {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
 }
+
+/* Hero fade-in — pure CSS, no JS, does NOT block LCP measurement */
+@keyframes hero-fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-hero-fade {
+  animation: hero-fade-in 0.7s ease-out both;
+}

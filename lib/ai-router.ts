@@ -309,6 +309,109 @@ export async function routeAI(options: AIRouterOptions): Promise<AIRouterResult>
   };
 }
 
+// ─────────────────────────────────────────
+// Vision AI Router (image analysis)
+// Priority: OpenAI GPT-4o-mini → Gemini Flash → null
+// ─────────────────────────────────────────
+
+export interface VisionAIResult {
+  text: string;
+  provider: string;
+  parseJson: () => Record<string, unknown>;
+}
+
+async function callOpenAIVision(imageUrl: string, prompt: string, key: string): Promise<string> {
+  const OpenAI = (await import('openai')).default;
+  const openai = new OpenAI({ apiKey: key });
+  const res = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: imageUrl, detail: 'low' } },
+        { type: 'text', text: prompt },
+      ],
+    }],
+    max_tokens: 500,
+  });
+  return res.choices[0]?.message?.content?.trim() || '';
+}
+
+async function callGeminiVision(imageUrl: string, prompt: string, key: string): Promise<string> {
+  // Fetch image as base64
+  const axios = (await import('axios')).default;
+  const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 8000 });
+  const base64 = Buffer.from(imgRes.data).toString('base64');
+  const mimeType = imgRes.headers['content-type'] || 'image/jpeg';
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: mimeType, data: base64 } },
+            { text: prompt },
+          ],
+        }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 500 },
+      }),
+    }
+  );
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error(data?.error?.message || 'Gemini vision: no text');
+  return text;
+}
+
+/**
+ * Route image analysis to best available vision AI.
+ * Returns null if no vision API is available (caller should use fallback).
+ */
+export async function routeVisionAI(
+  imageUrl: string,
+  prompt: string,
+  cacheKey?: string,
+): Promise<VisionAIResult | null> {
+  if (!imageUrl || imageUrl.includes('placeholder')) return null;
+
+  if (cacheKey) {
+    const cached = await getWithFallback<VisionAIResult>(cacheKey);
+    if (cached) return { ...cached };
+  }
+
+  const { getApiConfig } = await import('./apiConfig');
+  const config = await getApiConfig();
+
+  const visionProviders: Array<{ name: string; key: string; call: () => Promise<string> }> = [
+    { name: 'openai-vision', key: config.openaiApiKey || '', call: () => callOpenAIVision(imageUrl, prompt, config.openaiApiKey) },
+    { name: 'gemini-vision', key: config.googleGeminiApiKey || '', call: () => callGeminiVision(imageUrl, prompt, config.googleGeminiApiKey) },
+  ];
+
+  for (const p of visionProviders) {
+    if (!p.key?.trim()) continue;
+    if (!isProviderEnabled(p.name)) continue;
+    if (isCircuitOpen(p.name)) continue;
+    try {
+      const text = await withTimeout(p.call, 15000);
+      if (!text) continue;
+      recordSuccess(p.name);
+      trackUsage(p.name, true);
+      const result: VisionAIResult = { text, provider: p.name, parseJson: () => parseJsonSafe(text) };
+      if (cacheKey) await setWithFallback(cacheKey, result, 3600);
+      console.log(`[VisionAI] Success via ${p.name}`);
+      return result;
+    } catch (err: any) {
+      recordFailure(p.name);
+      trackUsage(p.name, false);
+      console.warn(`[VisionAI] ${p.name} failed:`, err?.message);
+    }
+  }
+  return null;
+}
+
 /** Health check for all AI providers */
 export async function checkAllAIHealth(): Promise<Record<string, { status: 'ok' | 'fail' | 'no-key'; latencyMs?: number }>> {
   const { getApiConfig } = await import('./apiConfig');

@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
         usageStats: user.usageStats,
         emailVerified: user.emailVerified,
         twoFactorEnabled: user.twoFactorEnabled,
+        onboardingCompleted: !!(user as any).onboardingCompleted,
         createdAt: user.createdAt,
         accountManagerEmail: user.accountManagerEmail,
         whiteLabelCompanyName: user.whiteLabelCompanyName,

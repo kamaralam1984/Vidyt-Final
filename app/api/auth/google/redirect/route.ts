@@ -8,11 +8,12 @@ export async function GET(request: NextRequest) {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(new URL('/auth?error=server_configuration_error', request.url));
+    return NextResponse.redirect('https://www.vidyt.com/auth?error=server_configuration_error');
   }
 
-  const origin = new URL(request.url).origin;
-  const redirectUri = `${origin}/api/auth/callback/google`;
+  // Always use the public domain — request.url carries the internal :3000 port
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.vidyt.com').replace(/\/$/, '');
+  const redirectUri = `${appUrl}/api/auth/callback/google`;
 
   const client = new OAuth2Client(clientId, clientSecret, redirectUri);
 
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     access_type: 'offline',
     scope: ['openid', 'email', 'profile'],
     prompt: 'select_account consent',
-    redirect_uri: redirectUri,
+    include_granted_scopes: false,
   });
 
   return NextResponse.redirect(authUrl);

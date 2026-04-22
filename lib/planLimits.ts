@@ -3,9 +3,10 @@
  * Reads from MongoDB in the background to provide a synchronous API.
  */
 
-import connectDB from './mongodb';
+// NOTE: connectDB and getApiConfig are intentionally NOT top-level imported.
+// They transitively import Mongoose which must NOT be bundled into the client.
+// Use dynamic imports inside server-only functions (guarded by typeof window check).
 import { normalizePlan } from './normalizePlan';
-import { getApiConfig } from './apiConfig';
 
 export type PlanId = 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'owner';
 
@@ -336,120 +337,32 @@ export const PLAN_ROLLS: Record<PlanId, PlanRoll> = {
   owner: OWNER_ROLL,
 };
 
-// ──────────────── Runtime Cache (Sync) ────────────────
+// ──────────────── Runtime Cache (client-safe) ────────────────
+// DB sync logic lives in lib/planSync.ts (server-only, imports mongoose).
+// This file is safe to import from client components.
 
 let planCache: Record<string, PlanRoll> = { ...PLAN_ROLLS };
-let lastFetchTime = 0;
-let isFetching = false;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-/**
- * Background sync function. Updates the planCache variable.
- * Does not block execution.
- */
-async function syncPlansFromDB() {
-  // Mongoose / DB only exist on the server — never sync from client (e.g. useUser, app/page).
-  if (typeof window !== 'undefined') {
-    return;
-  }
-  if (isFetching) return;
-  isFetching = true;
-  try {
-    const Plan = (await import('@/models/Plan')).default;
-    await connectDB();
-    const dbPlans = await Plan.find({}).lean();
-    
-    if (dbPlans && dbPlans.length > 0) {
-      const newCache: Record<string, PlanRoll> = { ...PLAN_ROLLS };
-      
-      dbPlans.forEach((p: any) => {
-        const planId = p.planId as PlanId;
-        const staticRoll = PLAN_ROLLS[planId] || FREE_ROLL;
-        
-        newCache[planId] = {
-          id: planId,
-          name: p.name || staticRoll.name,
-          role: p.role || staticRoll.role,
-          limits: {
-            video_upload: p.limits?.video_upload ?? p.limits?.analysesLimit ?? staticRoll.limits.video_upload,
-            video_analysis: p.limits?.video_analysis ?? p.limits?.analysesLimit ?? staticRoll.limits.video_analysis,
-            analysesLimit:
-              p.limits?.analysesLimit ??
-              p.limits?.video_analysis ??
-              staticRoll.limits.analysesLimit,
-            analysesPeriod:
-              p.limits?.analysesPeriod ??
-              staticRoll.limits.analysesPeriod,
-            schedule_posts: p.limits?.schedule_posts ?? staticRoll.limits.schedule_posts,
-            bulk_scheduling: p.limits?.bulk_scheduling ?? staticRoll.limits.bulk_scheduling,
-            titleSuggestions: p.limits?.titleSuggestions ?? staticRoll.limits.titleSuggestions,
-            hashtagCount: p.limits?.hashtagCount ?? staticRoll.limits.hashtagCount,
-            competitorsTracked: p.limits?.competitorsTracked ?? staticRoll.limits.competitorsTracked,
-          },
-          features: {
-            advancedAiViralPrediction: p.featureFlags?.advancedAiViralPrediction ?? staticRoll.features.advancedAiViralPrediction,
-            realTimeTrendAnalysis: p.featureFlags?.realTimeTrendAnalysis ?? staticRoll.features.realTimeTrendAnalysis,
-            bestPostingTimePredictions: p.featureFlags?.bestPostingTimePredictions ?? staticRoll.features.bestPostingTimePredictions,
-            competitorAnalysis: p.featureFlags?.competitorAnalysis ?? staticRoll.features.competitorAnalysis,
-            emailSupport: p.featureFlags?.emailSupport ?? staticRoll.features.emailSupport,
-            priorityProcessing: p.featureFlags?.priorityProcessing ?? staticRoll.features.priorityProcessing,
-            teamCollaboration: p.featureFlags?.teamCollaboration ?? staticRoll.features.teamCollaboration,
-            whiteLabelReports: p.featureFlags?.whiteLabelReports ?? staticRoll.features.whiteLabelReports,
-            customAiModelTraining: p.featureFlags?.customAiModelTraining ?? staticRoll.features.customAiModelTraining,
-            dedicatedAccountManager: p.featureFlags?.dedicatedAccountManager ?? staticRoll.features.dedicatedAccountManager,
-            prioritySupport24x7: p.featureFlags?.prioritySupport24x7 ?? staticRoll.features.prioritySupport24x7,
-            advancedAnalyticsDashboard: p.featureFlags?.advancedAnalyticsDashboard ?? staticRoll.features.advancedAnalyticsDashboard,
-            customIntegrations: p.featureFlags?.customIntegrations ?? staticRoll.features.customIntegrations,
-            // AI Studio
-            daily_ideas: p.featureFlags?.daily_ideas ?? staticRoll.features.daily_ideas,
-            ai_coach: p.featureFlags?.ai_coach ?? staticRoll.features.ai_coach,
-            keyword_research: p.featureFlags?.keyword_research ?? staticRoll.features.keyword_research,
-            script_writer: p.featureFlags?.script_writer ?? staticRoll.features.script_writer,
-            title_generator: p.featureFlags?.title_generator ?? staticRoll.features.title_generator,
-            channel_audit_tool: p.featureFlags?.channel_audit_tool ?? staticRoll.features.channel_audit_tool,
-            ai_shorts_clipping: p.featureFlags?.ai_shorts_clipping ?? staticRoll.features.ai_shorts_clipping,
-            ai_thumbnail_maker: p.featureFlags?.ai_thumbnail_maker ?? staticRoll.features.ai_thumbnail_maker,
-            optimize: p.featureFlags?.optimize ?? staticRoll.features.optimize,
-          },
-          limitsDisplay: {
-            videos: p.limitsDisplay?.videos ?? staticRoll.limitsDisplay.videos,
-            analyses: p.limitsDisplay?.analyses ?? staticRoll.limitsDisplay.analyses,
-            storage: p.limitsDisplay?.storage ?? staticRoll.limitsDisplay.storage,
-            support: p.limitsDisplay?.support ?? staticRoll.limitsDisplay.support,
-          },
-          featureList: p.features && p.features.length > 0 ? p.features : staticRoll.featureList,
-        };
-      });
-      planCache = newCache;
-      lastFetchTime = Date.now();
-    }
-  } catch (error) {
-    console.error('Plan background sync failed:', error);
-  } finally {
-    isFetching = false;
-  }
+/** Called by lib/planSync.ts (server-only) to push DB-fetched plans into cache */
+export function _setPlanCache(newCache: Record<string, PlanRoll>) {
+  planCache = newCache;
 }
 
 /**
- * Returns the plan configuration SYNCLY. 
- * If cache is stale, triggers a background refresh for next time.
+ * Returns the plan configuration synchronously.
+ * Falls back to hardcoded PLAN_ROLLS if the DB cache hasn't been populated yet.
  */
 export function getPlanRoll(planId: string | undefined): PlanRoll {
   const id = (planId || 'free') as PlanId;
-  
-  // Trigger background refresh if stale
-  if (Date.now() - lastFetchTime > CACHE_TTL) {
-    syncPlansFromDB(); 
-  }
-  
   return planCache[id] || PLAN_ROLLS[id] || FREE_ROLL;
 }
 
 /**
- * Force refresh the plan cache (can be awaited from API route)
+ * @deprecated Use refreshPlanCache from lib/planSync.ts in server/API code.
+ * This is a no-op stub kept for backward compat. Actual refresh is in planSync.ts.
  */
 export async function refreshPlanCache() {
-  await syncPlansFromDB();
+  // No-op: DB sync moved to lib/planSync.ts (server-only, no client imports)
 }
 
 export function isOwnerPlan(planId: string | undefined): boolean {

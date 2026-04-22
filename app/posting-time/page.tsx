@@ -11,6 +11,40 @@ import { useTranslations } from '@/context/translations';
 
 type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
 
+const DAYS_ARR = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const formatHourLabel = (h: number) => {
+  if (h === 0) return '12 AM';
+  if (h < 12) return `${h} AM`;
+  if (h === 12) return '12 PM';
+  return `${h - 12} PM`;
+};
+
+// Convert a UTC (dayName, hour) pair to the browser's local timezone.
+// We use a reference Sunday and step through each weekday so the result is
+// stable regardless of today's date/DST.
+const REF_SUNDAY_UTC = Date.UTC(2024, 0, 7); // 2024-01-07 is a Sunday at 00:00 UTC
+const utcToLocalSlot = (dayName: string, hour: number): { day: string; hour: number } => {
+  const dayIdx = DAYS_ARR.indexOf(dayName);
+  if (dayIdx < 0) return { day: dayName, hour };
+  const d = new Date(REF_SUNDAY_UTC + dayIdx * 86400000 + hour * 3600000);
+  return { day: DAYS_ARR[d.getDay()], hour: d.getHours() };
+};
+
+const localTimezoneLabel = (): string => {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local';
+    const offsetMin = -new Date().getTimezoneOffset();
+    const sign = offsetMin >= 0 ? '+' : '-';
+    const abs = Math.abs(offsetMin);
+    const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+    const mm = String(abs % 60).padStart(2, '0');
+    return `${tz} (UTC${sign}${hh}:${mm})`;
+  } catch {
+    return 'your local timezone';
+  }
+};
+
 const PLATFORM_CONFIG: Record<Platform, { icon: typeof Youtube; activeBg: string; label: string; placeholder: string }> = {
   youtube: { icon: Youtube, activeBg: 'bg-red-600', label: 'YouTube', placeholder: 'https://www.youtube.com/@channel or /channel/UC...' },
   facebook: { icon: Facebook, activeBg: 'bg-blue-600', label: 'Facebook', placeholder: 'https://www.facebook.com/yourpage' },
@@ -67,17 +101,43 @@ export default function PostingTimePage() {
     setLoadingLink(true);
     setLinkBasedResult(null);
     try {
+      // Only the YouTube route returns UTC-based slots (from video publishedAt).
+      // The social route returns AI-suggested times that are already audience-local — don't reconvert.
+      const isUtcSource = platform === 'youtube';
+      const toLocal = <T extends { day: string; hour: number }>(s: T): T => {
+        if (!isUtcSource) return s;
+        const { day, hour } = utcToLocalSlot(s.day, s.hour);
+        return { ...s, day, hour, ...(('timeLabel' in s) ? { timeLabel: formatHourLabel(hour) } : {}) };
+      };
+
       if (platform === 'youtube') {
         const res = await axios.get(`/api/youtube/best-posting-time?channelUrl=${encodeURIComponent(link)}`, { headers: getAuthHeaders() });
         if (res.data.error && !res.data.bestSlots?.length) {
           setLinkBasedResult({ error: res.data.error || res.data.summary || 'Invalid link' });
           return;
         }
-        const top = res.data.bestSlots?.[0];
-        if (top) setPostingTime({ day: top.day, hour: top.hour, confidence: Math.min(95, 70 + (top.share || 0) / 2) });
+        const bestSlots = (res.data.bestSlots || []).map(toLocal);
+        const heatmapSlots = (res.data.heatmapSlots || []).map(toLocal);
+        // Rebuild bestDays / bestHours in local TZ by aggregating converted slots
+        const dayTotals: Record<string, number> = {};
+        const hourTotals: Record<number, number> = {};
+        for (const s of heatmapSlots) {
+          dayTotals[s.day] = (dayTotals[s.day] || 0) + (s.views || 0);
+          hourTotals[s.hour] = (hourTotals[s.hour] || 0) + (s.views || 0);
+        }
+        const bestDays = Object.entries(dayTotals).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([d]) => d);
+        const bestHours = Object.entries(hourTotals).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([h]) => parseInt(h, 10)).sort((a, b) => a - b);
+
+        const top = bestSlots[0];
+        const serverConf = typeof res.data.confidence === 'number' ? res.data.confidence : null;
+        if (top) setPostingTime({
+          day: top.day,
+          hour: top.hour,
+          confidence: serverConf ?? Math.min(95, 55 + (top.share || 0) / 2),
+        });
         setLinkBasedResult({
-          summary: res.data.summary, bestDays: res.data.bestDays, bestHours: res.data.bestHours,
-          bestSlots: res.data.bestSlots, heatmapSlots: res.data.heatmapSlots,
+          summary: res.data.summary, bestDays, bestHours,
+          bestSlots, heatmapSlots,
           totalVideosAnalyzed: res.data.totalVideosAnalyzed, error: res.data.error,
         });
       } else {
@@ -220,7 +280,14 @@ export default function PostingTimePage() {
                       <span className="text-xs text-[#888]">{linkBasedResult.totalVideosAnalyzed} videos analyzed</span>
                     )}
                   </div>
-                  <p className="text-sm text-[#CCC] whitespace-pre-line">{linkBasedResult.summary.replace(/\*\*/g, '')}</p>
+                  <p className="text-sm text-[#CCC] whitespace-pre-line">
+                    {linkBasedResult.summary.replace(/\*\*/g, '').replace(/\(UTC\)\.?/i, '').trim()}
+                  </p>
+                  {platform === 'youtube' && (
+                    <p className="mt-2 text-[11px] text-[#888]">
+                      All times shown in <span className="text-emerald-400 font-semibold">{localTimezoneLabel()}</span> — converted from video publish times.
+                    </p>
+                  )}
                 </div>
               )}
 

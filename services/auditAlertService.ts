@@ -161,7 +161,7 @@ export async function sendAuditAlertEmail(alert: {
             <p style="margin:0;font-size:13px;color:#888;"><strong style="color:#aaa;">Site:</strong> ${alert.siteUrl}</p>
             <p style="margin:8px 0 0;font-size:13px;color:#888;"><strong style="color:#aaa;">Type:</strong> ${alert.type}</p>
           </div>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://vidyt.com'}/admin/super/website-audit"
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://www.vidyt.com'}/admin/super/website-audit"
              style="display:inline-block;margin-top:20px;padding:10px 20px;background:#fff;color:#000;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">
             View in Dashboard
           </a>

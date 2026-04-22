@@ -66,6 +66,8 @@ export interface IUser extends Document {
   passwordResetExpires?: Date;
   twoFactorEnabled: boolean;
   twoFactorSecret?: string;
+  onboardingCompleted?: boolean;
+  onboardingStep?: number;
   youtube?: {
     access_token?: string;
     refresh_token?: string;
@@ -152,6 +154,8 @@ const UserSchema = new Schema<IUser>({
   passwordResetExpires: { type: Date },
   twoFactorEnabled: { type: Boolean, default: false },
   twoFactorSecret: { type: String },
+  onboardingCompleted: { type: Boolean, default: false, index: true },
+  onboardingStep: { type: Number, default: 0 },
   youtube: {
     access_token: { type: String },
     refresh_token: { type: String },

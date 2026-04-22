@@ -87,7 +87,7 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'yt_seo_best_posting_time', label: 'YT SEO: Best Posting Time',               group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_title_score',       label: 'YT SEO: Title Score & Improved Titles',   group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_keywords',          label: 'YT SEO: Keyword Analysis & Viral KWs',    group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
-  { id: 'yt_seo_thumbnail',         label: 'YT SEO: Thumbnail Score',                 group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+  { id: 'yt_seo_thumbnail',         label: 'YT SEO: Thumbnail Analysis & AI Generator', group: 'yt_seo_sections', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_descriptions',      label: 'YT SEO: AI Description Generator',        group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_hashtags',          label: 'YT SEO: Hashtag Generator',               group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_competitors',       label: 'YT SEO: Top Competitor Videos',           group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
@@ -95,6 +95,7 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'yt_seo_viral_probability', label: 'YT SEO: Viral Probability Dashboard',     group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_chinki',            label: 'YT SEO: Chinki AI Assistant',             group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
   { id: 'yt_seo_video_analyze',     label: 'YT SEO: Video Content Analysis & Transcription', group: 'yt_seo_sections', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
+  { id: 'yt_seo_upload_youtube',   label: 'YT SEO: Upload to YouTube Button',            group: 'yt_seo_sections', defaultRoles: ['manager', 'admin', 'enterprise', 'super-admin', 'custom'] },
 
   // ── Quick Tools (Dashboard Shortcuts) ────────────────────────────────
   { id: 'qt_youtube_seo',          label: 'Quick Tool: YouTube SEO',          group: 'quick_tools', defaultRoles: ['user', 'manager', 'admin', 'enterprise', 'super-admin'] },

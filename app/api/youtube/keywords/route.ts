@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
+import { seedSeoPages } from '@/lib/seedSeoPages';
 
 function extractBasesFromTitleAndKeyword(title: string, keyword: string): string[] {
   const bases: string[] = [];
@@ -11,11 +12,12 @@ function extractBasesFromTitleAndKeyword(title: string, keyword: string): string
   if (titleWords.length >= 2) {
     bases.push(titleWords.slice(0, 2).join(' '));
     if (titleWords.length >= 4) bases.push(titleWords.slice(2, 4).join(' '));
+    // Max 3 words per base — longer bases + suffixes = garbage keywords
     if (titleWords.length >= 3) bases.push(titleWords.slice(0, 3).join(' '));
-    bases.push(titleWords.join(' ').slice(0, 30).trim());
   } else if (titleWords.length === 1) bases.push(titleWords[0]);
 
-  keywordWords.forEach(kw => {
+  // Only take first 3 words of keyword input
+  keywordWords.slice(0, 3).forEach(kw => {
     const w = kw.split(/\s+/).slice(0, 3).join(' ');
     if (w && !bases.includes(w)) bases.push(w);
   });
@@ -63,7 +65,10 @@ function buildViralKeywords(title: string, keyword: string): { keyword: string; 
       for (let si = 0; si < suffixes.length; si++) {
         const s = suffixes[si];
         let kw = (p + b + s).replace(/\s+/g, ' ').trim();
-        if (kw.length < 3) continue;
+        if (kw.length < 3 || kw.length > 60) continue;
+        // Skip if any word repeats (e.g. "tutorial tutorial")
+        const kwWords = kw.split(' ');
+        if (new Set(kwWords).size < kwWords.length) continue;
         if (seen.has(kw)) continue;
         const hash = kw.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const viralScore = 45 + (hash % 50);
@@ -109,6 +114,17 @@ export async function GET(request: NextRequest) {
 
   const viralKeywords = buildViralKeywords(title, keyword);
   const analysis = keyword ? mockKeywordAnalysis(keyword) : null;
+
+  // Fire-and-forget: auto-create SEO pages for searched keyword + all viral variations
+  // Each page becomes a Google-indexable /k/[keyword] URL — grows organic traffic silently
+  if (keyword || title) {
+    const allKeywords = [
+      keyword,
+      title,
+      ...viralKeywords.slice(0, 40).map(k => k.keyword), // top 40 viral variants
+    ].filter(Boolean) as string[];
+    seedSeoPages(allKeywords);
+  }
 
   return NextResponse.json({
     keyword: keyword || null,

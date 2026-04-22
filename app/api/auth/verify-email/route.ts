@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import User from '@/models/User';
 import { getUserFromRequest } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
+import { sendVerificationEmail } from '@/services/email';
+import { rateLimit, getClientIP, RATE_LIMITS } from '@/lib/rateLimiter';
 import crypto from 'crypto';
 
 /**
@@ -14,6 +16,16 @@ export async function POST(request: NextRequest) {
     const authUser = await getUserFromRequest(request);
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Throttle to avoid mail-bombing
+    const ip = getClientIP(request);
+    const rl = rateLimit(`verify-email:${authUser.id}:${ip}`, RATE_LIMITS.otp || { windowMs: 10 * 60 * 1000, max: 5 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many verification emails requested. Please wait a few minutes.' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 600) } }
+      );
     }
 
     await connectDB();
@@ -35,15 +47,25 @@ export async function POST(request: NextRequest) {
     user.emailVerificationToken = verificationToken;
     await user.save();
 
-    // TODO: Send verification email
-    // const verifyUrl = `${process.env.NEXT_PUBLIC_URL}/verify-email?token=${verificationToken}`;
-    // await sendVerificationEmail(user.email, verifyUrl);
+    const origin =
+      process.env.NEXT_PUBLIC_URL || new URL(request.url).origin;
+    const verifyUrl = `${origin}/verify-email?token=${verificationToken}`;
+    const sent = await sendVerificationEmail(user.email, verifyUrl).catch((e: any) => {
+      console.error('[verify-email] sendVerificationEmail failed:', e);
+      return false;
+    });
+
+    if (!sent && process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Could not send verification email. Try again shortly.' },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
       message: 'Verification email sent',
-      // In development, return token for testing
-      ...(process.env.NODE_ENV === 'development' && { verificationToken }),
+      ...(process.env.NODE_ENV === 'development' && { verificationToken, verifyUrl }),
     });
   } catch (error: any) {
     console.error('Email verification error:', error);

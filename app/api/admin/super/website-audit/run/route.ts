@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       status: 'completed',
       overallScore: result.overallScore,
       performance: result.performance,
+      mobile: result.mobile,
       seo: result.seo,
       security: result.security,
       server: result.server,

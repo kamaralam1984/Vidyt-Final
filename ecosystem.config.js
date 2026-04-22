@@ -1,3 +1,7 @@
+// cloudflared-tunnel is now managed by systemd (user service)
+// ~/.config/systemd/user/cloudflared.service
+// To check: systemctl --user status cloudflared
+
 module.exports = {
   apps: [
     {

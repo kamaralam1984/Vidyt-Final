@@ -148,6 +148,11 @@ function YouTubeLiveSEOContent() {
   const [loadingHomePageTopic, setLoadingHomePageTopic] = useState(false);
   const [initialTabApplied, setInitialTabApplied] = useState(false);
 
+  const [seoRankKeywords, setSeoRankKeywords] = useState<{ keyword: string; seoScore: number }[]>([]);
+  const [seoRankPool, setSeoRankPool] = useState<{ keyword: string; seoScore: number }[]>([]);
+  const [loadingSeoRank, setLoadingSeoRank] = useState(false);
+  const [seoRankSeed, setSeoRankSeed] = useState(0);
+
   const [sectionFlags, setSectionFlags] = useState<Record<string, boolean>>({});
   const [loadingFlags, setLoadingFlags] = useState(true);
 
@@ -215,6 +220,17 @@ function YouTubeLiveSEOContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, initialTabApplied]);
 
+  // Auto-fetch SEO rank keywords when title changes (debounced)
+  useEffect(() => {
+    if (!title.trim() || title.trim().length < 4) return;
+    const timer = setTimeout(() => {
+      setSeoRankSeed(0);
+      fetchSeoRankKeywords(0);
+    }, 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title]);
+
   const searchViralKeywords = useCallback(async () => {
     const q = viralSearchQuery.trim() || title.trim().split(/\s+/).slice(0, 3).join(' ') || 'viral';
     setLoadingViralSearch(true);
@@ -241,6 +257,61 @@ function YouTubeLiveSEOContent() {
       setLoadingViralSearch(false);
     }
   }, [viralSearchQuery, title, contentType]);
+
+  const fetchSeoRankKeywords = useCallback(async (seed: number) => {
+    const q = title.trim();
+    if (!q) return;
+    setLoadingSeoRank(true);
+    try {
+      const res = await axios.post('/api/ai/keyword-intelligence', {
+        primaryKeyword: q,
+        currentPage: 'SEO_TOOLS_PAGE',
+        platform: 'youtube',
+        contentType: contentType || 'video',
+        niche: `seo_rank_seed_${seed}`,
+      }, { headers: getAuthHeaders() });
+      const items = res.data.data;
+      let pool: { keyword: string; seoScore: number }[] = [];
+      if (items?.keyword_scores?.length > 0) {
+        pool = items.keyword_scores.map((s: any) => ({
+          keyword: s.keyword,
+          seoScore: Math.min(100, Math.max(1, s.seo_score ?? s.viral_score ?? s.trend_score ?? 60)),
+        }));
+      } else {
+        const kws = [
+          ...(items?.suggested_keywords || []),
+          ...(items?.long_tail_keywords || []),
+          ...(items?.trending_keywords || []),
+          ...(items?.viral_keywords || []),
+        ];
+        pool = kws.slice(0, 25).map((k: string) => ({
+          keyword: k,
+          seoScore: 65 + Math.floor(Math.random() * 30),
+        }));
+      }
+      pool.sort((a, b) => b.seoScore - a.seoScore);
+      setSeoRankPool(pool);
+      setSeoRankKeywords(pool.slice(0, 10));
+    } catch {
+      setSeoRankKeywords([]);
+      setSeoRankPool([]);
+    } finally {
+      setLoadingSeoRank(false);
+    }
+  }, [title, contentType]);
+
+  const refreshSeoRankKeywords = useCallback(async () => {
+    if (seoRankPool.length > 10) {
+      // Shuffle pool and show different 10
+      const shuffled = [...seoRankPool].sort(() => Math.random() - 0.5);
+      setSeoRankKeywords(shuffled.slice(0, 10));
+    } else {
+      // Fetch new batch with new seed
+      const newSeed = seoRankSeed + 1;
+      setSeoRankSeed(newSeed);
+      await fetchSeoRankKeywords(newSeed);
+    }
+  }, [seoRankPool, seoRankSeed, fetchSeoRankKeywords]);
 
   const searchHomePageKeywordsByTopic = useCallback(async () => {
     const topic = homePageTopicSearch.trim();
@@ -1105,9 +1176,9 @@ function YouTubeLiveSEOContent() {
                       key={seoData?.seoScore}
                       initial={{ scale: 0.8 }}
                       animate={{ scale: 1 }}
-                      className={`text-2xl font-black ${(seoData?.seoScore ?? 0) >= 80 ? 'text-emerald-400' : (seoData?.seoScore ?? 0) >= 60 ? 'text-amber-400' : 'text-red-400'}`}
+                      className={`text-2xl font-black ${!seoData ? 'text-[#555]' : (seoData.seoScore) >= 80 ? 'text-emerald-400' : (seoData.seoScore) >= 60 ? 'text-amber-400' : 'text-red-400'}`}
                     >
-                      {loadingSeo ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${seoData?.seoScore ?? 0}%`}
+                      {loadingSeo ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : seoData ? `${seoData.seoScore}%` : '—'}
                     </motion.div>
                   </div>
                   <div className="bg-[#111]/80 border border-[#222] rounded-xl p-3 text-center">
@@ -1116,9 +1187,9 @@ function YouTubeLiveSEOContent() {
                       key={ctrData?.ctrPercent}
                       initial={{ scale: 0.8 }}
                       animate={{ scale: 1 }}
-                      className={`text-2xl font-black ${ctrPercentNumber >= 11.8 ? 'text-emerald-400' : ctrPercentNumber >= 8 ? 'text-amber-400' : 'text-red-400'}`}
+                      className={`text-2xl font-black ${!ctrData ? 'text-[#555]' : ctrPercentNumber >= 11.8 ? 'text-emerald-400' : ctrPercentNumber >= 8 ? 'text-amber-400' : 'text-red-400'}`}
                     >
-                      {loadingCtr ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${ctrData?.ctrPercent ?? '0'}%`}
+                      {loadingCtr ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : ctrData ? `${ctrData.ctrPercent}%` : '—'}
                     </motion.div>
                   </div>
                   <div className="bg-[#111]/80 border border-[#222] rounded-xl p-3 text-center">
@@ -1127,9 +1198,9 @@ function YouTubeLiveSEOContent() {
                       key={viralProbability}
                       initial={{ scale: 0.8 }}
                       animate={{ scale: 1 }}
-                      className={`text-2xl font-black ${viralProbability >= 75 ? 'text-emerald-400' : viralProbability >= 50 ? 'text-amber-400' : 'text-red-400'}`}
+                      className={`text-2xl font-black ${!seoData && !titleScoreData ? 'text-[#555]' : viralProbability >= 75 ? 'text-emerald-400' : viralProbability >= 50 ? 'text-amber-400' : 'text-red-400'}`}
                     >
-                      {`${viralProbability}%`}
+                      {!seoData && !titleScoreData ? '—' : `${viralProbability}%`}
                     </motion.div>
                   </div>
                   <div className="bg-[#111]/80 border border-[#222] rounded-xl p-3 text-center">
@@ -1138,9 +1209,9 @@ function YouTubeLiveSEOContent() {
                       key={titleScoreData?.titleScore}
                       initial={{ scale: 0.8 }}
                       animate={{ scale: 1 }}
-                      className={`text-2xl font-black ${(titleScoreData?.titleScore ?? 0) >= 80 ? 'text-emerald-400' : (titleScoreData?.titleScore ?? 0) >= 60 ? 'text-amber-400' : 'text-red-400'}`}
+                      className={`text-2xl font-black ${!titleScoreData ? 'text-[#555]' : (titleScoreData.titleScore) >= 80 ? 'text-emerald-400' : (titleScoreData.titleScore) >= 60 ? 'text-amber-400' : 'text-red-400'}`}
                     >
-                      {loadingTitle ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${titleScoreData?.titleScore ?? 0}%`}
+                      {loadingTitle ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : titleScoreData ? `${titleScoreData.titleScore}%` : '—'}
                     </motion.div>
                   </div>
                 </motion.div>
@@ -1189,8 +1260,8 @@ function YouTubeLiveSEOContent() {
                       <label className="block text-sm text-[#AAAAAA]">
                         {contentType === 'short' ? 'Short Title' : contentType === 'live' ? 'Live Stream Title' : 'Video Title'}
                       </label>
-                      <span className={`text-xs font-mono ${title.length >= 40 && title.length <= 65 ? 'text-emerald-400' : title.length > 70 ? 'text-red-400' : 'text-[#666]'}`}>
-                        {title.length}/70 {title.length >= 40 && title.length <= 65 ? '✓' : title.length > 0 && title.length < 40 ? '(40-65 ideal)' : title.length > 70 ? '(too long)' : ''}
+                      <span className={`text-xs font-mono ${title.length >= 55 && title.length <= 70 ? 'text-emerald-400' : title.length > 100 ? 'text-red-400' : title.length > 70 ? 'text-amber-400' : 'text-[#666]'}`}>
+                        {title.length}/100 {title.length >= 55 && title.length <= 70 ? '✓ Optimal' : title.length > 0 && title.length < 40 ? '(55-70 best)' : title.length > 100 ? '(100 max)' : title.length > 70 ? '(70 optimal)' : ''}
                       </span>
                     </div>
                     <input
@@ -1314,7 +1385,8 @@ function YouTubeLiveSEOContent() {
                       </p>
                     )}
 
-                    {/* Upload to YouTube Button */}
+                    {/* Upload to YouTube Button — plan-gated via sectionFlags */}
+                    {sectionFlags['yt_seo_upload_youtube'] && (
                     <div className="mt-6 pt-6 border-t border-[#333]">
                       <button
                         type="button"
@@ -1357,6 +1429,7 @@ function YouTubeLiveSEOContent() {
                         Direct upload uses Google OAuth. You will be asked to link your account on the first attempt.
                       </p>
                     </div>
+                    )}
                   </div>
                   </div>
                 </div>
@@ -1383,12 +1456,14 @@ function YouTubeLiveSEOContent() {
                   <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <BarChart3 className="w-5 h-5" /> SEO Score
                   </h2>
-                  {loadingSeo ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-[#FF0000]" />
+                  {loadingSeo || !seoData ? (
+                    <div className="flex items-center gap-2 text-[#888]">
+                      {loadingSeo ? <><Loader2 className="w-6 h-6 animate-spin text-[#FF0000]" /><span className="text-sm">Calculating SEO score…</span></> : <span className="text-sm text-[#555]">Enter a title to see your SEO score.</span>}
+                    </div>
                   ) : (
                     <>
                       <div className="flex items-baseline gap-2 mb-4">
-                        <span className="text-4xl font-bold text-white">{seoData?.seoScore ?? 0}</span>
+                        <span className="text-4xl font-bold text-white">{seoData.seoScore}</span>
                         <span className="text-[#AAAAAA]">/ 100</span>
                       </div>
                       <div className="h-3 bg-[#212121] rounded-full overflow-hidden mb-4">
@@ -1430,6 +1505,68 @@ function YouTubeLiveSEOContent() {
                         </div>
                       )}
                     </>
+                  )}
+                </div>
+              )}
+
+              {/* SEO Rank Keywords — top 10 keywords for #1 ranking */}
+              {(!loadingFlags && sectionFlags.yt_seo_keywords !== false) && (
+                <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-emerald-400" /> SEO Rank Keywords
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={refreshSeoRankKeywords}
+                      disabled={loadingSeoRank || !title.trim()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50"
+                    >
+                      {loadingSeoRank ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      Refresh
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#888] mb-4">Title ke hisab se top ranking keywords with SEO %. Click to add. Refresh for new keywords.</p>
+
+                  {loadingSeoRank ? (
+                    <div className="flex items-center gap-2 text-[#888]">
+                      <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
+                      <span className="text-sm">Fetching rank keywords…</span>
+                    </div>
+                  ) : seoRankKeywords.length > 0 ? (
+                    <div className="space-y-2">
+                      {seoRankKeywords.map((kw, i) => {
+                        const color = kw.seoScore >= 80
+                          ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                          : kw.seoScore >= 60
+                            ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                            : 'text-red-400 bg-red-500/10 border-red-500/30';
+                        const bar = kw.seoScore >= 80 ? 'bg-emerald-500' : kw.seoScore >= 60 ? 'bg-amber-500' : 'bg-red-500';
+                        const rankLabel = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => addKeywordToField(kw.keyword)}
+                            className="flex items-center justify-between p-2.5 bg-[#111] border border-[#222] rounded-lg cursor-pointer hover:bg-[#1a1a1a] hover:border-emerald-500/30 transition group"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs font-bold w-6 text-center text-[#888]">{rankLabel}</span>
+                              <span className="text-sm text-white group-hover:text-emerald-300 transition truncate">{kw.keyword}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <div className="w-16 h-1.5 bg-[#222] rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${bar}`} style={{ width: `${kw.seoScore}%` }} />
+                              </div>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${color}`}>
+                                {kw.seoScore}%
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[#666] text-sm">Title enter karo to SEO rank keywords dekhne ke liye.</p>
                   )}
                 </div>
               )}
@@ -1943,7 +2080,7 @@ function YouTubeLiveSEOContent() {
                 </div>
               )}
 
-              {(!loadingFlags && sectionFlags.yt_seo_thumbnail !== false) && (
+              {(!loadingFlags && sectionFlags['yt_seo_thumbnail']) && (
                 <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">

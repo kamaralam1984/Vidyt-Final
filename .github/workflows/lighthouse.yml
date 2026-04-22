@@ -1,0 +1,41 @@
+name: Lighthouse CI
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "components/**"
+      - "public/**"
+      - "next.config.js"
+      - "package.json"
+      - "package-lock.json"
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Run Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.14.x
+          lhci autorun --collect.startServerCommand="npm run start" \
+                       --collect.url=http://localhost:3000/ \
+                       --collect.url=http://localhost:3000/compare \
+                       --collect.url=http://localhost:3000/status \
+                       --upload.target=temporary-public-storage \
+                       --assert.preset=lighthouse:recommended
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}

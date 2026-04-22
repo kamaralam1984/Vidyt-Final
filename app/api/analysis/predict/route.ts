@@ -9,7 +9,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { predictViralPotential as advancedPredict } from '@/services/ai/viralPredictor';
 import { predictViralPotential } from '@/services/viralPredictor';
 import { getTrendingScore, getTrendingTopics } from '@/services/trendingEngine';
-import { predictBestPostingTime } from '@/services/postingTimePredictor';
+import { predictBestPostingTimeAI, predictBestPostingTime } from '@/services/postingTimePredictor';
 import { generateHashtags } from '@/services/hashtagGenerator';
 import { getHashtagCount } from '@/lib/planLimits';
 import User from '@/models/User';
@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
       getTrendingScore(keywords, video.platform as any).catch(() => 50),
       generateHashtags(analysis.titleAnalysis, video.description, video.hashtags || [], hashtagLimit).catch(() => []),
       getTrendingTopics(keywords).catch(() => []),
-      Promise.resolve().then(() => { try { return predictBestPostingTime(undefined, video.platform as any); } catch { return { day: 'Wait', hour: 13, confidence: 50 }; } })
+      predictBestPostingTimeAI(video.title || '', video.description || '', video.platform as any)
+        .catch(() => predictBestPostingTime(undefined, video.platform as any)),
     ]);
 
     let viralPrediction;

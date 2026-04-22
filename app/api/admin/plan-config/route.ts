@@ -5,7 +5,7 @@ import connectDB from '@/lib/mongodb';
 import Plan from '@/models/Plan';
 import PlatformControl from '@/models/PlatformControl';
 import { getUserFromRequest } from '@/lib/auth';
-import { refreshPlanCache } from '@/lib/planLimits';
+import { refreshPlanCache } from '@/lib/planSync';
 
 /**
  * GET /api/admin/plan-config

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   const pending = await Referral.countDocuments({ referrerId: user.id, status: 'pending' });
 
   const code = `REF-${user.id.toString().slice(-8).toUpperCase()}`;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vidyt.com';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.vidyt.com';
 
   return NextResponse.json({
     success: true,

@@ -25,6 +25,8 @@ export default function VideoDetailPage() {
   const [video, setVideo] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeStep, setAnalyzeStep] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,15 +41,50 @@ export default function VideoDetailPage() {
       const response = await axios.get(`/api/videos/${videoId}`, {
         headers: getAuthHeaders(),
       });
-      setVideo(response.data.video);
-      setAnalysis(response.data.analysis);
+      const vid = response.data.video;
+      const anal = response.data.analysis;
+      setVideo(vid);
+      setAnalysis(anal);
       setError(null);
+
+      // Auto-trigger analysis if all scores are still zero
+      if (anal && anal.id && anal.hookScore === 0 && anal.titleScore === 0 && anal.thumbnailScore === 0) {
+        runAnalysis(vid.id, anal.id);
+      }
     } catch (error: any) {
       console.error('Error fetching video:', error);
       const msg = error.response?.data?.error || 'Failed to load video';
       setError(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runAnalysis = async (vidId: string, analysisId: string) => {
+    setAnalyzing(true);
+    const headers = getAuthHeaders();
+    const body = { videoId: vidId, analysisId };
+    try {
+      setAnalyzeStep('Analyzing title...');
+      const titleRes = await axios.post('/api/analysis/title', body, { headers }).catch(() => null);
+
+      setAnalyzeStep('Analyzing thumbnail...');
+      const thumbRes = await axios.post('/api/analysis/thumbnail', body, { headers }).catch(() => null);
+
+      setAnalyzeStep('Analyzing hook...');
+      const hookRes = await axios.post('/api/analysis/hook', body, { headers }).catch(() => null);
+
+      setAnalyzeStep('Calculating viral score...');
+      const predictRes = await axios.post('/api/analysis/predict', body, { headers }).catch(() => null);
+
+      // Fetch fresh analysis from server
+      const updated = await axios.get(`/api/videos/${vidId}`, { headers });
+      setAnalysis(updated.data.analysis);
+    } catch (e) {
+      console.error('Analysis failed:', e);
+    } finally {
+      setAnalyzing(false);
+      setAnalyzeStep('');
     }
   };
 
@@ -168,6 +205,17 @@ export default function VideoDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Analysis in progress */}
+          {analyzing && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 flex items-center gap-4">
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#FF0000] flex-shrink-0"></div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">Running AI Analysis...</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{analyzeStep}</p>
+              </div>
+            </div>
+          )}
 
           {/* Analysis Results */}
           {analysis ? (

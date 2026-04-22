@@ -24,6 +24,8 @@ import {
   Server,
   Gauge,
   Globe,
+  CreditCard,
+  FileText,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -68,6 +70,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/admin/super/plans', label: 'Control Center', icon: Package },
       { href: '/admin/super/revenue', label: 'Revenue', icon: DollarSign },
+      { href: '/admin/super/payment-analytics', label: 'Payment Analytics', icon: CreditCard, isPremium: true },
     ],
   },
   {
@@ -82,6 +85,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Tools',
     items: [
+      { href: '/admin/super/seo-pages', label: 'SEO Pages', icon: FileText, isPremium: true },
       { href: '/admin/super/bulk-email', label: 'Bulk Email', icon: Mail },
       { href: '/admin/super/channel-audit', label: 'Channel Intelligence', icon: SearchCode, isPremium: true },
       { href: '/admin/super/workflows', label: 'Workflows & Map', icon: Workflow },

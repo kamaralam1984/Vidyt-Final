@@ -21,8 +21,6 @@ const CookieConsent = dynamic(() => import("@/components/CookieConsent"), { ssr:
 const LangDirectionSetter = dynamic(() => import("@/components/LangDirectionSetter"), { ssr: false });
 const CountrySelectPopup = dynamic(() => import("@/components/CountrySelectPopup"), { ssr: false });
 
-
-
 export const viewport: Viewport = {
   themeColor: "#0F0F0F",
   width: "device-width",
@@ -38,7 +36,7 @@ export const metadata: Metadata = {
   description: "Grow your YouTube channel with AI-powered SEO tools. Generate viral titles, thumbnails, hashtags & scripts. Trusted by 10,000+ creators.",
   keywords: ["youtube seo", "viral video", "youtube title generator", "hashtag generator", "thumbnail generator", "youtube growth", "video optimization", "ai seo tools", "youtube shorts", "content creator tools"],
   manifest: "/manifest.webmanifest",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://vidyt.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://www.vidyt.com"),
   alternates: {
     canonical: "/",
   },
@@ -97,8 +95,8 @@ const ORGANIZATION_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "VidYT",
-  "url": "https://vidyt.com",
-  "logo": "https://vidyt.com/Logo.png",
+  "url": "https://www.vidyt.com",
+  "logo": "https://www.vidyt.com/Logo.webp",
   "description": "AI-powered YouTube SEO & video optimization platform trusted by 10,000+ creators.",
   "sameAs": [
     "https://www.youtube.com/@vidyt",
@@ -112,7 +110,7 @@ const SOFTWARE_SCHEMA = {
   "name": "VidYT",
   "applicationCategory": "BusinessApplication",
   "operatingSystem": "Web",
-  "url": "https://vidyt.com",
+  "url": "https://www.vidyt.com",
   "description": "Grow your YouTube channel with AI-powered SEO tools. Generate viral titles, thumbnails, hashtags, and scripts.",
   "offers": {
     "@type": "Offer",
@@ -129,6 +127,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
+        {/* Preconnect to critical origins — reduces DNS + TLS handshake time */}
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="preconnect" href="https://www.google-analytics.com" />
+        <link rel="dns-prefetch" href="https://static.cloudflareinsights.com" />
+        <link rel="dns-prefetch" href="https://cdn.razorpay.com" />
         {/* Structured Data */}
         <script
           type="application/ld+json"
@@ -138,14 +141,6 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_SCHEMA) }}
         />
-        {/* Google AdSense */}
-        {process.env.NEXT_PUBLIC_ADSENSE_ID && (
-          <script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_ID}`}
-            crossOrigin="anonymous"
-          />
-        )}
       </head>
       <body className="font-inter antialiased" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
         {/* Google Analytics 4 — afterInteractive so it never blocks FCP */}
@@ -168,6 +163,15 @@ export default function RootLayout({
               `}
             </Script>
           </>
+        )}
+        {/* Google AdSense — lazyOnload so it never blocks LCP/TBT */}
+        {process.env.NEXT_PUBLIC_ADSENSE_ID && (
+          <Script
+            id="adsense-init"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_ID}`}
+            strategy="lazyOnload"
+            crossOrigin="anonymous"
+          />
         )}
         <ThemeProvider>
           <LocaleProvider>

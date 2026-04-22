@@ -8,7 +8,7 @@ import {
   RefreshCw, Loader2, Plus, Trash2, Play, Clock, Server, Cpu,
   HardDrive, MemoryStick, TrendingUp, TrendingDown, Bell, BellOff,
   ChevronDown, ChevronRight, ExternalLink, Eye, X, Activity,
-  BarChart2, Lock, FileText,
+  BarChart2, Lock, FileText, Monitor, Smartphone,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -36,6 +36,8 @@ interface AuditIssue {
   fix: string;
 }
 
+interface PerfData { score: number; responseTime: number; lcp: number; fcp: number; cls: number; tbt: number; ttfb: number; pageSize: number; }
+
 interface Audit {
   _id: string;
   url: string;
@@ -44,7 +46,8 @@ interface Audit {
   overallScore: number;
   scoreDelta?: number;
   previousScore?: number;
-  performance: { score: number; responseTime: number; lcp: number; fcp: number; cls: number; tbt: number; ttfb: number; pageSize: number };
+  performance: PerfData;  // desktop
+  mobile?: PerfData;      // mobile (may be absent in older records)
   seo: { score: number; hasTitle: boolean; titleLength: number; h1Count: number; hasCanonical: boolean; hasOgTags: boolean; robotsTxt: boolean; sitemapXml: boolean; isHttps: boolean; imagesWithoutAlt: number };
   security: { score: number; isHttps: boolean; hasHSTS: boolean; hasCSP: boolean; hasXFrame: boolean; hasXContentType: boolean; hasReferrerPolicy: boolean; poweredByHeader: string };
   server: { cpuUsage: number; memoryUsed: number; memoryTotal: number; memoryPercent: number; diskUsed: number; diskTotal: number; diskPercent: number; uptime: number; loadAvg: number[] };
@@ -192,6 +195,7 @@ export default function WebsiteAuditPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [criticalAlerts, setCriticalAlerts] = useState<AuditAlert[]>([]);
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
+  const [totalAudits, setTotalAudits] = useState(0);
 
   // Run audit
   const [auditUrl, setAuditUrl] = useState('https://www.vidyt.com');
@@ -232,6 +236,7 @@ export default function WebsiteAuditPage() {
       setUnreadCount(data.unacknowledgedAlerts || 0);
       setCriticalAlerts(data.criticalAlerts || []);
       setTrendData(data.trendData || []);
+      setTotalAudits(data.totalAudits || 0);
     } finally {
       setLoading(false);
     }
@@ -420,7 +425,7 @@ export default function WebsiteAuditPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { label: 'Monitored Sites', value: sites.length, icon: Globe, color: 'text-blue-400' },
-                  { label: 'Recent Audits', value: recentAudits.length, icon: FileText, color: 'text-purple-400' },
+                  { label: 'Total Audits', value: totalAudits, icon: FileText, color: 'text-purple-400' },
                   { label: 'Unread Alerts', value: unreadCount, icon: Bell, color: unreadCount > 0 ? 'text-red-400' : 'text-emerald-400' },
                   {
                     label: 'Avg Score (latest)',
@@ -965,6 +970,61 @@ export default function WebsiteAuditPage() {
 // SUB-COMPONENTS
 // ─────────────────────────────────────────────
 
+function SpeedCard({ kind, score, loadTime, responseTime, missing }: {
+  kind: 'desktop' | 'mobile';
+  score: number;
+  loadTime: number;   // ms (prefer LCP)
+  responseTime: number; // ms (TTFB or responseTime)
+  missing?: boolean;
+}) {
+  const isDesktop = kind === 'desktop';
+  const Icon = isDesktop ? Monitor : Smartphone;
+  const accent = isDesktop ? 'text-blue-400' : 'text-purple-400';
+  const border = isDesktop ? 'border-blue-500/20' : 'border-purple-500/20';
+
+  const rating = score >= 90 ? 'Fast' : score >= 50 ? 'Average' : 'Slow';
+  const seconds = loadTime > 0 ? (loadTime / 1000).toFixed(1) : '—';
+
+  return (
+    <div className={`bg-white/3 border ${border} rounded-xl p-4`}>
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className={`w-4 h-4 ${accent}`} />
+        <span className={`text-xs font-semibold ${accent} uppercase tracking-wider`}>{isDesktop ? 'Desktop' : 'Mobile'}</span>
+        {missing && <span className="ml-auto text-[10px] text-white/30">Not measured</span>}
+      </div>
+      {missing ? (
+        <div className="text-xs text-white/30 py-2">
+          No {kind} data in this audit. Re-run to capture both.
+        </div>
+      ) : (
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 relative flex flex-col items-center">
+            <div className="relative w-[72px] h-[72px]">
+              <ScoreGauge score={score} size={72} />
+              <div className={`absolute inset-0 flex items-center justify-center text-lg font-black ${scoreColor(score)}`}>{score}</div>
+            </div>
+            <div className={`text-[10px] font-semibold mt-1 ${scoreColor(score)}`}>{rating}</div>
+          </div>
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-white/40">Load time (LCP)</span>
+              <span className={`text-sm font-bold ${loadTime > 0 && loadTime < 2500 ? 'text-emerald-400' : loadTime >= 2500 ? 'text-red-400' : 'text-white/40'}`}>
+                {seconds}s
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-white/40">Server response</span>
+              <span className={`text-sm font-bold ${responseTime > 0 && responseTime < 600 ? 'text-emerald-400' : responseTime >= 600 ? 'text-amber-400' : 'text-white/40'}`}>
+                {responseTime > 0 ? `${responseTime}ms` : '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MetricCard({ icon: Icon, label, value, pct, color, sub }: {
   icon: any; label: string; value: string; pct: number; color: string; sub: string;
 }) {
@@ -1010,7 +1070,7 @@ function AuditReport({ audit, expandedIssue, setExpandedIssue }: {
         {/* 3 score pillars */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Performance', score: audit.performance.score, icon: Zap, details: [`${(audit.performance.responseTime / 1000).toFixed(1)}s response`, `LCP: ${(audit.performance.lcp / 1000).toFixed(1)}s`, `CLS: ${audit.performance.cls}`] },
+            { label: 'Performance', score: audit.performance.score, icon: Zap, details: [`Desktop: ${audit.performance.score}`, audit.mobile ? `Mobile: ${audit.mobile.score}` : 'Mobile: —', `LCP: ${(audit.performance.lcp / 1000).toFixed(1)}s`] },
             { label: 'SEO', score: audit.seo.score, icon: Search, details: [audit.seo.isHttps ? 'HTTPS ✓' : 'No HTTPS ✗', `H1: ${audit.seo.h1Count}`, audit.seo.sitemapXml ? 'Sitemap ✓' : 'No sitemap'] },
             { label: 'Security', score: audit.security.score, icon: Shield, details: [audit.security.hasCSP ? 'CSP ✓' : 'No CSP ✗', audit.security.hasHSTS ? 'HSTS ✓' : 'No HSTS ✗', audit.security.hasXFrame ? 'X-Frame ✓' : 'No X-Frame ✗'] },
           ].map(({ label, score, icon: Icon, details }) => (
@@ -1029,23 +1089,91 @@ function AuditReport({ audit, expandedIssue, setExpandedIssue }: {
         </div>
       </div>
 
-      {/* Performance details */}
+      {/* Website Speed headline — Desktop vs Mobile at-a-glance */}
+      <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/10 rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-white/80 mb-4 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-yellow-400" />Website Speed
+          <span className="text-[10px] font-normal text-white/30 ml-1">· powered by Lighthouse</span>
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SpeedCard
+            kind="desktop"
+            score={audit.performance.score}
+            loadTime={audit.performance.lcp || audit.performance.responseTime}
+            responseTime={audit.performance.responseTime}
+          />
+          <SpeedCard
+            kind="mobile"
+            score={audit.mobile?.score ?? 0}
+            loadTime={audit.mobile?.lcp ?? 0}
+            responseTime={audit.mobile?.ttfb ?? 0}
+            missing={!audit.mobile || (audit.mobile.score === 0 && audit.mobile.lcp === 0)}
+          />
+        </div>
+      </div>
+
+      {/* Performance details — Desktop & Mobile side-by-side (always shown) */}
       <div className="bg-white/3 border border-white/8 rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-white/70 mb-4 flex items-center gap-2"><Zap className="w-4 h-4 text-blue-400" />Performance Details</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {[
-            { label: 'Response Time', value: `${audit.performance.responseTime}ms`, good: audit.performance.responseTime < 1000 },
-            { label: 'LCP', value: `${(audit.performance.lcp / 1000).toFixed(1)}s`, good: audit.performance.lcp < 2500 },
-            { label: 'FCP', value: `${(audit.performance.fcp / 1000).toFixed(1)}s`, good: audit.performance.fcp < 1800 },
-            { label: 'CLS', value: String(audit.performance.cls), good: audit.performance.cls < 0.1 },
-            { label: 'TBT', value: `${audit.performance.tbt}ms`, good: audit.performance.tbt < 200 },
-            { label: 'TTFB', value: `${audit.performance.ttfb}ms`, good: audit.performance.ttfb < 600 },
-          ].map(({ label, value, good }) => (
-            <div key={label} className="bg-white/3 rounded-lg p-3 text-center">
-              <div className={`text-lg font-bold ${good ? 'text-emerald-400' : 'text-red-400'}`}>{value}</div>
-              <div className="text-xs text-white/30 mt-0.5">{label}</div>
+        <h3 className="text-sm font-semibold text-white/70 mb-4 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-blue-400" />Performance Details · Core Web Vitals
+        </h3>
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+          {/* Desktop */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Monitor className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Desktop</span>
+              <span className={`ml-auto text-base font-black ${scoreColor(audit.performance.score)}`}>{audit.performance.score}/100</span>
             </div>
-          ))}
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { label: 'LCP',           value: `${(audit.performance.lcp / 1000).toFixed(1)}s`,   good: audit.performance.lcp < 2500 && audit.performance.lcp > 0 },
+                { label: 'FCP',           value: `${(audit.performance.fcp / 1000).toFixed(1)}s`,   good: audit.performance.fcp < 1800 && audit.performance.fcp > 0 },
+                { label: 'TBT',           value: `${audit.performance.tbt}ms`,                       good: audit.performance.tbt < 200  },
+                { label: 'CLS',           value: String(audit.performance.cls),                      good: audit.performance.cls < 0.1  },
+                { label: 'TTFB',          value: `${audit.performance.ttfb}ms`,                      good: audit.performance.ttfb < 600 && audit.performance.ttfb > 0 },
+                { label: 'Response Time', value: `${audit.performance.responseTime}ms`,              good: audit.performance.responseTime < 1000 && audit.performance.responseTime > 0 },
+              ] as {label:string;value:string;good:boolean}[]).map(({ label, value, good }) => (
+                <div key={label} className="bg-white/3 rounded-lg p-2.5 text-center">
+                  <div className={`text-sm font-bold ${good ? 'text-emerald-400' : 'text-red-400'}`}>{value}</div>
+                  <div className="text-[10px] text-white/30 mt-0.5">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Smartphone className="w-3.5 h-3.5 text-purple-400" />
+              <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">Mobile</span>
+              <span className={`ml-auto text-base font-black ${scoreColor(audit.mobile?.score ?? 0)}`}>
+                {audit.mobile ? `${audit.mobile.score}/100` : '—'}
+              </span>
+            </div>
+            {audit.mobile ? (
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { label: 'LCP',  value: `${(audit.mobile.lcp / 1000).toFixed(1)}s`,  good: audit.mobile.lcp < 2500 && audit.mobile.lcp > 0 },
+                  { label: 'FCP',  value: `${(audit.mobile.fcp / 1000).toFixed(1)}s`,  good: audit.mobile.fcp < 1800 && audit.mobile.fcp > 0 },
+                  { label: 'TBT',  value: `${audit.mobile.tbt}ms`,                      good: audit.mobile.tbt < 200  },
+                  { label: 'CLS',  value: String(audit.mobile.cls),                     good: audit.mobile.cls < 0.1  },
+                  { label: 'TTFB', value: `${audit.mobile.ttfb}ms`,                     good: audit.mobile.ttfb < 600 && audit.mobile.ttfb > 0 },
+                  { label: 'Page Size', value: formatBytes(audit.mobile.pageSize || 0), good: (audit.mobile.pageSize || 0) < 2_000_000 && (audit.mobile.pageSize || 0) > 0 },
+                ] as {label:string;value:string;good:boolean}[]).map(({ label, value, good }) => (
+                  <div key={label} className="bg-white/3 rounded-lg p-2.5 text-center">
+                    <div className={`text-sm font-bold ${good ? 'text-emerald-400' : 'text-red-400'}`}>{value}</div>
+                    <div className="text-[10px] text-white/30 mt-0.5">{label}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white/3 rounded-lg p-4 text-center text-xs text-white/40 border border-dashed border-white/10">
+                Mobile metrics not available for this audit.<br />
+                <span className="text-white/25">Re-run the audit to collect both desktop and mobile.</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

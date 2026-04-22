@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import GlobalLimitHandler from '@/components/GlobalLimitHandler';
 import AuthGuard from '@/components/AuthGuard';
+import OnboardingGuard from '@/components/OnboardingGuard';
 import { useTokenRefresh } from '@/hooks/useTokenRefresh';
 
 const NAVBAR_HEIGHT = 56;
@@ -21,6 +22,7 @@ function DashboardInner({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <GlobalLimitHandler />
+      <OnboardingGuard />
       <Navbar />
       <Sidebar
         isOpen={sidebarOpen}

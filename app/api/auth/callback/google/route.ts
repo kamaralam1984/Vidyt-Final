@@ -8,6 +8,9 @@ import { generateToken, type AuthUser } from '@/lib/auth-jwt';
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  // Always use the public domain — request.url carries the internal :3000 port
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.vidyt.com').replace(/\/$/, '');
+
   try {
     const url = new URL(request.url);
     const code = url.searchParams.get('code');
@@ -15,11 +18,11 @@ export async function GET(request: NextRequest) {
 
     if (errorParam) {
       console.error('Google OAuth Error:', errorParam);
-      return NextResponse.redirect(`${url.origin}/auth?error=google_auth_failed`);
+      return NextResponse.redirect(`${appUrl}/auth?error=google_auth_failed`);
     }
 
     if (!code) {
-      return NextResponse.redirect(`${url.origin}/auth?error=missing_code`);
+      return NextResponse.redirect(`${appUrl}/auth?error=missing_code`);
     }
 
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
@@ -27,11 +30,11 @@ export async function GET(request: NextRequest) {
 
     if (!clientId || !clientSecret) {
       console.error('Missing Google OAuth credentials', { clientId: !!clientId, clientSecret: !!clientSecret });
-      return NextResponse.redirect(`${url.origin}/auth?error=server_configuration_error`);
+      return NextResponse.redirect(`${appUrl}/auth?error=server_configuration_error`);
     }
 
-    // Initialize OAuth2Client with the exact redirect URI expected by Google
-    const redirectUri = `${url.origin}/api/auth/callback/google`;
+    // Use public domain for redirectUri — must match exactly what Google Console has registered
+    const redirectUri = `${appUrl}/api/auth/callback/google`;
     const client = new OAuth2Client(clientId, clientSecret, redirectUri);
 
     // Exchange auth code for tokens
@@ -159,7 +162,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Google Auth Callback error:', error);
-    const url = new URL(request.url);
-    return NextResponse.redirect(`${url.origin}/auth?error=auth_internal_error`);
+    return NextResponse.redirect(`${appUrl}/auth?error=auth_internal_error`);
   }
 }

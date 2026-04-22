@@ -115,11 +115,11 @@ const FEATURE_TO_FLAG_MAP: Record<string, string> = {
 type Feature = (typeof FEATURES)[number];
 
 const MAIN_LINKS = [
-  { labelKey: 'navbar.freeAiTools', href: '#tools' },
-  { labelKey: 'navbar.coaching', href: '#coaching' },
-  { labelKey: 'navbar.resources', href: '#resources' },
-  { labelKey: 'navbar.extension', href: '#extension' },
-  { labelKey: 'navbar.pricing', href: '#pricing' },
+  { labelKey: 'navbar.freeAiTools', href: '/#tools' },
+  { labelKey: 'navbar.coaching', href: '/#coaching' },
+  { labelKey: 'navbar.resources', href: '/#resources' },
+  { labelKey: 'navbar.extension', href: '/#extension' },
+  { labelKey: 'navbar.pricing', href: '/#pricing' },
 ] as const;
 
 export default function MarketingNavbar() {
@@ -162,9 +162,10 @@ export default function MarketingNavbar() {
         <Link href="/" className="flex items-center group">
           <div className="relative h-14 w-32 -my-2 mr-2">
             <Image
-              src="/Logo.png"
+              src="/Logo.webp"
               alt="Vid YT logo"
               fill
+              sizes="128px"
               className="object-contain"
               priority
             />

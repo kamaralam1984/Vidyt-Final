@@ -6,10 +6,12 @@ import connectDB from '@/lib/mongodb';
 import { z } from 'zod';
 import { getClientIP, trackFailure, rateLimit, isIPBlocked, RATE_LIMITS } from '@/lib/rateLimiter';
 import { generateRefreshToken } from '@/lib/auth-jwt';
+import { verifyTurnstile } from '@/lib/turnstile';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
+  turnstileToken: z.string().optional(),
 });
 
 async function handleLogin(request: NextRequest) {
@@ -59,7 +61,15 @@ async function handleLogin(request: NextRequest) {
 
     // Validate input
     const validated = loginSchema.parse(body);
-    const { email, password } = validated;
+    const { email, password, turnstileToken } = validated;
+
+    const captcha = await verifyTurnstile(turnstileToken, ip);
+    if (!captcha.ok) {
+      return NextResponse.json(
+        { error: 'CAPTCHA verification failed. Please try again.' },
+        { status: 400 }
+      );
+    }
 
     // Login user
     try {

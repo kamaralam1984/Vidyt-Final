@@ -21,6 +21,7 @@ const YT_SEO_SECTION_IDS = [
   'yt_seo_viral_probability',
   'yt_seo_chinki',
   'yt_seo_video_analyze',
+  'yt_seo_upload_youtube',
 ];
 
 /**

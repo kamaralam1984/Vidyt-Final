@@ -19,6 +19,8 @@ import {
 import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 import { computeSignupUsdCharge, convertUsdToCurrency } from '@/lib/paymentCurrencyShared';
 import Image from 'next/image';
+import TurnstileWidget from '@/components/TurnstileWidget';
+import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
 
 interface Plan {
   id: string;
@@ -128,6 +130,7 @@ function AuthPageContent() {
   const [fxRates, setFxRates] = useState<Record<string, number> | null>(null);
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
 
   useEffect(() => {
     // /login route shows login; /auth uses ?mode= param
@@ -165,17 +168,25 @@ function AuthPageContent() {
         };
       });
       setPaidPlansState(payPlans);
-    }).catch(err => console.error("Failed to load plans", err));
+      setDbStatus('connected');
+    }).catch(err => {
+      console.error("Failed to load plans", err);
+      setDbStatus('disconnected');
+    });
 
-    // If the login page itself loaded, the server is reachable.
-    // Cloudflare WAF may block direct /api/health calls, so we infer
-    // connectivity from a lightweight public endpoint instead.
+    // DB indicator: use /api/subscriptions/plans (always deployed + public). Live builds may
+    // not include /api/health; plans also returns 500 when MongoDB fails (not only 503).
     const checkDbStatus = async () => {
       try {
-        const response = await fetch('/api/subscriptions/plans', { cache: 'no-store' });
-        // Any response (even error codes) means server + DB are up
-        setDbStatus(response.status === 503 ? 'disconnected' : 'connected');
+        const r = await fetch('/api/subscriptions/plans?withDiscounts=0', { cache: 'no-store' });
+        // 5xx = DB/server down; anything else (200, 401, 404) = server is up
+        if (r.status >= 500 && r.status < 600) {
+          setDbStatus('disconnected');
+        } else {
+          setDbStatus('connected');
+        }
       } catch {
+        // Network error — truly unreachable
         setDbStatus('disconnected');
       }
     };
@@ -264,6 +275,7 @@ function AuthPageContent() {
         billingPeriod,
         currency: locale.currency,
         countryCode: locale.countryCode,
+        turnstileToken,
       });
 
       if (response.data.success) {
@@ -394,6 +406,7 @@ function AuthPageContent() {
           const response = await axios.post('/api/auth/login', {
             email: formData.email,
             password: formData.password,
+            turnstileToken,
           });
 
           if (response.data.token) {
@@ -503,7 +516,7 @@ function AuthPageContent() {
           className="text-center mb-8"
         >
           <Link href="/" className="inline-block mb-6">
-            <NextImage src="/Logo.png" alt="Vid YT" width={288} height={288} className="h-72 w-auto object-contain mx-auto" priority />
+            <NextImage src="/Logo.webp" alt="Vid YT" width={288} height={192} sizes="288px" className="h-72 w-auto object-contain mx-auto" priority />
           </Link>
           <h1 className="text-4xl font-bold text-white mb-2">
             {isLogin ? 'Sign In' : 'Create your account'}
@@ -534,7 +547,7 @@ function AuthPageContent() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#181818] border border-[#212121] rounded-2xl p-8 shadow-2xl"
+            className="bg-[#181818] border border-[#212121] rounded-2xl p-8 shadow-2xl notranslate"
           >
             {error && (
               <motion.div
@@ -724,6 +737,10 @@ function AuthPageContent() {
                   </div>
                 </>
               )}
+
+              <div className="mt-2">
+                <TurnstileWidget onToken={setTurnstileToken} onError={() => setTurnstileToken('')} />
+              </div>
 
               <motion.button
                 type="submit"
@@ -1037,6 +1054,7 @@ function AuthPageContent() {
                 <p className="text-xs text-[#AAAAAA] mt-1">
                   Required. Format: at least 8 characters, one uppercase letter, and one number.
                 </p>
+                <PasswordStrengthMeter password={formData.password} />
               </div>
 
               <div>
@@ -1095,6 +1113,10 @@ function AuthPageContent() {
                     )}
                   </motion.button>
                 </div>
+              </div>
+
+              <div className="mt-2">
+                <TurnstileWidget onToken={setTurnstileToken} onError={() => setTurnstileToken('')} />
               </div>
 
               {/* Submit Button */}

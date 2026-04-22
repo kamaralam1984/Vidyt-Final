@@ -7,6 +7,8 @@ import PendingUser from '@/models/PendingUser';
 import { generateOTP, getOTPExpiry } from '@/services/otp';
 import { sendOTPEmail } from '@/services/email';
 import { hashPassword, normalizePlan, VALID_PLANS } from '@/lib/auth';
+import { verifyTurnstile } from '@/lib/turnstile';
+import { getClientIP } from '@/lib/rateLimiter';
 import { z } from 'zod';
 
 // Basic rate limiting to prevent OTP and sign up abuse
@@ -43,6 +45,7 @@ const prepareSignupSchema = z.object({
   billingPeriod: z.enum(['month', 'year']).optional(),
   currency: z.string().length(3).optional(),
   countryCode: z.string().max(32).optional(),
+  turnstileToken: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -51,8 +54,16 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validated = prepareSignupSchema.parse(body);
-    const { email, password, name, companyName, phone, loginPin, billingPeriod, currency, countryCode } =
+    const { email, password, name, companyName, phone, loginPin, billingPeriod, currency, countryCode, turnstileToken } =
       validated;
+
+    const captcha = await verifyTurnstile(turnstileToken, getClientIP(request));
+    if (!captcha.ok) {
+      return NextResponse.json(
+        { error: 'CAPTCHA verification failed. Please try again.' },
+        { status: 400 }
+      );
+    }
 
     const selectedPlan = normalizePlan(body.planId);
 

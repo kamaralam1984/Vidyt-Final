@@ -74,7 +74,8 @@ const WebsiteAuditSchema = new mongoose.Schema({
   type: { type: String, enum: ['scheduled', 'manual', 'cron'], default: 'manual' },
   status: { type: String, enum: ['running', 'completed', 'failed'], default: 'running' },
   overallScore: { type: Number, default: 0 },
-  performance: { type: PerformanceSchema, default: () => ({}) },
+  performance: { type: PerformanceSchema, default: () => ({}) }, // desktop
+  mobile: { type: PerformanceSchema, default: () => ({}) },     // mobile
   seo: { type: SeoSchema, default: () => ({}) },
   security: { type: SecuritySchema, default: () => ({}) },
   server: { type: ServerMetricsSchema, default: () => ({}) },

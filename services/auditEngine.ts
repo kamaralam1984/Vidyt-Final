@@ -80,7 +80,8 @@ export interface ServerMetrics {
 }
 
 export interface AuditResult {
-  performance: PerformanceResult;
+  performance: PerformanceResult;   // desktop
+  mobile: PerformanceResult;        // mobile
   seo: SeoResult;
   security: SecurityResult;
   server: ServerMetrics;
@@ -129,30 +130,33 @@ function getAttr(tag: string, attr: string): string {
 // PERFORMANCE AUDIT (PageSpeed Insights API)
 // ─────────────────────────────────────────────
 
-async function runPerformanceAudit(url: string): Promise<PerformanceResult> {
+async function runPerformanceAudit(url: string, preset: 'desktop' | 'mobile' = 'desktop'): Promise<PerformanceResult> {
   const result: PerformanceResult = {
     score: 0, responseTime: 0, ttfb: 0, fcp: 0, lcp: 0, cls: 0, tbt: 0, pageSize: 0, requestCount: 0,
   };
 
-  // Measure direct response time
-  const t0 = Date.now();
-  try {
-    const resp = await fetchWithTimeout(url, 15000, { headers: { 'User-Agent': 'Mozilla/5.0 VidYT-Audit/1.0' } });
-    result.responseTime = Date.now() - t0;
-    const body = await resp.text();
-    result.pageSize = Buffer.byteLength(body, 'utf8');
-  } catch {
-    result.responseTime = 15000;
+  // Measure direct response time (only on desktop to avoid double fetch)
+  if (preset === 'desktop') {
+    const t0 = Date.now();
+    try {
+      const resp = await fetchWithTimeout(url, 15000, { headers: { 'User-Agent': 'Mozilla/5.0 VidYT-Audit/1.0' } });
+      result.responseTime = Date.now() - t0;
+      const body = await resp.text();
+      result.pageSize = Buffer.byteLength(body, 'utf8');
+    } catch {
+      result.responseTime = 15000;
+    }
   }
 
-  // Run Lighthouse CLI for real Core Web Vitals (async — does not block event loop)
+  // Run Lighthouse CLI for real Core Web Vitals
   try {
     const { exec } = await import('child_process');
     const { promisify } = await import('util');
     const execAsync = promisify(exec);
     const lighthouseBin = `${process.cwd()}/node_modules/.bin/lighthouse`;
     const chromeFlags = '--headless --no-sandbox --disable-dev-shm-usage --disable-gpu';
-    const cmd = `${lighthouseBin} "${url}" --output=json --quiet --chrome-flags="${chromeFlags}" --only-categories=performance 2>/dev/null`;
+    const presetFlag = preset === 'desktop' ? '--preset=desktop' : '';
+    const cmd = `${lighthouseBin} "${url}" --output=json --quiet --chrome-flags="${chromeFlags}" --only-categories=performance ${presetFlag} 2>/dev/null`;
     const { stdout: output } = await execAsync(cmd, { timeout: 90000, maxBuffer: 10 * 1024 * 1024 });
     const lhr = JSON.parse(output);
     const cats = lhr.categories;
@@ -701,8 +705,10 @@ function generateIssues(
 export async function runAudit(rawUrl: string, includeServer = false): Promise<AuditResult> {
   const url = normalizeUrl(rawUrl);
 
-  const [performance, seo, security, server] = await Promise.all([
-    runPerformanceAudit(url),
+  // Desktop and mobile Lighthouse run in parallel alongside SEO/security checks
+  const [performance, mobile, seo, security, server] = await Promise.all([
+    runPerformanceAudit(url, 'desktop'),
+    runPerformanceAudit(url, 'mobile'),
     runSeoAudit(url),
     runSecurityAudit(url),
     includeServer ? getServerMetrics() : Promise.resolve({
@@ -713,7 +719,8 @@ export async function runAudit(rawUrl: string, includeServer = false): Promise<A
   ]);
 
   const issues = generateIssues(performance, seo, security, server);
+  // Overall score uses desktop perf (primary), seo, security
   const overallScore = Math.round((performance.score + seo.score + security.score) / 3);
 
-  return { performance, seo, security, server, issues, overallScore };
+  return { performance, mobile, seo, security, server, issues, overallScore };
 }

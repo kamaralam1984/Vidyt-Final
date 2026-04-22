@@ -8781,7 +8781,7 @@ Qfj(this);k.o4?this.title.update({title:g.DH("More videos from $DNI_RELATED_CHAN
           <div class="vidyt-metric-row">
              <span id="vidyt-channel-name" style="font-size: 13px; font-weight: 700; color: #ff4444;">Analyzing...</span>
           </div>
-          <a href="https://vidyt.com/dashboard" target="_blank" class="vidyt-btn">Analyze on VidYT</a>
+          <a href="https://www.vidyt.com/dashboard" target="_blank" class="vidyt-btn">Analyze on VidYT</a>
           <button class="vidyt-btn" style="background: #333; margin-top: 8px;">Find Competitors</button>
         </div>
       </div>

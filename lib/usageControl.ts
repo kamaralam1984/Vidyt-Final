@@ -105,7 +105,7 @@ async function triggerNotification(
       await sendBroadcastNotificationEmail(
         user.email as string,
         type === 'warning' ? 'Usage Warning - Vid YT' : 'Limit Reached - Vid YT',
-        `${message}\n\nFeature: ${featureLabel}\n\nUpgrade plan: https://vidyt.com/pricing`,
+        `${message}\n\nFeature: ${featureLabel}\n\nUpgrade plan: https://www.vidyt.com/pricing`,
         (user as any).name
       );
     } catch (err) {

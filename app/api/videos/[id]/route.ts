@@ -66,6 +66,7 @@ export async function GET(
         uploadedAt: video.uploadedAt,
       },
       analysis: analysis ? {
+        id: analysis._id,
         viralProbability: analysis.viralProbability,
         hookScore: analysis.hookScore,
         thumbnailScore: analysis.thumbnailScore,
