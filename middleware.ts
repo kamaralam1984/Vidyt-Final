@@ -68,14 +68,41 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
     response.headers.set('Pragma', 'no-cache');
   }
 
-  // No-cache for HTML pages (prevents browser from caching stale CSP)
+  // Cache strategy for HTML pages:
+  // — Authenticated/private routes: no-store (prevent caching of user-specific content)
+  // — Public marketing/SEO pages: short CDN cache so Googlebot & Cloudflare can cache,
+  //   unlocking crawl budget. Without this, Google sees "no-store" and throttles crawl.
   const pathname = request?.nextUrl?.pathname ?? '';
   const isHtmlPage = !pathname.startsWith('/api/') && !pathname.startsWith('/_next/');
   if (isHtmlPage) {
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    response.headers.set('CDN-Cache-Control', 'no-store');
-    response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
-    response.headers.set('Vary', 'Cookie, Authorization');
+    const isPrivatePage =
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/user') ||
+      pathname === '/login' ||
+      pathname === '/auth' ||
+      pathname === '/signup' ||
+      pathname === '/register' ||
+      pathname === '/forgot-password' ||
+      pathname === '/reset-password' ||
+      pathname === '/verify-email';
+
+    if (isPrivatePage) {
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      response.headers.set('CDN-Cache-Control', 'no-store');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
+      response.headers.set('Vary', 'Cookie, Authorization');
+    } else {
+      // Public SEO pages — allow browser short-cache + CDN edge-cache + stale-while-revalidate.
+      // s-maxage=3600 lets Cloudflare serve from edge for 1h (huge Googlebot win).
+      // stale-while-revalidate=86400 serves stale for 24h while revalidating in background.
+      response.headers.set(
+        'Cache-Control',
+        'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400'
+      );
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=3600');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'public, s-maxage=3600');
+    }
   }
 
   // CORS for same-domain requests
@@ -123,11 +150,25 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
 }
 
 function nextWithHeaders(request: NextRequest, init?: any): NextResponse {
-  return addSecurityHeaders(NextResponse.next(init), request);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-forwarded-proto', 'https');
+  requestHeaders.set('x-forwarded-port', '443');
+  if (!requestHeaders.get('x-forwarded-host')) {
+    requestHeaders.set('x-forwarded-host', request.headers.get('host') || 'www.vidyt.com');
+  }
+  return addSecurityHeaders(
+    NextResponse.next({ ...init, request: { headers: requestHeaders } }),
+    request
+  );
 }
 
 function jsonError(request: NextRequest, message: string, status: number): NextResponse {
   return addSecurityHeaders(NextResponse.json({ error: message }, { status }), request);
+}
+
+// Build a clean redirect URL that always uses the public HTTPS origin (no :3000 leak)
+function publicUrl(path: string): URL {
+  return new URL(path, 'https://www.vidyt.com');
 }
 
 // ─── Main middleware ───────────────────────────────────────────────────────────
@@ -135,12 +176,6 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const hostname = request.headers.get('host') || '';
 
-  // ── Redirect non-www → www ──
-  if (hostname === 'vidyt.com') {
-    const url = request.nextUrl.clone();
-    url.host = 'www.vidyt.com';
-    return NextResponse.redirect(url, { status: 301 });
-  }
 
   // ── CORS preflight ──
   if (request.method === 'OPTIONS') {
@@ -152,11 +187,20 @@ export async function middleware(request: NextRequest) {
   // NGINX applies its own health_limit zone; this is a second layer for
   // when requests reach Next.js directly (e.g., local dev, monitoring agents).
   if (pathname.startsWith('/api/health')) {
+    // Health checks MUST be public to allow the connection indicator to work
     const ip =
       request.headers.get('cf-connecting-ip') ||
       request.headers.get('x-real-ip') ||
       request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
       '127.0.0.1';
+    
+    // Explicitly allow /api/health/db without any further checks
+    if (pathname === '/api/health/db') {
+      const response = nextWithHeaders(request);
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      return response;
+    }
+
     const rl = edgeRateLimit(`health:${ip}`, 30, 60 * 1000); // 30 req/min per IP
     if (!rl.allowed) {
       return addSecurityHeaders(
@@ -182,8 +226,11 @@ export async function middleware(request: NextRequest) {
       request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
       '127.0.0.1';
 
-    // Auth endpoints: strict — 5 req / 15 min per IP
-    if (pathname.startsWith('/api/auth/')) {
+    // Auth endpoints: strict — 5 req / 15 min per IP (only login/password endpoints, not me/logout/google)
+    const isLoginEndpoint = pathname === '/api/auth/login' || pathname === '/api/auth/login-pin' ||
+      pathname === '/api/auth/password-reset' || pathname === '/api/auth/prepare-signup' ||
+      pathname === '/api/auth/verify-and-pay';
+    if (isLoginEndpoint) {
       const rl = edgeRateLimit(`auth:${ip}`, 5, 15 * 60 * 1000);
       if (!rl.allowed) {
         return addSecurityHeaders(
@@ -203,8 +250,21 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // General API: 60 req / min per IP
-    const rl = edgeRateLimit(`api:${ip}`, 60, 60 * 1000);
+    // Google OAuth endpoints — generous limit (user can refresh/retry OAuth flow)
+    const isGoogleOAuth = pathname.startsWith('/api/auth/google') || pathname.startsWith('/api/auth/callback/google');
+    if (isGoogleOAuth) {
+      const rl = edgeRateLimit(`oauth:${ip}`, 30, 60 * 1000); // 30 req/min — won't clash with general limit
+      if (!rl.allowed) {
+        return addSecurityHeaders(
+          NextResponse.redirect(new URL('/auth?error=too_many_requests', request.url)),
+          request
+        );
+      }
+      return nextWithHeaders(request); // skip general limiter for OAuth
+    }
+
+    // General API: 120 req / min per IP (increased — SEO page makes many parallel calls)
+    const rl = edgeRateLimit(`api:${ip}`, 120, 60 * 1000);
     if (!rl.allowed) {
       return addSecurityHeaders(
         NextResponse.json(
@@ -228,6 +288,7 @@ export async function middleware(request: NextRequest) {
 
   // ── Public API routes (no auth needed) ──
   const publicRoutes = [
+    '/api/health',
     '/api/auth/login',
     '/api/auth/login-pin',
     '/api/auth/logout',
@@ -254,10 +315,11 @@ export async function middleware(request: NextRequest) {
     '/api/cron/daily',
     '/api/cron/generate-seo-pages',
     '/api/cron/generate-trending-pages',
+    '/api/cron/promote-seo-pages',
     '/api/cron/ping-google',
   ].includes(pathname);
 
-  if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/')) {
+  if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/') || pathname === '/api/auth/me') {
     return nextWithHeaders(request);
   }
 
@@ -282,7 +344,7 @@ export async function middleware(request: NextRequest) {
 
   if (!token) {
     if (isProtectedPageRoute) {
-      const loginUrl = new URL('/login', request.url);
+      const loginUrl = publicUrl('/login');
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
@@ -300,8 +362,7 @@ export async function middleware(request: NextRequest) {
       return response;
     }
     if (isProtectedPageRoute) {
-      const loginUrl = new URL('/login', request.url);
-      const response = NextResponse.redirect(loginUrl);
+      const response = NextResponse.redirect(publicUrl('/login'));
       response.cookies.delete('token');
       return response;
     }
@@ -314,7 +375,7 @@ export async function middleware(request: NextRequest) {
   // ── Authenticated — redirect away from login ──
   if (isAuthPageRoute) {
     const target = user.role === 'super-admin' ? '/admin/super' : '/dashboard';
-    return NextResponse.redirect(new URL(target, request.url));
+    return NextResponse.redirect(publicUrl(target));
   }
 
   // ── Role normalisation ──
@@ -323,19 +384,24 @@ export async function middleware(request: NextRequest) {
 
   // ── Canonical URL: /dashboard/super → /admin/super ──
   if (pathname === '/dashboard/super' || pathname.startsWith('/dashboard/super/')) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname.replace(/^\/dashboard\/super/, '/admin/super');
-    return NextResponse.redirect(url);
+    const newPath = pathname.replace(/^\/dashboard\/super/, '/admin/super');
+    return NextResponse.redirect(publicUrl(newPath));
   }
 
   // ── Super-admin guard ──
   const isSuperAdminRoute = pathname === '/admin/super' || pathname.startsWith('/admin/super/');
   if (isSuperAdminRoute && !isSuperAdmin) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(publicUrl('/dashboard'));
   }
 
   // ── Inject user headers for API routes ──
   const requestHeaders = new Headers(request.headers);
+  // Fix Cloudflare Tunnel forwarded headers so Next.js uses port 443, not 3000
+  requestHeaders.set('x-forwarded-proto', 'https');
+  requestHeaders.set('x-forwarded-port', '443');
+  if (!requestHeaders.get('x-forwarded-host')) {
+    requestHeaders.set('x-forwarded-host', hostname || 'www.vidyt.com');
+  }
   requestHeaders.set('x-user-id', user.id);
   requestHeaders.set('x-user-role', user.role);
   requestHeaders.set('x-user-subscription', user.subscription);

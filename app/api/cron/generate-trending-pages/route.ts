@@ -3,12 +3,14 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import SeoPage from '@/models/SeoPage';
+import { buildSeoContent } from '@/lib/seoContentBuilder';
+import { computeQualityScore } from '@/lib/qualityScorer';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
 }
 
-function categorize(kw: string): string {
+function _legacyCategorize(kw: string): string {
   const k = kw.toLowerCase();
   if (/game|gaming|pubg|fortnite|minecraft|gta|valorant/.test(k)) return 'Gaming';
   if (/music|song|album|concert|singer|rapper/.test(k)) return 'Music';
@@ -23,7 +25,7 @@ function categorize(kw: string): string {
   return 'Entertainment';
 }
 
-function generateTrendingContent(keyword: string, category: string, score: number) {
+function _legacyGenerateTrendingContent(keyword: string, category: string, score: number) {
   const kw = keyword.trim();
   const kwCap = kw.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const year = new Date().getFullYear();
@@ -199,18 +201,53 @@ export async function GET(request: NextRequest) {
       return true;
     });
 
-    // 5) Create pages
+    // 5) Create pages — rich content via seoContentBuilder, quality-scored
+    //    upfront so the promote cron can immediately pick the best ones.
+    let trendRank = 0;
     for (const trend of unique) {
       if (created >= target) break;
+      trendRank++;
       const slug = slugify(trend.keyword);
+      if (!slug || slug.length < 3) continue;
 
       const exists = await SeoPage.findOne({ slug }).select('_id').lean();
       if (exists) continue;
 
-      const category = categorize(trend.keyword);
-      const data = generateTrendingContent(trend.keyword, category, trend.score);
+      const built = buildSeoContent(trend.keyword, {
+        viralScore: trend.score,
+        trendingRank: trendRank,
+        isTrending: true,
+      });
 
-      await SeoPage.create({ slug, keyword: trend.keyword, ...data, source: 'trending' });
+      const qualityScore = computeQualityScore({
+        wordCount: built.wordCount,
+        viralScore: trend.score,
+        trendingRank: trendRank,
+        views: 0,
+        hashtagCount: built.hashtags.length,
+        faqCount: built.faqs.length,
+      });
+
+      await SeoPage.create({
+        slug,
+        keyword: trend.keyword,
+        title: built.title,
+        metaTitle: built.metaTitle,
+        metaDescription: built.metaDescription,
+        content: built.content,
+        hashtags: built.hashtags,
+        relatedKeywords: built.relatedKeywords,
+        viralScore: trend.score,
+        category: built.category,
+        wordCount: built.wordCount,
+        qualityScore,
+        trendingRank: trendRank,
+        source: 'trending',
+        // Start un-indexable. promote-seo-pages cron decides daily which top
+        // 100 (by qualityScore) to flip to isIndexable:true.
+        isIndexable: false,
+        publishedAt: null,
+      });
       created++;
     }
 
@@ -219,6 +256,7 @@ export async function GET(request: NextRequest) {
       created,
       totalTrendingFound: unique.length,
       message: `Generated ${created} trending SEO pages`,
+      note: 'Pages created as un-indexable. Run /api/cron/promote-seo-pages to gate-promote the top 100 by qualityScore into the sitemap.',
       timestamp: new Date().toISOString(),
     });
   } catch (e: any) {
