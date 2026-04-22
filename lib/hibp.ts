@@ -8,10 +8,9 @@
  */
 export async function hibpBreachCount(password: string): Promise<number> {
   if (!password) return 0;
-  const subtle =
-    (typeof crypto !== 'undefined' && (crypto as any).subtle) ||
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    (require('node:crypto').webcrypto.subtle as SubtleCrypto);
+  const subtle: SubtleCrypto | undefined =
+    typeof crypto !== 'undefined' ? (crypto as any).subtle : undefined;
+  if (!subtle) return 0;
 
   const bytes = new TextEncoder().encode(password);
   const buf = await subtle.digest('SHA-1', bytes);
