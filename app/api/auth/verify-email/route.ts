@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     // Throttle to avoid mail-bombing
     const ip = getClientIP(request);
-    const rl = rateLimit(`verify-email:${authUser.id}:${ip}`, RATE_LIMITS.otp || { windowMs: 10 * 60 * 1000, max: 5 });
+    const rl = rateLimit(`verify-email:${authUser.id}:${ip}`, RATE_LIMITS.auth);
     if (!rl.allowed) {
       return NextResponse.json(
         { error: 'Too many verification emails requested. Please wait a few minutes.' },

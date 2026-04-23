@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         thumbnailAnalysis: thumbnailAnalysis,
         titleAnalysis: titleAnalysis,
         hashtags: hashtags.map(tag => tag.replace('#', '')),
-        trendingTopics: trendingTopics.map(topic => ({ keyword: topic.topic, score: topic.score })),
+        trendingTopics: trendingTopics.map(topic => ({ keyword: topic.keyword, score: topic.score })),
         bestPostingTime: bestPostingTime,
         reasons: viralPrediction.reasons,
         weak_points: viralPrediction.weak_points,

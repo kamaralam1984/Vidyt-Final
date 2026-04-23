@@ -27,7 +27,7 @@ export default function AboutPage() {
           <section className="bg-[#181818] border border-[#212121] rounded-2xl p-8 md:p-12">
             <h2 className="text-3xl font-bold mb-6">The Problem We Solve</h2>
             <p className="text-lg text-[#AAAAAA] leading-relaxed mb-6">
-              Growing a YouTube channel has become incredibly complex. Creators spend hours making amazing videos, only to see them flatline because the title wasn't compelling, the thumbnail didn't stand out, or the timing was wrong. 
+              Growing a YouTube channel has become incredibly complex. Creators spend hours making amazing videos, only to see them flatline because the title wasn&apos;t compelling, the thumbnail didn&apos;t stand out, or the timing was wrong. 
             </p>
             <p className="text-lg text-[#AAAAAA] leading-relaxed">
               We asked ourselves: <em className="text-white">What if creators could predict the performance of their videos before publishing?</em>

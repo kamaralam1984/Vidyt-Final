@@ -10,7 +10,7 @@ const Card = React.forwardRef<
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     className={`rounded-xl border border-white/5 bg-[#141414] text-white shadow-sm ${className || ""}`}
-    {...props}
+    {...(props as any)}
   />
 ))
 Card.displayName = "Card"

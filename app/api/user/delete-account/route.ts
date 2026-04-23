@@ -130,15 +130,15 @@ export async function POST(request: NextRequest) {
       // Anonymize user data (GDPR-style approach)
       user.email = `deleted_${authUser.id}@deleted.local`;
       user.name = 'Deleted User';
-      user.phone = null;
-      user.companyName = null;
-      user.profilePicture = null;
-      user.bio = null;
+      user.phone = undefined;
+      user.companyName = undefined;
+      user.profilePicture = undefined;
+      user.bio = undefined;
       user.socialLinks = undefined;
-      user.subscriptionPlan = null;
-      user.webhookUrl = null;
-      user.whiteLabelCompanyName = null;
-      user.whiteLabelLogoUrl = null;
+      user.subscriptionPlan = undefined;
+      user.webhookUrl = undefined;
+      user.whiteLabelCompanyName = undefined;
+      user.whiteLabelLogoUrl = undefined;
       user.preferences = undefined;
 
       // Clear sensitive fields

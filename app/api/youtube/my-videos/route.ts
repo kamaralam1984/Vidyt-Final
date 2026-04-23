@@ -15,12 +15,12 @@ export async function GET(request: NextRequest) {
     await connectDB();
     const dbUser = await User.findById(user.id);
 
-    if (!dbUser?.youtubeChannelId) {
+    if (!(dbUser as any)?.youtubeChannelId) {
       return NextResponse.json({ videos: [] });
     }
 
     // Fetch videos from YouTube API
-    const accessToken = dbUser.youtubeAccessToken;
+    const accessToken = (dbUser as any)?.youtubeAccessToken || dbUser?.youtube?.access_token;
     if (!accessToken) {
       return NextResponse.json({ videos: [] });
     }

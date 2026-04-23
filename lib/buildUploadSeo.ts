@@ -97,7 +97,7 @@ export function takeTenTrending(
   while (list.length < 10 && i < fallbackKeywords.length) {
     const kw = fallbackKeywords[i++];
     if (!kw || list.some((t) => t.keyword.toLowerCase() === kw.toLowerCase())) continue;
-    list.push({ keyword: kw, score: 72 });
+    list.push({ keyword: kw, score: 72, source: 'ai' as const, confidence: 'medium' as const });
   }
   return list.slice(0, 10);
 }

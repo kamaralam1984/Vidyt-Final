@@ -657,7 +657,7 @@ export default function CalendarPage() {
               {selectedDayPosts.length === 0 ? (
                 <div className="text-center py-8">
                   <CalendarIcon className="w-10 h-10 text-[#333] mx-auto mb-2" />
-                  <p className="text-[#888] text-sm">No posts on this date. Click "Schedule" to add one.</p>
+                  <p className="text-[#888] text-sm">No posts on this date. Click &quot;Schedule&quot; to add one.</p>
                 </div>
               ) : (
                 <div className="space-y-3">

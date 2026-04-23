@@ -670,7 +670,7 @@ export default function BackendControlPage() {
                   </div>
                   {!expandedCols && data.database.collections.length > 8 && (
                     <div className="px-5 py-2.5 text-xs text-white/30 border-t border-white/5">
-                      +{data.database.collections.length - 8} more collections — click "Show all" to view
+                      +{data.database.collections.length - 8} more collections — click &quot;Show all&quot; to view
                     </div>
                   )}
                 </div>

@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       plan,
       billingPeriod,
       amount,
-      currency: (price?.currency || 'INR').toUpperCase(),
+      currency: 'USD',
       status: 'success',
       gateway: 'manual',
       metadata: {

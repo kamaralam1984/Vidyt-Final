@@ -50,7 +50,7 @@ async function getQueueStats(queueName: string) {
       q.getCompletedCount(),
       q.getFailedCount(),
       q.getDelayedCount(),
-      q.getPausedCount(),
+      (q as any).getPausedCount(),
     ]);
     const isPaused = await q.isPaused();
     return { name: queueName, waiting, active, completed, failed, delayed, paused, isPaused, error: null };

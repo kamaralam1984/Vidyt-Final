@@ -110,7 +110,7 @@ export function seedSeoPages(keywords: string[]): void {
         },
       }));
 
-      await SeoPage.bulkWrite(ops, { ordered: false });
+      await SeoPage.bulkWrite(ops as any, { ordered: false });
     } catch {
       // Silent — never affect the user-facing response
     }

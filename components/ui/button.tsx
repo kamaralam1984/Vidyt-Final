@@ -31,7 +31,7 @@ const Button = React.forwardRef<
       whileTap={{ scale: 0.98 }}
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className || ""}`}
       ref={ref}
-      {...props}
+      {...(props as any)}
     />
   )
 })

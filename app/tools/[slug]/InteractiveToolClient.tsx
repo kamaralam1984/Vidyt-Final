@@ -106,7 +106,7 @@ export default function InteractiveToolClient({ tool }: { tool: SEOTool }) {
             visibleCount={2}
             isLoggedIn={isLoggedIn}
             isPro={isPro}
-            feature={tool.title}
+            feature={tool.h1}
             onLoginClick={() => router.push('/auth?ref=tool-gate')}
             onUpgradeClick={() => router.push('/pricing?ref=tool-gate')}
           >

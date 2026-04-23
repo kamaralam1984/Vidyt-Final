@@ -1039,7 +1039,7 @@ function EmailFinderTab({ onAddToCompose }: { onAddToCompose: (emails: string[])
       {!loading && !error && results.length === 0 && keyword && (
         <div className="text-center py-16 text-white/20">
           <Search className="w-8 h-8 mx-auto mb-3 opacity-30" />
-          <p>No results yet. Click "Find Emails" to search.</p>
+          <p>No results yet. Click &quot;Find Emails&quot; to search.</p>
         </div>
       )}
     </div>

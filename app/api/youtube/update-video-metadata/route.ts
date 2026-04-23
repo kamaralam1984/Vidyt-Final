@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
     const dbUser = await User.findById(user.id);
 
-    if (!dbUser?.youtubeAccessToken) {
+    if (!dbUser?.youtube?.access_token) {
       return NextResponse.json(
         { error: 'YouTube access not connected' },
         { status: 401 }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${dbUser.youtubeAccessToken}`,
+          Authorization: `Bearer ${dbUser.youtube?.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

@@ -86,10 +86,10 @@ export async function generateAIImage(
     // Extract the key scene/topic from complex prompt for Pollinations (handles simple prompts better)
     // Keep topic-related parts, remove text overlay instructions
     const cleanedPrompt = prompt
-      .replace(/BOLD 3D TEXT:.*?\./gs, '')
-      .replace(/TITLE TEXT:.*?\./gs, '')
-      .replace(/BOTTOM BAR:.*?\./gs, '')
-      .replace(/PROFESSIONAL TEXT:.*?\./gs, '')
+      .replace(/BOLD 3D TEXT:[\s\S]*?\./g, '')
+      .replace(/TITLE TEXT:[\s\S]*?\./g, '')
+      .replace(/BOTTOM BAR:[\s\S]*?\./g, '')
+      .replace(/PROFESSIONAL TEXT:[\s\S]*?\./g, '')
       .replace(/Text must be.*?\./g, '')
       .replace(/\n+/g, ' ')
       .trim();

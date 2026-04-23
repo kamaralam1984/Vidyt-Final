@@ -131,13 +131,13 @@ export default function SecurityPage() {
   const downloadBackupCodes = () => {
     if (!backupCodes) return;
     const blob = new Blob(
-      [
+      [[
         'Vidyt — Two-Factor Authentication Backup Codes',
         'Generated: ' + new Date().toISOString(),
         'Use each code ONCE if you lose access to your authenticator.',
         '',
         ...backupCodes,
-      ].join('\n'),
+      ].join('\n')],
       { type: 'text/plain' },
     );
     const url = URL.createObjectURL(blob);

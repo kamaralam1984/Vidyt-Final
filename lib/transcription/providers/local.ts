@@ -21,8 +21,8 @@ export class LocalWhisperProvider implements TranscriptionProvider {
       let buffer: Buffer;
       if (Buffer.isBuffer(file)) {
         buffer = file;
-      } else if (file instanceof Blob || file instanceof File) {
-        buffer = Buffer.from(await file.arrayBuffer());
+      } else if ('arrayBuffer' in (file as object)) {
+        buffer = Buffer.from(await (file as Blob).arrayBuffer());
       } else {
         throw new Error('Invalid file type for local Whisper transcription');
       }

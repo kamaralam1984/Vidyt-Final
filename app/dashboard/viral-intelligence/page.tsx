@@ -388,7 +388,7 @@ function UltraEngineContent() {
                             <span className="text-xs font-bold text-white bg-[#FF0000] px-2 py-0.5 rounded">VARIANT {i + 1}</span>
                             <span className="text-xs font-medium text-purple-400 border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 rounded">{thumb.emotion}</span>
                           </div>
-                          <p className="text-white font-bold text-lg mb-2">"{thumb.text}"</p>
+                          <p className="text-white font-bold text-lg mb-2">&quot;{thumb.text}&quot;</p>
                           <div className="grid grid-cols-2 gap-2 text-xs text-[#888]">
                             <div><span className="text-[#666]">COLOR:</span> {thumb.color_style}</div>
                           </div>
@@ -421,7 +421,7 @@ function UltraEngineContent() {
                   <Panel title="Competitor Intelligence" icon={Users} iconColor="text-pink-400">
                     <div className="space-y-3">
                       <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
-                        <p className="text-xs font-semibold text-emerald-400 mb-2 flex items-center gap-2"><TrendingUp className="w-3.5 h-3.5" /> WHAT'S WORKING</p>
+                        <p className="text-xs font-semibold text-emerald-400 mb-2 flex items-center gap-2"><TrendingUp className="w-3.5 h-3.5" /> WHAT&apos;S WORKING</p>
                         <p className="text-sm text-[#CCC]">{result.competitor_insight.what_is_working}</p>
                       </div>
                       <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">

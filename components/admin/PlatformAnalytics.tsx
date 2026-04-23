@@ -128,7 +128,7 @@ function SessionDetailModal({ sessionId, onClose }: { sessionId: string; onClose
     const fetchSession = async () => {
       try {
         const res = await fetch(`/api/admin/super/analytics/session?sessionId=${sessionId}`, { headers: getAuthHeaders() });
-        const json = await res.data || await res.json();
+        const json = await res.json();
         setData(json);
       } catch (e) {
         console.error(e);

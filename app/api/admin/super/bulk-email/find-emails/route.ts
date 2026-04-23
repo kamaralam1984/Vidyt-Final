@@ -202,6 +202,7 @@ async function findFacebookEmails(keyword: string, maxResults = 100) {
     };
   }
 
+  const results: any[] = [];
   try {
     // Get app access token
     const tokenRes = await fetch(
@@ -212,8 +213,6 @@ async function findFacebookEmails(keyword: string, maxResults = 100) {
       return { results: [], error: `Facebook token error: ${tokenData.error?.message || 'Unknown'}` };
     }
     const token = tokenData.access_token;
-
-    const results: any[] = [];
     const seenEmails = new Set<string>();
 
     const searchParams = new URLSearchParams({

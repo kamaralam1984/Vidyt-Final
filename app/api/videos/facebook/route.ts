@@ -186,7 +186,6 @@ export async function POST(request: NextRequest) {
         predictedViews: viralPrediction.predictedViews,
         engagementForecast: viralPrediction.engagementForecast,
         growthCurve: viralPrediction.growthCurve,
-        factors: viralPrediction.factors,
       };
     } catch (error: any) {
       console.error('Advanced viral prediction error, using fallback:', error);

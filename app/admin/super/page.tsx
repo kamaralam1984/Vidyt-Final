@@ -92,7 +92,7 @@ export default function SuperAdminPage() {
   const [aiStudioSaving, setAiStudioSaving] = useState(false);
   const [aiToolsAccess, setAiToolsAccess] = useState<Record<string, string[]>>({});
   const [aiToolsSaving, setAiToolsSaving] = useState(false);
-  const [apiConfigStatus, setApiConfigStatus] = useState<Record<string, boolean>>({});
+  const [apiConfigStatus, setApiConfigStatus] = useState<Record<string, boolean | Record<string, boolean>>>({});
   const [apiConfigForm, setApiConfigForm] = useState<Record<string, string>>({});
   const [apiConfigLoading, setApiConfigLoading] = useState(false);
   const [apiConfigSaving, setApiConfigSaving] = useState(false);
@@ -1285,7 +1285,7 @@ export default function SuperAdminPage() {
                 ))}
                 
                 {/* Dynamically render Custom APIs if they exist in config */}
-                {Object.keys(apiConfigStatus?.customApis || {}).map((customName) => (
+                {Object.keys((apiConfigStatus?.customApis as Record<string, boolean> | undefined) || {}).map((customName) => (
                    <div key={`custom_${customName}`} className="bg-[#101010] border border-[#212121] rounded-xl p-4">
                      <label className="block text-sm font-medium text-[#FF8C00] mb-1">Custom API: {customName}</label>
                      <p className="text-xs text-[#888] mb-2">Manually added custom API key for external service.</p>
@@ -1294,11 +1294,11 @@ export default function SuperAdminPage() {
                          type="password"
                          value={apiConfigForm[`custom_${customName}`] ?? ''}
                          onChange={(e) => setApiConfigForm((f) => ({ ...f, [`custom_${customName}`]: e.target.value }))}
-                         placeholder={apiConfigStatus?.customApis?.[customName] ? '•••• (set – enter new to change)' : 'Not set – enter key'}
+                         placeholder={(apiConfigStatus?.customApis as Record<string, boolean> | undefined)?.[customName] ? '•••• (set – enter new to change)' : 'Not set – enter key'}
                          className="flex-1 min-w-[200px] px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-[#FF8C00] focus:border-[#FF8C00]"
                          autoComplete="off"
                        />
-                       {apiConfigStatus?.customApis?.[customName] && (
+                       {(apiConfigStatus?.customApis as Record<string, boolean> | undefined)?.[customName] && (
                          <button
                            type="button"
                            onClick={() => setApiConfigForm((f) => ({ ...f, [`custom_${customName}`]: '' }))}
@@ -1307,7 +1307,7 @@ export default function SuperAdminPage() {
                            Clear
                          </button>
                        )}
-                       {apiConfigStatus?.customApis?.[customName] && (
+                       {(apiConfigStatus?.customApis as Record<string, boolean> | undefined)?.[customName] && (
                          <span className="text-xs text-green-500 whitespace-nowrap">Set</span>
                        )}
                      </div>
@@ -1339,7 +1339,7 @@ export default function SuperAdminPage() {
                         const k = keyEl?.value.trim();
                         if (n && k) {
                            setApiConfigForm(f => ({ ...f, [`custom_${n}`]: k }));
-                           setApiConfigStatus(s => ({ ...s, customApis: { ...(s.customApis || {}), [n]: true } }));
+                           setApiConfigStatus(s => ({ ...s, customApis: { ...(s.customApis as Record<string, boolean> | undefined || {}), [n]: true } }));
                            nameEl.value = ''; keyEl.value = '';
                            alert(`Custom API '${n}' staged. Click 'Save API Config' below to save it.`);
                         } else {

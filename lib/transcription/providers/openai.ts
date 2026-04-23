@@ -16,7 +16,7 @@ export class OpenAIProvider implements TranscriptionProvider {
       // Need to handle Buffer if on server backend correctly
       let fileToUpload: File | Blob;
       if (Buffer.isBuffer(file)) {
-        fileToUpload = new File([file], fileName, { type: 'audio/mpeg' });
+        fileToUpload = new File([new Uint8Array(file)], fileName, { type: 'audio/mpeg' });
       } else {
         fileToUpload = file;
       }

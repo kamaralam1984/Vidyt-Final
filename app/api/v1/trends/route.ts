@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category') || 'General';
 
-    const trends = await getTrendingTopics(category);
+    const trends = await getTrendingTopics([category]);
 
     // Update usage stats
     await User.updateOne(

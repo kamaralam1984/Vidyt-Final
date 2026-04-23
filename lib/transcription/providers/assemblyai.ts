@@ -15,8 +15,8 @@ export class AssemblyAIProvider implements TranscriptionProvider {
       let body: Buffer | ArrayBuffer | Blob | File;
       if (Buffer.isBuffer(file)) {
         body = file;
-      } else if (file instanceof Blob || file instanceof File) {
-        body = await file.arrayBuffer();
+      } else if ('arrayBuffer' in (file as object)) {
+        body = await (file as Blob).arrayBuffer();
       } else {
         body = file;
       }

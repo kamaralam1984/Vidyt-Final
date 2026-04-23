@@ -182,7 +182,7 @@ function ScriptGeneratorContent() {
           {isIdeasMode && ideas.length > 0 && !loading && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-white">Today's Video Ideas</h2>
+                <h2 className="text-lg font-bold text-white">Today&apos;s Video Ideas</h2>
                 {ideasMeta?.usedYouTubeTrending && <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">YouTube Trending + AI</span>}
               </div>
               {ideas.map((idea, i) => (

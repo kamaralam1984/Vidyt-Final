@@ -2,9 +2,13 @@
 
 export const dynamic = 'force-dynamic';
 
-import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+
+function getSearchParam(name: string): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get(name);
+}
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import NextImage from 'next/image';
@@ -43,13 +47,12 @@ type LoginMethod = 'uniqueIdPin' | 'emailPassword';
 function AuthPageContent() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [isLogin, setIsLogin] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('uniqueIdPin');
 
   // Silently apply referral code after signup
   const applyReferral = async (token: string) => {
-    const refCode = searchParams?.get('ref');
+    const refCode = getSearchParam('ref');
     if (!refCode || !token) return;
     try {
       await fetch('/api/referral/apply', {
@@ -66,15 +69,15 @@ function AuthPageContent() {
   // Redirect /auth?mode=login to clean URL /login
   useEffect(() => {
     // `useSearchParams()` can be `null` during some SSR/build phases.
-    if (pathname === '/auth' && searchParams?.get('mode') === 'login') {
+    if (pathname === '/auth' && getSearchParam('mode') === 'login') {
       router.replace('/login');
       return;
     }
-  }, [pathname, searchParams, router]);
+  }, [pathname, router]);
 
   // Show Google OAuth errors returned as URL params (e.g. ?error=google_auth_failed)
   useEffect(() => {
-    const oauthError = searchParams?.get('error');
+    const oauthError = getSearchParam('error');
     if (!oauthError) return;
     const messages: Record<string, string> = {
       google_auth_failed: 'Google sign-in was cancelled or failed. Please try again.',
@@ -83,7 +86,7 @@ function AuthPageContent() {
       auth_internal_error: 'An error occurred during Google sign-in. Please try again.',
     };
     setError(messages[oauthError] || 'Sign-in failed. Please try again.');
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     // /login route shows login; /auth uses ?mode= param or defaults to signup
@@ -91,13 +94,13 @@ function AuthPageContent() {
       setIsLogin(true);
       return;
     }
-    const mode = searchParams?.get('mode');
+    const mode = getSearchParam('mode');
     if (mode === 'login') {
       setIsLogin(true);
     } else if (mode === 'signup') {
       setIsLogin(false);
     }
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   const [subscriptionType, setSubscriptionType] = useState<SubscriptionType>('trial');
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
@@ -137,7 +140,7 @@ function AuthPageContent() {
     if (pathname === '/login') {
       setIsLogin(true);
     } else {
-      const mode = searchParams?.get('mode');
+      const mode = getSearchParam('mode');
       if (mode === 'login') setIsLogin(true);
       else if (mode === 'signup') setIsLogin(false);
     }
@@ -1195,9 +1198,5 @@ function AuthPageContent() {
 }
 
 export default function AuthPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
-      <AuthPageContent />
-    </Suspense>
-  );
+  return <AuthPageContent />;
 }
