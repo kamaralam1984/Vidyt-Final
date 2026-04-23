@@ -7,12 +7,15 @@ import { useLocale, SUPPORTED_LOCALES, type LocaleState } from '@/context/Locale
 
 const POPUP_DISMISSED_KEY = 'vidyt-country-popup-dismissed';
 
+const AUTH_PATHS = ['/login', '/auth', '/register', '/signup', '/forgot-password', '/reset-password'];
+
 export default function CountrySelectPopup() {
   const { locale, setLocale } = useLocale();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (AUTH_PATHS.some(p => window.location.pathname.startsWith(p))) return;
     const dismissed = localStorage.getItem(POPUP_DISMISSED_KEY);
     const hasManualChoice = localStorage.getItem('viralboost-locale');
     if (dismissed || hasManualChoice) return;

@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 function getSearchParam(name: string): string | null {
@@ -1198,5 +1198,9 @@ function AuthPageContent() {
 }
 
 export default function AuthPage() {
-  return <AuthPageContent />;
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white">Loading...</div>}>
+      <AuthPageContent />
+    </Suspense>
+  );
 }

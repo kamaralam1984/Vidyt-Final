@@ -26,6 +26,8 @@ export default function CookieConsent() {
   const [showPreferences, setShowPreferences] = useState(false);
 
   useEffect(() => {
+    const authPaths = ['/login', '/auth', '/register', '/signup', '/forgot-password', '/reset-password'];
+    if (authPaths.some(p => window.location.pathname.startsWith(p))) return;
     // Check if user has already made a choice
     const consent = getStoredConsent();
     if (!consent) {
