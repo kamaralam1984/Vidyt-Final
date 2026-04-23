@@ -108,7 +108,7 @@ export default function GamingTitleGeneratorPage() {
               🔥 I Survived 100 Days in Minecraft Hardcore... and THIS Happened!
             </li>
             <li className="p-3 bg-gray-50 border border-gray-100 rounded cursor-pointer hover:bg-gray-100 hover:border-gray-300">
-              The ONLY GTA 5 RP Guide You'll Ever Need (Hindi)
+              The ONLY GTA 5 RP Guide You&apos;ll Ever Need (Hindi)
             </li>
             <li className="p-3 bg-gray-50 border border-gray-100 rounded cursor-pointer hover:bg-gray-100 hover:border-gray-300">
               BGMI 3.0 Update: Best Class Setup & Sensitivity Settings!
@@ -131,10 +131,10 @@ export default function GamingTitleGeneratorPage() {
       <section className="introduction mb-10">
         <h2 className="text-3xl font-bold mb-4">Why the Right Title is Everything for Gaming Creators</h2>
         <p className="mb-4 text-gray-700 leading-relaxed">
-          Welcome to the ultimate <strong>YouTube Title Generator for Gaming Videos</strong>! As a gaming creator, the competition is brutal. You can spend 10 hours perfecting a Let's Play or a montage, but without a high CTR title, nobody clicks. That zero CTR means YouTube completely kills your reach. By using an AI-focused <em>YouTube Title Generator for Gaming Videos</em>, you get an unfair advantage. 
+          Welcome to the ultimate <strong>YouTube Title Generator for Gaming Videos</strong>! As a gaming creator, the competition is brutal. You can spend 10 hours perfecting a Let&apos;s Play or a montage, but without a high CTR title, nobody clicks. That zero CTR means YouTube completely kills your reach. By using an AI-focused <em>YouTube Title Generator for Gaming Videos</em>, you get an unfair advantage. 
         </p>
         <p className="text-gray-700 leading-relaxed">
-          Chahe aap fast-paced Valorant gameplay record kar rahe ho ya GTA RP clips daal rahe ho, this tool combines emotional hooks with gaming SEO. It naturally inserts LSI keywords like "viral titles" and "YouTube growth" to ensure you appear in Search and Suggested feeds easily.
+          Chahe aap fast-paced Valorant gameplay record kar rahe ho ya GTA RP clips daal rahe ho, this tool combines emotional hooks with gaming SEO. It naturally inserts LSI keywords like &quot;viral titles&quot; and &quot;YouTube growth&quot; to ensure you appear in Search and Suggested feeds easily.
         </p>
       </section>
 
@@ -171,7 +171,7 @@ export default function GamingTitleGeneratorPage() {
         <h2 className="text-2xl font-bold mb-4">Perfect For... (Use Cases)</h2>
         <ul className="list-disc list-inside space-y-2 text-gray-700">
           <li><strong>Gamers & Streamers:</strong> Those looking to turn Twitch/YouTube streams into highlight videos.</li>
-          <li><strong>YouTubers on a Budget:</strong> Creators who can't afford dedicated gaming SEO agencies.</li>
+          <li><strong>YouTubers on a Budget:</strong> Creators who can&apos;t afford dedicated gaming SEO agencies.</li>
           <li><strong>Content Creators targeting India:</strong> Perfect for mixing English with local Hinglish to establish an authentic connection.</li>
         </ul>
       </section>
@@ -190,12 +190,12 @@ export default function GamingTitleGeneratorPage() {
 
           <div className="faq-item bg-gray-50 p-4 rounded-lg border">
             <h3 className="font-bold text-lg mb-2">2. Does a good title really impact gaming video optimization?</h3>
-            <p className="text-gray-700">Absolutely! It boosts your Click-Through Rate (CTR). Without proper LSI keywords and a strong hook, your gameplay won't get recommended by the YouTube algorithm.</p>
+            <p className="text-gray-700">Absolutely! It boosts your Click-Through Rate (CTR). Without proper LSI keywords and a strong hook, your gameplay won&apos;t get recommended by the YouTube algorithm.</p>
           </div>
 
           <div className="faq-item bg-gray-50 p-4 rounded-lg border">
             <h3 className="font-bold text-lg mb-2">3. Can I generate titles in Hinglish using this tool?</h3>
-            <p className="text-gray-700">Yes! We support Hinglish (e.g., "BGMI Intense Gameplay - Full Rush Bhai!"). Making relatable titles specifically for the Indian gaming audience highly accelerates channel growth.</p>
+            <p className="text-gray-700">Yes! We support Hinglish (e.g., &quot;BGMI Intense Gameplay - Full Rush Bhai!&quot;). Making relatable titles specifically for the Indian gaming audience highly accelerates channel growth.</p>
           </div>
 
           <div className="faq-item bg-gray-50 p-4 rounded-lg border">

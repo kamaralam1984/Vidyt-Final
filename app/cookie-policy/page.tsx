@@ -67,7 +67,7 @@ export default function CookiePolicyPage() {
           <section>
             <h2 className="text-2xl font-bold text-white mb-4">2. The Consent Banner</h2>
             <p>
-              Upon your first visit to Vid YT, a cookie consent banner is displayed. By selecting "Accept All", you agree to the deployment and reading of all cookie categories. By selecting "Decline", only strictly necessary functional cookies will be stored on your browser.
+              Upon your first visit to Vid YT, a cookie consent banner is displayed. By selecting &quot;Accept All&quot;, you agree to the deployment and reading of all cookie categories. By selecting &quot;Decline&quot;, only strictly necessary functional cookies will be stored on your browser.
             </p>
           </section>
 

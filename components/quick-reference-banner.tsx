@@ -65,7 +65,7 @@ export default function QuickReferenceBanner() {
             <div className="mt-4 p-3 bg-[#22c55e]/10 border border-[#22c55e]/20 rounded text-xs text-[#AAA] flex items-start gap-2">
               <span className="flex-shrink-0">💡</span>
               <span>
-                <strong>Pro Tip:</strong> No new uploads needed! Just update old video metadata with SEO-optimized content. Your videos stay the same, but with better titles, descriptions & tags for YouTube's algorithm.
+                <strong>Pro Tip:</strong> No new uploads needed! Just update old video metadata with SEO-optimized content. Your videos stay the same, but with better titles, descriptions & tags for YouTube&apos;s algorithm.
               </span>
             </div>
           </motion.div>

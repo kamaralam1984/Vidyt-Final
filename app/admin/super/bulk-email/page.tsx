@@ -1317,7 +1317,7 @@ function SavedEmailsTab({ onAddToCompose }: { onAddToCompose: (emails: string[])
         <div className="text-center py-20 text-white/20">
           <Database className="w-8 h-8 mx-auto mb-3 opacity-30" />
           <p>No saved emails yet.</p>
-          <p className="text-xs mt-1">Use Email Finder and click "Save to DB"</p>
+          <p className="text-xs mt-1">Use Email Finder and click &quot;Save to DB&quot;</p>
         </div>
       ) : (
         <div className="bg-white/5 border border-white/5 rounded-xl overflow-hidden">

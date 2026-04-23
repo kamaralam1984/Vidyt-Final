@@ -183,7 +183,7 @@ export default function GamingTitleGeneratorPage() {
           
           <h2>The Ultimate YouTube Title Generator for Gaming Videos</h2>
           <p>
-            Welcome to the ultimate <strong>YouTube Title Generator for Gaming Videos</strong>. In the hyper-competitive gaming niche, spending 10 hours editing a perfect video means nothing if your title doesn't capture attention. A low CTR (Click-Through Rate) instantly kills your reach. Our AI-driven <em>YouTube Title Generator for Gaming Videos</em> analyzes millions of successful clips to discover the exact psychological hooks and LSI keywords (like "viral titles", "gaming SEO", and "YouTube growth") required to hack the algorithm.
+            Welcome to the ultimate <strong>YouTube Title Generator for Gaming Videos</strong>. In the hyper-competitive gaming niche, spending 10 hours editing a perfect video means nothing if your title doesn&apos;t capture attention. A low CTR (Click-Through Rate) instantly kills your reach. Our AI-driven <em>YouTube Title Generator for Gaming Videos</em> analyzes millions of successful clips to discover the exact psychological hooks and LSI keywords (like &quot;viral titles&quot;, &quot;gaming SEO&quot;, and &quot;YouTube growth&quot;) required to hack the algorithm.
           </p>
           <p>
             Chahe aap Minecraft ka hardcore survival khelo ya BGMI mein insane clutch dikhao, crafting an emotional, click-worthy hook is the only way to grow. Our tool mixes Hinglish engagement and proper English to craft titles perfectly weighted for maximum YouTube growth.
@@ -194,7 +194,7 @@ export default function GamingTitleGeneratorPage() {
             <li><strong>AI-Powered Titles:</strong> Generates hyper-clickable phrasing backed by current gaming trends.</li>
             <li><strong>SEO Optimized:</strong> Implants heavily searched gaming SEO terms naturally so YouTube knows exactly who to show your video to.</li>
             <li><strong>High CTR Focused:</strong> Focuses on curiosity, authority, or shock value to legally hook the viewer.</li>
-            <li><strong>Niche-Based Suggestions:</strong> Adapts output specifically whether you input "Roblox", "Valorant", "GTA 5", or "Free Fire".</li>
+            <li><strong>Niche-Based Suggestions:</strong> Adapts output specifically whether you input &quot;Roblox&quot;, &quot;Valorant&quot;, &quot;GTA 5&quot;, or &quot;Free Fire&quot;.</li>
           </ul>
 
           <h2>How It Works (3 Simple Steps)</h2>
@@ -232,15 +232,15 @@ export default function GamingTitleGeneratorPage() {
             </div>
             <div className="border-b border-gray-100 pb-6">
               <h3 className="font-bold text-xl mb-2 text-gray-900">2. Does a title really impact gaming optimization?</h3>
-              <p className="text-gray-600">Absolutely. The YouTube algorithm relies heavily on CTR and audience retention. If your title fails to hook viewers, your video won't get suggested alongside related viral gaming videos.</p>
+              <p className="text-gray-600">Absolutely. The YouTube algorithm relies heavily on CTR and audience retention. If your title fails to hook viewers, your video won&apos;t get suggested alongside related viral gaming videos.</p>
             </div>
             <div className="border-b border-gray-100 pb-6">
               <h3 className="font-bold text-xl mb-2 text-gray-900">3. Will this tool boost my YouTube growth?</h3>
-              <p className="text-gray-600">Yes. The <em>YouTube Title Generator for Gaming Videos</em> naturally embeds high-value LSI keywords (e.g., "viral titles", "best settings") that instantly signal relevance to the search engine.</p>
+              <p className="text-gray-600">Yes. The <em>YouTube Title Generator for Gaming Videos</em> naturally embeds high-value LSI keywords (e.g., &quot;viral titles&quot;, &quot;best settings&quot;) that instantly signal relevance to the search engine.</p>
             </div>
             <div className="border-b border-gray-100 pb-6">
               <h3 className="font-bold text-xl mb-2 text-gray-900">4. Can I add local Hinglish slang?</h3>
-              <p className="text-gray-600">Yes, the AI detects Hinglish context perfectly! Input queries like "BGMI gameplay rush bhai" to receive titles designed explicitly for the Indian market.</p>
+              <p className="text-gray-600">Yes, the AI detects Hinglish context perfectly! Input queries like &quot;BGMI gameplay rush bhai&quot; to receive titles designed explicitly for the Indian market.</p>
             </div>
             <div className="pb-2">
               <h3 className="font-bold text-xl mb-2 text-gray-900">5. What else do I need for success?</h3>

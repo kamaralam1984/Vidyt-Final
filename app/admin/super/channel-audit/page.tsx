@@ -296,7 +296,7 @@ export default function SuperChannelAudit() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {auditData.analytics.recentVideos.slice(0, 4).map((video: any, i: number) => (
                         <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/5">
-                          <img src={video.thumbnail} className="w-20 h-14 rounded-lg object-cover" />
+                          <img src={video.thumbnail} alt={video.title} className="w-20 h-14 rounded-lg object-cover" />
                           <div className="flex-1 min-w-0">
                             <h4 className="text-xs font-bold truncate mb-1">{video.title}</h4>
                             <div className="flex items-center gap-3 text-[10px] text-gray-500">
