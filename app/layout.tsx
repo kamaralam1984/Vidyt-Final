@@ -127,6 +127,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
+        {/* Early SW reconciliation — runs before any JS chunk loads.
+            Forces a registration.update() so users upgrading from an older
+            sw.js (which could intercept chunk requests) drop that controller
+            immediately; one reload on controllerchange lands them on the
+            no-op v4 worker. Must stay inline and synchronous. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{if(!('serviceWorker' in navigator))return;var h=!!navigator.serviceWorker.controller,r=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(!h||r)return;r=true;location.reload();});navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(x){try{x.update()}catch(e){}});}).catch(function(){});}catch(e){}})();",
+          }}
+        />
         {/* Preconnect to critical origins — reduces DNS + TLS handshake time */}
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="preconnect" href="https://www.google-analytics.com" />
