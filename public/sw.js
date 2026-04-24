@@ -1,11 +1,10 @@
-/* Minimal service worker — enables PWA install; passes all requests to network (no stale Next.js cache). */
-/* v3 — 2026-04-23 */
+/* Minimal service worker — enables PWA install. Zero network interception. */
+/* v4 — 2026-04-24 */
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  // Clear ALL caches on every activate so stale CSP/pages are never served from cache
   event.waitUntil(
     caches
       .keys()
@@ -14,18 +13,8 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  // Only intercept same-origin requests — let browser handle external domains directly
-  if (url.origin !== self.location.origin) return;
-  // Skip non-GET requests (POST to /api/auth/login etc.)
-  if (event.request.method !== 'GET') return;
-  // Skip navigation requests (page loads) — browser handles them directly.
-  // Intercepting navigations and returning Response.error() on failure
-  // causes FetchEvent network-error warnings and broken page loads.
-  if (event.request.mode === 'navigate') return;
-  // For non-navigation GET requests, pass through to network
-  event.respondWith(
-    fetch(event.request).catch(() => Response.error())
-  );
-});
+// No-op fetch listener — required for PWA install eligibility, but never
+// intercepts. Without event.respondWith(), the browser handles every request
+// normally, so failed requests surface as regular TypeErrors at the call site
+// instead of "FetchEvent resulted in network error" console warnings.
+self.addEventListener('fetch', () => {});

@@ -10,9 +10,20 @@ export default function PWARegister() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
+    // If an old SW was already controlling this page, reload once when the
+    // new SW takes over so the user drops any stale behavior from v3 or older.
+    const hadController = !!navigator.serviceWorker.controller;
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+
     const register = () => {
       navigator.serviceWorker
-        .register('/sw.js', { scope: '/' })
+        .register('/sw.js', { scope: '/', updateViaCache: 'none' })
+        .then((reg) => reg.update().catch(() => {}))
         .catch((err) => console.warn('Service worker registration failed:', err));
     };
 
