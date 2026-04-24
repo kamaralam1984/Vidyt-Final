@@ -20,13 +20,15 @@ export interface ScoreInputs {
   ageHours?: number;    // hours since page creation (freshness)
 }
 
-export const INDEXABLE_THRESHOLD = 70;
+// Threshold lowered to 55 so quality new pages (1200+ words, no views yet)
+// can reach "pending" status and be promoted by the daily cron.
+export const INDEXABLE_THRESHOLD = 55;
 export const DAILY_PROMOTION_CAP = 100;
 
 export function computeQualityScore(i: ScoreInputs): number {
-  // 1) Word-count gate (max 30 pts). Google wants substance.
-  //    300w = 0, 800w = 15, 1200w = 25, 1800w+ = 30.
-  const wcScore = Math.min(30, Math.max(0, (i.wordCount - 300) / 50));
+  // 1) Word-count gate (max 35 pts). Google wants substance.
+  //    300w = 0, 600w = 12, 900w = 24, 1200w+ = 30, 1800w+ = 35.
+  const wcScore = Math.min(35, Math.max(0, (i.wordCount - 300) / 30));
 
   // 2) Viral score fit (max 20 pts) — reflects keyword demand.
   const viralPart = Math.min(20, (i.viralScore / 100) * 20);
@@ -38,16 +40,22 @@ export function computeQualityScore(i: ScoreInputs): number {
     trendPart = Math.max(0, 20 - Math.log10(i.trendingRank) * 8);
   }
 
-  // 4) Engagement signal (max 15 pts) — real users validate quality.
+  // 4) Engagement signal (max 10 pts) — real users validate quality.
   //    Log-scaled so a single page that went viral doesn't dominate.
-  //    0 views = 0, 10 views = 4, 100 views = 8, 1000 views = 12, 10k+ = 15.
-  const viewsPart = Math.min(15, Math.log10(i.views + 1) * 4);
+  //    0 views = 0, 10 views = 3, 100 views = 6, 1000 views = 9, 10k+ = 10.
+  const viewsPart = Math.min(10, Math.log10(i.views + 1) * 3);
 
-  // 5) Structure completeness (max 15 pts) — rich media signals.
+  // 5) Structure completeness (max 15 pts) — rich content signals.
   const hashtagPart = Math.min(6, i.hashtagCount * 0.4);  // 15 tags = 6 pts
   const faqPart = Math.min(9, i.faqCount * 1.8);          // 5 FAQs = 9 pts
 
-  const raw = wcScore + viralPart + trendPart + viewsPart + hashtagPart + faqPart;
+  // 6) Freshness bonus (max 5 pts) — new pages get a brief boost to enter
+  //    the cron promotion pool before accumulating real engagement.
+  const agePart = i.ageHours !== undefined
+    ? Math.max(0, 5 - i.ageHours / 48)   // full 5 pts at 0h, 0 at 240h (10 days)
+    : 5;                                   // unknown age → assume fresh
+
+  const raw = wcScore + viralPart + trendPart + viewsPart + hashtagPart + faqPart + agePart;
   return Math.min(100, Math.round(raw));
 }
 

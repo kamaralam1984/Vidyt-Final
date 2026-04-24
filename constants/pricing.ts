@@ -1,34 +1,19 @@
-import { Sparkles, Rocket, Zap, Crown, Globe, Star } from 'lucide-react';
+import { Zap, Star, Crown, Rocket } from 'lucide-react';
 
-export const PLAN_UI_METADATA: Record<string, {
-  icon: any;
+export interface PlanUIMetadata {
+  icon: React.ElementType;
   color: string;
   popular?: boolean;
-}> = {
-  free: {
-    icon: Sparkles,
-    color: '#AAAAAA',
-  },
-  starter: {
-    icon: Rocket,
-    color: '#3b82f6',
-  },
-  pro: {
-    icon: Zap,
-    color: '#FF0000',
-    popular: true,
-  },
-  enterprise: {
-    icon: Crown,
-    color: '#FFD700',
-  },
-  custom: {
-    icon: Globe,
-    color: '#FF0000',
-  },
+}
+
+export const PLAN_UI_METADATA: Record<string, PlanUIMetadata> = {
+  free: { icon: Zap, color: '#6b7280' },
+  basic: { icon: Star, color: '#3b82f6' },
+  pro: { icon: Rocket, color: '#8b5cf6', popular: true },
+  enterprise: { icon: Crown, color: '#f59e0b' },
 };
 
-export const DEFAULT_PLAN_METADATA = {
-  icon: Star,
-  color: '#3b82f6',
+export const DEFAULT_PLAN_METADATA: PlanUIMetadata = {
+  icon: Zap,
+  color: '#6b7280',
 };
