@@ -181,18 +181,18 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
     <div className="min-h-screen bg-[#0F0F0F]">
       <MarketingNavbar />
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center pt-20 px-6 overflow-hidden">
+      <section className="relative min-h-screen flex items-center justify-center pt-16 md:pt-20 px-4 sm:px-6 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#FF0000]/10 via-transparent to-transparent" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#FF0000]/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#FF0000]/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-48 h-48 sm:w-96 sm:h-96 bg-[#FF0000]/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 sm:w-96 sm:h-96 bg-[#FF0000]/5 rounded-full blur-3xl" />
 
-        <div className="max-w-7xl mx-auto text-center relative z-10">
+        <div className="max-w-7xl mx-auto text-center relative z-10 w-full">
           {/* Hero: CSS animations only — no JS opacity:0 so LCP is not blocked */}
           <div className="animate-hero-fade">
             <div className="flex justify-center mb-0">
               {/* Container 80% height = crop bottom 20% of logo */}
-              <div className="relative overflow-hidden flex justify-center items-start h-[19rem] md:h-[26.8rem] w-full max-w-[30rem]">
+              <div className="relative overflow-hidden flex justify-center items-start h-[12rem] sm:h-[16rem] md:h-[26.8rem] w-full max-w-[18rem] sm:max-w-[24rem] md:max-w-[30rem]">
                 <Image
                   src="/Logo.webp"
                   alt="Vid YT"
@@ -200,18 +200,18 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                   height={341}
                   priority
                   fetchPriority="high"
-                  sizes="(max-width: 768px) 288px, 480px"
-                  className="h-96 md:h-[30rem] w-auto object-contain object-top"
+                  sizes="(max-width: 640px) 200px, (max-width: 768px) 288px, 480px"
+                  className="h-[15rem] sm:h-[20rem] md:h-[30rem] w-auto object-contain object-top"
                 />
               </div>
             </div>
-            <h1 className="text-6xl md:text-8xl font-bold text-white mt-0 mb-6">
+            <h1 className="text-3xl sm:text-5xl md:text-8xl font-bold text-white mt-0 mb-4 md:mb-6 leading-tight">
               {t('hero.title.main')}{' '}
               <span className="text-[#FF0000] bg-gradient-to-r from-[#FF0000] to-[#CC0000] bg-clip-text text-transparent">
                 {t('hero.title.highlight')}
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-[#AAAAAA] mb-8 max-w-3xl mx-auto">
+            <p className="text-base sm:text-xl md:text-2xl text-[#AAAAAA] mb-6 md:mb-8 max-w-3xl mx-auto px-2">
               {t('hero.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -519,7 +519,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
 
       {/* Extension Section */}
       <section id="extension" className="py-24 px-6 bg-gradient-to-b from-[#181818] to-[#0F0F0F] relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#FF0000]/5 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] sm:w-[600px] sm:h-[600px] md:w-[800px] md:h-[800px] bg-[#FF0000]/5 rounded-full blur-[80px] md:blur-[120px] pointer-events-none" />
         
         <div className="max-w-5xl mx-auto relative z-10">
           <div className="bg-[#212121]/50 border border-white/10 rounded-[2.5rem] p-8 md:p-16 backdrop-blur-md">
@@ -537,7 +537,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 </p>
                 <form onSubmit={handleWaitlistSubmit} className="space-y-4">
                   <div className="flex flex-wrap gap-4">
-                    <div className="relative flex-1 min-w-[280px]">
+                    <div className="relative flex-1 min-w-0 sm:min-w-[280px]">
                       <input
                         type="email"
                         value={waitlistEmail}
