@@ -127,15 +127,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
-        {/* Early SW reconciliation — runs before any JS chunk loads.
-            Forces a registration.update() so users upgrading from an older
-            sw.js (which could intercept chunk requests) drop that controller
-            immediately; one reload on controllerchange lands them on the
-            no-op v4 worker. Must stay inline and synchronous. */}
+        {/* Early SW reconciliation + ChunkLoadError recovery — runs before any
+            JS chunk loads. Forces registration.update() so users upgrading from
+            an older sw.js drop that controller (one reload on controllerchange
+            lands them on the no-op v4 worker). Also catches ChunkLoadError
+            (a stale SW intercepting a subresource request can surface as
+            webpack "Loading chunk X failed"): nukes all SW registrations and
+            caches once per tab session, then hard-reloads. Must stay inline. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{if(!('serviceWorker' in navigator))return;var h=!!navigator.serviceWorker.controller,r=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(!h||r)return;r=true;location.reload();});navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(x){try{x.update()}catch(e){}});}).catch(function(){});}catch(e){}})();",
+              "(function(){try{if(!('serviceWorker' in navigator))return;var h=!!navigator.serviceWorker.controller,r=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(!h||r)return;r=true;location.reload();});navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(x){try{x.update()}catch(e){}});}).catch(function(){});var SS=window.sessionStorage;function recover(err){var n=(err&&err.name)||'';var m=((err&&err.message)||err||'')+'';if(n!=='ChunkLoadError'&&!/Loading chunk [^ ]+ failed|ChunkLoadError/i.test(m))return;try{if(SS.getItem('__vidyt_chunk_recovered'))return;SS.setItem('__vidyt_chunk_recovered','1');}catch(e){}Promise.all([navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(x){return x.unregister();}));}).catch(function(){}),(window.caches&&caches.keys)?caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}).catch(function(){}):Promise.resolve()]).then(function(){location.reload();}).catch(function(){location.reload();});}window.addEventListener('error',function(e){recover(e&&e.error||e);});window.addEventListener('unhandledrejection',function(e){recover(e&&e.reason||e);});}catch(e){}})();",
           }}
         />
         {/* Preconnect to critical origins — reduces DNS + TLS handshake time */}
