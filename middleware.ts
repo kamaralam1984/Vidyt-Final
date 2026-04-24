@@ -182,28 +182,6 @@ export async function middleware(request: NextRequest) {
     return addSecurityHeaders(new NextResponse(null, { status: 204 }), request);
   }
 
-  // ── One-time storage reset on auth pages ──
-  // Some returning users are stuck behind a pre-v4 service worker whose fetch
-  // handler wraps subresource requests in `event.respondWith(fetch().catch(
-  // Response.error()))`. That can break JS chunk loading on /login, leaving
-  // the user with a blank page. Emit `Clear-Site-Data: "storage"` the first
-  // time each browser hits /login (or /auth), gated by a persistent cookie so
-  // we do it exactly once per device. "storage" wipes IndexedDB, localStorage,
-  // caches, and service workers — but NOT cookies, so the flag survives.
-  if ((pathname === '/login' || pathname === '/auth') && request.method === 'GET') {
-    if (!request.cookies.get('sw_reset_v4')?.value) {
-      const response = NextResponse.next();
-      response.headers.set('Clear-Site-Data', '"storage"');
-      response.cookies.set('sw_reset_v4', '1', {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 365, // 1 year
-        sameSite: 'lax',
-        secure: true,
-      });
-      return addSecurityHeaders(response, request);
-    }
-  }
-
   // ── Health endpoints — public but rate-limited ──
   // No auth required. Rate-limited to stop bots polling in a tight loop.
   // NGINX applies its own health_limit zone; this is a second layer for
