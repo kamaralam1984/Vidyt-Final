@@ -1,11 +1,10 @@
 import connectDB from '@/lib/mongodb';
 import Plan from '@/models/Plan';
-import User from '@/models/User';
+import { unstable_cache } from 'next/cache';
 import { yearlyUsdFromMonthly } from '@/lib/planPricing';
 import { getPlanRoll } from '@/lib/planLimits';
 import { headers, cookies } from 'next/headers';
 import HomeClient, { type MarketingPlan } from '@/components/HomeClient';
-
 
 async function getPlans(): Promise<MarketingPlan[]> {
   await connectDB();
@@ -20,9 +19,7 @@ async function getPlans(): Promise<MarketingPlan[]> {
   return dbPlans.map((p: any) => {
     const priceMonth = p.priceMonthly;
     const priceYear = yearlyUsdFromMonthly(priceMonth, p.priceYearly);
-    
     const d = discounts.find((disc: any) => disc.planId === p.planId || disc.planId === p._id.toString());
-
     return {
       planId: p.planId,
       name: p.name,
@@ -32,24 +29,24 @@ async function getPlans(): Promise<MarketingPlan[]> {
       description: p.description || '',
       features: p.features || [],
       role: p.role,
-      discount: d ? {
-        percentage: d.percentage,
-        label: d.label,
-      } : undefined
+      discount: d ? { percentage: d.percentage, label: d.label } : undefined,
     };
   });
 }
 
-/** Home page should render even when Atlas is down or IP is not allowlisted */
+// Cache plans for 5 minutes server-side — avoids DB hit on every homepage request
+const getCachedPlans = unstable_cache(getPlans, ['homepage-plans'], { revalidate: 300 });
+
 async function getPlansSafe(): Promise<MarketingPlan[]> {
   try {
-    return await getPlans();
+    return await getCachedPlans();
   } catch (e) {
     console.error('[home] getPlans: database unavailable — showing empty pricing strip', e);
     return [];
   }
 }
 
+/** Read planId from JWT directly — no DB query needed on homepage */
 async function getUserData() {
   const cookieStore = cookies();
   const token = cookieStore.get('token')?.value;
@@ -63,16 +60,14 @@ async function getUserData() {
     return { planId: null };
   }
 
-  const { verifyToken } = await import('@/lib/auth-jwt');
-  const jwtUser = await verifyToken(token);
-  if (!jwtUser) return { planId: null };
-
   try {
-    await connectDB();
-    const user = await User.findById(jwtUser.id);
-    if (!user) return { planId: null };
-
-    const planId = user.role === 'super-admin' ? 'owner' : user.subscription || 'free';
+    const { verifyToken } = await import('@/lib/auth-jwt');
+    const jwtUser = await verifyToken(token);
+    if (!jwtUser) return { planId: null };
+    // Use JWT payload directly — subscription & role are embedded in the token
+    const planId = (jwtUser as any).role === 'super-admin'
+      ? 'owner'
+      : (jwtUser as any).subscription || 'free';
     return { planId };
   } catch {
     return { planId: null };

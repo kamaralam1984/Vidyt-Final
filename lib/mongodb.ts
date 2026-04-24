@@ -50,13 +50,15 @@ async function connectDB() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      /** Atlas / slow networks: default 10s often fails with TLS handshake timeouts */
-      serverSelectionTimeoutMS: 30_000,
-      socketTimeoutMS: 45_000,
-      connectTimeoutMS: 30_000,
+      /** Fail fast on local MongoDB — 5s is plenty for localhost */
+      serverSelectionTimeoutMS: 5_000,
+      socketTimeoutMS: 20_000,
+      connectTimeoutMS: 5_000,
       /** Prefer IPv4 when IPv6 routes are broken (common on some LANs) */
       family: 4 as const,
       maxPoolSize: 10,
+      minPoolSize: 2,      // keep 2 connections warm always
+      heartbeatFrequencyMS: 10_000, // check connection health every 10s
     };
 
     cached.promise = (async () => {

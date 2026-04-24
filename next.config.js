@@ -45,14 +45,14 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Security headers + no-cache on ALL routes (applied first, overridden below for static assets)
+        // Security headers + short cache on ALL routes
+        // API routes and auth pages set their own no-store via response headers
         source: '/:path*',
         headers: [
-          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
-          // CDN-specific no-cache headers — Cloudflare respects these even with "Cache Everything" rules
-          { key: 'CDN-Cache-Control', value: 'no-store' },
-          { key: 'Cloudflare-CDN-Cache-Control', value: 'no-store' },
-          { key: 'Surrogate-Control', value: 'no-store' },
+          { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=30, stale-while-revalidate=60' },
+          { key: 'CDN-Cache-Control', value: 'public, max-age=30' },
+          { key: 'Cloudflare-CDN-Cache-Control', value: 'public, max-age=30' },
+          { key: 'Surrogate-Control', value: 'max-age=30' },
           { key: 'Pragma', value: 'no-cache' },
           { key: 'Expires', value: '0' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
