@@ -89,8 +89,12 @@ function AuthPageContent() {
   }, []);
 
   useEffect(() => {
-    // /login route shows login; /auth uses ?mode= param or defaults to signup
-    if (pathname === '/login') {
+    // /login route shows login; /auth uses ?mode= param or defaults to signup.
+    // usePathname() returns the REWRITE DESTINATION (/auth) under Next.js'
+    // source→destination rewrite, so use window.location.pathname — that
+    // reflects the user-facing URL (/login) where it differs.
+    const actualPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+    if (actualPath === '/login') {
       setIsLogin(true);
       return;
     }
@@ -136,8 +140,10 @@ function AuthPageContent() {
   const [turnstileToken, setTurnstileToken] = useState<string>('');
 
   useEffect(() => {
-    // /login route shows login; /auth uses ?mode= param
-    if (pathname === '/login') {
+    // /login route shows login; /auth uses ?mode= param.
+    // See usePathname caveat above — use window.location.pathname instead.
+    const actualPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+    if (actualPath === '/login') {
       setIsLogin(true);
     } else {
       const mode = getSearchParam('mode');
@@ -769,18 +775,12 @@ function AuthPageContent() {
             <div className="mt-6 text-center">
               <p className="text-[#AAAAAA] text-sm">
                 Don&apos;t have an account?{' '}
-                {pathname === '/login' ? (
-                  <Link href="/auth" className="text-white font-semibold hover:underline">
-                    Sign Up
-                  </Link>
-                ) : (
-                  <button
-                    onClick={() => setIsLogin(false)}
-                    className="text-white font-semibold hover:underline"
-                  >
-                    Sign Up
-                  </button>
-                )}
+                <button
+                  onClick={() => setIsLogin(false)}
+                  className="text-white font-semibold hover:underline"
+                >
+                  Sign Up
+                </button>
               </p>
             </div>
           </motion.div>
