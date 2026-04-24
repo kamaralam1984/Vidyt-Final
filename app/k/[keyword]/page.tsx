@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import connectDB from '@/lib/mongodb';
 import SeoPage from '@/models/SeoPage';
 import Link from 'next/link';
@@ -6,6 +7,21 @@ import MarketingNavbar from '@/components/MarketingNavbar';
 import MarketingFooter from '@/components/MarketingFooter';
 import { buildSeoContent, categorize } from '@/lib/seoContentBuilder';
 import { computeQualityScore } from '@/lib/qualityScorer';
+
+// Matches crawlers, link-preview scrapers, and headless/CLI tooling so bot
+// traffic doesn't inflate the views counter on admin SEO dashboards.
+const BOT_UA_RE =
+  /bot|crawler|spider|slurp|headless|prerender|lighthouse|pagespeed|gtmetrix|curl|wget|axios|node-fetch|python-requests|facebookexternalhit|whatsapp|twitterbot|discordbot|slackbot|linkedinbot|telegrambot|duckduckbot|googlebot|bingbot|yandexbot|baiduspider|ahrefsbot|semrushbot|mj12bot|dotbot|petalbot|sogou/i;
+
+function isBotRequest(): boolean {
+  try {
+    const ua = headers().get('user-agent') || '';
+    if (!ua) return true; // no UA → treat as bot
+    return BOT_UA_RE.test(ua);
+  } catch {
+    return true;
+  }
+}
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.vidyt.com';
 
@@ -64,7 +80,6 @@ async function getOrCreatePage(keyword: string): Promise<any> {
     }
   }
 
-  await SeoPage.updateOne({ slug }, { $inc: { views: 1 } });
   return page;
 }
 
@@ -138,6 +153,11 @@ function extractFaqs(content: string): { q: string; a: string }[] {
 export default async function KeywordPage({ params }: { params: { keyword: string } }) {
   const page = await getOrCreatePage(params.keyword);
   if (!page) notFound();
+
+  // Count real user views only — skip crawlers, link scrapers, and headless tools.
+  if (!isBotRequest()) {
+    SeoPage.updateOne({ slug: page.slug }, { $inc: { views: 1 } }).catch(() => {});
+  }
 
   const kw = page.keyword || '';
   const kwCap = kw.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
