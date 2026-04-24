@@ -16,10 +16,10 @@ export default function LangDirectionSetter() {
     const html = document.documentElement;
 
     // Set lang attribute
-    html.setAttribute('lang', locale.language);
+    html.setAttribute('lang', locale.lang);
 
     // Set direction for RTL languages (Arabic, Urdu)
-    const isRtl = RTL_LANGUAGES.includes(locale.language);
+    const isRtl = RTL_LANGUAGES.includes(locale.lang);
     html.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
 
     // Add/remove RTL class for Tailwind utilities
@@ -28,7 +28,7 @@ export default function LangDirectionSetter() {
     } else {
       html.classList.remove('rtl');
     }
-  }, [locale.language]);
+  }, [locale.lang]);
 
   return null;
 }

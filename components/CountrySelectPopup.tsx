@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { LazyMotion, domAnimation, m as motion, AnimatePresence } from 'framer-motion';
 import { Globe, X } from 'lucide-react';
-import { useLocale, SUPPORTED_LOCALES, type LocaleState } from '@/context/LocaleContext';
+import { useLocale, SUPPORTED_LOCALES, type LocaleOption } from '@/context/LocaleContext';
 
 const POPUP_DISMISSED_KEY = 'vidyt-country-popup-dismissed';
 
@@ -28,7 +28,7 @@ export default function CountrySelectPopup() {
     return () => clearTimeout(timer);
   }, []);
 
-  const selectCountry = (loc: LocaleState) => {
+  const selectCountry = (loc: LocaleOption) => {
     setLocale(loc);
     localStorage.setItem(POPUP_DISMISSED_KEY, '1');
     setShow(false);
@@ -83,7 +83,7 @@ export default function CountrySelectPopup() {
                   <span className="text-xl">{loc.flag}</span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-white truncate">{loc.countryName}</p>
-                    <p className="text-[10px] text-[#666]">{loc.language.toUpperCase()} · {loc.currencySymbol}</p>
+                    <p className="text-[10px] text-[#666]">{loc.lang.toUpperCase()} · {loc.currencySymbol}</p>
                   </div>
                 </button>
               ))}
