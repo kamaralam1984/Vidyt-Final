@@ -514,7 +514,7 @@ function AuthPageContent() {
       <div className="max-w-4xl w-full">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
@@ -548,13 +548,13 @@ function AuthPageContent() {
         {/* Login Form */}
         {isLogin ? (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             className="bg-[#181818] border border-[#212121] rounded-2xl p-8 shadow-2xl notranslate"
           >
             {error && (
               <motion.div
-                initial={{ opacity: 0 }}
+                initial={false}
                 animate={{ opacity: 1 }}
                 className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-3"
               >
@@ -565,7 +565,7 @@ function AuthPageContent() {
 
             {success && (
               <motion.div
-                initial={{ opacity: 0 }}
+                initial={false}
                 animate={{ opacity: 1 }}
                 className="mb-6 p-4 bg-green-500/20 border border-green-500 rounded-lg flex items-center gap-3"
               >
@@ -787,7 +787,7 @@ function AuthPageContent() {
         ) : (
           /* Signup Form */
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             className="bg-[#181818] border border-[#212121] rounded-2xl p-8 shadow-2xl"
           >
