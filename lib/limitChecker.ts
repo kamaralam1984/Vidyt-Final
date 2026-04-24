@@ -45,23 +45,27 @@ export function checkLimit(user: any, feature: FeatureType): boolean {
   }
   // Add other features mapped to user.usageStats as necessary
 
+  // Bonus analyses from referrals extend the analyses limit
+  const bonusAnalyses = (feature === 'analyses') ? (usageStats.bonusAnalyses || 0) : 0;
+
   // 2. CUSTOM plan -> check user.customLimits mapping
   if (user.subscription === 'custom') {
-    const customLimit = user.customLimits?.get 
-      ? user.customLimits.get(feature) 
+    const customLimit = user.customLimits?.get
+      ? user.customLimits.get(feature)
       : user.customLimits?.[feature];
-      
+
     if (customLimit === undefined || customLimit === null) {
       return false; // Safely block if no custom limit defined
     }
-    return currentUsage < customLimit;
+    return currentUsage < (customLimit + bonusAnalyses);
   }
 
   // 3. STANDARD plan logic
   const planLimits = PLAN_LIMITS[user.subscription] || PLAN_LIMITS['free'];
-  const limit = planLimits[feature];
+  const baseLimit = planLimits[feature];
+  const limit = baseLimit === Infinity ? Infinity : (baseLimit as number) + bonusAnalyses;
 
-  const percent = currentUsage / limit;
+  const percent = limit === Infinity ? 0 : currentUsage / limit;
   const allowed = currentUsage < limit;
 
   // Background Async Trigger for Email Alerting (80% / 100%)

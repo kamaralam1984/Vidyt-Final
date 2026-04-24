@@ -47,7 +47,15 @@ type LoginMethod = 'uniqueIdPin' | 'emailPassword';
 function AuthPageContent() {
   const router = useRouter();
   const pathname = usePathname();
-  const [isLogin, setIsLogin] = useState(false);
+  // Lazy init: read window.location immediately so first render shows correct form.
+  // Avoids the flash where /login briefly showed the signup form.
+  const [isLogin, setIsLogin] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname;
+    if (path === '/login') return true;
+    const mode = new URLSearchParams(window.location.search).get('mode');
+    return mode === 'login';
+  });
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('uniqueIdPin');
 
   // Silently apply referral code after signup

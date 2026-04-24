@@ -49,12 +49,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Referral already applied' }, { status: 409 });
   }
 
-  // Resolve referrer from code (code = "REF-" + last 8 chars of userId uppercased)
-  const codeSuffix = code.toUpperCase().replace('REF-', '');
-  const allUsers = await User.find({}, '_id').lean();
-  const referrer = allUsers.find(
-    (u: any) => String(u._id).slice(-8).toUpperCase() === codeSuffix
-  );
+  // Resolve referrer from code — try indexed referralCode field first (O(1)), else O(n) fallback
+  const upperCode = code.toUpperCase();
+  let referrer: any = await User.findOne({ referralCode: upperCode }, '_id').lean();
+
+  if (!referrer) {
+    // Legacy fallback: code = "REF-" + last 8 chars of _id
+    const codeSuffix = upperCode.replace('REF-', '');
+    const allUsers = await User.find({}, '_id').lean();
+    referrer = allUsers.find(
+      (u: any) => String(u._id).slice(-8).toUpperCase() === codeSuffix
+    ) || null;
+
+    // Cache referralCode so future lookups are O(1)
+    if (referrer) {
+      await User.findByIdAndUpdate(referrer._id, { referralCode: upperCode });
+    }
+  }
 
   if (!referrer) {
     return NextResponse.json({ error: 'Invalid referral code' }, { status: 404 });

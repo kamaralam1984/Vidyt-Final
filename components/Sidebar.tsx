@@ -28,6 +28,7 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
+  Gift,
 } from 'lucide-react';
 import { getAuthHeaders, removeToken } from '@/utils/auth';
 import UsageBar from './UsageBar';
@@ -239,6 +240,25 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                         })}
                       </>
                     )}
+
+                    {/* Refer & Earn — always visible */}
+                    <li className="pt-2 mt-2 border-t border-[#212121]">
+                      <Link
+                        href="/dashboard/refer"
+                        className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname === '/dashboard/refer'
+                          ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20'
+                          : 'hover:bg-[#212121] text-[#AAAAAA]'
+                          }`}
+                      >
+                        <Gift className={`w-5 h-5 ${pathname === '/dashboard/refer' ? 'text-white' : 'text-[#FF0000] group-hover:text-white'}`} />
+                        <span className={pathname === '/dashboard/refer' ? 'text-white font-medium' : 'group-hover:text-white'}>
+                          Refer &amp; Earn
+                        </span>
+                        <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FF0000]/20 text-[#FF0000] group-hover:bg-white/20 group-hover:text-white">
+                          +5
+                        </span>
+                      </Link>
+                    </li>
 
                     {/* Mobile Account Section */}
                     <li className="sm:hidden pt-2 mt-2 border-t border-[#212121]">

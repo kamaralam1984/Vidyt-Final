@@ -51,7 +51,9 @@ export interface IUser extends Document {
     hashtagsGenerated: number;
     requestsToday?: number;
     lastRequestDate?: Date;
+    bonusAnalyses?: number; // extra analyses from referrals
   };
+  referralCode?: string; // indexed field for O(1) referrer lookup
   customLimits?: Record<string, number>;
   lastLogin?: Date;
   accountManagerEmail?: string;
@@ -139,7 +141,9 @@ const UserSchema = new Schema<IUser>({
     hashtagsGenerated: { type: Number, default: 0 },
     requestsToday: { type: Number, default: 0 },
     lastRequestDate: { type: Date },
+    bonusAnalyses: { type: Number, default: 0 },
   },
+  referralCode: { type: String, sparse: true, index: true },
   customLimits: { type: Map, of: Number, default: {} },
   lastLogin: { type: Date },
   accountManagerEmail: { type: String },
