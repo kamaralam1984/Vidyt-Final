@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export interface LocaleOption {
   countryCode: string;
@@ -31,6 +31,7 @@ export const SUPPORTED_LOCALES: LocaleOption[] = [
 ];
 
 export type Locale = LocaleOption;
+export type LanguageCode = 'en' | 'hi' | 'hinglish' | 'es' | 'ar' | 'fr' | 'pt' | 'id' | 'de' | 'ur';
 
 interface LocaleContextValue {
   locale: LocaleOption;
@@ -46,6 +47,19 @@ const LocaleContext = createContext<LocaleContextValue>({
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocale] = useState<LocaleOption>(DEFAULT_LOCALE);
+
+  // Auto-initialize locale from CF-detected country cookie on first load
+  useEffect(() => {
+    try {
+      const match = document.cookie.match(/(?:^|; )detected-country=([^;]*)/);
+      const country = match ? decodeURIComponent(match[1]).toUpperCase() : '';
+      if (country) {
+        const detected = SUPPORTED_LOCALES.find(l => l.countryCode === country);
+        if (detected) setLocale(detected);
+      }
+    } catch {}
+  }, []);
+
   return (
     <LocaleContext.Provider value={{ locale, setLocale }}>
       {children}

@@ -373,19 +373,19 @@ export default function SeoPagesAdmin() {
           />
         </div>
         <select value={status} onChange={e => setStatus(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white">
+          className="bg-[#1a1a2e] border border-white/10 rounded px-3 py-1.5 text-sm text-white [&>option]:bg-[#1a1a2e] [&>option]:text-white">
           <option value="all">All status</option>
           <option value="indexable">Indexable</option>
           <option value="pending">Pending</option>
           <option value="rejected">Rejected</option>
         </select>
         <select value={category} onChange={e => setCategory(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white">
+          className="bg-[#1a1a2e] border border-white/10 rounded px-3 py-1.5 text-sm text-white [&>option]:bg-[#1a1a2e] [&>option]:text-white">
           <option value="">All categories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={source} onChange={e => setSource(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white">
+          className="bg-[#1a1a2e] border border-white/10 rounded px-3 py-1.5 text-sm text-white [&>option]:bg-[#1a1a2e] [&>option]:text-white">
           <option value="">All sources</option>
           <option value="user_search">User search</option>
           <option value="trending">Trending</option>
@@ -394,7 +394,7 @@ export default function SeoPagesAdmin() {
         <div className="flex items-center gap-1 ml-auto">
           <Filter className="w-3 h-3 text-white/40" />
           <select value={sort} onChange={e => setSort(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-white">
+            className="bg-[#1a1a2e] border border-white/10 rounded px-2 py-1.5 text-xs text-white [&>option]:bg-[#1a1a2e] [&>option]:text-white">
             <option value="createdAt">Created</option>
             <option value="qualityScore">Quality</option>
             <option value="views">Views</option>

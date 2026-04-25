@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LazyMotion, domAnimation, m as motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import MarketingNavbar from '@/components/MarketingNavbar';
 import {
@@ -177,7 +177,6 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
   });
 
   return (
-    <LazyMotion features={domAnimation} strict>
     <div className="min-h-screen bg-[#0F0F0F]">
       <MarketingNavbar />
       {/* Hero Section */}
@@ -238,7 +237,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       <section id="features" className="py-24 px-6 bg-[#181818]">
         <div className="max-w-7xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 1, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-16"
@@ -263,7 +262,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               return (
                 <motion.div
                   key={index}
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 1, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
@@ -311,7 +310,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       <section id="pricing" className="py-24 px-6 bg-[#0F0F0F]">
         <div className="max-w-7xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 1, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-16"
@@ -364,7 +363,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
           )}
 
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={{ opacity: 1 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             className="text-center mt-12"
@@ -383,7 +382,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       <section id="tools" className="py-24 px-6 bg-[#0F0F0F]">
         <div className="max-w-7xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 1, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-12"
@@ -410,7 +409,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               return (
                 <motion.div
                   key={tool.title}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 1, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.05 }}
@@ -434,7 +433,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center gap-12">
             <motion.div
-              initial={{ opacity: 0, x: -30 }}
+              initial={{ opacity: 1, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               className="flex-1"
@@ -461,7 +460,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               </div>
             </motion.div>
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
+              initial={{ opacity: 1, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               className="flex-1 relative"
@@ -478,7 +477,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       <section id="resources" className="py-24 px-6 bg-[#0F0F0F]">
         <div className="max-w-7xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 1, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="mb-12"
@@ -499,7 +498,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             ].map((res, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 1, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
@@ -575,7 +574,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                   
                   {waitlistStatus.type && (
                     <motion.p
-                      initial={{ opacity: 0, y: -10 }}
+                      initial={{ opacity: 1, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className={`text-sm font-medium ${
                         waitlistStatus.type === 'success' ? 'text-emerald-400' : 'text-rose-400'
@@ -592,7 +591,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 </form>
               </div>
               <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 1, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 className="flex-1"
@@ -627,7 +626,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       {/* How It Works */}
       <section className="py-24 px-6 bg-[#0F0F0F]">
         <div className="max-w-6xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+          <motion.div initial={{ opacity: 1, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">How It Works</h2>
             <p className="text-[#AAAAAA] text-lg max-w-2xl mx-auto">Start creating viral content in 3 simple steps — no credit card required</p>
           </motion.div>
@@ -637,7 +636,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               { step: '02', title: 'Get AI Recommendations', desc: 'Receive viral title suggestions, trending hashtags, optimal posting times, and thumbnail improvements — all powered by 9 AI providers.', color: '#3EA6FF' },
               { step: '03', title: 'Grow & Go Viral', desc: 'Apply the recommendations, schedule your optimized content, and watch your views, subscribers, and engagement skyrocket.', color: '#2BA640' },
             ].map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
+              <motion.div key={i} initial={{ opacity: 1, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
                 className="relative bg-[#181818] border border-[#212121] rounded-2xl p-8 text-center hover:border-[#333] transition">
                 <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center text-2xl font-black text-white" style={{ background: `${item.color}20`, color: item.color }}>
                   {item.step}
@@ -660,7 +659,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               { value: '95%', label: 'SEO Accuracy', color: '#2BA640' },
               { value: '3x', label: 'Avg. View Increase', color: '#FFD700' },
             ].map((stat, i) => (
-              <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+              <motion.div key={i} initial={{ opacity: 1, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                 <p className="text-3xl md:text-4xl font-black mb-1" style={{ color: stat.color }}>{stat.value}</p>
                 <p className="text-[#AAAAAA] text-sm">{stat.label}</p>
               </motion.div>
@@ -672,7 +671,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       {/* Testimonials / Social Proof */}
       <section id="testimonials" className="py-24 px-6 bg-[#0F0F0F]">
         <div className="max-w-6xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
+          <motion.div initial={{ opacity: 1, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Creators Love VidYT</h2>
             <p className="text-[#AAAAAA] text-lg max-w-2xl mx-auto">Real results from real creators who grew their channels with AI-powered SEO</p>
           </motion.div>
@@ -735,7 +734,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             ].map((t, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 1, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
@@ -768,7 +767,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       {/* FAQ Section — AdSense Friendly */}
       <section id="faq" className="py-24 px-6 bg-[#181818]">
         <div className="max-w-3xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+          <motion.div initial={{ opacity: 1, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Frequently Asked Questions</h2>
             <p className="text-[#AAAAAA]">Everything you need to know about VidYT</p>
           </motion.div>
@@ -783,7 +782,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               { q: 'How does the Content Calendar work?', a: 'Schedule your videos with optimized titles, descriptions, and hashtags. Choose Public, Unlisted, or Private visibility. Videos are automatically uploaded to your YouTube channel at the scheduled time.' },
               { q: 'What AI providers does VidYT use?', a: 'VidYT uses a 9-provider AI failover chain including OpenAI, Google Gemini, Groq, and more. This ensures 99.9% uptime — if one provider fails, the next one takes over seamlessly.' },
             ].map((faq, i) => (
-              <motion.details key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}
+              <motion.details key={i} initial={{ opacity: 1, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}
                 className="group bg-[#181818] border border-[#212121] rounded-xl overflow-hidden">
                 <summary className="flex items-center justify-between p-5 cursor-pointer text-white font-semibold hover:bg-[#1a1a1a] transition">
                   <span>{faq.q}</span>
@@ -800,7 +799,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       <section className="py-24 px-6 bg-gradient-to-r from-[#FF0000] to-[#CC0000]">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 1, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-4xl md:text-5xl font-bold text-white mb-6"
@@ -808,7 +807,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             {t('cta.heading')}
           </motion.h2>
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 1, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
@@ -817,7 +816,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             {t('cta.subheading')}
           </motion.p>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 1, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
@@ -889,7 +888,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       {isExtensionModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 1, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="bg-[#181818] border border-white/10 rounded-3xl p-8 max-w-2xl w-full relative shadow-2xl"
           >
@@ -936,6 +935,5 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       )}
     </div>
-    </LazyMotion>
   );
 }

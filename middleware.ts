@@ -176,6 +176,10 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const hostname = request.headers.get('host') || '';
 
+  // ── Redirect localhost:3000 → vidyt.com (prevents local URL leaking to users) ──
+  if (hostname === 'localhost:3000' || hostname === '127.0.0.1:3000') {
+    return NextResponse.redirect(new URL(pathname + request.nextUrl.search, 'https://www.vidyt.com'));
+  }
 
   // ── CORS preflight ──
   if (request.method === 'OPTIONS') {

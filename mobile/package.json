@@ -9,7 +9,8 @@
     "run:android:list": "npx cap run android --list",
     "open:ios": "npx cap open ios",
     "mobile:android": "bash scripts/open-android-studio.sh",
-    "mobile:sync": "npx cap sync"
+    "mobile:sync": "npx cap sync",
+    "build:apk": "bash scripts/build-apk.sh"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

@@ -33,7 +33,8 @@
     "mobile:install": "cd mobile && npm install",
     "mobile:sync": "cd mobile && npx cap sync",
     "mobile:android": "cd mobile && npm run open:android",
-    "mobile:run:android": "cd mobile && npm run run:android"
+    "mobile:run:android": "cd mobile && npm run run:android",
+    "mobile:build:apk": "cd mobile && npm run build:apk"
   },
   "dependencies": {
     "@capacitor/cli": "^6.1.0",

@@ -192,9 +192,13 @@ export default function MarketingNavbar() {
             <Link
               key={link.labelKey}
               href={link.href}
-              className="text-sm text-white/70 transition hover:text-white"
+              className={
+                link.href === '/download'
+                  ? 'text-sm font-semibold text-[#FF0000] border border-[#FF0000]/40 rounded-full px-3 py-1 hover:bg-[#FF0000]/10 transition'
+                  : 'text-sm text-white/70 transition hover:text-white'
+              }
             >
-              {t(link.labelKey)}
+              {link.href === '/download' ? '📱 ' : ''}{t(link.labelKey)}
             </Link>
           ))}
         </div>
@@ -262,6 +266,12 @@ export default function MarketingNavbar() {
               >
                 {t('navbar.getStarted')}
                 <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/download"
+                className="flex items-center gap-2 rounded-full bg-[#1a1a1a] border border-[#333] px-4 py-2 text-sm font-medium text-white hover:border-[#FF0000]/60 hover:bg-[#222] transition"
+              >
+                📱 Download App
               </Link>
             </>
           )}

@@ -651,6 +651,7 @@ function AuthPageContent() {
                             e.target.value.replace(/\D/g, '').slice(0, 6)
                           )
                         }
+                        autoComplete="off"
                         className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.uniqueId ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                         placeholder="e.g. 123456"
                       />
@@ -681,6 +682,7 @@ function AuthPageContent() {
                           )
                         }
                         maxLength={6}
+                        autoComplete="current-password"
                         className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.loginPin ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                         placeholder="••••"
                       />
@@ -710,6 +712,7 @@ function AuthPageContent() {
                         type="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
+                        autoComplete="email"
                         className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                         placeholder="you@example.com"
                       />
@@ -731,6 +734,7 @@ function AuthPageContent() {
                         type={showPassword ? 'text' : 'password'}
                         value={formData.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
+                        autoComplete="current-password"
                         className={`w-full pl-10 pr-11 py-3 bg-[#212121] border ${fieldErrors.password ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                         placeholder="••••••••"
                       />
@@ -955,6 +959,7 @@ function AuthPageContent() {
                       type="text"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
+                      autoComplete="name"
                       className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.name ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                       placeholder="Enter your name"
                     />
@@ -976,6 +981,7 @@ function AuthPageContent() {
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
+                      autoComplete="email"
                       className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                       placeholder="you@company.com"
                     />
@@ -999,6 +1005,7 @@ function AuthPageContent() {
                       type="text"
                       value={formData.companyName}
                       onChange={(e) => handleInputChange('companyName', e.target.value)}
+                      autoComplete="organization"
                       className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                       placeholder="Enter your company name"
                     />
@@ -1021,6 +1028,7 @@ function AuthPageContent() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))}
+                    autoComplete="tel-national"
                     className={`w-full pl-10 pr-4 py-3 bg-[#212121] border ${fieldErrors.phone ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                     placeholder={`e.g. ${locale.phoneLength} digits`}
                   />
@@ -1045,6 +1053,7 @@ function AuthPageContent() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
+                    autoComplete="new-password"
                     className={`w-full pl-10 pr-11 py-3 bg-[#212121] border ${fieldErrors.password ? 'border-red-500 ring-1 ring-red-500' : 'border-[#333333]'} rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000] transition-all`}
                     placeholder="••••••••"
                   />
@@ -1079,6 +1088,7 @@ function AuthPageContent() {
                     value={formData.loginPin}
                     onChange={(e) => handleInputChange('loginPin', e.target.value.replace(/\D/g, '').slice(0, 6))}
                     maxLength={6}
+                    autoComplete="off"
                     className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white placeholder-[#AAAAAA] focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
                     placeholder="4-6 digits for quick login"
                   />
@@ -1100,6 +1110,8 @@ function AuthPageContent() {
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       maxLength={6}
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
                       className="w-full px-4 py-3 bg-[#212121] border border-[#333333] rounded-lg text-white text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
                       placeholder="Enter 6-digit code"
                     />
@@ -1200,7 +1212,9 @@ function AuthPageContent() {
         )}
       </div>
       {/* Razorpay Script */}
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
+      {!isLogin && subscriptionType === 'paid' && (
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      )}
     </div>
   );
 }
