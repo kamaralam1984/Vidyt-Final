@@ -189,6 +189,17 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=86400' },
         ],
       },
+      {
+        // Homepage LAST — overrides /:path* so Cloudflare never caches it.
+        // Google OAuth reviewers always see the latest live content.
+        source: '/',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'CDN-Cache-Control', value: 'no-store' },
+          { key: 'Cloudflare-CDN-Cache-Control', value: 'no-store' },
+          { key: 'Surrogate-Control', value: 'no-store' },
+        ],
+      },
     ];
   },
   async rewrites() {
