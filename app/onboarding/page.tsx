@@ -37,12 +37,12 @@ export default function OnboardingPage() {
       try {
         const r = await fetch('/api/user/onboarding', { headers: authHeaders(), cache: 'no-store' });
         if (r.status === 401) {
-          router.replace('/login');
+          window.location.href = '/login';
           return;
         }
         const d = await r.json();
         if (d.completed) {
-          router.replace('/dashboard');
+          window.location.href = '/dashboard';
           return;
         }
         setStep(Math.min(d.step || 0, STEPS.length - 1));
@@ -55,7 +55,8 @@ export default function OnboardingPage() {
         setLoading(false);
       }
     })();
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const saveProgress = useCallback(async (payload: Record<string, unknown>) => {
     setSaving(true);
@@ -77,6 +78,13 @@ export default function OnboardingPage() {
     }
   }, []);
 
+  const goToDashboard = () => {
+    // Signal OnboardingGuard to skip its re-check for this one navigation,
+    // preventing a redirect loop when the DB write hasn't propagated yet.
+    sessionStorage.setItem('onboardingJustCompleted', '1');
+    window.location.href = '/dashboard';
+  };
+
   const next = async () => {
     if (step === 0) {
       if (!profile.name || profile.name.trim().length < 2) {
@@ -84,21 +92,34 @@ export default function OnboardingPage() {
         return;
       }
       await saveProgress({ step: 1, profile }).catch(() => {});
+      setError('');
       setStep(1);
     } else if (step === 1) {
       await saveProgress({ step: 2 }).catch(() => {});
+      setError('');
       setStep(2);
     } else if (step === 2) {
       await saveProgress({ preferences: prefs, completed: true }).catch(() => {});
-      router.replace('/dashboard');
+      goToDashboard();
     }
   };
 
   const back = () => setStep((s) => Math.max(0, s - 1));
 
   const skip = async () => {
-    await saveProgress({ completed: true }).catch(() => {});
-    router.replace('/dashboard');
+    setSaving(true);
+    try {
+      await fetch('/api/user/onboarding', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ completed: true }),
+      });
+    } catch {
+      // Non-blocking — navigate regardless
+    } finally {
+      setSaving(false);
+    }
+    goToDashboard();
   };
 
   if (loading) {

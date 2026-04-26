@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 /**
  * Redirects authenticated users to /onboarding until they finish the wizard.
  * Mounted inside DashboardLayout so every dashboard route is gated.
+ *
+ * NOTE: Uses window.location.href (hard navigation) so the destination page
+ * always receives a fresh session — avoids the router cache returning stale
+ * onboardingCompleted=false after a just-completed onboarding flow.
  */
 export default function OnboardingGuard() {
-  const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -16,6 +19,14 @@ export default function OnboardingGuard() {
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
+
+    // If onboarding was just completed in this tab, skip the API check for
+    // this navigation to prevent a redirect loop caused by cache staleness.
+    const justCompleted = sessionStorage.getItem('onboardingJustCompleted');
+    if (justCompleted) {
+      sessionStorage.removeItem('onboardingJustCompleted');
+      return;
+    }
 
     let cancelled = false;
     (async () => {
@@ -27,8 +38,9 @@ export default function OnboardingGuard() {
         if (!r.ok) return;
         const d = await r.json();
         if (cancelled) return;
+        // Only redirect if explicitly false (not undefined / null / missing)
         if (d?.user && d.user.onboardingCompleted === false) {
-          router.replace('/onboarding');
+          window.location.href = '/onboarding';
         }
       } catch {
         // Non-blocking — if /me fails, let the page render
@@ -37,7 +49,7 @@ export default function OnboardingGuard() {
     return () => {
       cancelled = true;
     };
-  }, [pathname, router]);
+  }, [pathname]);
 
   return null;
 }
