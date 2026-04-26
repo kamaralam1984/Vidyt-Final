@@ -88,7 +88,7 @@ function RecentVideosWidget() {
             <Video className="w-4 h-4 text-[#FF0000]" />
             <span className="text-xs font-bold text-white uppercase tracking-wider">Recent Analyses</span>
           </div>
-          <Link href="/dashboard/my-videos" className="text-[10px] text-[#555] hover:text-white flex items-center gap-1 transition-colors">
+          <Link href="/videos" className="text-[10px] text-[#555] hover:text-white flex items-center gap-1 transition-colors">
             View all <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
