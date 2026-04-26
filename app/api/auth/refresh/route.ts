@@ -68,13 +68,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Renew short-lived access token cookie so middleware can authenticate
+    // page navigations (middleware reads cookies, not localStorage).
+    response.cookies.set('token', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
     // Rotate httpOnly refresh token cookie
     response.cookies.set('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/api/auth/refresh',   // narrow path — not sent on every request
+      path: '/api/auth/refresh',
     });
 
     return response;

@@ -3,7 +3,6 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   User as UserIcon, Building, Phone, FileText, ShieldCheck, Bell, Mail, Moon,
@@ -23,11 +22,13 @@ function authHeaders(): HeadersInit {
 const STEPS = ['Profile', 'Security', 'Preferences'] as const;
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [error, setError] = useState('');
+  const [userRole, setUserRole] = useState('user');
+  const [userUniqueId, setUserUniqueId] = useState('');
   const [profile, setProfile] = useState<Profile>({ name: '', companyName: '', phone: '', bio: '' });
   const [prefs, setPrefs] = useState<Prefs>({ notifications: true, emailUpdates: true, darkMode: false });
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -35,22 +36,47 @@ export default function OnboardingPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch('/api/user/onboarding', { headers: authHeaders(), cache: 'no-store' });
-        if (r.status === 401) {
+        const token = localStorage.getItem('token');
+        if (!token) {
           window.location.href = '/login';
           return;
         }
-        const d = await r.json();
-        if (d.completed) {
-          window.location.href = '/dashboard';
+        const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
+        // Load onboarding state + user info in parallel
+        const [onbRes, meRes] = await Promise.all([
+          fetch('/api/user/onboarding', { headers, cache: 'no-store' }),
+          fetch('/api/auth/me', { headers, cache: 'no-store' }),
+        ]);
+
+        if (onbRes.status === 401) {
+          window.location.href = '/login';
           return;
         }
+
+        const d = await onbRes.json();
+
+        let role = 'user';
+        let uniqueId = '';
+        if (meRes.ok) {
+          const me = await meRes.json();
+          role = me?.user?.role || 'user';
+          uniqueId = me?.user?.uniqueId || '';
+          setUserRole(role);
+          setUserUniqueId(uniqueId);
+        }
+
+        if (d.completed) {
+          navigateAfterComplete(role, uniqueId);
+          return;
+        }
+
         setStep(Math.min(d.step || 0, STEPS.length - 1));
         if (d.profile) setProfile(d.profile);
         if (d.preferences) setPrefs(d.preferences);
         setTwoFactorEnabled(!!d.twoFactorEnabled);
       } catch (e: any) {
-        setError(e.message || 'Failed to load onboarding');
+        setError('Failed to load. Please refresh the page.');
       } finally {
         setLoading(false);
       }
@@ -58,68 +84,97 @@ export default function OnboardingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const saveProgress = useCallback(async (payload: Record<string, unknown>) => {
-    setSaving(true);
-    setError('');
+  /** Renew the token cookie via refresh endpoint, then navigate to the right page. */
+  const goToDashboard = useCallback(async (role?: string, uniqueId?: string) => {
+    setNavigating(true);
     try {
-      const r = await fetch('/api/user/onboarding', {
+      // Step 1: Refresh the token cookie so middleware lets us through.
+      // The 15-min token cookie from login may have expired.
+      const refreshRes = await fetch('/api/auth/refresh', {
         method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(payload),
+        credentials: 'include', // send refresh_token cookie
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Failed to save');
-      return d;
-    } catch (e: any) {
-      setError(e.message || 'Save failed');
-      throw e;
-    } finally {
-      setSaving(false);
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        if (refreshData.token) {
+          localStorage.setItem('token', refreshData.token);
+        }
+        // Prefer role from refresh response (freshest data)
+        role = role || refreshData.user?.role || userRole;
+        uniqueId = uniqueId || refreshData.user?.uniqueId || userUniqueId;
+      }
+    } catch {
+      // Network error — still attempt navigation with stale cookie
     }
+
+    sessionStorage.setItem('onboardingJustCompleted', '1');
+    navigateAfterComplete(role || userRole, uniqueId || userUniqueId);
+  }, [userRole, userUniqueId]);
+
+  function navigateAfterComplete(role: string, uniqueId: string) {
+    if (role === 'super-admin') {
+      window.location.href = '/admin/super';
+    } else if (uniqueId) {
+      window.location.href = `/user/${uniqueId}`;
+    } else {
+      window.location.href = '/dashboard';
+    }
+  }
+
+  const saveProgress = useCallback(async (payload: Record<string, unknown>) => {
+    const token = localStorage.getItem('token');
+    const headers = token
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      : { 'Content-Type': 'application/json' };
+
+    const r = await fetch('/api/user/onboarding', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to save');
+    return d;
   }, []);
 
-  const goToDashboard = () => {
-    // Signal OnboardingGuard to skip its re-check for this one navigation,
-    // preventing a redirect loop when the DB write hasn't propagated yet.
-    sessionStorage.setItem('onboardingJustCompleted', '1');
-    window.location.href = '/dashboard';
-  };
-
   const next = async () => {
+    if (navigating) return;
+    setError('');
     if (step === 0) {
       if (!profile.name || profile.name.trim().length < 2) {
         setError('Please enter your name (at least 2 characters).');
         return;
       }
-      await saveProgress({ step: 1, profile }).catch(() => {});
-      setError('');
+      setSaving(true);
+      try { await saveProgress({ step: 1, profile }); } catch { /* continue */ }
+      setSaving(false);
       setStep(1);
     } else if (step === 1) {
-      await saveProgress({ step: 2 }).catch(() => {});
-      setError('');
+      setSaving(true);
+      try { await saveProgress({ step: 2 }); } catch { /* continue */ }
+      setSaving(false);
       setStep(2);
     } else if (step === 2) {
-      await saveProgress({ preferences: prefs, completed: true }).catch(() => {});
-      goToDashboard();
+      setSaving(true);
+      try { await saveProgress({ preferences: prefs, completed: true }); } catch { /* continue */ }
+      setSaving(false);
+      await goToDashboard();
     }
   };
 
   const back = () => setStep((s) => Math.max(0, s - 1));
 
   const skip = async () => {
+    if (navigating) return;
     setSaving(true);
     try {
-      await fetch('/api/user/onboarding', {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ completed: true }),
-      });
+      await saveProgress({ completed: true });
     } catch {
-      // Non-blocking — navigate regardless
+      // Non-blocking
     } finally {
       setSaving(false);
     }
-    goToDashboard();
+    await goToDashboard();
   };
 
   if (loading) {
@@ -294,17 +349,22 @@ export default function OnboardingPage() {
               <span />
             )}
             <div className="flex items-center gap-2">
-              <button onClick={() => void skip()} className="px-4 py-2 text-sm text-[#AAAAAA] hover:text-white">
+              <button
+                onClick={() => void skip()}
+                disabled={saving || navigating}
+                className="px-4 py-2 text-sm text-[#AAAAAA] hover:text-white disabled:opacity-50 flex items-center gap-1"
+              >
+                {navigating ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                 Skip for now
               </button>
               <button
                 onClick={() => void next()}
-                disabled={saving}
+                disabled={saving || navigating}
                 className="px-5 py-2.5 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 rounded-lg font-semibold flex items-center gap-2"
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {(saving || navigating) ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {step === STEPS.length - 1 ? 'Finish' : 'Continue'}
-                {!saving && <ArrowRight className="w-4 h-4" />}
+                {!saving && !navigating && <ArrowRight className="w-4 h-4" />}
               </button>
             </div>
           </div>
