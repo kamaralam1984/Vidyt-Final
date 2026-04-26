@@ -20,6 +20,11 @@ import {
   Crown,
   Loader2,
   X,
+  Lock,
+  LogIn,
+  Lightbulb,
+  FileText,
+  Target,
 } from 'lucide-react';
 import Image from 'next/image';
 import { type PlanFeatures } from '@/lib/planLimits';
@@ -204,30 +209,116 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 />
               </div>
             </div>
+            {/* Platform label — helps Google OAuth reviewers instantly understand the app */}
+            <div className="flex justify-center mb-5">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#FF0000]/10 border border-[#FF0000]/25 rounded-full text-[#FF0000] text-sm font-semibold">
+                <Sparkles className="w-4 h-4" />
+                AI-Powered Video Creation Platform
+              </span>
+            </div>
             <h1 className="text-3xl sm:text-5xl md:text-8xl font-bold text-white mt-0 mb-4 md:mb-6 leading-tight">
               {t('hero.title.main')}{' '}
               <span className="text-[#FF0000] bg-gradient-to-r from-[#FF0000] to-[#CC0000] bg-clip-text text-transparent">
                 {t('hero.title.highlight')}
               </span>
             </h1>
-            <p className="text-base sm:text-xl md:text-2xl text-[#AAAAAA] mb-6 md:mb-8 max-w-3xl mx-auto px-2">
+            <p className="text-base sm:text-xl md:text-2xl text-[#AAAAAA] mb-3 max-w-3xl mx-auto px-2">
               {t('hero.subtitle')}
+            </p>
+            <p className="text-sm sm:text-base text-[#888888] mb-8 max-w-2xl mx-auto px-2">
+              Vidyt helps creators generate video ideas, write full scripts, and optimize their content for maximum reach — all powered by AI.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/register"
                 className="group px-8 py-4 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-all font-semibold text-lg flex items-center gap-2 shadow-lg shadow-[#FF0000]/30"
               >
-                {t('hero.cta.primary')}
+                Get Started Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
                 href="/login"
                 className="px-8 py-4 bg-[#212121] text-white rounded-lg hover:bg-[#333333] transition-all font-semibold text-lg flex items-center gap-2"
               >
-                <Play className="w-5 h-5" />
-                {t('hero.cta.secondary')}
+                <LogIn className="w-5 h-5" />
+                Login
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* What is Vidyt? — required for Google OAuth verification */}
+      <section id="about" className="py-24 px-6 bg-[#0F0F0F]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <span className="inline-block px-4 py-1.5 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-full text-[#FF0000] text-xs font-bold uppercase tracking-widest mb-4">
+              About Vidyt
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-5">
+              What is <span className="text-[#FF0000]">Vidyt</span>?
+            </h2>
+            <p className="text-xl text-[#AAAAAA] max-w-3xl mx-auto leading-relaxed">
+              Vidyt is an AI-powered platform that helps video creators save time, grow faster, and create
+              better content — without needing to be an expert.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+            {[
+              {
+                icon: Lightbulb,
+                title: 'Generate Video Ideas',
+                desc: 'Never run out of content ideas. Vidyt\'s AI analyzes trending topics in your niche and delivers ready-to-use video ideas with viral potential scores.',
+                color: '#FF0000',
+              },
+              {
+                icon: FileText,
+                title: 'Write Full Scripts',
+                desc: 'From topic to finished script in seconds. Vidyt writes engaging YouTube scripts with hooks, storytelling structure, and call-to-actions built in.',
+                color: '#3EA6FF',
+              },
+              {
+                icon: Target,
+                title: 'Optimize for More Views',
+                desc: 'AI-powered SEO for titles, descriptions, thumbnails, and hashtags. Designed to improve click-through rates and help your videos reach more people.',
+                color: '#2BA640',
+              },
+            ].map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={i}
+                  className="bg-[#181818] border border-[#212121] rounded-2xl p-8 hover:border-[#333] transition-all text-center"
+                >
+                  <div
+                    className="w-14 h-14 rounded-2xl mx-auto mb-5 flex items-center justify-center"
+                    style={{ backgroundColor: `${item.color}15` }}
+                  >
+                    <Icon className="w-7 h-7" style={{ color: item.color }} />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                  <p className="text-[#AAAAAA] text-sm leading-relaxed">{item.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Who it's for */}
+          <div className="bg-[#181818] border border-[#212121] rounded-2xl p-8 md:p-12">
+            <h3 className="text-2xl font-bold text-white mb-6 text-center">Who is Vidyt for?</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+              {[
+                { emoji: '🎬', label: 'Content Creators', desc: 'YouTubers and video makers who want to grow their channel faster with less effort.' },
+                { emoji: '📣', label: 'Marketers', desc: 'Brand and performance marketers who use video to drive traffic and conversions.' },
+                { emoji: '⭐', label: 'Influencers', desc: 'Social media personalities who want AI assistance to stay consistent and relevant.' },
+              ].map((item, i) => (
+                <div key={i} className="flex flex-col items-center gap-3">
+                  <span className="text-4xl">{item.emoji}</span>
+                  <h4 className="text-white font-semibold">{item.label}</h4>
+                  <p className="text-[#AAAAAA] text-sm">{item.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -624,27 +715,76 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
       </section>
 
       {/* How It Works */}
-      <section className="py-24 px-6 bg-[#0F0F0F]">
+      <section id="how-it-works" className="py-24 px-6 bg-[#0F0F0F]">
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 1, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">How It Works</h2>
-            <p className="text-[#AAAAAA] text-lg max-w-2xl mx-auto">Start creating viral content in 3 simple steps — no credit card required</p>
+            <span className="inline-block px-4 py-1.5 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-full text-[#FF0000] text-xs font-bold uppercase tracking-widest mb-4">
+              Simple Process
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">How Vidyt Works</h2>
+            <p className="text-[#AAAAAA] text-lg max-w-2xl mx-auto">Start creating better videos in 4 simple steps — no technical skills needed</p>
           </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { step: '01', title: 'Paste Your Link', desc: 'Enter your YouTube channel URL or video link. Our AI instantly analyzes your content, titles, thumbnails, and keywords.', color: '#FF0000' },
-              { step: '02', title: 'Get AI Recommendations', desc: 'Receive viral title suggestions, trending hashtags, optimal posting times, and thumbnail improvements — all powered by 9 AI providers.', color: '#3EA6FF' },
-              { step: '03', title: 'Grow & Go Viral', desc: 'Apply the recommendations, schedule your optimized content, and watch your views, subscribers, and engagement skyrocket.', color: '#2BA640' },
-            ].map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 1, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
-                className="relative bg-[#181818] border border-[#212121] rounded-2xl p-8 text-center hover:border-[#333] transition">
-                <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center text-2xl font-black text-white" style={{ background: `${item.color}20`, color: item.color }}>
-                  {item.step}
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
-                <p className="text-[#AAAAAA] text-sm leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
+              {
+                step: '01',
+                icon: LogIn,
+                title: 'Sign In with Google',
+                desc: 'Create your free Vidyt account by signing in securely with your Google account. No extra passwords needed.',
+                color: '#FF0000',
+              },
+              {
+                step: '02',
+                icon: Target,
+                title: 'Choose a Tool',
+                desc: 'Select from AI tools: video idea generator, script writer, SEO optimizer, hashtag generator, and more.',
+                color: '#3EA6FF',
+              },
+              {
+                step: '03',
+                icon: Brain,
+                title: 'Generate AI Content',
+                desc: 'Enter your topic or video link and let Vidyt\'s AI create ideas, scripts, titles, and optimization suggestions instantly.',
+                color: '#2BA640',
+              },
+              {
+                step: '04',
+                icon: TrendingUp,
+                title: 'Create & Grow',
+                desc: 'Use the AI-generated content to create your videos, apply SEO recommendations, and watch your channel grow.',
+                color: '#FFD700',
+              },
+            ].map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.div key={i} initial={{ opacity: 1, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                  className="relative bg-[#181818] border border-[#212121] rounded-2xl p-7 text-center hover:border-[#333] transition group">
+                  {/* Connector line between steps */}
+                  {i < 3 && (
+                    <div className="hidden lg:block absolute top-1/4 -right-3 w-6 h-0.5 bg-[#333]" />
+                  )}
+                  <div
+                    className="w-14 h-14 rounded-2xl mx-auto mb-5 flex items-center justify-center"
+                    style={{ backgroundColor: `${item.color}15` }}
+                  >
+                    <Icon className="w-7 h-7" style={{ color: item.color }} />
+                  </div>
+                  <div className="text-xs font-bold mb-2" style={{ color: item.color }}>{item.step}</div>
+                  <h3 className="text-lg font-bold text-white mb-3">{item.title}</h3>
+                  <p className="text-[#AAAAAA] text-sm leading-relaxed">{item.desc}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 text-center">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-all font-semibold text-lg shadow-lg shadow-[#FF0000]/30"
+            >
+              Get Started for Free
+              <ArrowRight className="w-5 h-5" />
+            </Link>
           </div>
         </div>
       </section>
@@ -795,6 +935,113 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       </section>
 
+      {/* Trust & Transparency — required for Google OAuth verification */}
+      <section id="trust" className="py-24 px-6 bg-[#0F0F0F]">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-xs font-bold uppercase tracking-widest mb-4">
+              Privacy & Trust
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-5">
+              Your Data is <span className="text-emerald-400">Safe with Us</span>
+            </h2>
+            <p className="text-xl text-[#AAAAAA] max-w-3xl mx-auto">
+              We believe in full transparency. Here is exactly what data Vidyt uses and how we protect it.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+            {/* What data we use */}
+            <div className="bg-[#181818] border border-[#212121] rounded-2xl p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-[#3EA6FF]/15 flex items-center justify-center">
+                  <LogIn className="w-5 h-5 text-[#3EA6FF]" />
+                </div>
+                <h3 className="text-xl font-bold text-white">What Data We Access</h3>
+              </div>
+              <p className="text-[#AAAAAA] text-sm mb-5">
+                When you sign in with Google, Vidyt only requests the minimum information required to create your account:
+              </p>
+              <ul className="space-y-3">
+                {[
+                  { item: 'Your name (to personalise your dashboard)', allowed: true },
+                  { item: 'Your email address (for your account and login)', allowed: true },
+                  { item: 'Your Google profile picture (for your avatar)', allowed: true },
+                  { item: 'Your YouTube videos or channel data', allowed: false },
+                  { item: 'Contacts, Drive files, or other Google data', allowed: false },
+                ].map((row, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm">
+                    <span className={`mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${row.allowed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                      {row.allowed ? '✓' : '✗'}
+                    </span>
+                    <span className={row.allowed ? 'text-[#CCCCCC]' : 'text-[#777777] line-through'}>{row.item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* How we protect it */}
+            <div className="bg-[#181818] border border-[#212121] rounded-2xl p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white">How We Protect Your Data</h3>
+              </div>
+              <ul className="space-y-4">
+                {[
+                  { icon: Shield, title: 'Never Sold or Shared', desc: 'We never sell, rent, or share your personal data with third parties or advertisers.' },
+                  { icon: Lock, title: 'Encrypted & Secure', desc: 'All data is transmitted over HTTPS and stored with industry-standard encryption.' },
+                  { icon: Users, title: 'You Stay in Control', desc: 'You can delete your Vidyt account and all associated data at any time from Settings.' },
+                  { icon: Globe, title: 'GDPR & CCPA Compliant', desc: 'Vidyt follows international data privacy laws including GDPR (EU) and CCPA (California).' },
+                ].map((row, i) => {
+                  const Icon = row.icon;
+                  return (
+                    <li key={i} className="flex items-start gap-4">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <Icon className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div>
+                        <p className="text-white text-sm font-semibold mb-0.5">{row.title}</p>
+                        <p className="text-[#AAAAAA] text-sm">{row.desc}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+
+          {/* Privacy policy CTA */}
+          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-7 text-center">
+            <p className="text-[#CCCCCC] mb-4">
+              Want to read the full details? Our Privacy Policy explains everything in plain language.
+            </p>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <Link
+                href="/privacy-policy"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all font-semibold text-sm"
+              >
+                <Shield className="w-4 h-4" />
+                Read Privacy Policy
+              </Link>
+              <Link
+                href="/terms"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all font-semibold text-sm"
+              >
+                Terms of Service
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all font-semibold text-sm"
+              >
+                Contact Us
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="py-24 px-6 bg-gradient-to-r from-[#FF0000] to-[#CC0000]">
         <div className="max-w-4xl mx-auto text-center">
@@ -879,8 +1126,35 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               </ul>
             </div>
           </div>
-          <div className="border-t border-[#212121] pt-8 text-center text-[#AAAAAA] text-sm">
-            © {new Date().getFullYear()} Vid YT. All rights reserved.
+          {/* Highlighted legal links — Google OAuth verification requirement */}
+          <div className="border-t border-[#212121] pt-8">
+            {/* Privacy Policy & Terms — highlighted for visibility */}
+            <div className="flex flex-wrap items-center justify-center gap-4 mb-5">
+              <Link
+                href="/privacy-policy"
+                className="group inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/40 hover:border-emerald-400 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-xl text-sm font-semibold transition-all shadow-[0_0_12px_rgba(52,211,153,0.15)] hover:shadow-[0_0_20px_rgba(52,211,153,0.3)]"
+              >
+                <Shield className="w-4 h-4" />
+                Privacy Policy
+              </Link>
+              <Link
+                href="/terms"
+                className="group inline-flex items-center gap-2 px-5 py-2.5 bg-[#3EA6FF]/10 border border-[#3EA6FF]/40 hover:border-[#3EA6FF] hover:bg-[#3EA6FF]/20 text-[#3EA6FF] hover:text-[#7DC4FF] rounded-xl text-sm font-semibold transition-all shadow-[0_0_12px_rgba(62,166,255,0.15)] hover:shadow-[0_0_20px_rgba(62,166,255,0.3)]"
+              >
+                <FileText className="w-4 h-4" />
+                Terms of Service
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#181818] border border-[#333] hover:border-[#555] text-[#888888] hover:text-[#CCCCCC] rounded-xl text-sm font-medium transition-all"
+              >
+                <Users className="w-3.5 h-3.5" />
+                Contact Us
+              </Link>
+            </div>
+            <p className="text-center text-[#555555] text-sm">
+              © {new Date().getFullYear()} Vidyt. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
