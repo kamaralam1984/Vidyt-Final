@@ -23,7 +23,7 @@ export interface ScoreInputs {
 // Threshold lowered to 55 so quality new pages (1200+ words, no views yet)
 // can reach "pending" status and be promoted by the daily cron.
 export const INDEXABLE_THRESHOLD = 55;
-export const DAILY_PROMOTION_CAP = 100;
+export const DAILY_PROMOTION_CAP = 200;
 
 export function computeQualityScore(i: ScoreInputs): number {
   // 1) Word-count gate (max 35 pts). Google wants substance.
