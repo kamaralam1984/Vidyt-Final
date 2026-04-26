@@ -92,10 +92,13 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
       response.headers.set('CDN-Cache-Control', 'no-store');
       response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
       response.headers.set('Vary', 'Cookie, Authorization');
+    } else if (pathname === '/') {
+      // Homepage — no CDN cache so Google OAuth reviewers always see latest content
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      response.headers.set('CDN-Cache-Control', 'no-store');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
     } else {
-      // Public SEO pages — short CDN cache so deploys reflect quickly.
-      // s-maxage=60 lets Cloudflare serve from edge for 1 min only.
-      // stale-while-revalidate=120 serves stale for 2 min while revalidating.
+      // Other public SEO pages — short CDN cache so deploys reflect quickly.
       response.headers.set(
         'Cache-Control',
         'public, max-age=0, s-maxage=60, stale-while-revalidate=120'

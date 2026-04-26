@@ -244,6 +244,18 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 Login
               </Link>
             </div>
+            {/* Privacy policy notice — required for Google OAuth verification */}
+            <p className="mt-6 text-xs text-[#666666]">
+              By signing up, you agree to our{' '}
+              <Link href="/terms" className="text-[#AAAAAA] hover:text-white underline underline-offset-2 transition-colors">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy-policy" className="text-[#AAAAAA] hover:text-white underline underline-offset-2 transition-colors">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </section>
