@@ -17,28 +17,11 @@ const loginSchema = z.object({
 async function handleLogin(request: NextRequest) {
   const ip = getClientIP(request);
 
-  // Block immediately if IP is flagged
+  // Block only if IP has too many FAILED attempts (not all attempts)
   if (isIPBlocked(ip)) {
     return NextResponse.json(
       { error: 'Too many failed attempts. Try again later.' },
       { status: 429, headers: { 'Retry-After': '3600' } }
-    );
-  }
-
-  // Strict rate limit: 5 attempts per 15 minutes per IP
-  const rl = rateLimit(`login:${ip}`, RATE_LIMITS.login);
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: 'Too many login attempts. Please wait before trying again.' },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(rl.retryAfter ?? 900),
-          'X-RateLimit-Limit': String(rl.limit),
-          'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': String(Math.ceil(rl.resetAt / 1000)),
-        },
-      }
     );
   }
 
@@ -121,11 +104,9 @@ async function handleLogin(request: NextRequest) {
 
       return response;
     } catch (authError: any) {
-      // Track login failure for rate limiting
+      // Track failure by IP so blockIP mechanism works correctly
       const ip = getClientIP(request);
-      const failureKey = `auth_fail:${ip}:${email}`;
-      trackFailure(failureKey);
-      
+      trackFailure(ip);
       throw authError;
     }
   } catch (error: any) {

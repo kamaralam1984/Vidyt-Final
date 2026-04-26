@@ -192,7 +192,7 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    return [{ source: '/login', destination: '/auth' }];
+    return [];
   },
   async redirects() {
     return [

@@ -73,10 +73,9 @@ export async function applyRateLimit(
     };
   }
 
-  // Apply rate limit with dual keys (IP + endpoint, userId if available)
+  // Apply rate limit: per-IP per-endpoint only (no shared general counter)
   const identifiers = [
     `rl:${ip}:${endpoint}`,
-    `rl:${ip}:general`,
   ];
 
   for (const identifier of identifiers) {

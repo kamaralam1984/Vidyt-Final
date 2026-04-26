@@ -48,7 +48,7 @@ const suspiciousActivity = new Map<string, { count: number; firstSeen: number }>
 export const RATE_LIMITS = {
   // Auth endpoints - very strict
   auth: { limit: 5, windowMs: 15 * 60 * 1000 }, // 5 per 15 min
-  login: { limit: 3, windowMs: 15 * 60 * 1000 }, // 3 per 15 min
+  login: { limit: 10, windowMs: 15 * 60 * 1000 }, // 10 per 15 min
   register: { limit: 5, windowMs: 60 * 60 * 1000 }, // 5 per hour
   passwordReset: { limit: 3, windowMs: 60 * 60 * 1000 }, // 3 per hour
 
@@ -293,17 +293,18 @@ export function detectBotBehavior(
  * Get client IP from request
  */
 export function getClientIP(request: Request | NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIP = request.headers.get('x-real-ip');
+  // cf-connecting-ip is the most reliable when behind Cloudflare Tunnel
+  // (request.ip would be 127.0.0.1 since cloudflared connects from localhost)
   const cloudflareIP = request.headers.get('cf-connecting-ip');
+  if (cloudflareIP) return cloudflareIP;
 
-  return (
-    (request as any).ip ||
-    (forwarded ? forwarded.split(',')[0].trim() : null) ||
-    realIP ||
-    cloudflareIP ||
-    '127.0.0.1' // Fallback to localhost instead of unknown
-  );
+  const realIP = request.headers.get('x-real-ip');
+  if (realIP) return realIP;
+
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+
+  return (request as any).ip || '127.0.0.1';
 }
 
 /**

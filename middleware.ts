@@ -230,29 +230,12 @@ export async function middleware(request: NextRequest) {
       request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
       '127.0.0.1';
 
-    // Auth endpoints: strict — 5 req / 15 min per IP (only login/password endpoints, not me/logout/google)
+    // Auth endpoints rate limiting is handled entirely by the route handlers
+    // (lib/rateLimiter.ts) which track failed attempts. No middleware-level
+    // rate limit here to avoid double-counting and false positives.
     const isLoginEndpoint = pathname === '/api/auth/login' || pathname === '/api/auth/login-pin' ||
       pathname === '/api/auth/password-reset' || pathname === '/api/auth/prepare-signup' ||
       pathname === '/api/auth/verify-and-pay';
-    if (isLoginEndpoint) {
-      const rl = edgeRateLimit(`auth:${ip}`, 5, 15 * 60 * 1000);
-      if (!rl.allowed) {
-        return addSecurityHeaders(
-          NextResponse.json(
-            { error: 'Too many requests. Please try again later.' },
-            {
-              status: 429,
-              headers: {
-                'Retry-After': String(rl.retryAfter),
-                'X-RateLimit-Limit': '5',
-                'X-RateLimit-Remaining': '0',
-              },
-            }
-          ),
-          request
-        );
-      }
-    }
 
     // Google OAuth endpoints — generous limit (user can refresh/retry OAuth flow)
     const isGoogleOAuth = pathname.startsWith('/api/auth/google') || pathname.startsWith('/api/auth/callback/google');
