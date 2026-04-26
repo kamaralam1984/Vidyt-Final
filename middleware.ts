@@ -93,15 +93,15 @@ function addSecurityHeaders(response: NextResponse, request?: NextRequest): Next
       response.headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
       response.headers.set('Vary', 'Cookie, Authorization');
     } else {
-      // Public SEO pages — allow browser short-cache + CDN edge-cache + stale-while-revalidate.
-      // s-maxage=3600 lets Cloudflare serve from edge for 1h (huge Googlebot win).
-      // stale-while-revalidate=86400 serves stale for 24h while revalidating in background.
+      // Public SEO pages — short CDN cache so deploys reflect quickly.
+      // s-maxage=60 lets Cloudflare serve from edge for 1 min only.
+      // stale-while-revalidate=120 serves stale for 2 min while revalidating.
       response.headers.set(
         'Cache-Control',
-        'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400'
+        'public, max-age=0, s-maxage=60, stale-while-revalidate=120'
       );
-      response.headers.set('CDN-Cache-Control', 'public, s-maxage=3600');
-      response.headers.set('Cloudflare-CDN-Cache-Control', 'public, s-maxage=3600');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=60');
+      response.headers.set('Cloudflare-CDN-Cache-Control', 'public, s-maxage=60');
     }
   }
 
