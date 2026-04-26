@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Send, FileDown, Trash2, HelpCircle, Check, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import axios from 'axios';
+import MarketingNavbar from '@/components/MarketingNavbar';
 
 export default function DataRequestsPage() {
   const [activeTab, setActiveTab] = useState<'export' | 'delete' | 'faq'>('export');
@@ -97,7 +98,9 @@ export default function DataRequestsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0F0F0F] text-white px-4 py-8 sm:px-6">
+    <div className="min-h-screen bg-[#0F0F0F] text-white">
+    <MarketingNavbar />
+    <main className="px-4 py-8 sm:px-6 pt-24">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
@@ -413,5 +416,6 @@ export default function DataRequestsPage() {
         </div>
       </div>
     </main>
+    </div>
   );
 }

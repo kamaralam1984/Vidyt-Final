@@ -1100,8 +1100,8 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
                 <li><Link href="/pricing" className="hover:text-white transition-colors">Plans</Link></li>
-                <li><a href="#testimonials" className="hover:text-white transition-colors">Reviews</a></li>
-                <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
+                <li><a href="/#testimonials" className="hover:text-white transition-colors">Reviews</a></li>
+                <li><a href="/#faq" className="hover:text-white transition-colors">FAQ</a></li>
                 <li><Link href="/tools/youtube-title-generator" className="hover:text-white transition-colors">Free SEO Tools</Link></li>
               </ul>
             </div>
@@ -1111,7 +1111,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
                 <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
                 <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
-                <li><Link href="/support" className="hover:text-white transition-colors">Support</Link></li>
+                <li><Link href="/contact" className="hover:text-white transition-colors">Support</Link></li>
               </ul>
             </div>
             <div>
