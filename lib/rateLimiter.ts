@@ -192,8 +192,8 @@ export function trackFailure(identifier: string): void {
     store[key].failureCount = (store[key].failureCount || 0) + 1;
   }
 
-  // Flag suspicious activity if too many failures
-  if ((store[key].failureCount || 0) > 10) {
+  // Flag suspicious activity if too many failures (50+ to avoid blocking legitimate users)
+  if ((store[key].failureCount || 0) > 50) {
     recordSuspiciousActivity(identifier, 'excessive_failures');
   }
 }
@@ -223,8 +223,8 @@ export function recordSuspiciousActivity(
   if (activity.count > 5 && severity === 'high') {
     blockIP(identifier, 60 * 60 * 1000); // 1 hour
     console.warn(`🔴 High severity abuse detected: ${identifier} - ${reason}`);
-  } else if (activity.count > 10) {
-    blockIP(identifier, 60 * 1000); // 10 minutes
+  } else if (activity.count > 50) {
+    blockIP(identifier, 5 * 60 * 1000); // 5 minutes only
     console.warn(`🟠 Suspicious activity detected: ${identifier} - ${reason}`);
   }
 }
