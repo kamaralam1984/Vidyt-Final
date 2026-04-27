@@ -80,10 +80,39 @@ export default async function HomePage() {
   const planFeatures = planId ? getPlanRoll(planId) : null;
 
   return (
-    <HomeClient 
-      initialPlans={plans} 
-      initialUserPlanId={planId} 
-      features={planFeatures ? planFeatures.features : null} 
-    />
+    <>
+      <HomeClient
+        initialPlans={plans}
+        initialUserPlanId={planId}
+        features={planFeatures ? planFeatures.features : null}
+      />
+      {/*
+        Google OAuth verification — fixed bottom bar, always visible on screen.
+        Server-rendered so Googlebot sees Privacy Policy + Terms links in raw HTML.
+      */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 9999,
+        backgroundColor: 'rgba(10,10,10,0.95)',
+        borderTop: '1px solid #222',
+        backdropFilter: 'blur(8px)',
+        padding: '10px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        flexWrap: 'wrap',
+        fontSize: '13px',
+        color: '#888',
+      }}>
+        <span>Vidyt — AI-powered tools for content creators. Sign in with Google to get started.</span>
+        <a href="/privacy-policy" style={{ color: '#00ffcc', fontWeight: 'bold', textDecoration: 'none' }}>Privacy Policy</a>
+        <span style={{ color: '#444' }}>|</span>
+        <a href="/terms" style={{ color: '#00ffcc', fontWeight: 'bold', textDecoration: 'none' }}>Terms of Service</a>
+      </div>
+    </>
   );
 }

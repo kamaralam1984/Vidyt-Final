@@ -401,7 +401,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/',
+    // '/' removed — homepage cache handled by next.config.js headers()
     '/api/:path*',
     '/admin/:path*',
     '/dashboard/:path*',

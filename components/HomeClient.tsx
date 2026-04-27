@@ -260,6 +260,18 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       </section>
 
+      {/* Google OAuth verification — visible h1 + description required */}
+      <section className="px-6 pb-0 pt-8 bg-[#0F0F0F]">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">AI Tools for Content Creators</h1>
+          <p className="text-[#AAAAAA] text-lg leading-relaxed">
+            Vidyt is an AI-powered platform that helps creators generate video ideas,
+            analyze trends, and grow their audience faster. Users can sign in with Google
+            to securely access personalized insights and tools.
+          </p>
+        </div>
+      </section>
+
       {/* What is Vidyt? — required for Google OAuth verification */}
       <section id="about" className="py-24 px-6 bg-[#0F0F0F]">
         <div className="max-w-6xl mx-auto">
@@ -1138,32 +1150,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               </ul>
             </div>
           </div>
-          {/* Highlighted legal links — Google OAuth verification requirement */}
           <div className="border-t border-[#212121] pt-8">
-            {/* Privacy Policy & Terms — highlighted for visibility */}
-            <div className="flex flex-wrap items-center justify-center gap-4 mb-5">
-              <Link
-                href="/privacy-policy"
-                className="group inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/40 hover:border-emerald-400 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-xl text-sm font-semibold transition-all shadow-[0_0_12px_rgba(52,211,153,0.15)] hover:shadow-[0_0_20px_rgba(52,211,153,0.3)]"
-              >
-                <Shield className="w-4 h-4" />
-                Privacy Policy
-              </Link>
-              <Link
-                href="/terms"
-                className="group inline-flex items-center gap-2 px-5 py-2.5 bg-[#3EA6FF]/10 border border-[#3EA6FF]/40 hover:border-[#3EA6FF] hover:bg-[#3EA6FF]/20 text-[#3EA6FF] hover:text-[#7DC4FF] rounded-xl text-sm font-semibold transition-all shadow-[0_0_12px_rgba(62,166,255,0.15)] hover:shadow-[0_0_20px_rgba(62,166,255,0.3)]"
-              >
-                <FileText className="w-4 h-4" />
-                Terms of Service
-              </Link>
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#181818] border border-[#333] hover:border-[#555] text-[#888888] hover:text-[#CCCCCC] rounded-xl text-sm font-medium transition-all"
-              >
-                <Users className="w-3.5 h-3.5" />
-                Contact Us
-              </Link>
-            </div>
             <p className="text-center text-[#555555] text-sm">
               © {new Date().getFullYear()} Vidyt. All rights reserved.
             </p>
