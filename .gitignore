@@ -60,3 +60,4 @@ mobile/android/.idea/
 mongod.conf
 mongodb-backup-*/
 .env.local.backup
+tunnel.log
