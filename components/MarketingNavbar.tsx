@@ -436,7 +436,7 @@ function FeatureCard({ feature }: { feature: Feature }) {
   const { authenticated, plan } = useUser();
 
   const flag = FEATURE_TO_FLAG_MAP[feature.id];
-  const isLocked = authenticated && plan && flag ? !(plan.features as any)[flag] : false;
+  const isLocked = authenticated && plan && flag ? !((plan.features || {}) as any)[flag] : false;
 
   // Always go to the marketing tool page first as requested by the user
   const href = `/tools/${feature.id}`;

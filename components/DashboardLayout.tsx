@@ -32,7 +32,7 @@ function DashboardInner({ children }: DashboardLayoutProps) {
       <main
         className="flex-1 overflow-y-auto transition-all duration-300 min-h-screen"
         style={{
-          paddingTop: NAVBAR_HEIGHT,
+          paddingTop: `calc(${NAVBAR_HEIGHT}px + var(--dashboard-banner-height, 0px))`,
           marginLeft: sidebarOpen ? 256 : 0,
         }}
       >

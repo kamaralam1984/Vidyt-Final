@@ -507,7 +507,7 @@ export default function DashboardControlPage() {
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-full bg-red-500/15 border border-red-500/20 flex items-center justify-center shrink-0">
                         <span className="text-[10px] font-bold text-red-400">
-                          {(user.name || user.email || '?')[0].toUpperCase()}
+                          {(user.name || user.email || '?')[0]?.toUpperCase() || '?'}
                         </span>
                       </div>
                       <span className="text-sm text-white truncate font-medium">{user.name || '—'}</span>

@@ -686,7 +686,7 @@ export default function LivePage() {
                       {/* Avatar */}
                       <div className="relative flex-shrink-0">
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-600/50 to-red-800/50 flex items-center justify-center text-white font-bold text-[10px]">
-                          {(user.name || 'U')[0].toUpperCase()}
+                          {(user.name || 'U')[0]?.toUpperCase() || 'U'}
                         </div>
                         {user.status === 'online' && (
                           <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-[#141414]" />
@@ -889,7 +889,7 @@ export default function LivePage() {
                       <div key={i} className="flex items-center justify-between text-[11px]">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <div className="w-5 h-5 rounded-full bg-gradient-to-br from-red-600/40 to-red-800/40 flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">
-                            {(u.name || 'U')[0].toUpperCase()}
+                            {(u.name || 'U')[0]?.toUpperCase() || 'U'}
                           </div>
                           <div className="min-w-0">
                             <p className="text-white/60 truncate">{u.name}</p>

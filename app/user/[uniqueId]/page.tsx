@@ -234,7 +234,7 @@ export default function UserHomePage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-2xl font-bold text-white">
-                {userData.subscriptionPlan?.planName || userData.subscription.toUpperCase()}
+                {userData.subscriptionPlan?.planName || (userData.subscription || 'FREE').toUpperCase()}
               </p>
               <p className="text-[#AAAAAA] text-sm mt-1">
                 Status:{' '}

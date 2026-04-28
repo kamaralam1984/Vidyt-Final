@@ -195,7 +195,7 @@ export default function PlanControlPanel() {
                     <div className="text-sm text-gray-400 mb-2">Current Role</div>
                     <div className="flex items-center gap-2">
                       <span className={`${info.badgeColor} text-white px-3 py-1 rounded-full text-sm font-semibold`}>
-                        {plan.role.charAt(0).toUpperCase() + plan.role.slice(1)}
+                        {(plan.role || 'user').charAt(0).toUpperCase() + (plan.role || 'user').slice(1)}
                       </span>
                       <span className="text-gray-400 text-xs">{info.description}</span>
                     </div>

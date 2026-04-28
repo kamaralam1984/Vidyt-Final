@@ -91,11 +91,18 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000)),
     ]);
     if (dbUser) {
+      const ownerEmail = process.env.SUPER_ADMIN_EMAIL;
+      const rawRole = String(dbUser.role || '');
+      const isDbSuperAdmin = rawRole === 'super-admin' || rawRole === 'superadmin';
+      // Strip super-admin from any account that is not the designated owner
+      const effectiveRole = isDbSuperAdmin && ownerEmail && dbUser.email !== ownerEmail
+        ? 'user'
+        : rawRole;
       return {
         id: dbUser._id.toString(),
         email: dbUser.email,
         name: dbUser.name,
-        role: dbUser.role as any,
+        role: effectiveRole as any,
         subscription: normalizePlan(dbUser.subscription) as any,
       };
     }
@@ -196,10 +203,15 @@ export async function loginUser(
 }
 
 /**
- * Get role from plan: Free → user, Pro → manager, Enterprise → admin. Super-admin is always preserved.
+ * Get role from plan: Free → user, Pro → manager, Enterprise → admin.
+ * Super-admin is only preserved when the user's email matches SUPER_ADMIN_EMAIL env var.
  */
-export function getRoleFromPlanAndUser(user: { role?: string; subscription?: string; subscriptionPlan?: { planId?: string } }): 'user' | 'admin' | 'manager' | 'super-admin' | 'enterprise' {
-  if (user.role === 'super-admin' || user.role === 'superadmin') return 'super-admin';
+export function getRoleFromPlanAndUser(user: { email?: string; role?: string; subscription?: string; subscriptionPlan?: { planId?: string } }): 'user' | 'admin' | 'manager' | 'super-admin' | 'enterprise' {
+  if (user.role === 'super-admin' || user.role === 'superadmin') {
+    const ownerEmail = process.env.SUPER_ADMIN_EMAIL;
+    if (!ownerEmail || user.email === ownerEmail) return 'super-admin';
+    // DB role is super-admin but email doesn't match owner — treat as regular user
+  }
   const rawPlan = user.subscriptionPlan?.planId || user.subscription || 'free';
   const plan = normalizePlan(rawPlan);
   if (plan === 'enterprise') return 'enterprise';

@@ -86,8 +86,8 @@ function generateHookText(input: ThumbnailInput): string {
   // Extract key phrases
   const hooks = [
     `${words[0]?.toUpperCase() || ''}: ${POWER_WORDS[0]}`,
-    `${emotion.toUpperCase()} TRUTH`,
-    `${topic.split(' ').slice(0, 2).join(' ').toUpperCase()}`,
+    `${(emotion || '').toUpperCase()} TRUTH`,
+    `${(topic || '').split(' ').slice(0, 2).join(' ').toUpperCase()}`,
     `${POWER_WORDS[1]}: ${words[words.length - 1]?.toUpperCase() || ''}`,
     `2026: ${POWER_WORDS[2]}`
   ];

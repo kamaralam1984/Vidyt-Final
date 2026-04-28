@@ -86,19 +86,15 @@ export default async function HomePage() {
         initialUserPlanId={planId}
         features={planFeatures ? planFeatures.features : null}
       />
-      {/*
-        Google OAuth verification — fixed bottom bar, always visible on screen.
-        Server-rendered so Googlebot sees Privacy Policy + Terms links in raw HTML.
-      */}
+      {/* Google OAuth verification — server-rendered so Googlebot sees Privacy/Terms in raw HTML */}
       <div style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 9999,
-        backgroundColor: 'rgba(10,10,10,0.95)',
+        zIndex: 55,
+        backgroundColor: 'rgba(10,10,10,0.96)',
         borderTop: '1px solid #222',
-        backdropFilter: 'blur(8px)',
         padding: '10px 16px',
         display: 'flex',
         alignItems: 'center',

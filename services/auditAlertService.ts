@@ -152,7 +152,7 @@ export async function sendAuditAlertEmail(alert: {
     const html = `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#0f0f0f;color:#fff;border-radius:8px;overflow:hidden;">
         <div style="background:${color};padding:16px 24px;">
-          <h2 style="margin:0;font-size:18px;">${alert.severity.toUpperCase()} ALERT</h2>
+          <h2 style="margin:0;font-size:18px;">${(alert.severity || 'info').toUpperCase()} ALERT</h2>
         </div>
         <div style="padding:24px;">
           <h3 style="margin-top:0;color:#fff;">${alert.title}</h3>
@@ -182,7 +182,7 @@ export async function sendAuditAlertEmail(alert: {
       const { error } = await resend.emails.send({
         from: emailFrom,
         to: adminEmail,
-        subject: `[VidYT Alert] ${alert.severity.toUpperCase()}: ${alert.title}`,
+        subject: `[VidYT Alert] ${(alert.severity || 'info').toUpperCase()}: ${alert.title}`,
         html,
       });
       if (!error) return true;
@@ -199,7 +199,7 @@ export async function sendAuditAlertEmail(alert: {
     await transporter.sendMail({
       from: emailFrom,
       to: adminEmail,
-      subject: `[VidYT Alert] ${alert.severity.toUpperCase()}: ${alert.title}`,
+      subject: `[VidYT Alert] ${(alert.severity || 'info').toUpperCase()}: ${alert.title}`,
       html,
     });
     return true;

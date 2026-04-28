@@ -764,7 +764,7 @@ export default function VideoUpload({
                           {status === 'public' && <Globe className="w-4 h-4" />}
                           {status === 'unlisted' && <EyeOff className="w-4 h-4" />}
                           {status === 'private' && <Lock className="w-4 h-4" />}
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                          {(status || 'processing').charAt(0).toUpperCase() + (status || 'processing').slice(1)}
                         </button>
                       ))}
                     </div>

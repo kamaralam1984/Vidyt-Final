@@ -362,15 +362,17 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // ── Role normalisation + owner email guard ──
+  const roleNorm = String(user.role || '').toLowerCase().replace(/_/g, '-');
+  const ownerEmail = process.env.SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = (roleNorm === 'super-admin' || roleNorm === 'superadmin') &&
+    (!ownerEmail || user.email === ownerEmail);
+
   // ── Authenticated — redirect away from login ──
   if (isAuthPageRoute) {
-    const target = user.role === 'super-admin' ? '/admin/super' : '/dashboard';
+    const target = isSuperAdmin ? '/admin/super' : '/dashboard';
     return NextResponse.redirect(publicUrl(target));
   }
-
-  // ── Role normalisation ──
-  const roleNorm = String(user.role || '').toLowerCase().replace(/_/g, '-');
-  const isSuperAdmin = roleNorm === 'super-admin' || roleNorm === 'superadmin';
 
   // ── Canonical URL: /dashboard/super → /admin/super ──
   if (pathname === '/dashboard/super' || pathname.startsWith('/dashboard/super/')) {
@@ -392,8 +394,11 @@ export async function middleware(request: NextRequest) {
   if (!requestHeaders.get('x-forwarded-host')) {
     requestHeaders.set('x-forwarded-host', hostname || 'www.vidyt.com');
   }
+  // Inject email-validated role — prevents non-owner JWT claims from reaching API routes
+  const effectiveRole = isSuperAdmin ? 'super-admin' :
+    (roleNorm === 'super-admin' || roleNorm === 'superadmin') ? 'user' : user.role;
   requestHeaders.set('x-user-id', user.id);
-  requestHeaders.set('x-user-role', user.role);
+  requestHeaders.set('x-user-role', effectiveRole);
   requestHeaders.set('x-user-subscription', user.subscription);
 
   return nextWithHeaders(request, { request: { headers: requestHeaders } });

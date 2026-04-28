@@ -97,8 +97,8 @@ export async function POST(request: NextRequest) {
     const visionAnalysis = await analyzeImage(images[0], niche);
 
     // Use user's actual title & topic (priority) or fallback to AI vision
-    const videoTitle = body.videoTitle || visionAnalysis.title;
-    const topic = body.topic || visionAnalysis.topic;
+    const videoTitle = body.videoTitle || visionAnalysis?.title || 'Video Title';
+    const topic = body.topic || visionAnalysis?.topic || 'Video Topic';
 
     // The thumbnail text IS the actual title — no random power words
     const titleWords = videoTitle.split(/\s+/);
@@ -108,11 +108,11 @@ export async function POST(request: NextRequest) {
       thumbnail_text = titleWords.slice(0, 5).join(' ') + '...';
     }
     // Make it impactful — uppercase the key parts
-    thumbnail_text = thumbnail_text.toUpperCase();
+    thumbnail_text = (thumbnail_text || '').toUpperCase();
 
     const variations = [
       thumbnail_text,
-      `${topic.toUpperCase()} — ${new Date().getFullYear()}`,
+      `${(topic || '').toUpperCase()} — ${new Date().getFullYear()}`,
     ];
 
     // Step 2: Remove background from ALL uploaded images

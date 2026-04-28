@@ -89,7 +89,7 @@ export default function UserDetailModal({ userId, onClose }: UserDetailModalProp
                 {/* Profile Section */}
                 <div className="flex items-start gap-6">
                   <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center text-3xl font-bold text-white shadow-xl shadow-red-500/10">
-                    {(data.user.name || 'U')[0].toUpperCase()}
+                    {(data.user.name || 'U')[0]?.toUpperCase() || 'U'}
                   </div>
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-white">{data.user.name}</h3>

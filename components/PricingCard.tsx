@@ -108,7 +108,7 @@ export default function PricingCard({
                 className="px-3 py-1 rounded-full text-xs font-semibold text-white"
                 style={{ backgroundColor: metadata.color }}
               >
-                {plan.role.charAt(0).toUpperCase() + plan.role.slice(1)} Role
+                {(plan?.role || 'user').charAt(0).toUpperCase() + (plan?.role || 'user').slice(1)} Role
               </span>
               {plan.level && (
                 <span className="text-xs text-[#AAAAAA] font-medium">

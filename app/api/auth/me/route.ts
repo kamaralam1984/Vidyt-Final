@@ -45,8 +45,10 @@ export async function GET(request: NextRequest) {
       needsSave = true;
     }
 
-    // Auto-sync Owner tier for Super Admins
-    if (user.role === 'super-admin') {
+    // Auto-sync Owner tier for Super Admins — only for the designated owner email
+    const ownerEmail = process.env.SUPER_ADMIN_EMAIL;
+    const isOwner = user.role === 'super-admin' && (!ownerEmail || user.email === ownerEmail);
+    if (isOwner) {
         if (user.subscription !== 'owner') {
             user.subscription = 'owner';
             needsSave = true;
@@ -66,6 +68,10 @@ export async function GET(request: NextRequest) {
         if (needsSave) {
             await user.save();
         }
+    } else if (!isOwner && (user.role === 'super-admin' || user.role === 'superadmin')) {
+        // Non-owner account with super-admin role in DB — silently strip it
+        user.role = 'user';
+        await user.save();
     }
 
     const linkedYoutubeChannels = await Channel.countDocuments({ userId: authUser.id });
@@ -77,7 +83,7 @@ export async function GET(request: NextRequest) {
         uniqueId: user.uniqueId,
         email: user.email,
         name: user.name,
-        role: user.role,
+        role: isOwner ? user.role : (user.role === 'super-admin' || user.role === 'superadmin' ? 'user' : user.role),
         subscription: user.subscription,
         subscriptionPlan: user.subscriptionPlan,
         subscriptionExpiresAt: user.subscriptionExpiresAt,

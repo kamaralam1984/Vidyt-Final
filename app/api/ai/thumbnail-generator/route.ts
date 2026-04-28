@@ -86,14 +86,14 @@ function analyzeEmotionalTriggers(input: ThumbnailInput): string[] {
 }
 
 function generateHookText(input: ThumbnailInput): string {
-  const { video_title, topic, emotion, niche } = input;
-  const words = video_title.split(' ');
+  const { video_title, topic, emotion } = input;
+  const words = (video_title || '').split(' ');
   
   const hooks = [
-    `${words[0]?.toUpperCase() || ''}: ${POWER_WORDS[0]}`,
-    `${emotion.toUpperCase()} TRUTH`,
-    `${topic.split(' ').slice(0, 2).join(' ').toUpperCase()}`,
-    `${POWER_WORDS[1]}: ${words[words.length - 1]?.toUpperCase() || ''}`,
+    `${(words[0] || '').toUpperCase()}: ${POWER_WORDS[0]}`,
+    `${(emotion || 'curiosity').toUpperCase()} TRUTH`,
+    `${(topic || '').split(' ').slice(0, 2).join(' ').toUpperCase()}`,
+    `${POWER_WORDS[1]}: ${(words[words.length - 1] || '').toUpperCase()}`,
     `2026: ${POWER_WORDS[2]}`
   ];
   
@@ -172,9 +172,9 @@ function buildSceneFromTopic(topic: string, emotion: string): string {
 
 function generateVariations(mainText: string, input: ThumbnailInput): string[] {
   const variations = [
-    mainText.replace(POWER_WORDS[0], POWER_WORDS[1]),
-    `${input.topic.split(' ').slice(0, 3).join(' ').toUpperCase()} EXPOSED`,
-    `SHOCKING: ${input.video_title.split(' ').slice(-2).join(' ').toUpperCase()}`
+    (mainText || '').replace(POWER_WORDS[0], POWER_WORDS[1]),
+    `${(input.topic || '').split(' ').slice(0, 3).join(' ').toUpperCase()} EXPOSED`,
+    `SHOCKING: ${(input.video_title || '').split(' ').slice(-2).join(' ').toUpperCase()}`
   ];
   
   return variations.slice(0, 2);
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
     }
 
     const input: ThumbnailInput = {
-      video_title: videoTitle.trim(),
+      video_title: (videoTitle || '').trim(),
       topic: (topic || '').trim(),
       emotion: (emotion || 'curiosity').trim(),
       niche: (niche || '').trim(),

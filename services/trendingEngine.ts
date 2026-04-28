@@ -25,10 +25,16 @@ export async function getTrendingTopics(
 
   // 1) Google Trends — Daily trending searches (REAL current trends)
   try {
-    if (googleTrends) {
-      const dailyRes = await googleTrends.dailyTrends({ geo: 'US' });
-      const dailyData = JSON.parse(dailyRes);
-      const days = dailyData?.default?.trendingSearchesDays || [];
+      if (googleTrends) {
+        const dailyRes = await googleTrends.dailyTrends({ geo: 'US' });
+        
+        // Ensure response is actually JSON before parsing
+        if (!dailyRes || typeof dailyRes !== 'string' || dailyRes.trim().startsWith('<!doctype')) {
+          throw new Error('Invalid response format from Google Trends (HTML received instead of JSON)');
+        }
+
+        const dailyData = JSON.parse(dailyRes);
+        const days = dailyData?.default?.trendingSearchesDays || [];
 
       let rank = 0;
       for (const day of days.slice(0, 2)) { // Today + yesterday
@@ -118,7 +124,7 @@ export async function getTrendingTopics(
       sevenDaysAgo.setDate(today.getDate() - 7);
 
       const response = await googleTrends.interestOverTime({
-        keyword: keywords.slice(0, 5),
+        keyword: (keywords || []).slice(0, 5),
         startTime: sevenDaysAgo,
         endTime: today,
       });

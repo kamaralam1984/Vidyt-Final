@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const formatCurrency = (n: number, currency: string = 'USD') =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: (currency || 'USD').toUpperCase(), maximumFractionDigits: 0 }).format(n);
 
 export default function RevenuePage() {
   const [data, setData] = useState<any>(null);

@@ -204,7 +204,7 @@ async function generateTopicSuggestions(
       topic: v.title,
       trendScore: v.trendingScore || 50,
       opportunityScore: v.engagementRate,
-      hashtags: v.hashtags.slice(0, 10),
+      hashtags: (v.hashtags || []).slice(0, 10),
       platform: v.platform,
     }))
     .slice(0, 10);

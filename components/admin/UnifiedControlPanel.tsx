@@ -69,7 +69,7 @@ interface PlatformControl {
 }
 
 function humanize(str: string): string {
-  return str.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
+  return (str || '').replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/\b\w/g, c => c?.toUpperCase()).trim();
 }
 
 export default function UnifiedControlPanel() {
@@ -377,7 +377,7 @@ export default function UnifiedControlPanel() {
                           className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition ${
                             active ? `${ri.bg} text-white opacity-60` : 'bg-[#1a1a1a] text-[#666] hover:text-white hover:bg-[#252525]'
                           }`}>
-                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                          {(role || 'user').charAt(0).toUpperCase() + (role || 'user').slice(1)}
                         </button>
                       );
                     })}

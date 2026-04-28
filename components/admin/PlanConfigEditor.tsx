@@ -365,7 +365,7 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
                 <div className="flex items-center gap-3">
                   <span className="text-xs px-2.5 py-1 rounded-md font-bold text-white"
                     style={{ backgroundColor: ROLE_OPTIONS.find(r => r.value === activeCfg.role)?.color || '#888' }}>
-                    {ROLE_OPTIONS.find(r => r.value === activeCfg.role)?.label.toUpperCase() || activeCfg.role.toUpperCase()}
+                    {ROLE_OPTIONS.find(r => r.value === activeCfg.role)?.label?.toUpperCase() || activeCfg.role?.toUpperCase() || 'USER'}
                   </span>
                   {openSection === 'role' ? <ChevronUp className="w-4 h-4 text-[#555]" /> : <ChevronDown className="w-4 h-4 text-[#555]" />}
                 </div>
@@ -534,7 +534,7 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] text-[#666] font-mono bg-black/50 px-2 py-0.5 rounded border border-[#212121]">
-                    ROLE::{activeCfg.role.toUpperCase()}
+                    ROLE::{(activeCfg?.role || 'user').toUpperCase()}
                   </span>
                   {openSection === 'system-access' ? <ChevronUp className="w-4 h-4 text-[#555]" /> : <ChevronDown className="w-4 h-4 text-[#555]" />}
                 </div>

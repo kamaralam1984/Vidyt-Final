@@ -55,7 +55,7 @@ const PLAN_COLORS: Record<string, string> = {
 
 function currency(n: number, code = 'INR') {
   try {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: code.toUpperCase(), maximumFractionDigits: 0 }).format(n);
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: (code || 'INR').toUpperCase(), maximumFractionDigits: 0 }).format(n);
   } catch {
     return `${code} ${n}`;
   }

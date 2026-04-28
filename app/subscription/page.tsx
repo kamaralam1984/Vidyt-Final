@@ -80,7 +80,7 @@ export default function SubscriptionPage() {
       doc.text(`Amount: ${formatAmount(invoice.amount, currency)}`, 20, 64);
       doc.text(`Date: ${dateStr}`, 20, 72);
       doc.setTextColor(0, 128, 0);
-      doc.text(`Status: ${invoice.status.toUpperCase()}`, 20, 80);
+      doc.text(`Status: ${(invoice.status || 'unknown').toUpperCase()}`, 20, 80);
 
       doc.setDrawColor(200, 200, 200);
       doc.line(20, 88, 190, 88);
@@ -214,8 +214,9 @@ export default function SubscriptionPage() {
     }
   };
 
-  const getPlanName = (plan: string) => {
-    return plan.charAt(0).toUpperCase() + plan.slice(1);
+  const getPlanName = (plan: string | undefined) => {
+    if (!plan) return 'Unknown';
+    return (plan || 'Unknown').charAt(0).toUpperCase() + (plan || 'Unknown').slice(1);
   };
 
   if (loading) {
@@ -274,7 +275,7 @@ export default function SubscriptionPage() {
                         subscription?.status === 'trial' ? 'text-[#f59e0b]' :
                         'text-[#ef4444]'
                       }`}>
-                        {subscription?.status?.toUpperCase() || 'ACTIVE'}
+                        {subscription?.status ? String(subscription.status).toUpperCase() : 'ACTIVE'}
                       </span>
                     </p>
                   </div>
@@ -464,7 +465,7 @@ export default function SubscriptionPage() {
                         invoice.status === 'pending' ? 'bg-[#f59e0b]/20 text-[#f59e0b]' :
                         'bg-[#ef4444]/20 text-[#ef4444]'
                       }`}>
-                        {invoice.status.toUpperCase()}
+                        {(invoice.status || 'unknown').toUpperCase()}
                       </span>
                       {invoice.status === 'paid' && (
                         <button

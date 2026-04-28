@@ -51,7 +51,7 @@ export async function addTextOverlay(
       ctx.font = `900 ${fontSize}px "Impact", "Arial Black", sans-serif`;
 
       // Word wrap text into lines
-      const words = text.toUpperCase().split(' ');
+      const words = (text || '').toUpperCase().split(' ');
       let lines: string[] = [];
       let currentLine = '';
 

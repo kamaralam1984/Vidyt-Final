@@ -83,7 +83,7 @@ export default function CountrySelectPopup() {
                   <span className="text-xl">{loc.flag}</span>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-white truncate">{loc.countryName}</p>
-                    <p className="text-[10px] text-[#666]">{loc.lang.toUpperCase()} · {loc.currencySymbol}</p>
+                    <p className="text-[10px] text-[#666]">{(loc?.lang || 'en').toUpperCase()} · {loc.currencySymbol}</p>
                   </div>
                 </button>
               ))}

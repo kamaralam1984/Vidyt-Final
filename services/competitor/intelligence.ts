@@ -296,7 +296,7 @@ function generateRecommendations(insights: any): string[] {
     recommendations.push(`Best posting time: ${bestTime.day} at ${bestTime.hour}:00`);
   }
 
-  if (insights.successfulPatterns.titles.length > 0) {
+  if (insights.successfulPatterns?.titles?.length > 0) {
     recommendations.push(`Study their successful titles: ${insights.successfulPatterns.titles.slice(0, 3).join(', ')}`);
   }
 

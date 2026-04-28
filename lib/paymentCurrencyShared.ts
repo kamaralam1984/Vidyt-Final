@@ -8,7 +8,7 @@ export function convertUsdToCurrency(
   currency: string,
   rates: Record<string, number>
 ): number {
-  const c = currency.toUpperCase();
+  const c = (currency || 'USD').toUpperCase();
   if (c === 'USD') return amountUsd;
   const r = rates[c];
   if (r == null || !Number.isFinite(r) || r <= 0) return amountUsd;
@@ -26,13 +26,13 @@ export function resolveCheckoutCurrency(
 }
 
 export function toRazorpaySmallestUnit(amountMajor: number, currency: string): number {
-  const c = currency.toUpperCase();
+  const c = (currency || 'INR').toUpperCase();
   if (ZERO_DECIMAL.has(c)) return Math.round(amountMajor);
   return Math.round(amountMajor * 100);
 }
 
 export function fromRazorpaySmallestUnit(amountMinor: number, currency: string): number {
-  const c = currency.toUpperCase();
+  const c = (currency || 'INR').toUpperCase();
   if (ZERO_DECIMAL.has(c)) return amountMinor;
   return amountMinor / 100;
 }

@@ -45,14 +45,15 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Security headers + short cache on ALL routes
-        // API routes and auth pages set their own no-store via response headers
+        // Security headers — HTML pages bypass Cloudflare CDN cache entirely
+        // to prevent stale HTML from referencing old content-hashed JS chunks.
+        // _next/static/* is still cached 1 year (content-hashed, safe).
         source: '/:path*',
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=30, stale-while-revalidate=60' },
-          { key: 'CDN-Cache-Control', value: 'public, max-age=30' },
-          { key: 'Cloudflare-CDN-Cache-Control', value: 'public, max-age=30' },
-          { key: 'Surrogate-Control', value: 'max-age=30' },
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'CDN-Cache-Control', value: 'no-store' },
+          { key: 'Cloudflare-CDN-Cache-Control', value: 'no-store' },
+          { key: 'Surrogate-Control', value: 'no-store' },
           { key: 'Pragma', value: 'no-cache' },
           { key: 'Expires', value: '0' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -175,11 +176,15 @@ const nextConfig = {
         ],
       },
       {
-        // Next.js static assets — LAST so it overrides /:path* Cache-Control
-        // no-transform prevents Cloudflare Auto-Minify from corrupting content-hashed chunks
+        // Next.js static assets — browsers cache 1 year (content-hashed = safe).
+        // s-maxage=0 tells Cloudflare and other CDNs to NOT cache these files,
+        // so stale old chunks are never served after a deploy.
+        // no-transform prevents Cloudflare Auto-Minify from corrupting content-hashed chunks.
         source: '/_next/static/:path*',
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable, no-transform' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, s-maxage=0, immutable, no-transform' },
+          { key: 'CDN-Cache-Control', value: 'no-store' },
+          { key: 'Cloudflare-CDN-Cache-Control', value: 'no-store' },
         ],
       },
       {
@@ -208,13 +213,22 @@ const nextConfig = {
   async redirects() {
     return [
       // Redirect non-www → www at the routing layer (before middleware runs)
-      // Handles ALL paths so every page is covered, not just middleware-matched routes
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'vidyt.com' }],
         destination: 'https://www.vidyt.com/:path*',
         permanent: true,
       },
+
+      // ── Old tool card slugs → correct pages (301 SEO-safe redirects) ──────────
+      // These were the old IDs used in HomeClient cards before the fix.
+      // Keeps bookmarks/shared links working and preserves SEO link equity.
+      { source: '/tools/script-writer',    destination: '/ai/script-generator',            permanent: true },
+      { source: '/tools/daily-ideas',      destination: '/ai/hook-generator',              permanent: true },
+      { source: '/tools/keyword-research', destination: '/tools/youtube-hashtag-generator', permanent: true },
+      { source: '/tools/title-generator',  destination: '/tools/youtube-title-generator',  permanent: true },
+      { source: '/tools/thumbnail-maker',  destination: '/ai/thumbnail-generator',         permanent: true },
+      { source: '/tools/ai-shorts',        destination: '/ai/shorts-creator',              permanent: true },
     ];
   },
   images: {

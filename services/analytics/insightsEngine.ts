@@ -68,8 +68,8 @@ export function generateInsights(
   }
 
   if (performanceTrend.length >= 7) {
-    const recent = performanceTrend.slice(-7);
-    const older = performanceTrend.slice(-14, -7);
+    const recent = (performanceTrend || []).slice(-7);
+    const older = (performanceTrend || []).slice(-14, -7);
     if (older.length > 0) {
       const recentAvg = recent.reduce((s, r) => s + r.viralScore, 0) / recent.length;
       const olderAvg = older.reduce((s, r) => s + r.viralScore, 0) / older.length;

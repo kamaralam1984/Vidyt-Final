@@ -199,7 +199,7 @@ export default function UserPlanManager() {
               <div>
                 <p className="text-gray-400 text-sm">Current Plan</p>
                 <p className="font-semibold text-red-400">
-                  {userData.subscription.charAt(0).toUpperCase() + userData.subscription.slice(1)}
+                  {(userData.subscription || 'free').charAt(0).toUpperCase() + (userData.subscription || 'free').slice(1)}
                 </p>
               </div>
               {userData.subscriptionPlan && (
@@ -264,7 +264,7 @@ export default function UserPlanManager() {
                   >
                     {plans.map((plan) => (
                       <option key={plan} value={plan}>
-                        {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                        {(plan || 'free').charAt(0).toUpperCase() + (plan || 'free').slice(1)}
                       </option>
                     ))}
                   </select>

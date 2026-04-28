@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
   await connectDB();
 
   // Prevent self-referral
-  const selfCode = `REF-${currentUser.id.slice(-8).toUpperCase()}`;
-  if (code.toUpperCase() === selfCode) {
+  const selfId = String(currentUser?.id || '');
+  const selfCode = `REF-${selfId.slice(-8).toUpperCase()}`;
+  if ((code || '').toUpperCase() === selfCode) {
     return NextResponse.json({ error: 'Cannot refer yourself' }, { status: 400 });
   }
 
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Resolve referrer from code — try indexed referralCode field first (O(1)), else O(n) fallback
-  const upperCode = code.toUpperCase();
+  const upperCode = (code || '').toUpperCase();
   let referrer: any = await User.findOne({ referralCode: upperCode }, '_id').lean();
 
   if (!referrer) {
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
   await Referral.create({
     referrerId: referrer._id,
     referredId: currentUser.id,
-    code: code.toUpperCase(),
+    code: (code || '').toUpperCase(),
     status: 'credited',
     bonusCredits: BONUS_CREDITS,
     creditedAt: new Date(),

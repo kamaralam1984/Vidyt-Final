@@ -470,7 +470,7 @@ export default function ShortsCreatorPage() {
               {(['720p', '1080p', '4k'] as const).map(q => (
                 <button key={q} type="button" onClick={() => setVideoQuality(q)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${videoQuality === q ? 'bg-emerald-600 text-white' : 'bg-[#222] text-[#888] border border-[#333] hover:text-white'}`}>
-                  {q.toUpperCase()}
+                  {q?.toUpperCase() || ''}
                 </button>
               ))}
             </div>

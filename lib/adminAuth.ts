@@ -28,7 +28,9 @@ export async function requireSuperAdminAccess(request: NextRequest | Request) {
   if (!user) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
-  if (!isSuperAdminRole(user.role)) {
+  const ownerEmail = process.env.SUPER_ADMIN_EMAIL;
+  const isOwner = isSuperAdminRole(user.role) && (!ownerEmail || user.email === ownerEmail);
+  if (!isOwner) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
   }
   return { user };

@@ -568,17 +568,17 @@ export default function SuperAdminPage() {
   return (
     <div className="min-h-screen bg-[#0F0F0F] text-white">
       <Navbar />
-      <div className="flex pt-14">
+      <div className="flex mt-14 h-[calc(100vh-56px)]">
       {/* Left sidebar */}
-      <aside className="w-64 bg-[#181818] border-r border-[#212121] hidden md:flex flex-col flex-shrink-0">
-        <div className="px-4 py-4 border-b border-[#212121] flex items-center gap-2">
+      <aside className="w-64 bg-[#181818] border-r border-[#212121] hidden md:flex flex-col flex-shrink-0 h-full overflow-hidden">
+        <div className="px-4 py-4 border-b border-[#212121] flex items-center gap-2 flex-shrink-0">
           <Shield className="w-6 h-6 text-[#FF0000]" />
           <div>
             <p className="text-sm font-semibold">Super Admin</p>
             <p className="text-xs text-[#888]">SaaS Control Center</p>
           </div>
         </div>
-        <nav className="flex-1 px-2 py-4 space-y-0 text-sm overflow-y-auto">
+        <nav className="flex-1 min-h-0 px-2 py-4 space-y-0 text-sm overflow-y-auto">
           {/* User Management — sliding section */}
           <div className="mb-1">
             <button
@@ -941,7 +941,7 @@ export default function SuperAdminPage() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-y-auto">
         {loading ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
@@ -1468,7 +1468,7 @@ export default function SuperAdminPage() {
                                           : 'bg-[#0F0F0F] text-[#555] border border-[#212121] hover:border-[#444]'
                                       }`}
                                     >
-                                      <span>{role.toUpperCase()}</span>
+                                      <span>{(role || '').toUpperCase()}</span>
                                     </button>
                                     {linkedPlans.length > 0 && (
                                       <p className="text-[8px] text-[#666] text-center truncate px-1" title={linkedPlans.join(', ')}>

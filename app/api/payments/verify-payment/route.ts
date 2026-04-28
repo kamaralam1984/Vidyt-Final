@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       }
     }
     if (typeof expectedCurrency === 'string' && expectedCurrency.trim()) {
-      const expCur = expectedCurrency.toUpperCase();
+      const expCur = (expectedCurrency || '').toUpperCase();
       if (expCur !== chargedCurrency) {
         return NextResponse.json({ error: 'Razorpay payment currency mismatch' }, { status: 400 });
       }
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Fetch plan label from DB (graceful fallback) ──
-    let planName = plan.charAt(0).toUpperCase() + plan.slice(1);
+    let planName = (plan || '').charAt(0).toUpperCase() + (plan || '').slice(1);
     try {
       const PlanModel = (await import('@/models/Plan')).default;
       const dbPlan = await PlanModel.findOne({ planId: plan });

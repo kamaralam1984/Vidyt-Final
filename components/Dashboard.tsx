@@ -354,7 +354,7 @@ function AiStatsRow({ usageData, userPlan, isYoutubeConnected }: {
     {
       icon: CreditCard,
       label: 'Plan',
-      value: userPlan.charAt(0).toUpperCase() + userPlan.slice(1),
+      value: (userPlan || 'free').charAt(0).toUpperCase() + (userPlan || 'free').slice(1),
       sub: 'current plan',
       color: planColor,
       bg: `${planColor}15`,

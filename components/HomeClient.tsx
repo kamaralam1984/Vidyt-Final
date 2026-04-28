@@ -513,12 +513,12 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { id: 'script-writer', title: 'YouTube Script Writer', desc: 'Turn any topic into a ready-to-record YouTube script with viral hooks, sections, CTAs, and SEO optimization. Powered by AI with 9 provider failover.', icon: Brain },
-              { id: 'daily-ideas', title: 'Video Ideas & Hooks Generator', desc: 'Get daily viral video ideas with viral score %, best posting time, and trending analysis. AI analyzes YouTube trends for your niche.', icon: Sparkles },
-              { id: 'keyword-research', title: 'YouTube Keyword Research', desc: 'Discover high-intent YouTube keywords with search volume, competition, and viral scores. AI-powered keyword intelligence for ranking #1.', icon: TrendingUp },
-              { id: 'title-generator', title: 'Title & CTR Optimization', desc: 'Boost your CTR to 11.8%+ with AI title scoring, A/B testing, power word suggestions, and 7-factor CTR prediction analysis.', icon: Zap },
-              { id: 'thumbnail-maker', title: 'AI Thumbnail Generator', desc: 'Create film-poster quality thumbnails in 8 art styles. Upload your photo — AI adds VFX, 3D text overlay, and cinematic effects.', icon: Globe },
-              { id: 'ai-shorts', title: 'Shorts & Clip Generator', desc: 'Auto-clip long videos into viral Shorts. AI detects key moments, adds text overlay, music, voiceover, and exports in 9:16 format.', icon: Play },
+              { href: '/ai/script-generator', title: 'YouTube Script Writer', desc: 'Turn any topic into a ready-to-record YouTube script with viral hooks, sections, CTAs, and SEO optimization. Powered by AI with 9 provider failover.', icon: Brain },
+              { href: '/ai/hook-generator', title: 'Video Ideas & Hooks Generator', desc: 'Get daily viral video ideas with viral score %, best posting time, and trending analysis. AI analyzes YouTube trends for your niche.', icon: Sparkles },
+              { href: '/tools/youtube-hashtag-generator', title: 'YouTube Keyword Research', desc: 'Discover high-intent YouTube keywords with search volume, competition, and viral scores. AI-powered keyword intelligence for ranking #1.', icon: TrendingUp },
+              { href: '/tools/youtube-title-generator', title: 'Title & CTR Optimization', desc: 'Boost your CTR to 11.8%+ with AI title scoring, A/B testing, power word suggestions, and 7-factor CTR prediction analysis.', icon: Zap },
+              { href: '/ai/thumbnail-generator', title: 'AI Thumbnail Generator', desc: 'Create film-poster quality thumbnails in 8 art styles. Upload your photo — AI adds VFX, 3D text overlay, and cinematic effects.', icon: Globe },
+              { href: '/ai/shorts-creator', title: 'Shorts & Clip Generator', desc: 'Auto-clip long videos into viral Shorts. AI detects key moments, adds text overlay, music, voiceover, and exports in 9:16 format.', icon: Play },
             ].map((tool, index) => {
               const Icon = tool.icon;
               return (
@@ -533,7 +533,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                   <Icon className="w-8 h-8 text-[#FF0000] mb-4" />
                   <h3 className="text-xl font-bold text-white mb-2">{tool.title}</h3>
                   <p className="text-sm text-[#AAAAAA] mb-4 leading-relaxed">{tool.desc}</p>
-                  <Link href={`/tools/${tool.id}`} className="inline-flex items-center gap-1 text-sm text-[#FF0000] font-semibold hover:text-[#FF4444] transition">
+                  <Link href={tool.href} className="inline-flex items-center gap-1 text-sm text-[#FF0000] font-semibold hover:text-[#FF4444] transition">
                     Learn more & try free <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </motion.div>

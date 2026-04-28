@@ -517,8 +517,8 @@ export function AuthPageContent({ defaultIsLogin = false }: { defaultIsLogin?: b
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center px-4 py-8">
-      <div className="max-w-4xl w-full">
+    <div className="min-h-screen bg-[#0F0F0F] flex flex-col items-center px-4 py-8">
+      <div className="max-w-4xl w-full my-auto">
         {/* Header */}
         <motion.div
           initial={false}

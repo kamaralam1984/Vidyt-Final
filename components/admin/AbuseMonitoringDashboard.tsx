@@ -308,7 +308,7 @@ export default function AbuseMonitoringDashboard() {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <Badge className={`${getSeverityColor(log.severity)} border-0`}>
-                          {log.severity.toUpperCase()}
+                          {(log.severity || 'info').toUpperCase()}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm">

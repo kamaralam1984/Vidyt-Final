@@ -360,7 +360,7 @@ export default function PlanDiscountsManager() {
                               : 'bg-white/3 text-white/30 border-white/5 hover:border-white/10'
                           }`}
                         >
-                          {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                          {(plan || 'starter').charAt(0).toUpperCase() + (plan || 'starter').slice(1)}
                         </button>
                       );
                     })}
@@ -463,7 +463,7 @@ export default function PlanDiscountsManager() {
                         type="text"
                         placeholder="e.g. SAVE20, LAUNCH50"
                         value={formData.couponCode}
-                        onChange={e => setFormData({ ...formData, couponCode: e.target.value.toUpperCase() })}
+                        onChange={e => setFormData({ ...formData, couponCode: (e.target.value || '').toUpperCase() })}
                         className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-mono uppercase placeholder:text-white/15 placeholder:normal-case focus:outline-none focus:ring-1 focus:ring-red-500/50"
                       />
                     </div>
@@ -532,7 +532,7 @@ export default function PlanDiscountsManager() {
           className="px-3 py-2 text-xs bg-white/5 border border-white/10 rounded-xl text-white/60 appearance-none focus:outline-none"
         >
           <option value="all">All Plans</option>
-          {ALL_PLANS.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+          {ALL_PLANS.map(p => <option key={p} value={p}>{(p || 'starter').charAt(0).toUpperCase() + (p || 'starter').slice(1)}</option>)}
         </select>
         <select
           value={filterStatus}
@@ -596,7 +596,7 @@ export default function PlanDiscountsManager() {
                     >
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${pc.bg} ${pc.text} border ${pc.border}`}>
-                          {d.planId.charAt(0).toUpperCase() + d.planId.slice(1)}
+                          {(d.planId || 'starter').charAt(0).toUpperCase() + (d.planId || 'starter').slice(1)}
                         </span>
                       </td>
                       <td className="px-4 py-3">

@@ -374,7 +374,7 @@ export default function SeoPageDetail() {
                     <div className="flex flex-wrap gap-1.5">
                       {gscDetail.topCountries.map((c, i) => (
                         <span key={i} className="px-2 py-0.5 text-xs bg-white/5 border border-white/10 rounded">
-                          {c.country.toUpperCase()} <span className="text-emerald-400">·{c.clicks}</span>
+                          {(c.country || '??').toUpperCase()} <span className="text-emerald-400">·{c.clicks}</span>
                         </span>
                       ))}
                     </div>

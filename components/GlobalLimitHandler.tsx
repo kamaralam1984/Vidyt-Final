@@ -13,6 +13,12 @@ export default function GlobalLimitHandler() {
   const [showFreeUpsell, setShowFreeUpsell] = useState(false);
   const router = useRouter();
   
+  // Keep a CSS variable updated so DashboardLayout can add extra paddingTop
+  useEffect(() => {
+    const height = (showExpiredBanner || showNearLimitBanner) ? 52 : 0;
+    document.documentElement.style.setProperty('--dashboard-banner-height', `${height}px`);
+  }, [showExpiredBanner, showNearLimitBanner]);
+
   useEffect(() => {
     // Check if the plan is expired on mount
     const checkExpiry = async () => {
@@ -125,7 +131,7 @@ export default function GlobalLimitHandler() {
              initial={{ opacity: 0, scale: 0.9, y: 50 }}
              animate={{ opacity: 1, scale: 1, y: 0 }}
              exit={{ opacity: 0, scale: 0.9, y: 50 }}
-             className="fixed bottom-6 right-6 z-[80] bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 rounded-xl shadow-2xl max-w-[340px]"
+             className="fixed bottom-24 right-6 z-[80] bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 rounded-xl shadow-2xl max-w-[340px]"
           >
             <div className="flex justify-between items-start mb-2">
                <div className="flex items-center gap-2">

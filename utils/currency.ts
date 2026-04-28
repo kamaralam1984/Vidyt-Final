@@ -79,7 +79,8 @@ export const PLAN_FEATURES: Record<string, string[]> = {
  * @param currency   Target ISO currency code (e.g. "INR")
  */
 export function convertUSD(amountUSD: number, rates: Record<string, number>, currency: string): number {
-  const rate = rates[currency.toUpperCase()] ?? 1;
+  const code = (currency || 'USD').toUpperCase();
+  const rate = rates[code] ?? 1;
   return Math.round(amountUSD * rate * 100) / 100;
 }
 

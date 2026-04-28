@@ -75,9 +75,9 @@ function buildFallbackOutput(topic: string, platform: string, region: string, ye
   ];
 
   const thumbnail_suggestions = [
-    { text: `${t.toUpperCase()} EXPOSED`, emotion: 'shock', color_style: 'Red + Black + White high contrast', composition: 'Bold text center. Shocked face left. Breaking news banner bottom.' },
-    { text: `THE TRUTH ABOUT ${t.toUpperCase()}`, emotion: 'curiosity', color_style: 'Gold + Dark Blue', composition: 'Question-mark graphic. Arrow pointing right. Blurred mystery image background.' },
-    { text: `${t.toUpperCase()} BREAKDOWN`, emotion: 'urgency', color_style: 'Orange + Black', composition: 'Timer graphic. Text overlay top-third. Creator face bottom-right.' },
+    { text: `${(t || '').toUpperCase()} EXPOSED`, emotion: 'shock', color_style: 'Red + Black + White high contrast', composition: 'Bold text center. Shocked face left. Breaking news banner bottom.' },
+    { text: `THE TRUTH ABOUT ${(t || '').toUpperCase()}`, emotion: 'curiosity', color_style: 'Gold + Dark Blue', composition: 'Question-mark graphic. Arrow pointing right. Blurred mystery image background.' },
+    { text: `${(t || '').toUpperCase()} BREAKDOWN`, emotion: 'urgency', color_style: 'Orange + Black', composition: 'Timer graphic. Text overlay top-third. Creator face bottom-right.' },
   ];
 
   const viral_keywords = [
