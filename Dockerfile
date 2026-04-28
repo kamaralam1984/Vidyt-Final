@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1.6
 
 # ---- deps ----
-FROM node:18-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund
 
 # ---- builder ----
-FROM node:18-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # ---- runner ----
-FROM node:18-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
