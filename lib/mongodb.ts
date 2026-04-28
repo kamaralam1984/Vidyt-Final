@@ -12,8 +12,8 @@ const shouldUseTestDb =
 const MONGODB_URI = shouldUseTestDb
   ? process.env.MONGODB_URI_TEST
   : process.env.NODE_ENV === 'test'
-    ? process.env.MONGODB_URI_TEST || process.env.MONGODB_URI || 'mongodb://localhost:27017/viralboost_test'
-    : process.env.MONGODB_URI || 'mongodb://localhost:27017/viralboost';
+    ? process.env.MONGODB_URI_TEST || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/viralboost_test'
+    : process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/viralboost';
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');

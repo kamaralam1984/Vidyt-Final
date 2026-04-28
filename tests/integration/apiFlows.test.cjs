@@ -51,7 +51,7 @@ process.env.AI_PREDICTION_QUEUE_ENABLED = 'false';
 // Ensure the test runner connects to the exact same MongoDB as the spawned Next server.
 process.env.MONGODB_URI_TEST =
   process.env.MONGODB_URI_TEST ||
-  'mongodb://localhost:27017/viralboost_ai_integration_test_api_flows';
+  'mongodb://127.0.0.1:27017/viralboost_ai_integration_test_api_flows';
 
 // Validate retry logic once during the first payment verification attempt.
 process.env.TEST_FAILPOINT = 'payment_db_write';
@@ -78,7 +78,7 @@ test.before(async () => {
       JWT_SECRET: process.env.JWT_SECRET,
       MONGODB_URI_TEST:
         process.env.MONGODB_URI_TEST ||
-        'mongodb://localhost:27017/viralboost_ai_integration_test_api_flows',
+        'mongodb://127.0.0.1:27017/viralboost_ai_integration_test_api_flows',
 
       RAZORPAY_MOCK: 'true',
       RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
