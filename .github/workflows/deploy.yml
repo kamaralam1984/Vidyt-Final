@@ -1,0 +1,51 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip deploy]')"
+    timeout-minutes: 20
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -e
+            cd /var/www/vidyt
+
+            echo "=== Fetching origin/main ==="
+            git fetch origin main
+
+            COMMITS=$(git rev-list --reverse HEAD..origin/main)
+            if [ -z "$COMMITS" ]; then
+              echo "Nothing new on origin/main — VPS is up to date."
+              exit 0
+            fi
+
+            echo "=== Cherry-picking new commits ==="
+            for commit in $COMMITS; do
+              echo "→ $commit"
+              git cherry-pick -X theirs --no-edit "$commit" || {
+                echo "❌ Cherry-pick failed at $commit. Aborting."
+                git cherry-pick --abort || true
+                exit 1
+              }
+            done
+
+            echo "=== Running deploy.sh ==="
+            ./deploy.sh
