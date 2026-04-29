@@ -495,7 +495,7 @@ export default function LivePage() {
                         : 'bg-white/5 text-white/40 border border-white/5 hover:border-white/10'
                     }`}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {(tab || '').charAt(0).toUpperCase() + (tab || '').slice(1)}
                   </button>
                 ))}
               </div>

@@ -164,7 +164,7 @@ export default function InstagramSEOPage() {
                   {(['post', 'reel', 'story', 'live'] as const).map((type) => (
                     <button key={type} type="button" onClick={() => setContentType(type)}
                       className={`flex-1 py-2 px-2 rounded-md text-sm font-medium transition ${contentType === type ? 'bg-pink-500 text-white' : 'text-[#AAA] hover:text-white hover:bg-[#333]'}`}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                      {(type || '').charAt(0).toUpperCase() + (type || '').slice(1)}
                     </button>
                   ))}
                 </div>
@@ -359,7 +359,7 @@ export default function InstagramSEOPage() {
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <FileText className="w-5 h-5" /> {t('seo.analyzer.autoDescTitle')} {contentType !== 'post' && `(${contentType.charAt(0).toUpperCase() + contentType.slice(1)})`}
+                    <FileText className="w-5 h-5" /> {t('seo.analyzer.autoDescTitle')} {contentType !== 'post' && `(${(contentType || '').charAt(0).toUpperCase() + (contentType || '').slice(1)})`}
                   </h2>
                   <button type="button" onClick={fetchDescriptions} disabled={(!caption.trim() && !keywords.trim()) || loadingDescriptions}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50">

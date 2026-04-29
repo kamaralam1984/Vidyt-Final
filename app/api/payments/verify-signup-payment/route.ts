@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
       subscriptionExpiresAt: endDate,
       subscriptionPlan: {
         planId,
-        planName: planId.charAt(0).toUpperCase() + planId.slice(1),
+        planName: (planId || '').charAt(0).toUpperCase() + (planId || '').slice(1),
         billingPeriod,
         // Store charged amount/currency for auditability and analytics correctness
         price: receiptAmount,
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
     if (user.email) {
       // Background email send
       sendPaymentReceiptEmail(user.email, user.name || undefined, {
-        planName: planId.charAt(0).toUpperCase() + planId.slice(1),
+        planName: (planId || '').charAt(0).toUpperCase() + (planId || '').slice(1),
         amount: receiptAmount,
         currency: receiptCurrency,
         billingPeriod: billingPeriod as 'month' | 'year',

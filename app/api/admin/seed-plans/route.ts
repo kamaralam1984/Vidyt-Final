@@ -12,7 +12,7 @@ async function seedPlans() {
 
   const plans = VALID_PLAN_IDS.map((planId) => ({
     planId,
-    name: planId.charAt(0).toUpperCase() + planId.slice(1),
+    name: (planId || '').charAt(0).toUpperCase() + (planId || '').slice(1),
     label: PLAN_LABELS[planId] || planId,
     priceMonthly: PLAN_PRICES_USD[planId] ?? 0,
     priceYearly: (PLAN_PRICES_USD[planId] ?? 0) * 10,

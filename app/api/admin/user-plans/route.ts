@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     targetUser.subscriptionExpiresAt = endDate;
     targetUser.subscriptionPlan = {
       planId: plan,
-      planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+      planName: (plan || '').charAt(0).toUpperCase() + (plan || '').slice(1),
       billingPeriod: billingPeriod as 'month' | 'year',
       price: 0, // Admin assigned, free
       currency: 'USD',

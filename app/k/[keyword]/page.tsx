@@ -160,7 +160,7 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
   }
 
   const kw = page.keyword || '';
-  const kwCap = kw.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const kwCap = (kw || '').split(' ').map((w: string) => (w[0] || '').toUpperCase() + (w || '').slice(1)).join(' ');
   const canonical = `${BASE_URL}/k/${page.slug}`;
   const faqs = extractFaqs(page.content || '');
 

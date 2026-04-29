@@ -118,7 +118,7 @@ export default function TrendingPage() {
               <button key={p} onClick={() => setPlatform(p)}
                 className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition whitespace-nowrap ${active ? `${config.bg} ${config.color} shadow-lg` : 'bg-[#181818] text-[#888] border border-[#333] hover:text-white hover:border-[#555]'}`}>
                 <Icon className="w-5 h-5" />
-                {p.charAt(0).toUpperCase() + p.slice(1)}
+                {(p || '').charAt(0).toUpperCase() + (p || '').slice(1)}
               </button>
             );
           })}
@@ -163,7 +163,7 @@ export default function TrendingPage() {
             <div className="bg-[#181818] border border-[#212121] rounded-xl overflow-hidden">
               <div className="p-4 border-b border-[#212121] flex items-center justify-between">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-orange-400" /> {t('trending.title')} — {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                  <TrendingUp className="w-5 h-5 text-orange-400" /> {t('trending.title')} — {(platform || '').charAt(0).toUpperCase() + (platform || '').slice(1)}
                 </h2>
                 <button onClick={() => copyText(trendingTopics.map(t => t.keyword).join(', '), 'all')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-[#222] hover:bg-[#333] rounded-lg text-xs text-[#CCC]">
