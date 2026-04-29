@@ -146,7 +146,7 @@ export default function MarketingNavbar() {
     closeTimer.current = setTimeout(() => {
       setFeaturesOpen(false);
       closeTimer.current = null;
-    }, 250);
+    }, 700);
   };
 
   useEffect(() => {
@@ -295,7 +295,7 @@ export default function MarketingNavbar() {
       >
         {/* invisible bridge — fills the pixel gap between nav and dropdown so mouse doesn't escape */}
         {featuresOpen && (
-          <div className="absolute -top-3 left-0 right-0 h-3" />
+          <div className="absolute -top-12 left-0 right-0 h-12" />
         )}
         {featuresOpen && (
           <div className="mx-auto flex max-w-6xl justify-center">
