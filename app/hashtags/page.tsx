@@ -257,7 +257,7 @@ export default function HashtagsPage() {
                 <button key={p} onClick={() => setPlatform(p)}
                   className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition whitespace-nowrap ${platform === p ? `${cfg.activeBg} text-white shadow-lg` : 'bg-[#181818] text-[#888] border border-[#333] hover:text-white'}`}>
                   <Icon className="w-5 h-5" />
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {(p || '').charAt(0).toUpperCase() + (p || '').slice(1)}
                 </button>
               );
             })}

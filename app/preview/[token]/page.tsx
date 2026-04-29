@@ -141,7 +141,7 @@ export default function PreviewPage() {
                   {status === 'approved' && <Check className="w-5 h-5" />}
                   {status === 'rejected' && <X className="w-5 h-5" />}
                   {status === 'pending_approval' && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {status?.replace('_', ' ').toUpperCase()}
+                  {(status || '').replace('_', ' ').toUpperCase()}
                 </div>
               </div>
 

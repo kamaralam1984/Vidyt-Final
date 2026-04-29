@@ -451,7 +451,7 @@ export default function Dashboard() {
         if (res.data.user) {
           setIsYoutubeConnected(!!res.data.user.isYoutubeConnected);
           setYoutubeGoogleConnected(!!res.data.user.youtubeGoogleConnected);
-          setUserName(res.data.user.name || res.data.user.email?.split('@')[0] || '');
+          setUserName(res.data.user.name || (res.data.user.email ? res.data.user.email.split('@')[0] : '') || '');
           setUserPlan(res.data.user.subscription || res.data.user.plan || 'free');
         }
       } catch (_) {}
