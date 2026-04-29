@@ -51,7 +51,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {!sidebarHidden && <SuperSidebar />}
-      <main className={sidebarHidden ? 'min-h-screen' : 'pl-64 min-h-screen'}>
+      <main className={sidebarHidden ? 'min-h-screen' : 'lg:pl-64 min-h-screen'}>
         {children}
       </main>
     </div>

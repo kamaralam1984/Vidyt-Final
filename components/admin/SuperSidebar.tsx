@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -26,6 +27,8 @@ import {
   Globe,
   CreditCard,
   FileText,
+  Menu,
+  X,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -96,11 +99,40 @@ const NAV_SECTIONS: NavSection[] = [
 
 export default function SuperSidebar() {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Close drawer when route changes (mobile)
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-[#0f0f0f] border-r border-white/5 flex flex-col">
-      {/* Brand */}
-      <div className="h-16 flex items-center px-6 border-b border-white/5">
+    <>
+      {/* Mobile hamburger toggle — fixed top-left, only visible when sidebar is closed on mobile */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        aria-label="Open sidebar"
+        className={`lg:hidden fixed top-3 left-3 z-50 inline-flex items-center justify-center w-10 h-10 rounded-lg bg-[#1a1a1a] border border-white/10 text-white shadow-lg ${isOpen ? 'hidden' : ''}`}
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* Backdrop on mobile when sidebar open */}
+      {isOpen && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          onClick={() => setIsOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+        />
+      )}
+
+      <aside
+        className={`fixed left-0 top-0 z-40 h-screen w-64 bg-[#0f0f0f] border-r border-white/5 flex flex-col transform transition-transform duration-300 ease-out lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+      {/* Brand + close button (mobile) */}
+      <div className="h-16 flex items-center justify-between px-6 border-b border-white/5">
         <div className="flex items-center gap-2">
           <NextImage src="/Logo.webp" alt="Vid YT" width={120} height={32} className="h-8 w-auto object-contain" />
           <div>
@@ -108,6 +140,14 @@ export default function SuperSidebar() {
             <p className="text-[10px] text-red-400 uppercase tracking-widest font-medium">Super Admin</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsOpen(false)}
+          aria-label="Close sidebar"
+          className="lg:hidden text-white/60 hover:text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -150,5 +190,6 @@ export default function SuperSidebar() {
         <p className="px-4 text-[11px] text-white/30">Super admin controls</p>
       </div>
     </aside>
+    </>
   );
 }
