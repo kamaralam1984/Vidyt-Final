@@ -93,21 +93,22 @@ export default async function HomePage() {
         left: 0,
         right: 0,
         zIndex: 55,
-        backgroundColor: 'rgba(10,10,10,0.96)',
-        borderTop: '1px solid #222',
+        backgroundColor: 'transparent',
         padding: '10px 16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '16px',
+        gap: '12px',
         flexWrap: 'wrap',
         fontSize: '13px',
-        color: '#888',
+        pointerEvents: 'none',
       }}>
-        <span>Vidyt — AI-powered tools for content creators. Sign in with Google to get started.</span>
-        <a href="/privacy-policy" style={{ color: '#00ffcc', fontWeight: 'bold', textDecoration: 'none' }}>Privacy Policy</a>
-        <span style={{ color: '#444' }}>|</span>
-        <a href="/terms" style={{ color: '#00ffcc', fontWeight: 'bold', textDecoration: 'none' }}>Terms of Service</a>
+        <span style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+          Vidyt — AI-powered tools for content creators. Sign in with Google to get started.
+        </span>
+        <a href="/privacy-policy" style={{ color: '#00ffcc', fontWeight: 'bold', textDecoration: 'none', pointerEvents: 'auto', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>Privacy Policy</a>
+        <span style={{ color: '#888', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>|</span>
+        <a href="/terms" style={{ color: '#00ffcc', fontWeight: 'bold', textDecoration: 'none', pointerEvents: 'auto', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>Terms of Service</a>
       </div>
     </>
   );
