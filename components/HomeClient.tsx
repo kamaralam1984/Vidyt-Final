@@ -217,9 +217,9 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               </span>
             </div>
             <h1 className="text-3xl sm:text-5xl md:text-8xl font-bold text-white mt-0 mb-4 md:mb-6 leading-tight">
-              {t('hero.title.main')}{' '}
+              Make Your Videos{' '}
               <span className="text-[#FF0000] bg-gradient-to-r from-[#FF0000] to-[#CC0000] bg-clip-text text-transparent">
-                {t('hero.title.highlight')}
+                Go Viral
               </span>
             </h1>
             <p className="text-base sm:text-xl md:text-2xl text-[#AAAAAA] mb-3 max-w-3xl mx-auto px-2">

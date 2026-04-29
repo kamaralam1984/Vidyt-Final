@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LazyMotion, domAnimation, m as motion, AnimatePresence } from 'framer-motion';
 import { Globe, X } from 'lucide-react';
 import { useLocale, SUPPORTED_LOCALES, type LocaleOption } from '@/context/LocaleContext';
 
@@ -39,22 +38,11 @@ export default function CountrySelectPopup() {
     setShow(false);
   };
 
+  if (!show) return null;
+
   return (
-    <LazyMotion features={domAnimation} strict>
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-        >
-          <motion.div
-            initial={{ scale: 0.9, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.9, y: 20 }}
-            className="bg-[#181818] border border-[#333] rounded-2xl p-6 max-w-md w-full shadow-2xl relative"
-          >
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-[#181818] border border-[#333] rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
             <button onClick={dismiss} className="absolute top-4 right-4 text-[#666] hover:text-white">
               <X className="w-5 h-5" />
             </button>
@@ -90,10 +78,7 @@ export default function CountrySelectPopup() {
             </div>
 
             <p className="text-[10px] text-[#555] mt-3 text-center">You can change this anytime from the flag icon in navbar</p>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-    </LazyMotion>
+      </div>
+    </div>
   );
 }
