@@ -71,6 +71,7 @@ const ViralPrediction = require('../../models/ViralPrediction.ts').default || re
 let server;
 
 test.before(async () => {
+  await new Promise(r => setTimeout(r, 5000));
   server = await startNextServer({
     port: 3011,
     env: {

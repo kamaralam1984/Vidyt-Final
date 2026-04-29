@@ -64,7 +64,7 @@ async function connectDB() {
     cached.promise = (async () => {
       // Transient startup/connect issues can happen in CI/dev.
       // Retry a few times to avoid failing the first request.
-      const attempts = 3;
+      const attempts = 10;
       for (let attempt = 0; attempt < attempts; attempt++) {
         try {
           const conn = await mongoose.connect(MONGODB_URI_SAFE, opts);
@@ -74,7 +74,7 @@ async function connectDB() {
           console.error('MongoDB connection error:', error);
           cached.promise = null; // allow next attempt / next call to recreate
           if (attempt >= attempts - 1) throw error;
-          const delay = 200 * Math.pow(2, attempt);
+          const delay = 500 * Math.pow(1.5, attempt);
           await new Promise((r) => setTimeout(r, delay));
         }
       }
