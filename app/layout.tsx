@@ -49,8 +49,8 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: '/Logo.png',
-    apple: '/Logo.png',
+    icon: '/Logo.webp',
+    apple: '/Logo.webp',
   },
   robots: {
     index: true,

@@ -289,6 +289,7 @@ export async function middleware(request: NextRequest) {
     '/api/auth/verify-and-pay',
     '/api/payments/verify-signup-payment',
     '/api/auth/me',
+    '/api/auth/refresh',
     '/api/subscriptions/plans',
     '/api/payments/webhook',
     '/api/webhooks/paypal',

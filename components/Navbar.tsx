@@ -121,7 +121,7 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between gap-4 px-4 border-b transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
       <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
-        <NextImage src="/Logo.png" alt="Vid YT" width={108} height={54} className="h-[2.25rem] md:h-[3.375rem] w-auto object-contain" priority />
+        <NextImage src="/Logo.webp" alt="Vid YT" width={108} height={54} className="h-[2.25rem] md:h-[3.375rem] w-auto object-contain" priority />
       </Link>
       <div className="flex items-center gap-3">
         {/* User info: name, role, ID, plan */}
