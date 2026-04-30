@@ -82,7 +82,7 @@ export default function UnifiedControlPanel() {
   const [savingMaster, setSavingMaster] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
-  const [activeTab, setActiveTab] = useState<'plans' | 'platforms' | 'site'>('plans');
+  const [activeTab, setActiveTab] = useState<'platforms' | 'site'>('platforms');
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
 
   // Site controls state
@@ -235,7 +235,6 @@ export default function UnifiedControlPanel() {
   };
 
   const tabs = [
-    { id: 'plans' as const, label: 'Plans & Roles', icon: Zap },
     { id: 'platforms' as const, label: 'Platforms', icon: Shield },
     { id: 'site' as const, label: 'Site Controls', icon: Settings },
   ];
@@ -313,82 +312,6 @@ export default function UnifiedControlPanel() {
       </div>
 
       {/* ══════ PLANS TAB ══════ */}
-      {activeTab === 'plans' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {plans.map(plan => {
-              const Icon = planIcons[plan.planId] || Globe;
-              const info = roleInfo[plan.role] || roleInfo.user;
-              const flagCount = plan.featureFlags ? Object.values(plan.featureFlags).filter(Boolean).length : 0;
-
-              return (
-                <div key={plan.planId} className={`bg-[#111] border rounded-xl p-4 sm:p-5 transition-all duration-300 ${
-                  plan.isActive
-                    ? 'border-amber-500/30 hover:border-amber-400/60 shadow-[0_0_15px_rgba(255,191,0,0.08)] hover:shadow-[0_0_25px_rgba(255,191,0,0.15)]'
-                    : 'border-red-500/20 opacity-60'
-                }`}>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-lg bg-[#1a1a1a]">
-                        <Icon className="w-5 h-5 text-[#FF0000]" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-white">{plan.name}</h3>
-                        <p className="text-[10px] text-[#444] font-mono">{plan.planId}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => handleTogglePlanActive(plan)} title={plan.isActive ? 'Deactivate' : 'Activate'}
-                        className="p-1.5 rounded-lg hover:bg-[#1a1a1a] transition">
-                        {plan.isActive ? <Eye className="w-3.5 h-3.5 text-green-400" /> : <EyeOff className="w-3.5 h-3.5 text-red-400" />}
-                      </button>
-                      <button onClick={() => setEditingPlan(plan)} title="Edit"
-                        className="p-1.5 rounded-lg hover:bg-[#1a1a1a] transition">
-                        <Edit2 className="w-3.5 h-3.5 text-blue-400" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Price */}
-                  <div className="mb-3 pb-3 border-b border-[#1a1a1a]">
-                    <span className="text-xl font-bold text-white">₹{plan.priceMonthly}</span>
-                    <span className="text-[10px] text-[#555] ml-1">/mo</span>
-                    {plan.priceYearly ? (
-                      <span className="text-[10px] text-[#444] ml-2">₹{plan.priceYearly}/yr</span>
-                    ) : null}
-                  </div>
-
-                  {/* Role + Stats */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`${info.bg} text-white px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider`}>
-                      {plan.role}
-                    </span>
-                    <span className="text-[10px] text-[#555]">{flagCount} features enabled</span>
-                  </div>
-
-                  {/* Quick Role Switch */}
-                  <div className="flex gap-1">
-                    {['user', 'manager', 'admin'].map(role => {
-                      const ri = roleInfo[role];
-                      const active = plan.role === role;
-                      return (
-                        <button key={role} onClick={() => !active && handleUpdatePlanRole(plan.planId, role)}
-                          disabled={active}
-                          className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition ${
-                            active ? `${ri.bg} text-white opacity-60` : 'bg-[#1a1a1a] text-[#666] hover:text-white hover:bg-[#252525]'
-                          }`}>
-                          {(role || 'user').charAt(0).toUpperCase() + (role || 'user').slice(1)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* ══════ PLATFORMS TAB ══════ */}
       {activeTab === 'platforms' && (
         <div className="space-y-3">
