@@ -64,6 +64,7 @@ export const FEATURE_LIMITS_REGISTRY: FeatureLimitDef[] = [
   { key: 'ai_thumbnail_maker', label: 'AI Thumbnails', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day' },
   { key: 'channel_audit_tool', label: 'Channel Audits', group: 'ai_studio', defaultValue: 1, defaultPeriod: 'month' },
   { key: 'optimize', label: 'AI Optimization Runs', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day' },
+  { key: 'ultraAiEngine', label: 'Ultra AI Engine', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day' },
 
   // ── Analytics ─────────────────────────────────────────────────────────
   { key: 'viralPrediction', label: 'Viral Predictions', group: 'analytics', defaultValue: 5, defaultPeriod: 'day' },
@@ -116,7 +117,7 @@ export const SIDEBAR_LIMIT_MAP: Record<string, string> = {
   keyword_intelligence: 'keyword_research',
   facebook_seo: 'analyses',
   instagram_seo: 'analyses',
-  viral_optimizer: 'viralPrediction',
+  viral_optimizer: 'ultraAiEngine',
   facebook_audit: 'channel_audit_tool',
   trending: 'trendAnalysis',
   hashtags: 'hashtagsPerPost',
