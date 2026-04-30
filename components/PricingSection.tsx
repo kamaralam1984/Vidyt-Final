@@ -106,7 +106,7 @@ export default function PricingSection({
               x: billingPeriod === 'year' ? 28 : 0,
             }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            className="w-5 h-5 bg-[#FF0000] rounded-full absolute"
+            className="w-5 h-5 bg-[#FF0000] rounded-full absolute top-1 left-1"
           />
         </button>
         <span className={`text-sm font-medium ${billingPeriod === 'year' ? 'text-white' : 'text-[#AAAAAA]'}`}>

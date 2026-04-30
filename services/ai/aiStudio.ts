@@ -98,25 +98,87 @@ function mockHooks(topic: string, niche: string, platform: string) {
   return { hooks };
 }
 
+async function dbFallbackScript(params: { topic: string; platform: string; duration: string; language: string }) {
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    const AIScript = (await import('@/models/AIScript')).default;
+    await connectDB();
+    const topicWords = params.topic.trim().split(/\s+/).filter(w => w.length > 2);
+    const regex = topicWords.length > 0
+      ? new RegExp(topicWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'i')
+      : null;
+
+    const query: any = { language: params.language };
+    if (regex) query.topic = regex;
+    let doc = await AIScript.findOne(query).sort({ createdAt: -1 }).lean();
+    if (!doc) doc = await AIScript.findOne({ language: params.language }).sort({ createdAt: -1 }).lean();
+    if (!doc) doc = await AIScript.findOne({}).sort({ createdAt: -1 }).lean();
+
+    if (doc) {
+      return {
+        hooks: Array.isArray((doc as any).hooks) ? (doc as any).hooks : [],
+        script: (doc as any).script || '',
+        titles: Array.isArray((doc as any).titles) ? (doc as any).titles : [],
+        hashtags: Array.isArray((doc as any).hashtags) ? (doc as any).hashtags : [],
+        cta: (doc as any).cta || '',
+      };
+    }
+  } catch (err) {
+    console.warn('[generateScript] DB fallback failed:', err instanceof Error ? err.message : err);
+  }
+  return null;
+}
+
 export async function generateScript(params: { topic: string; platform: string; duration: string; language: string; }): Promise<{ hooks: string[]; script: string; titles: string[]; hashtags: string[]; cta: string }> {
   const lang = params.language.trim() || 'English';
   const wordCount = getWordCountForDuration(params.duration);
   const durationInSeconds = getDurationInSeconds(params.duration);
-  
-  const seoPrompt = `You are a viral content expert specializing in SEO-optimized video scripts. Generate a script for topic "${params.topic}" that will be published on ${params.platform} with a duration of ${params.duration} (approximately ${wordCount} words for average ${durationInSeconds}-second speaking pace). Make sure output is in ${lang} and ONLY returning a JSON structure with {hooks, script, titles, hashtags, cta}`;
 
-  const res = await routeAI({ prompt: seoPrompt, timeoutMs: 15000, cacheKey: `script:${params.topic}:${lang}` });
-  const json = res.parseJson() as any;
+  const seoPrompt = `You are a world-class viral video script writer and SEO expert. Write a complete, ready-to-record video script for the topic: "${params.topic}".
 
-  if (json && Object.keys(json).length > 0 && Array.isArray(json.hooks)) {
+Platform: ${params.platform}
+Duration: ${params.duration} (target ~${wordCount} words for ${durationInSeconds}s at 130 WPM)
+Language: ${lang} (write ALL output strictly in ${lang}, including hooks, script, titles, hashtags, and CTA)
+Tone: engaging, conversational, viral-optimized.
+
+Hard requirements:
+- The "script" field must be the FULL spoken-word script the creator will read on camera — not a template, not placeholders, not bracketed instructions only. Write actual sentences about "${params.topic}" with concrete facts, examples, stories, and emotional triggers.
+- Structure the script with clear sections: HOOK (0-3s), INTRO (3-10s), MAIN VALUE (50%), STORY/PROOF (20%), PROOF POINTS (15%), CTA (last 5s). Each section must contain real spoken lines, not just descriptions.
+- Hooks must be 5 distinct attention-grabbing opening lines specific to "${params.topic}".
+- Titles must be 5 SEO-optimized, click-worthy titles in ${lang} that include the keyword "${params.topic}".
+- Hashtags: 12-15 relevant hashtags (mix broad + niche), include #${params.topic.replace(/\s+/g, '')} variants.
+- CTA: a punchy 1-2 sentence call to action in ${lang}.
+
+Return ONLY valid minified JSON (no markdown, no commentary) with EXACT keys:
+{"hooks":[string,string,string,string,string],"script":string,"titles":[string,string,string,string,string],"hashtags":[string,...],"cta":string}`;
+
+  try {
+    const res = await routeAI({
+      prompt: seoPrompt,
+      timeoutMs: 20000,
+      cacheKey: `script:${params.topic}:${params.platform}:${params.duration}:${lang}`,
+    });
+    const json = res.parseJson() as any;
+
+    if (
+      res.provider !== 'fallback' &&
+      json && Array.isArray(json.hooks) && json.hooks.length > 0 &&
+      typeof json.script === 'string' && json.script.trim().length > 100
+    ) {
       return {
-        hooks: Array.isArray(json.hooks) ? json.hooks : [],
-        script: json.script || '',
+        hooks: json.hooks,
+        script: json.script,
         titles: Array.isArray(json.titles) ? json.titles : [],
         hashtags: Array.isArray(json.hashtags) ? json.hashtags : [],
-        cta: json.cta || ''
+        cta: json.cta || '',
       };
+    }
+  } catch (err) {
+    console.warn('[generateScript] AI router failed:', err instanceof Error ? err.message : err);
   }
+
+  const dbResult = await dbFallbackScript(params);
+  if (dbResult) return dbResult;
 
   return mockScript(params.topic, params.platform, params.duration, params.language);
 }
