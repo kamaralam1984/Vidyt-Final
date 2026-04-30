@@ -17,6 +17,7 @@ import {
   resolveFeatureLimit,
   type FeaturePeriod,
 } from '@/lib/featureLimits';
+import { buildUserFeatureMap } from '@/lib/buildUserFeatureMap';
 
 /**
  * Compute the period bucket key used by the Usage collection.
@@ -143,8 +144,24 @@ export async function GET(request: NextRequest) {
     // ── Registry-driven per-feature usage map ──────────────────────────
     // Iterates lib/featureLimits.ts so any feature added there automatically
     // appears in the user-facing Usage widget without changes here.
+    // Also filters by the user's sidebar visibility map so the widget only
+    // surfaces features the user can actually use (matches sidebar).
     const planDoc = await Plan.findOne({ planId }).lean();
     const planLimits = (planDoc as any)?.limits || {};
+
+    // Sidebar / feature visibility map for this user (same source of truth as
+    // GET /api/features/all). Keys not in the map are treated as always-visible
+    // base limits (e.g. core API quotas like `analyses`, `hashtagsPerPost`).
+    let visibilityMap: Record<string, boolean> = {};
+    try {
+      visibilityMap = await buildUserFeatureMap({
+        role: String(user.role || 'user'),
+        subscription: planId,
+      });
+    } catch {
+      // visibility lookup failed → fall back to showing everything
+    }
+
     const featureUsage: Record<string, {
       used: number;
       limit: number;
@@ -165,6 +182,12 @@ export async function GET(request: NextRequest) {
     for (const def of FEATURE_LIMITS_REGISTRY) {
       const resolved = resolveFeatureLimit(planLimits, def.key);
       if (!resolved) continue;
+      // Sidebar-aware filter: if the registry key has a corresponding entry
+      // in the visibility map (i.e. it's a sidebar / featureFlag-gated item)
+      // and that entry is false, skip it. Keys with no entry are always shown.
+      if (Object.prototype.hasOwnProperty.call(visibilityMap, def.key) && !visibilityMap[def.key]) {
+        continue;
+      }
       const bucket = periodBucket(resolved.period);
       const matches = usageByFeature.get(def.key) || [];
       const bucketDoc = matches.find((m) => m.date === bucket);

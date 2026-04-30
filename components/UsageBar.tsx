@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
+
+const COLLAPSE_STORAGE_KEY = 'usage-widget-collapsed';
 
 type UsagePeriod = 'day' | 'week' | 'month' | 'lifetime';
 
@@ -53,6 +56,23 @@ export default function UsageBar() {
   const [featureUsage, setFeatureUsage] = useState<Record<string, FeatureUsageEntry>>({});
   const [hideAll, setHideAll] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState<boolean>(() => {
+    // Restore collapsed/expanded state across page navigations.
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem(COLLAPSE_STORAGE_KEY) !== '1';
+  });
+
+  const toggleOpen = () => {
+    setOpen((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(COLLAPSE_STORAGE_KEY, next ? '0' : '1');
+      } catch {
+        /* storage disabled */
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchUsage = async () => {
@@ -100,65 +120,95 @@ export default function UsageBar() {
       return a[1].label.localeCompare(b[1].label);
     });
 
+  const totalRows =
+    (videoUpload ? 1 : 0) +
+    (videoAnalysis ? 1 : 0) +
+    (schedulePosts ? 1 : 0) +
+    (bulkScheduling ? 1 : 0) +
+    registryItems.length;
+
   return (
     <div className="px-3 py-3 mt-2 mb-2 border-t border-b border-[#212121]">
-      <div className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider mb-2 flex items-center justify-between">
-        <span>Usage</span>
-        {registryItems.length > 0 && (
+      <button
+        type="button"
+        onClick={toggleOpen}
+        aria-expanded={open}
+        className="w-full text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider mb-2 flex items-center justify-between hover:text-white transition-colors group"
+      >
+        <span className="flex items-center gap-2">
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-[#666] group-hover:text-white transition-transform duration-200 ${open ? '' : '-rotate-90'}`}
+          />
+          Usage
+        </span>
+        {totalRows > 0 && (
           <span className="text-[9px] font-mono text-[#555] normal-case tracking-normal">
-            {registryItems.length + 4} features
+            {totalRows} features
           </span>
         )}
-      </div>
+      </button>
 
-      <div className="max-h-[340px] overflow-y-auto pr-1 space-y-3 usage-scroll">
-        {videoUpload && (
-          <UsageRow
-            title="Video upload"
-            cap={formatCap(videoUpload.limit, videoUpload.period ?? null)}
-            used={videoUpload.used}
-            limit={videoUpload.limit}
-          />
-        )}
-        {videoAnalysis && (
-          <UsageRow
-            title="Video analysis"
-            cap={formatCap(videoAnalysis.limit, videoAnalysis.period ?? null)}
-            used={videoAnalysis.used}
-            limit={videoAnalysis.limit}
-          />
-        )}
-        {schedulePosts && (
-          <UsageRow
-            title="Schedule posts"
-            cap={schedulePosts.limit > 0 ? `${schedulePosts.limit} limit` : undefined}
-            used={schedulePosts.used}
-            limit={schedulePosts.limit}
-          />
-        )}
-        {bulkScheduling && (
-          <UsageRow
-            title="Bulk scheduling"
-            cap={bulkScheduling.limit > 0 ? `${bulkScheduling.limit} posts` : undefined}
-            used={bulkScheduling.used}
-            limit={bulkScheduling.limit}
-          />
-        )}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="usage-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="max-h-[340px] overflow-y-auto pr-1 space-y-3 usage-scroll">
+              {videoUpload && (
+                <UsageRow
+                  title="Video upload"
+                  cap={formatCap(videoUpload.limit, videoUpload.period ?? null)}
+                  used={videoUpload.used}
+                  limit={videoUpload.limit}
+                />
+              )}
+              {videoAnalysis && (
+                <UsageRow
+                  title="Video analysis"
+                  cap={formatCap(videoAnalysis.limit, videoAnalysis.period ?? null)}
+                  used={videoAnalysis.used}
+                  limit={videoAnalysis.limit}
+                />
+              )}
+              {schedulePosts && (
+                <UsageRow
+                  title="Schedule posts"
+                  cap={schedulePosts.limit > 0 ? `${schedulePosts.limit} limit` : undefined}
+                  used={schedulePosts.used}
+                  limit={schedulePosts.limit}
+                />
+              )}
+              {bulkScheduling && (
+                <UsageRow
+                  title="Bulk scheduling"
+                  cap={bulkScheduling.limit > 0 ? `${bulkScheduling.limit} posts` : undefined}
+                  used={bulkScheduling.used}
+                  limit={bulkScheduling.limit}
+                />
+              )}
 
-        {registryItems.length > 0 && (
-          <div className="pt-2 mt-2 border-t border-[#1A1A1A] space-y-3">
-            {registryItems.map(([key, entry]) => (
-              <UsageRow
-                key={key}
-                title={entry.label}
-                cap={formatCap(entry.limit, entry.period)}
-                used={entry.used}
-                limit={entry.limit}
-              />
-            ))}
-          </div>
+              {registryItems.length > 0 && (
+                <div className="pt-2 mt-2 border-t border-[#1A1A1A] space-y-3">
+                  {registryItems.map(([key, entry]) => (
+                    <UsageRow
+                      key={key}
+                      title={entry.label}
+                      cap={formatCap(entry.limit, entry.period)}
+                      used={entry.used}
+                      limit={entry.limit}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
       <style jsx>{`
         .usage-scroll::-webkit-scrollbar {
