@@ -2,14 +2,80 @@ import connectDB from './mongodb';
 import Usage from '../models/Usage';
 import Notification from '../models/Notification';
 import User from '../models/User';
+import Plan from '../models/Plan';
 import { getPlanLimits } from './planLimits';
 import { sendBroadcastNotificationEmail } from '@/services/email';
+import { resolveFeatureLimit, type FeaturePeriod } from './featureLimits';
 
 export interface UsageResult {
   allowed: boolean;
   current: number;
   limit: number;
   feature: string;
+  period?: FeaturePeriod;
+}
+
+/**
+ * Compute the bucket key used to scope usage counts by reset period.
+ * - day:      YYYY-MM-DD
+ * - week:     YYYY-Www  (ISO week)
+ * - month:    YYYY-MM
+ * - lifetime: 'lifetime'
+ */
+function periodBucket(period: FeaturePeriod, now: Date = new Date()): string {
+  if (period === 'lifetime') return 'lifetime';
+  if (period === 'month') return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  if (period === 'week') {
+    // ISO week: Thursday-of-the-week trick.
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNum = Math.ceil(((+d - +yearStart) / 86400000 + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  }
+  return now.toISOString().split('T')[0];
+}
+
+/**
+ * Generic, registry-driven limit check. Resolves the limit for `featureKey`
+ * from the user's plan (new `featureLimits` map → legacy fields → registry
+ * default), then enforces it against usage counted in the appropriate
+ * period bucket. Records 80% warning and 100% block notifications.
+ */
+export async function checkFeatureLimit(userId: string, planId: string, featureKey: string): Promise<UsageResult> {
+  await connectDB();
+
+  const planDoc = await Plan.findOne({ planId }).lean();
+  const planLimits = (planDoc as any)?.limits || {};
+  const resolved = resolveFeatureLimit(planLimits, featureKey);
+
+  if (!resolved) {
+    // Unregistered feature → fall back to legacy daily check.
+    return checkUsageLimit(userId, planId, featureKey);
+  }
+
+  const { value: limit, period } = resolved;
+
+  if (limit === -1) {
+    return { allowed: true, current: 0, limit: -1, feature: featureKey, period };
+  }
+
+  const bucket = periodBucket(period);
+  const usage = await Usage.findOne({ userId, feature: featureKey, date: bucket });
+  const current = usage?.count || 0;
+
+  if (current >= limit) {
+    await triggerNotification(userId, featureKey, current, limit, 'limit_reached');
+    return { allowed: false, current, limit, feature: featureKey, period };
+  }
+
+  const threshold = Math.floor(limit * 0.8);
+  if (current >= threshold && threshold > 0) {
+    await triggerNotification(userId, featureKey, current, limit, 'warning');
+  }
+
+  return { allowed: true, current, limit, feature: featureKey, period };
 }
 
 /**
@@ -47,16 +113,30 @@ export async function checkUsageLimit(userId: string, planId: string, feature: s
 
 /**
  * Increments the usage count for a feature.
+ *
+ * If `period` is provided, the count is bucketed by that period (week / month /
+ * lifetime). Defaults to daily so existing callers continue to work unchanged.
  */
-export async function recordUsage(userId: string, feature: string) {
+export async function recordUsage(userId: string, feature: string, period: FeaturePeriod = 'day') {
   await connectDB();
-  const today = new Date().toISOString().split('T')[0];
-  
+  const bucket = periodBucket(period);
+
   await Usage.findOneAndUpdate(
-    { userId, feature, date: today },
+    { userId, feature, date: bucket },
     { $inc: { count: 1 } },
     { upsert: true, new: true }
   );
+}
+
+/**
+ * Convenience wrapper: increment usage for `featureKey` using the period
+ * configured for that feature on the given plan.
+ */
+export async function recordFeatureUsage(userId: string, planId: string, featureKey: string) {
+  await connectDB();
+  const planDoc = await Plan.findOne({ planId }).lean();
+  const resolved = resolveFeatureLimit((planDoc as any)?.limits || {}, featureKey);
+  await recordUsage(userId, featureKey, resolved?.period || 'day');
 }
 
 /**

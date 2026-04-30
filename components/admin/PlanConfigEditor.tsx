@@ -14,7 +14,16 @@ import {
   ChevronUp,
   Zap,
   Settings,
+  Infinity as InfinityIcon,
 } from 'lucide-react';
+import {
+  FEATURE_LIMITS_REGISTRY,
+  FEATURE_GROUPS,
+  PERIOD_OPTIONS,
+  buildDefaultFeatureLimits,
+  type FeaturePeriod,
+  type FeatureLimitsMap,
+} from '@/lib/featureLimits';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -24,6 +33,7 @@ interface PlanLimits {
   titleSuggestions: number;
   hashtagCount: number;
   competitorsTracked: number;
+  featureLimits?: FeatureLimitsMap;
 }
 
 interface FeatureFlags {
@@ -187,14 +197,66 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
     }));
   };
 
-  const updateLimit = (planId: string, key: keyof PlanLimits, value: any) => {
-    setLocalConfigs(prev => ({
-      ...prev,
-      [planId]: {
-        ...prev[planId],
-        limits: { ...prev[planId].limits, [key]: value },
-      },
-    }));
+  /**
+   * Update a single registry-driven feature limit (value or period).
+   * Mirrors the write to the legacy field on `limits` when the registry def
+   * has a `legacyKey` so older enforcement code keeps working.
+   */
+  const updateFeatureLimit = (
+    planId: string,
+    featureKey: string,
+    patch: { value?: number; period?: FeaturePeriod }
+  ) => {
+    setLocalConfigs(prev => {
+      const current = prev[planId];
+      if (!current) return prev;
+      const existingMap: FeatureLimitsMap = current.limits.featureLimits || {};
+      const def = FEATURE_LIMITS_REGISTRY.find(f => f.key === featureKey);
+      const existing = existingMap[featureKey] || {
+        value: def?.defaultValue ?? 0,
+        period: def?.defaultPeriod ?? 'month',
+      };
+      const next = { ...existing, ...patch };
+      const nextLimits: PlanLimits = {
+        ...current.limits,
+        featureLimits: { ...existingMap, [featureKey]: next },
+      };
+      // Mirror to legacy keys so existing enforcement paths keep working.
+      if (def?.legacyKey) {
+        if (def.legacyKey === 'analysesLimit') {
+          if (patch.value !== undefined) nextLimits.analysesLimit = patch.value;
+          if (patch.period !== undefined && (patch.period === 'day' || patch.period === 'month')) {
+            nextLimits.analysesPeriod = patch.period;
+          }
+        } else if (patch.value !== undefined) {
+          (nextLimits as any)[def.legacyKey] = patch.value;
+        }
+      }
+      return { ...prev, [planId]: { ...current, limits: nextLimits } };
+    });
+  };
+
+  /**
+   * Resolve the current value/period for a feature from local state, falling
+   * back to legacy fields and registry defaults so the UI always shows a value.
+   */
+  const getFeatureLimit = (cfg: PlanConfig, featureKey: string): { value: number; period: FeaturePeriod } => {
+    const def = FEATURE_LIMITS_REGISTRY.find(f => f.key === featureKey);
+    const fromMap = cfg.limits.featureLimits?.[featureKey];
+    if (fromMap && typeof fromMap.value === 'number') {
+      return { value: fromMap.value, period: fromMap.period || def?.defaultPeriod || 'month' };
+    }
+    if (def?.legacyKey) {
+      const legacyVal = (cfg.limits as any)[def.legacyKey];
+      if (typeof legacyVal === 'number') {
+        const period: FeaturePeriod =
+          def.legacyKey === 'analysesLimit' && cfg.limits.analysesPeriod
+            ? cfg.limits.analysesPeriod
+            : def.defaultPeriod;
+        return { value: legacyVal, period };
+      }
+    }
+    return { value: def?.defaultValue ?? 0, period: def?.defaultPeriod ?? 'month' };
   };
 
   const updateFeature = (planId: string, key: keyof FeatureFlags, value: boolean) => {
@@ -408,52 +470,67 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
                 {openSection === 'limits' ? <ChevronUp className="w-4 h-4 text-[#555]" /> : <ChevronDown className="w-4 h-4 text-[#555]" />}
               </button>
               {openSection === 'limits' && (
-                <div className="px-5 pb-5 border-t border-[#252525] pt-4 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2 block">Analyses Limit</label>
-                      <input
-                        type="number"
-                        min={-1}
-                        value={activeCfg.limits.analysesLimit}
-                        onChange={e => updateLimit(activeCfg.planId, 'analysesLimit', Number(e.target.value))}
-                        className="w-full bg-[#0F0F0F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2 block">Reset Period</label>
-                      <select
-                        value={activeCfg.limits.analysesPeriod}
-                        onChange={e => updateLimit(activeCfg.planId, 'analysesPeriod', e.target.value as 'day' | 'month')}
-                        className="w-full bg-[#0F0F0F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                      >
-                        <option value="day">Daily</option>
-                        <option value="month">Monthly</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2 block">Title Suggestions</label>
-                      <input
-                        type="number"
-                        min={-1}
-                        value={activeCfg.limits.titleSuggestions}
-                        onChange={e => updateLimit(activeCfg.planId, 'titleSuggestions', Number(e.target.value))}
-                        className="w-full bg-[#0F0F0F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-2 block">Hashtags / Post</label>
-                      <input
-                        type="number"
-                        min={-1}
-                        value={activeCfg.limits.hashtagCount}
-                        onChange={e => updateLimit(activeCfg.planId, 'hashtagCount', Number(e.target.value))}
-                        className="w-full bg-[#0F0F0F] border border-[#2A2A2A] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                      />
-                    </div>
+                <div className="px-5 pb-5 border-t border-[#252525] pt-4 space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="text-[10px] text-[#666] bg-[#0F0F0F] border border-[#252525] rounded-lg px-3 py-2 leading-relaxed">
+                    <span className="text-blue-400 font-semibold">Tip:</span> Enter <span className="text-yellow-400 font-mono">-1</span> for unlimited. Each limit also has a reset period (Daily / Weekly / Monthly / Lifetime). All registered features show below — adding a new feature in <span className="font-mono">lib/featureLimits.ts</span> automatically appears here.
                   </div>
 
-                  <div>
+                  {[...FEATURE_GROUPS]
+                    .sort((a, b) => a.order - b.order)
+                    .map(group => {
+                      const groupFeatures = FEATURE_LIMITS_REGISTRY.filter(f => f.group === group.id);
+                      if (groupFeatures.length === 0) return null;
+                      return (
+                        <div key={group.id} className="space-y-3">
+                          <div className="flex items-baseline justify-between">
+                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">{group.label}</p>
+                            <p className="text-[9px] text-[#444]">{group.description}</p>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {groupFeatures.map(def => {
+                              const current = getFeatureLimit(activeCfg, def.key);
+                              const isUnlimited = current.value === -1;
+                              return (
+                                <div
+                                  key={def.key}
+                                  className={`bg-[#0F0F0F] border rounded-lg p-3 transition-colors ${isUnlimited ? 'border-yellow-700/40' : 'border-[#252525]'}`}
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <label className="text-[11px] font-semibold text-white">{def.label}</label>
+                                    {isUnlimited && (
+                                      <span className="flex items-center gap-1 text-[9px] text-yellow-400 font-mono uppercase tracking-wider">
+                                        <InfinityIcon className="w-3 h-3" /> Unlimited
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                      type="number"
+                                      min={-1}
+                                      value={current.value}
+                                      onChange={e => updateFeatureLimit(activeCfg.planId, def.key, { value: Number(e.target.value) })}
+                                      className="w-full bg-black border border-[#2A2A2A] rounded-md px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                                    />
+                                    <select
+                                      value={current.period}
+                                      onChange={e => updateFeatureLimit(activeCfg.planId, def.key, { period: e.target.value as FeaturePeriod })}
+                                      className="w-full bg-black border border-[#2A2A2A] rounded-md px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                                    >
+                                      {PERIOD_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <p className="text-[9px] text-[#444] mt-1.5 font-mono">key: {def.key}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                  <div className="pt-4 border-t border-[#252525]">
                     <p className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-3">Pricing Page Display Strings</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {(['videos', 'analyses', 'storage', 'support'] as (keyof LimitsDisplay)[]).map(key => (
@@ -468,6 +545,27 @@ export default function PlanConfigEditor({ propPlanId }: { propPlanId?: string }
                         </div>
                       ))}
                     </div>
+                    <p className="text-[9px] text-[#444] mt-2">These short strings appear on the public pricing page.</p>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#252525]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaults = buildDefaultFeatureLimits();
+                        setLocalConfigs(prev => ({
+                          ...prev,
+                          [activeCfg.planId]: {
+                            ...prev[activeCfg.planId],
+                            limits: { ...prev[activeCfg.planId].limits, featureLimits: defaults },
+                          },
+                        }));
+                        showToast('success', 'Reset all feature limits to defaults (not saved)');
+                      }}
+                      className="text-[10px] text-[#888] hover:text-white px-3 py-1.5 rounded-md border border-[#252525] hover:border-[#444] transition-colors"
+                    >
+                      Reset all to registry defaults
+                    </button>
                   </div>
                 </div>
               )}

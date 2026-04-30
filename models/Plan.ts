@@ -23,6 +23,12 @@ export interface IPlan extends Document {
     titleSuggestions: number;    // -1 = unlimited
     hashtagCount: number;        // -1 = unlimited
     competitorsTracked: number;  // -1 = unlimited
+    /**
+     * Registry-driven map of every limited feature/API.
+     * Keyed by `featureLimits` registry key (see lib/featureLimits.ts).
+     * Each entry: { value: -1 = unlimited, period: 'day'|'week'|'month'|'lifetime' }
+     */
+    featureLimits?: Record<string, { value: number; period: 'day' | 'week' | 'month' | 'lifetime' }>;
   };
 
   // Per-plan sidebar/dashboard nav (Unified Feature Matrix plan columns). Mixed so any feature id can be stored.
@@ -105,6 +111,8 @@ const PlanSchema = new Schema<IPlan>(
       titleSuggestions:  { type: Number, default: 3 },
       hashtagCount:      { type: Number, default: 10 },
       competitorsTracked:{ type: Number, default: 3 },
+      // Registry-driven feature limits map (see lib/featureLimits.ts).
+      featureLimits:     { type: Schema.Types.Mixed, default: {} },
     },
 
     navFeatureAccess: { type: Schema.Types.Mixed, default: {} },

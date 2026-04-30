@@ -74,7 +74,23 @@ export async function PATCH(request: NextRequest) {
 
     const updateData: any = {};
     if (role) updateData.role = role;
-    if (limits) updateData.limits = limits;
+    if (limits) {
+      // `limits.featureLimits` is a registry-driven Mixed map; sanitize so
+      // only well-formed entries reach the DB.
+      const sanitizedLimits: any = { ...limits };
+      if (limits.featureLimits && typeof limits.featureLimits === 'object') {
+        const cleaned: Record<string, { value: number; period: string }> = {};
+        for (const [k, v] of Object.entries(limits.featureLimits as Record<string, any>)) {
+          if (!v || typeof v !== 'object') continue;
+          const value = Number(v.value);
+          const period = ['day', 'week', 'month', 'lifetime'].includes(v.period) ? v.period : 'month';
+          if (!Number.isFinite(value)) continue;
+          cleaned[k] = { value, period };
+        }
+        sanitizedLimits.featureLimits = cleaned;
+      }
+      updateData.limits = sanitizedLimits;
+    }
     if (featureFlags) updateData.featureFlags = featureFlags;
     if (limitsDisplay) updateData.limitsDisplay = limitsDisplay;
     if (label !== undefined) updateData.label = label;
