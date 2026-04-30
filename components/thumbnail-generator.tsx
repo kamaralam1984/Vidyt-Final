@@ -7,6 +7,81 @@ import { Sparkles, Download, Loader2, RefreshCw, Copy, Check, Image as ImageIcon
 import { getAuthHeaders } from '@/utils/auth';
 import axios from 'axios';
 import { addTextOverlay } from '@/lib/textOverlay';
+import { useLocale } from '@/context/LocaleContext';
+
+const UI_STRINGS = {
+  en: {
+    heading: 'Thumbnail Generator',
+    subheading: 'Generate a prompt from your title, then create an AI thumbnail',
+    stepLabels: ['1. Title & Style', '2. Image Prompt', '3. Generating...', '4. Done!'],
+    uploadLabel: 'Upload Your Photo (Optional)',
+    uploadCta: 'Upload a photo or subject',
+    photoModeNote: 'Your photo becomes the subject; AI generates a cinematic background',
+    photoModeOn: 'Photo Mode ON',
+    titleField: 'Video Title',
+    titlePlaceholder: 'e.g. Celebrity secret revealed',
+    topicField: 'Topic / Keyword',
+    topicPlaceholder: 'e.g. Celebrity, cricket, gaming',
+    emotion: 'Emotion',
+    niche: 'Niche',
+    artStyle: 'Art Style',
+    titleRequired: 'Please enter a video title or topic',
+    promptLoading: 'AI is generating prompt…',
+    promptCta: 'Generate Image Prompt →',
+    aiPrompt: 'AI Image Prompt',
+    reset: 'Reset',
+    promptEditLabel: 'You can edit the prompt below',
+    overlayLabel: 'Thumbnail Text (title overlay)',
+    overlayPlaceholder: 'Text to show on thumbnail',
+    createCta: 'Create Thumbnail ✨',
+    generatingTitle: 'AI is creating your thumbnail…',
+    generatingSubtitle: 'Generating image and applying text overlay',
+    emptyTitle: 'Your AI thumbnail will appear here',
+    emptySubtitle: 'Enter a title and generate a prompt',
+    download: 'Download',
+    regenerate: 'Regenerate',
+    usedPrompt: 'Used Image Prompt',
+    editAgain: 'Edit Prompt and Try Again',
+  },
+  hi: {
+    heading: 'थंबनेल जेनेरेटर',
+    subheading: 'Title से prompt बनाओ, फिर AI thumbnail create करो',
+    stepLabels: ['1. Title & Style', '2. Image Prompt', '3. Generating...', '4. Done!'],
+    uploadLabel: 'Apni Photo Upload (Optional)',
+    uploadCta: 'Photo ya subject upload karo',
+    photoModeNote: 'Tumhari photo subject banega, AI cinematic background banayega',
+    photoModeOn: 'Photo Mode ON',
+    titleField: 'Video Title',
+    titlePlaceholder: 'e.g. Bigg Boss winner ka secret reveal',
+    topicField: 'Topic / Keyword',
+    topicPlaceholder: 'e.g. Bigg Boss, cricket, gaming',
+    emotion: 'Emotion',
+    niche: 'Niche',
+    artStyle: 'Art Style',
+    titleRequired: 'Video title ya topic zaroor bharo',
+    promptLoading: 'AI Prompt Bana rha hai...',
+    promptCta: 'Image Prompt Generate Karo →',
+    aiPrompt: 'AI Image Prompt',
+    reset: 'Reset',
+    promptEditLabel: 'Prompt edit kar sakte ho',
+    overlayLabel: 'Thumbnail Text (title overlay)',
+    overlayPlaceholder: 'Text jo thumbnail pe dikhega',
+    createCta: 'Thumbnail Create Karo ✨',
+    generatingTitle: 'AI Thumbnail Bana rha hai...',
+    generatingSubtitle: 'Image generate ho rhi hai + text overlay lag rha hai',
+    emptyTitle: 'Tumhara AI thumbnail yahan dikhega',
+    emptySubtitle: 'Title bharo aur Prompt Generate karo',
+    download: 'Download',
+    regenerate: 'Dobara Generate',
+    usedPrompt: 'Used Image Prompt',
+    editAgain: 'Prompt Edit karke Dobara Banao',
+  },
+} as const;
+
+function pickStrings(localeLang?: string) {
+  const lang = (localeLang || 'en').toLowerCase();
+  return lang === 'hi' || lang === 'hinglish' ? UI_STRINGS.hi : UI_STRINGS.en;
+}
 
 const STYLES = [
   { id: 'cinematic',  label: 'Cinematic Film Poster', desc: 'Hollywood movie poster quality', color: 'from-red-600 to-orange-600' },
@@ -41,6 +116,8 @@ function getStyleSuffix(style: string): string {
 }
 
 export default function ThumbnailGenerator() {
+  const { locale } = useLocale();
+  const T = pickStrings(locale?.lang);
   const [step, setStep] = useState<Step>('input');
 
   // Inputs
@@ -79,7 +156,7 @@ export default function ThumbnailGenerator() {
   // ── Step 1 → Step 2: generate image prompt ──────────────────────────────
   const handleGeneratePrompt = async () => {
     if (!title.trim() && !topic.trim()) {
-      setError('Video title ya topic zaroor bharo');
+      setError(T.titleRequired);
       return;
     }
     setPromptLoading(true);
@@ -214,16 +291,16 @@ export default function ThumbnailGenerator() {
               </div>
               <div>
                 <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-purple-400 to-amber-400">
-                  थंबनेल जेनेरेटर
+                  {T.heading}
                 </h1>
-                <p className="text-sm text-[#888]">Title से prompt बनाओ, फिर AI thumbnail create करो</p>
+                <p className="text-sm text-[#888]">{T.subheading}</p>
               </div>
             </div>
 
             {/* Step indicator */}
             <div className="flex items-center gap-2 mt-4">
               {(['input','prompt','generating','done'] as Step[]).map((s, i) => {
-                const labels = ['1. Title & Style', '2. Image Prompt', '3. Generating...', '4. Done!'];
+                const labels = T.stepLabels;
                 const active = step === s;
                 const past = ['input','prompt','generating','done'].indexOf(step) > i;
                 return (
@@ -253,7 +330,7 @@ export default function ThumbnailGenerator() {
                   <div>
                     <label className="text-sm font-bold text-[#AAA] mb-2 block">
                       <Upload className="w-4 h-4 inline mr-1" />
-                      Apni Photo Upload (Optional)
+                      {T.uploadLabel}
                     </label>
                     <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                     {uploadedImage ? (
@@ -266,48 +343,48 @@ export default function ThumbnailGenerator() {
                             className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-lg font-bold">Remove</button>
                         </div>
                         <div className="absolute top-2 right-2 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          Photo Mode ON
+                          {T.photoModeOn}
                         </div>
                       </div>
                     ) : (
                       <button onClick={() => fileRef.current?.click()}
                         className="w-full h-20 border-2 border-dashed border-[#333] rounded-xl hover:border-purple-500/50 transition flex flex-col items-center justify-center gap-1 text-[#555] hover:text-purple-400">
                         <Upload className="w-5 h-5" />
-                        <span className="text-xs">Photo ya subject upload karo</span>
+                        <span className="text-xs">{T.uploadCta}</span>
                       </button>
                     )}
                     {uploadedImage && (
-                      <p className="text-xs text-purple-400 mt-1">✓ Tumhari photo subject banega, AI cinematic background banayega</p>
+                      <p className="text-xs text-purple-400 mt-1">✓ {T.photoModeNote}</p>
                     )}
                   </div>
 
                   {/* Title */}
                   <div>
-                    <label className="text-sm font-bold text-[#AAA] mb-1 block">Video Title *</label>
+                    <label className="text-sm font-bold text-[#AAA] mb-1 block">{T.titleField} *</label>
                     <input value={title} onChange={e => setTitle(e.target.value)}
-                      placeholder="e.g. Bigg Boss winner ka secret reveal"
+                      placeholder={T.titlePlaceholder}
                       className="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white placeholder-[#555] focus:ring-2 focus:ring-red-500 text-sm" />
                   </div>
 
                   {/* Topic */}
                   <div>
-                    <label className="text-sm font-bold text-[#AAA] mb-1 block">Topic / Keyword</label>
+                    <label className="text-sm font-bold text-[#AAA] mb-1 block">{T.topicField}</label>
                     <input value={topic} onChange={e => setTopic(e.target.value)}
-                      placeholder="e.g. Bigg Boss, cricket, gaming"
+                      placeholder={T.topicPlaceholder}
                       className="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white placeholder-[#555] focus:ring-2 focus:ring-red-500 text-sm" />
                   </div>
 
                   {/* Emotion + Niche */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-[#888] mb-1 block">Emotion</label>
+                      <label className="text-xs text-[#888] mb-1 block">{T.emotion}</label>
                       <select value={emotion} onChange={e => setEmotion(e.target.value)}
                         className="w-full px-3 py-2.5 bg-[#111] border border-[#333] rounded-xl text-white text-sm">
                         {EMOTIONS.map(em => <option key={em}>{em}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-[#888] mb-1 block">Niche</label>
+                      <label className="text-xs text-[#888] mb-1 block">{T.niche}</label>
                       <select value={niche} onChange={e => setNiche(e.target.value)}
                         className="w-full px-3 py-2.5 bg-[#111] border border-[#333] rounded-xl text-white text-sm">
                         {NICHES.map(n => <option key={n}>{n}</option>)}
@@ -317,7 +394,7 @@ export default function ThumbnailGenerator() {
 
                   {/* Art Style */}
                   <div>
-                    <label className="text-xs text-[#888] mb-2 block">Art Style</label>
+                    <label className="text-xs text-[#888] mb-2 block">{T.artStyle}</label>
                     <div className="grid grid-cols-2 gap-2">
                       {STYLES.map(s => (
                         <button key={s.id} onClick={() => setStyle(s.id)}
@@ -335,7 +412,7 @@ export default function ThumbnailGenerator() {
                   <button onClick={handleGeneratePrompt} disabled={promptLoading}
                     className="w-full py-3.5 bg-gradient-to-r from-red-600 to-purple-600 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg hover:shadow-red-500/20 transition">
                     {promptLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                    {promptLoading ? 'AI Prompt Bana rha hai...' : 'Image Prompt Generate Karo →'}
+                    {promptLoading ? T.promptLoading : T.promptCta}
                   </button>
                 </motion.div>
               )}
@@ -348,23 +425,23 @@ export default function ThumbnailGenerator() {
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-black text-white flex items-center gap-2">
                       <Pencil className="w-4 h-4 text-purple-400" />
-                      AI Image Prompt
+                      {T.aiPrompt}
                     </h3>
                     <button onClick={handleReset} className="text-xs text-[#555] hover:text-white flex items-center gap-1">
-                      <X className="w-3 h-3" /> Reset
+                      <X className="w-3 h-3" /> {T.reset}
                     </button>
                   </div>
 
                   <div>
-                    <label className="text-xs text-[#888] mb-1 block">Prompt edit kar sakte ho</label>
+                    <label className="text-xs text-[#888] mb-1 block">{T.promptEditLabel}</label>
                     <textarea value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} rows={6}
                       className="w-full px-4 py-3 bg-[#111] border border-purple-500/30 rounded-xl text-white text-xs font-mono focus:ring-2 focus:ring-purple-500 resize-none leading-relaxed" />
                   </div>
 
                   <div>
-                    <label className="text-xs text-[#888] mb-1 block">Thumbnail Text (title overlay)</label>
+                    <label className="text-xs text-[#888] mb-1 block">{T.overlayLabel}</label>
                     <input value={overlayText} onChange={e => setOverlayText(e.target.value)} maxLength={70}
-                      placeholder="Text jo thumbnail pe dikhega"
+                      placeholder={T.overlayPlaceholder}
                       className="w-full px-4 py-3 bg-[#111] border border-[#333] rounded-xl text-white text-sm focus:ring-2 focus:ring-red-500" />
                     <p className="text-[10px] text-[#555] mt-1">{overlayText.length}/70 characters</p>
                   </div>
@@ -374,7 +451,7 @@ export default function ThumbnailGenerator() {
                       <img src={`data:image/jpeg;base64,${uploadedImage}`} alt="" className="w-10 h-10 rounded-lg object-cover" />
                       <div>
                         <p className="text-xs font-bold text-purple-300">Photo Mode Active</p>
-                        <p className="text-[10px] text-[#888]">Tumhari photo subject banega, AI cinematic background banayega</p>
+                        <p className="text-[10px] text-[#888]">{T.photoModeNote}</p>
                       </div>
                     </div>
                   )}
@@ -384,7 +461,7 @@ export default function ThumbnailGenerator() {
                   <button onClick={handleCreateThumbnail}
                     className="w-full py-3.5 bg-gradient-to-r from-red-600 via-purple-600 to-amber-600 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-red-500/20 transition">
                     <Sparkles className="w-4 h-4" />
-                    Thumbnail Create Karo ✨
+                    {T.createCta}
                   </button>
                 </motion.div>
               )}
@@ -404,8 +481,8 @@ export default function ThumbnailGenerator() {
                     <Sparkles className="w-6 h-6 text-amber-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
                   <div className="text-center">
-                    <p className="text-white font-black text-lg">AI Thumbnail Bana rha hai...</p>
-                    <p className="text-[#888] text-xs mt-1">Image generate ho rhi hai + text overlay lag rha hai</p>
+                    <p className="text-white font-black text-lg">{T.generatingTitle}</p>
+                    <p className="text-[#888] text-xs mt-1">{T.generatingSubtitle}</p>
                   </div>
                   {/* Animated progress dots */}
                   <div className="flex gap-1.5">
@@ -426,8 +503,8 @@ export default function ThumbnailGenerator() {
                     <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 2.5, repeat: Infinity }}>
                       <ImageIcon className="w-16 h-16 text-[#2a2a2a]" />
                     </motion.div>
-                    <p className="text-[#555] font-bold">Tumhara AI thumbnail yahan dikhega</p>
-                    <p className="text-[#333] text-xs">Title bharo aur Prompt Generate karo</p>
+                    <p className="text-[#555] font-bold">{T.emptyTitle}</p>
+                    <p className="text-[#333] text-xs">{T.emptySubtitle}</p>
                   </div>
                 </motion.div>
               )}
@@ -445,11 +522,11 @@ export default function ThumbnailGenerator() {
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-3">
                         <button onClick={handleDownload}
                           className="px-5 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-red-700 transition">
-                          <Download className="w-4 h-4" /> Download PNG
+                          <Download className="w-4 h-4" /> {T.download} PNG
                         </button>
                         <button onClick={handleCreateThumbnail}
                           className="px-5 py-2.5 bg-[#333] text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#444] transition">
-                          <RefreshCw className="w-4 h-4" /> Regenerate
+                          <RefreshCw className="w-4 h-4" /> {T.regenerate}
                         </button>
                       </div>
 
@@ -468,11 +545,11 @@ export default function ThumbnailGenerator() {
                     <div className="p-4 flex gap-2">
                       <button onClick={handleDownload}
                         className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-700 transition">
-                        <Download className="w-4 h-4" /> Download
+                        <Download className="w-4 h-4" /> {T.download}
                       </button>
                       <button onClick={handleCreateThumbnail}
                         className="flex-1 py-2.5 bg-[#222] border border-[#444] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#333] transition">
-                        <RefreshCw className="w-4 h-4" /> Dobara Generate
+                        <RefreshCw className="w-4 h-4" /> {T.regenerate}
                       </button>
                     </div>
                   </div>
@@ -480,7 +557,7 @@ export default function ThumbnailGenerator() {
                   {/* Prompt used */}
                   <div className="bg-[#181818] border border-[#212121] rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-bold text-purple-400">Used Image Prompt</p>
+                      <p className="text-xs font-bold text-purple-400">{T.usedPrompt}</p>
                       <button onClick={() => { navigator.clipboard.writeText(result.prompt); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                         className="flex items-center gap-1 text-[10px] text-[#888] hover:text-white">
                         {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -493,7 +570,7 @@ export default function ThumbnailGenerator() {
                   {/* Try again with new prompt */}
                   <button onClick={() => setStep('prompt')}
                     className="w-full py-3 border border-purple-500/30 text-purple-400 rounded-xl text-sm font-bold hover:bg-purple-500/10 transition flex items-center justify-center gap-2">
-                    <Pencil className="w-4 h-4" /> Prompt Edit karke Dobara Banao
+                    <Pencil className="w-4 h-4" /> {T.editAgain}
                   </button>
                 </motion.div>
               )}
