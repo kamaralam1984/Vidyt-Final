@@ -103,6 +103,34 @@ export function getFeatureLimitDef(key: string): FeatureLimitDef | undefined {
   return FEATURE_LIMITS_REGISTRY.find((f) => f.key === key);
 }
 
+/**
+ * Maps sidebar feature IDs (from utils/features.ts, group: 'sidebar') to
+ * a limit registry key. Used by the Usage widget so the per-user list
+ * mirrors the sidebar 1:1 — every sidebar item the user can see shows up
+ * with its associated quota. Items without a mapping render as
+ * label-only rows ("Available", no progress bar).
+ */
+export const SIDEBAR_LIMIT_MAP: Record<string, string> = {
+  videos: 'videoUploads',
+  youtube_seo: 'analyses',
+  keyword_intelligence: 'keyword_research',
+  facebook_seo: 'analyses',
+  instagram_seo: 'analyses',
+  viral_optimizer: 'viralPrediction',
+  facebook_audit: 'channel_audit_tool',
+  trending: 'trendAnalysis',
+  hashtags: 'hashtagsPerPost',
+  posting_time: 'postingTimePrediction',
+  analytics: 'analyticsExports',
+  calendar: 'scheduledPosts',
+  script_generator: 'script_writer',
+  ai_coach: 'ai_coach',
+  thumbnail_generator: 'ai_thumbnail_maker',
+  hook_generator: 'titleSuggestions',
+  shorts_creator: 'ai_shorts_clipping',
+  // dashboard, youtube_growth → no quota; render as label-only rows.
+};
+
 export function getFeaturesByGroup(group: FeatureGroupId): FeatureLimitDef[] {
   return FEATURE_LIMITS_REGISTRY.filter((f) => f.group === group);
 }

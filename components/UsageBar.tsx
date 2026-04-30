@@ -10,18 +10,13 @@ const COLLAPSE_STORAGE_KEY = 'usage-widget-collapsed';
 
 type UsagePeriod = 'day' | 'week' | 'month' | 'lifetime';
 
-type UsageBlock = {
-  used: number;
-  limit: number;
-  period?: UsagePeriod | null;
-};
-
-type FeatureUsageEntry = {
-  used: number;
-  limit: number;
-  period: UsagePeriod;
+type SidebarUsageEntry = {
+  id: string;
   label: string;
-  group: string;
+  limitKey?: string;
+  used?: number;
+  limit?: number;
+  period?: UsagePeriod;
 };
 
 const PERIOD_SUFFIX: Record<UsagePeriod, string> = {
@@ -49,11 +44,7 @@ function barColor(percent: number): string {
 }
 
 export default function UsageBar() {
-  const [videoUpload, setVideoUpload] = useState<UsageBlock | null>(null);
-  const [videoAnalysis, setVideoAnalysis] = useState<UsageBlock | null>(null);
-  const [schedulePosts, setSchedulePosts] = useState<UsageBlock | null>(null);
-  const [bulkScheduling, setBulkScheduling] = useState<UsageBlock | null>(null);
-  const [featureUsage, setFeatureUsage] = useState<Record<string, FeatureUsageEntry>>({});
+  const [sidebarUsage, setSidebarUsage] = useState<SidebarUsageEntry[]>([]);
   const [hideAll, setHideAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<boolean>(() => {
@@ -78,20 +69,15 @@ export default function UsageBar() {
     const fetchUsage = async () => {
       try {
         const res = await axios.get('/api/user/usage', { headers: getAuthHeaders() });
-        const u = res.data?.usage;
         const plan = res.data?.subscription?.plan as string | undefined;
-        if (!u) return;
 
-        if (plan === 'owner' || u.videoAnalysis?.limit === -1) {
+        // Owner / super-admin sees no usage caps.
+        if (plan === 'owner') {
           setHideAll(true);
           return;
         }
 
-        setVideoUpload(u.videoUpload);
-        setVideoAnalysis(u.videoAnalysis);
-        setSchedulePosts(u.schedulePosts);
-        setBulkScheduling(u.bulkScheduling);
-        setFeatureUsage((res.data?.featureUsage as Record<string, FeatureUsageEntry>) || {});
+        setSidebarUsage((res.data?.sidebarUsage as SidebarUsageEntry[]) || []);
       } catch {
         // unauthenticated or network
       } finally {
@@ -103,29 +89,7 @@ export default function UsageBar() {
 
   if (loading) return null;
   if (hideAll) return null;
-  if (!videoAnalysis) return null;
-
-  // Registry items rendered below the legacy 4. Skip keys that already
-  // surface as legacy rows so we don't duplicate (analyses == videoAnalysis,
-  // scheduledPosts == schedulePosts).
-  const SKIP_LEGACY_KEYS = new Set(['analyses', 'scheduledPosts']);
-  const registryItems = Object.entries(featureUsage)
-    .filter(([key]) => !SKIP_LEGACY_KEYS.has(key))
-    .sort((a, b) => {
-      // Sort by group order then alphabetically by label.
-      const groupOrder = ['core', 'ai_studio', 'analytics', 'social', 'storage', 'collaboration'];
-      const ga = groupOrder.indexOf(a[1].group);
-      const gb = groupOrder.indexOf(b[1].group);
-      if (ga !== gb) return ga - gb;
-      return a[1].label.localeCompare(b[1].label);
-    });
-
-  const totalRows =
-    (videoUpload ? 1 : 0) +
-    (videoAnalysis ? 1 : 0) +
-    (schedulePosts ? 1 : 0) +
-    (bulkScheduling ? 1 : 0) +
-    registryItems.length;
+  if (sidebarUsage.length === 0) return null;
 
   return (
     <div className="px-3 py-3 mt-2 mb-2 border-t border-b border-[#212121]">
@@ -141,11 +105,9 @@ export default function UsageBar() {
           />
           Usage
         </span>
-        {totalRows > 0 && (
-          <span className="text-[9px] font-mono text-[#555] normal-case tracking-normal">
-            {totalRows} features
-          </span>
-        )}
+        <span className="text-[9px] font-mono text-[#555] normal-case tracking-normal">
+          {sidebarUsage.length} features
+        </span>
       </button>
 
       <AnimatePresence initial={false}>
@@ -159,52 +121,26 @@ export default function UsageBar() {
             className="overflow-hidden"
           >
             <div className="max-h-[340px] overflow-y-auto pr-1 space-y-3 usage-scroll">
-              {videoUpload && (
-                <UsageRow
-                  title="Video upload"
-                  cap={formatCap(videoUpload.limit, videoUpload.period ?? null)}
-                  used={videoUpload.used}
-                  limit={videoUpload.limit}
-                />
-              )}
-              {videoAnalysis && (
-                <UsageRow
-                  title="Video analysis"
-                  cap={formatCap(videoAnalysis.limit, videoAnalysis.period ?? null)}
-                  used={videoAnalysis.used}
-                  limit={videoAnalysis.limit}
-                />
-              )}
-              {schedulePosts && (
-                <UsageRow
-                  title="Schedule posts"
-                  cap={schedulePosts.limit > 0 ? `${schedulePosts.limit} limit` : undefined}
-                  used={schedulePosts.used}
-                  limit={schedulePosts.limit}
-                />
-              )}
-              {bulkScheduling && (
-                <UsageRow
-                  title="Bulk scheduling"
-                  cap={bulkScheduling.limit > 0 ? `${bulkScheduling.limit} posts` : undefined}
-                  used={bulkScheduling.used}
-                  limit={bulkScheduling.limit}
-                />
-              )}
-
-              {registryItems.length > 0 && (
-                <div className="pt-2 mt-2 border-t border-[#1A1A1A] space-y-3">
-                  {registryItems.map(([key, entry]) => (
-                    <UsageRow
-                      key={key}
-                      title={entry.label}
-                      cap={formatCap(entry.limit, entry.period)}
-                      used={entry.used}
-                      limit={entry.limit}
-                    />
-                  ))}
-                </div>
-              )}
+              {sidebarUsage.map((entry) => {
+                // Items without a configured limit render as label-only rows.
+                if (entry.limit === undefined) {
+                  return (
+                    <div key={entry.id} className="flex justify-between items-baseline gap-2">
+                      <span className="text-[11px] text-[#AAA]">{entry.label}</span>
+                      <span className="text-[9px] text-[#555] uppercase tracking-wider">Available</span>
+                    </div>
+                  );
+                }
+                return (
+                  <UsageRow
+                    key={entry.id}
+                    title={entry.label}
+                    cap={formatCap(entry.limit, entry.period ?? null)}
+                    used={entry.used ?? 0}
+                    limit={entry.limit}
+                  />
+                );
+              })}
             </div>
           </motion.div>
         )}

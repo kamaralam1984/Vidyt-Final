@@ -14,10 +14,12 @@ import connectDB from '@/lib/mongodb';
 import { maybeTriggerUsageAlerts } from '@/lib/usageAlerts';
 import {
   FEATURE_LIMITS_REGISTRY,
+  SIDEBAR_LIMIT_MAP,
   resolveFeatureLimit,
   type FeaturePeriod,
 } from '@/lib/featureLimits';
 import { buildUserFeatureMap } from '@/lib/buildUserFeatureMap';
+import { ALL_FEATURES } from '@/utils/features';
 
 /**
  * Compute the period bucket key used by the Usage collection.
@@ -207,6 +209,49 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // ── Sidebar-driven usage list ───────────────────────────────────────
+    // Walks ALL_FEATURES sidebar items in declaration order, keeps only the
+    // ones the current user can actually see, and attaches the configured
+    // limit (via SIDEBAR_LIMIT_MAP). Order matches the visible sidebar so
+    // the user sees a 1:1 mirror.
+    const sidebarUsage: Array<{
+      id: string;
+      label: string;
+      limitKey?: string;
+      used?: number;
+      limit?: number;
+      period?: FeaturePeriod;
+    }> = [];
+
+    for (const feature of ALL_FEATURES) {
+      if (feature.group !== 'sidebar') continue;
+      // Visibility: respect plan/role gating exactly like the sidebar does.
+      const visible = visibilityMap[feature.id];
+      if (visible === false) continue;
+      // If the visibility map is empty (lookup failed), fall back to role
+      // defaults so we still render *something* sensible.
+      if (Object.keys(visibilityMap).length === 0) {
+        if (!feature.defaultRoles.includes(String(user.role || 'user'))) continue;
+      }
+
+      const limitKey = SIDEBAR_LIMIT_MAP[feature.id];
+      const entry: typeof sidebarUsage[number] = {
+        id: feature.id,
+        label: feature.label,
+      };
+
+      if (limitKey) {
+        const fu = featureUsage[limitKey];
+        if (fu) {
+          entry.limitKey = limitKey;
+          entry.used = fu.used;
+          entry.limit = fu.limit;
+          entry.period = fu.period;
+        }
+      }
+      sidebarUsage.push(entry);
+    }
+
     await maybeTriggerUsageAlerts(
       {
         id: authUser.id,
@@ -226,6 +271,7 @@ export async function GET(request: NextRequest) {
       success: true,
       usage: usagePayload,
       featureUsage,
+      sidebarUsage,
       subscription: {
         plan: planId,
         planName: plan.name,
