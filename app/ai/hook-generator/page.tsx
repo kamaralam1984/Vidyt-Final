@@ -1,25 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Zap, Copy, Loader2, Sparkles, Check, RefreshCw, Hash, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useTranslations } from '@/context/translations';
+import { useLocale } from '@/context/LocaleContext';
 import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
 
 const PLATFORMS = ['YouTube', 'Shorts', 'Reels', 'TikTok', 'Facebook', 'Instagram'];
 const TONES = ['Shocking', 'Curiosity', 'Emotional', 'Funny', 'Controversial', 'Educational', 'Motivational', 'Fear/Urgency'];
 const LANGUAGES = ['English', 'Hindi', 'Hinglish', 'Spanish', 'Arabic', 'Urdu', 'Indonesian'];
 
+const LANG_CODE_TO_LABEL: Record<string, string> = {
+  en: 'English', hi: 'Hindi', hinglish: 'Hinglish', es: 'Spanish',
+  ar: 'Arabic', id: 'Indonesian', ur: 'Urdu',
+};
+function languageFromLocaleLang(langCode?: string): string {
+  if (!langCode) return 'English';
+  return LANG_CODE_TO_LABEL[langCode.toLowerCase()] || 'English';
+}
+
 export default function HookGeneratorPage() {
   const { t } = useTranslations();
+  const { locale } = useLocale();
   const [topic, setTopic] = useState('');
   const [niche, setNiche] = useState('');
   const [platform, setPlatform] = useState('YouTube');
   const [tone, setTone] = useState('Shocking');
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState(() => languageFromLocaleLang(locale?.lang));
+
+  useEffect(() => {
+    const next = languageFromLocaleLang(locale?.lang);
+    setLanguage(prev => (prev === next ? prev : next));
+  }, [locale?.countryCode, locale?.lang]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ hooks: { hook: string; psychologyType: string; whyItWorks: string }[] } | null>(null);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
