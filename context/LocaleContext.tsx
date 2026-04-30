@@ -16,6 +16,7 @@ export interface LocaleOption {
 export const SUPPORTED_LOCALES: LocaleOption[] = [
   { countryCode: 'US', countryName: 'United States', flag: '🇺🇸', currencySymbol: '$',   currency: 'USD', phoneCode: '+1',   phoneLength: 10, lang: 'en' },
   { countryCode: 'IN', countryName: 'India',          flag: '🇮🇳', currencySymbol: '₹',   currency: 'INR', phoneCode: '+91',  phoneLength: 10, lang: 'hi' },
+  { countryCode: 'IN-EN', countryName: 'India (English)', flag: '🇮🇳', currencySymbol: '₹', currency: 'INR', phoneCode: '+91', phoneLength: 10, lang: 'en' },
   { countryCode: 'GB', countryName: 'United Kingdom', flag: '🇬🇧', currencySymbol: '£',   currency: 'GBP', phoneCode: '+44',  phoneLength: 10, lang: 'en' },
   { countryCode: 'AE', countryName: 'UAE',            flag: '🇦🇪', currencySymbol: 'AED', currency: 'AED', phoneCode: '+971', phoneLength: 9,  lang: 'ar' },
   { countryCode: 'PK', countryName: 'Pakistan',       flag: '🇵🇰', currencySymbol: '₨',   currency: 'PKR', phoneCode: '+92',  phoneLength: 10, lang: 'ur' },
