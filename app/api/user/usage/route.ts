@@ -4,12 +4,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { getUserFromRequest } from '@/lib/auth';
 import User from '@/models/User';
+import Plan from '@/models/Plan';
+import Usage from '@/models/Usage';
 import ScheduledPost from '@/models/ScheduledPost';
 import { getPlanRoll } from '@/lib/planLimits';
 import { getAnalysisUsageCount, getUploadUsageCount } from '@/lib/usageCheck';
 import { getSchedulePostsLimit, getBulkSchedulingLimit } from '@/lib/usageDisplayLimits';
 import connectDB from '@/lib/mongodb';
 import { maybeTriggerUsageAlerts } from '@/lib/usageAlerts';
+import {
+  FEATURE_LIMITS_REGISTRY,
+  resolveFeatureLimit,
+  type FeaturePeriod,
+} from '@/lib/featureLimits';
+
+/**
+ * Compute the period bucket key used by the Usage collection.
+ * Mirrors lib/usageControl.ts/periodBucket so the API and the writer
+ * stay in lockstep without introducing a circular import.
+ */
+function periodBucket(period: FeaturePeriod, now: Date = new Date()): string {
+  if (period === 'lifetime') return 'lifetime';
+  if (period === 'month') return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  if (period === 'week') {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNum = Math.ceil(((+d - +yearStart) / 86400000 + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  }
+  return now.toISOString().split('T')[0];
+}
 
 /**
  * Plan usage from database counts (Video, ScheduledPost), not stale usageStats counters.
@@ -114,6 +140,50 @@ export async function GET(request: NextRequest) {
       },
     };
 
+    // ── Registry-driven per-feature usage map ──────────────────────────
+    // Iterates lib/featureLimits.ts so any feature added there automatically
+    // appears in the user-facing Usage widget without changes here.
+    const planDoc = await Plan.findOne({ planId }).lean();
+    const planLimits = (planDoc as any)?.limits || {};
+    const featureUsage: Record<string, {
+      used: number;
+      limit: number;
+      period: FeaturePeriod;
+      label: string;
+      group: string;
+    }> = {};
+
+    // Pre-fetch all Usage docs for this user keyed by feature so we hit Mongo once.
+    const usageDocs = await Usage.find({ userId: authUser.id }).lean();
+    const usageByFeature = new Map<string, { date: string; count: number }[]>();
+    for (const doc of usageDocs as any[]) {
+      const arr = usageByFeature.get(doc.feature) || [];
+      arr.push({ date: doc.date, count: doc.count || 0 });
+      usageByFeature.set(doc.feature, arr);
+    }
+
+    for (const def of FEATURE_LIMITS_REGISTRY) {
+      const resolved = resolveFeatureLimit(planLimits, def.key);
+      if (!resolved) continue;
+      const bucket = periodBucket(resolved.period);
+      const matches = usageByFeature.get(def.key) || [];
+      const bucketDoc = matches.find((m) => m.date === bucket);
+      let used = bucketDoc?.count || 0;
+      // Reuse already-computed counters where the registry key overlaps with
+      // legacy tracking so the widget shows consistent numbers.
+      if (def.key === 'analyses') used = analysisUsed;
+      else if (def.key === 'scheduledPosts') used = scheduledActive;
+      else if (def.key === 'competitorsTracked') used = competitorsUsed;
+
+      featureUsage[def.key] = {
+        used,
+        limit: resolved.value,
+        period: resolved.period,
+        label: def.label,
+        group: def.group,
+      };
+    }
+
     await maybeTriggerUsageAlerts(
       {
         id: authUser.id,
@@ -132,6 +202,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       usage: usagePayload,
+      featureUsage,
       subscription: {
         plan: planId,
         planName: plan.name,

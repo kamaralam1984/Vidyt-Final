@@ -5,16 +5,33 @@ import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { motion } from 'framer-motion';
 
+type UsagePeriod = 'day' | 'week' | 'month' | 'lifetime';
+
 type UsageBlock = {
   used: number;
   limit: number;
-  period?: 'day' | 'month' | null;
+  period?: UsagePeriod | null;
 };
 
-function formatCap(limit: number, period: 'day' | 'month' | null | undefined): string {
+type FeatureUsageEntry = {
+  used: number;
+  limit: number;
+  period: UsagePeriod;
+  label: string;
+  group: string;
+};
+
+const PERIOD_SUFFIX: Record<UsagePeriod, string> = {
+  day: '/day',
+  week: '/wk',
+  month: '/mo',
+  lifetime: '',
+};
+
+function formatCap(limit: number, period: UsagePeriod | null | undefined): string {
   if (limit < 0) return '∞';
-  if (!period) return String(limit);
-  return `${limit}${period === 'day' ? '/day' : '/mo'}`;
+  if (!period || period === 'lifetime') return String(limit);
+  return `${limit}${PERIOD_SUFFIX[period] ?? ''}`;
 }
 
 function barPercent(used: number, limit: number): number {
@@ -33,6 +50,7 @@ export default function UsageBar() {
   const [videoAnalysis, setVideoAnalysis] = useState<UsageBlock | null>(null);
   const [schedulePosts, setSchedulePosts] = useState<UsageBlock | null>(null);
   const [bulkScheduling, setBulkScheduling] = useState<UsageBlock | null>(null);
+  const [featureUsage, setFeatureUsage] = useState<Record<string, FeatureUsageEntry>>({});
   const [hideAll, setHideAll] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -53,6 +71,7 @@ export default function UsageBar() {
         setVideoAnalysis(u.videoAnalysis);
         setSchedulePosts(u.schedulePosts);
         setBulkScheduling(u.bulkScheduling);
+        setFeatureUsage((res.data?.featureUsage as Record<string, FeatureUsageEntry>) || {});
       } catch {
         // unauthenticated or network
       } finally {
@@ -66,42 +85,96 @@ export default function UsageBar() {
   if (hideAll) return null;
   if (!videoAnalysis) return null;
 
-  return (
-    <div className="px-3 py-3 mt-2 mb-2 border-t border-b border-[#212121] space-y-3">
-      <div className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider">Usage</div>
+  // Registry items rendered below the legacy 4. Skip keys that already
+  // surface as legacy rows so we don't duplicate (analyses == videoAnalysis,
+  // scheduledPosts == schedulePosts).
+  const SKIP_LEGACY_KEYS = new Set(['analyses', 'scheduledPosts']);
+  const registryItems = Object.entries(featureUsage)
+    .filter(([key]) => !SKIP_LEGACY_KEYS.has(key))
+    .sort((a, b) => {
+      // Sort by group order then alphabetically by label.
+      const groupOrder = ['core', 'ai_studio', 'analytics', 'social', 'storage', 'collaboration'];
+      const ga = groupOrder.indexOf(a[1].group);
+      const gb = groupOrder.indexOf(b[1].group);
+      if (ga !== gb) return ga - gb;
+      return a[1].label.localeCompare(b[1].label);
+    });
 
-      {videoUpload && (
-        <UsageRow
-          title="Video upload"
-          cap={formatCap(videoUpload.limit, videoUpload.period ?? null)}
-          used={videoUpload.used}
-          limit={videoUpload.limit}
-        />
-      )}
-      {videoAnalysis && (
-        <UsageRow
-          title="Video analysis"
-          cap={formatCap(videoAnalysis.limit, videoAnalysis.period ?? null)}
-          used={videoAnalysis.used}
-          limit={videoAnalysis.limit}
-        />
-      )}
-      {schedulePosts && (
-        <UsageRow
-          title="Schedule posts"
-          cap={schedulePosts.limit > 0 ? `${schedulePosts.limit} limit` : undefined}
-          used={schedulePosts.used}
-          limit={schedulePosts.limit}
-        />
-      )}
-      {bulkScheduling && (
-        <UsageRow
-          title="Bulk scheduling"
-          cap={bulkScheduling.limit > 0 ? `${bulkScheduling.limit} posts` : undefined}
-          used={bulkScheduling.used}
-          limit={bulkScheduling.limit}
-        />
-      )}
+  return (
+    <div className="px-3 py-3 mt-2 mb-2 border-t border-b border-[#212121]">
+      <div className="text-xs font-semibold text-[#AAAAAA] uppercase tracking-wider mb-2 flex items-center justify-between">
+        <span>Usage</span>
+        {registryItems.length > 0 && (
+          <span className="text-[9px] font-mono text-[#555] normal-case tracking-normal">
+            {registryItems.length + 4} features
+          </span>
+        )}
+      </div>
+
+      <div className="max-h-[340px] overflow-y-auto pr-1 space-y-3 usage-scroll">
+        {videoUpload && (
+          <UsageRow
+            title="Video upload"
+            cap={formatCap(videoUpload.limit, videoUpload.period ?? null)}
+            used={videoUpload.used}
+            limit={videoUpload.limit}
+          />
+        )}
+        {videoAnalysis && (
+          <UsageRow
+            title="Video analysis"
+            cap={formatCap(videoAnalysis.limit, videoAnalysis.period ?? null)}
+            used={videoAnalysis.used}
+            limit={videoAnalysis.limit}
+          />
+        )}
+        {schedulePosts && (
+          <UsageRow
+            title="Schedule posts"
+            cap={schedulePosts.limit > 0 ? `${schedulePosts.limit} limit` : undefined}
+            used={schedulePosts.used}
+            limit={schedulePosts.limit}
+          />
+        )}
+        {bulkScheduling && (
+          <UsageRow
+            title="Bulk scheduling"
+            cap={bulkScheduling.limit > 0 ? `${bulkScheduling.limit} posts` : undefined}
+            used={bulkScheduling.used}
+            limit={bulkScheduling.limit}
+          />
+        )}
+
+        {registryItems.length > 0 && (
+          <div className="pt-2 mt-2 border-t border-[#1A1A1A] space-y-3">
+            {registryItems.map(([key, entry]) => (
+              <UsageRow
+                key={key}
+                title={entry.label}
+                cap={formatCap(entry.limit, entry.period)}
+                used={entry.used}
+                limit={entry.limit}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <style jsx>{`
+        .usage-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .usage-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .usage-scroll::-webkit-scrollbar-thumb {
+          background: #2a2a2a;
+          border-radius: 2px;
+        }
+        .usage-scroll::-webkit-scrollbar-thumb:hover {
+          background: #3a3a3a;
+        }
+      `}</style>
     </div>
   );
 }
