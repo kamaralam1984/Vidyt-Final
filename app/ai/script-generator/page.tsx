@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,7 @@ import { FileText, Copy, Loader2, Sparkles, Check, RefreshCw, Zap, Hash, Trendin
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useTranslations } from '@/context/translations';
+import { useLocale } from '@/context/LocaleContext';
 import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
 
 const PLATFORMS = ['YouTube', 'Shorts', 'Reels', 'TikTok'];
@@ -18,8 +19,18 @@ const DURATIONS = ['30 sec', '1 min', '3 min', '5 min', '10 min'];
 const LANGUAGES = ['English', 'Hindi', 'Hinglish', 'Spanish', 'Arabic', 'Indonesian', 'Urdu', 'French', 'Other'];
 const TONES = ['Professional', 'Funny/Comedy', 'Educational', 'Dramatic', 'Motivational', 'Casual/Vlog', 'Storytelling', 'News/Report'];
 
+const LANG_CODE_TO_LABEL: Record<string, string> = {
+  en: 'English', hi: 'Hindi', hinglish: 'Hinglish', es: 'Spanish',
+  ar: 'Arabic', id: 'Indonesian', ur: 'Urdu', fr: 'French',
+};
+function languageFromLocaleLang(langCode?: string): string {
+  if (!langCode) return 'English';
+  return LANG_CODE_TO_LABEL[langCode.toLowerCase()] || 'English';
+}
+
 function ScriptGeneratorContent() {
   const { t } = useTranslations();
+  const { locale } = useLocale();
   const searchParams = useSearchParams();
   const mode = (searchParams?.get('mode') || '').toLowerCase();
   const isIdeasMode = mode === 'ideas';
@@ -28,8 +39,13 @@ function ScriptGeneratorContent() {
   const [topic, setTopic] = useState(isIdeasMode ? '' : isCoachMode ? '' : '');
   const [platform, setPlatform] = useState('YouTube');
   const [duration, setDuration] = useState('5 min');
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState(() => languageFromLocaleLang(locale?.lang));
   const [tone, setTone] = useState('Professional');
+
+  useEffect(() => {
+    const next = languageFromLocaleLang(locale?.lang);
+    setLanguage(prev => (prev === next ? prev : next));
+  }, [locale?.countryCode, locale?.lang]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ hooks: string[]; script: string; titles: string[]; hashtags: string[]; cta: string } | null>(null);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
