@@ -20,6 +20,7 @@ const PWARegister = dynamic(() => import("@/components/PWARegister"), { ssr: fal
 const CookieConsent = dynamic(() => import("@/components/CookieConsent"), { ssr: false });
 const LangDirectionSetter = dynamic(() => import("@/components/LangDirectionSetter"), { ssr: false });
 const CountrySelectPopup = dynamic(() => import("@/components/CountrySelectPopup"), { ssr: false });
+const MobileAppDownloadBar = dynamic(() => import("@/components/MobileAppDownloadBar"), { ssr: false });
 
 export const viewport: Viewport = {
   themeColor: "#0F0F0F",
@@ -243,6 +244,7 @@ export default function RootLayout({
             <CookieConsent />
             <CountrySelectPopup />
             {children}
+            <MobileAppDownloadBar />
           </LocaleProvider>
         </ThemeProvider>
       </body>
