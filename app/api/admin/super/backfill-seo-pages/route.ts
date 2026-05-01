@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
       views: p.views || 0,
       hashtagCount: built.hashtags.length,
       faqCount: built.faqs.length,
+      slug: p.slug,
     });
 
     if (qualityScore >= 90) histogram['90+']++;

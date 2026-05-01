@@ -114,21 +114,30 @@ Start creating viral ${kw} content today. VidYT's free plan includes 5 video ana
   return { title, metaTitle, metaDescription, content, hashtags, relatedKeywords, viralScore: score, category };
 }
 
-const MAX_SEO_PAGES = 5000; // Hard cap to prevent MongoDB Atlas storage overflow
+// Soft cap: stop generating new pages once we hit this many SeoPage docs.
+// We do NOT auto-delete — owner has explicitly opted out of automatic deletion;
+// only manual cleanup is allowed. Once at cap, this cron simply skips creation.
+const MAX_SEO_PAGES = 5000;
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     let created = 0;
-    const target = 100;
+    // Lowered 100 → 20: quality > quantity. Google was rejecting ~98% of
+    // template-similar pages, hurting sitewide trust. 20 unique high-quality
+    // pages/day is well under Googlebot's appetite for a young domain.
+    const target = 20;
 
-    // If at capacity, delete oldest pages first to stay under cap
+    // At capacity: skip creation entirely. NEVER auto-delete (owner policy).
     const totalCount = await SeoPage.countDocuments();
     if (totalCount >= MAX_SEO_PAGES) {
-      const deleteCount = totalCount - MAX_SEO_PAGES + target;
-      const oldest = await SeoPage.find({}).sort({ createdAt: 1 }).limit(deleteCount).select('_id').lean();
-      const ids = oldest.map((d: any) => d._id);
-      if (ids.length > 0) await SeoPage.deleteMany({ _id: { $in: ids } });
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        totalCount,
+        message: `At soft cap (${MAX_SEO_PAGES}) — no new pages generated. Manual cleanup required to free space.`,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     const allTrending: { keyword: string; score: number }[] = [];
@@ -226,6 +235,7 @@ export async function GET(request: NextRequest) {
         views: 0,
         hashtagCount: built.hashtags.length,
         faqCount: built.faqs.length,
+        slug,
       });
 
       await SeoPage.create({

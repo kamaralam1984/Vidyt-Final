@@ -46,6 +46,7 @@ async function getOrCreatePage(keyword: string): Promise<any> {
       views: 0,
       hashtagCount: built.hashtags.length,
       faqCount: built.faqs.length,
+      slug: keyword,
     });
 
     try {
@@ -334,58 +335,22 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
           </section>
         )}
 
-        {/* Pricing callout card */}
-        <section className="mb-12 p-8 bg-gradient-to-br from-red-500/10 via-purple-500/10 to-blue-500/10 rounded-2xl border border-white/10">
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-2 text-center">
-            Pricing — Start Free, Scale When Ready
-          </h2>
-          <p className="text-center text-white/60 mb-8">
-            No credit card on free · cancel any time on paid plans
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { name: 'Free', price: '$0', per: 'forever', features: ['5 video analyses/mo', '50 AI titles', '10 thumbnails', `Access to ${kwCap} guide`], cta: 'Start Free', href: '/signup', highlight: false },
-              { name: 'Pro', price: '$9', per: '/month', features: ['Unlimited titles & thumbnails', 'Keyword intelligence', 'Best posting time', 'AI script generator', '9-provider AI failover'], cta: 'Go Pro', href: '/pricing', highlight: true },
-              { name: 'Business', price: '$29', per: '/month', features: ['Everything in Pro', 'Up to 5 channels', 'Auto-upload + calendar', 'Team seats (3)', 'API access'], cta: 'Upgrade', href: '/pricing', highlight: false },
-            ].map((plan, i) => (
-              <div
-                key={i}
-                className={`p-6 rounded-xl border ${
-                  plan.highlight
-                    ? 'bg-white/10 border-red-500/40 shadow-lg shadow-red-500/10'
-                    : 'bg-white/5 border-white/10'
-                }`}
-              >
-                {plan.highlight && (
-                  <span className="inline-block px-2 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded mb-2">
-                    MOST POPULAR
-                  </span>
-                )}
-                <h3 className="text-lg font-bold text-white">{plan.name}</h3>
-                <p className="text-3xl font-black text-white mt-2">
-                  {plan.price}
-                  <span className="text-sm font-normal text-white/50">{plan.per}</span>
-                </p>
-                <ul className="mt-4 space-y-1.5">
-                  {plan.features.map((f, j) => (
-                    <li key={j} className="text-sm text-white/70 flex items-start gap-2">
-                      <span className="text-emerald-400 mt-0.5">✓</span>
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={plan.href}
-                  className={`mt-6 block text-center py-2.5 rounded-lg font-bold transition ${
-                    plan.highlight
-                      ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
-              </div>
-            ))}
+        {/* Compact pricing CTA — replaces the old 3-card pricing block which
+            rendered identically on every /k/ page and triggered Google's
+            near-duplicate detection. The markdown content now handles plan
+            details per-variant; this strip is just a brand anchor + link. */}
+        <section className="mb-12 p-6 bg-gradient-to-r from-red-500/10 via-purple-500/10 to-blue-500/10 rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="text-center md:text-left">
+            <p className="text-lg font-bold text-white">Free forever plan · no card required</p>
+            <p className="text-sm text-white/60 mt-1">VidYT works on YouTube, Shorts, Reels, TikTok &amp; Facebook.</p>
+          </div>
+          <div className="flex gap-3 flex-wrap justify-center">
+            <Link href="/signup" className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition shadow-lg shadow-red-500/20">
+              Start Free
+            </Link>
+            <Link href="/pricing" className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white/80 font-medium rounded-lg border border-white/10 transition">
+              Compare plans
+            </Link>
           </div>
         </section>
 

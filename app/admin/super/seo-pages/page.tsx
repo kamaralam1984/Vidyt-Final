@@ -134,6 +134,31 @@ export default function SeoPagesAdmin() {
   const [actionBusy, setActionBusy] = useState(false);
   const [cronBusy, setCronBusy] = useState<string | null>(null);
 
+  // Slug audit (lazy-loaded — calls clean-bad-slugs?action=dry)
+  const [slugAudit, setSlugAudit] = useState<{
+    scanned: number;
+    scoreHistogram: Record<string, number>;
+    flagsBucket: Record<string, number>;
+    eligibleForDemotion: number;
+    samples: { slug: string; score: number; flags: string[] }[];
+  } | null>(null);
+  const [slugAuditLoading, setSlugAuditLoading] = useState(false);
+
+  const loadSlugAudit = useCallback(async () => {
+    setSlugAuditLoading(true);
+    try {
+      const res = await axios.get(
+        '/api/admin/super/seo-pages/clean-bad-slugs?action=dry&limit=20000',
+        { headers: getAuthHeaders() }
+      );
+      setSlugAudit(res.data);
+    } catch (e: any) {
+      setErr(e?.response?.data?.error || 'Failed to load slug audit');
+    } finally {
+      setSlugAuditLoading(false);
+    }
+  }, []);
+
   const loadStats = useCallback(async () => {
     try {
       const res = await axios.get<{ success: boolean } & Stats>('/api/admin/super/seo-pages/stats', { headers: getAuthHeaders() });
@@ -199,11 +224,12 @@ export default function SeoPagesAdmin() {
     setSelected(n);
   }
 
-  async function doBulk(action: 'delete' | 'promote' | 'demote') {
+  async function doBulk(action: 'delete' | 'promote' | 'demote' | 'rebuild') {
     if (selected.size === 0) return;
     const confirmMsg =
       action === 'delete' ? `Delete ${selected.size} pages? Cannot be undone.`
       : action === 'promote' ? `Promote ${selected.size} pages to indexable?`
+      : action === 'rebuild' ? `Rebuild ${selected.size} pages with fresh 5-variant content + recompute quality?`
       : `Demote ${selected.size} pages to non-indexable?`;
     if (!confirm(confirmMsg)) return;
     setActionBusy(true);
@@ -218,6 +244,45 @@ export default function SeoPagesAdmin() {
       alert(e?.response?.data?.error || 'Bulk action failed');
     } finally {
       setActionBusy(false);
+    }
+  }
+
+  async function rebuildOne(slug: string) {
+    setActionBusy(true);
+    try {
+      await axios.patch(
+        `/api/admin/super/seo-pages/${encodeURIComponent(slug)}`,
+        { action: 'regenerate' },
+        { headers: getAuthHeaders() }
+      );
+      await Promise.all([loadStats(), loadList()]);
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Rebuild failed');
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function cleanBadSlugs() {
+    if (!confirm(
+      'Demote all pages with garbage slugs (best-best-best, year-stacks, etc.) ' +
+      'from the sitemap?\n\n' +
+      '• Pages stay in DB (not deleted)\n' +
+      '• isIndexable flips to false\n' +
+      '• You can manually re-promote any page later'
+    )) return;
+    setCronBusy('clean-bad-slugs');
+    try {
+      const res = await axios.get(
+        '/api/admin/super/seo-pages/clean-bad-slugs?action=run&limit=50000',
+        { headers: getAuthHeaders() }
+      );
+      alert(`Done. Demoted ${res.data.demoted} pages with bad slugs. Sitemap will refresh on next request.`);
+      await Promise.all([loadStats(), loadList()]);
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Clean bad slugs failed');
+    } finally {
+      setCronBusy(null);
     }
   }
 
@@ -296,6 +361,24 @@ export default function SeoPagesAdmin() {
             {cronBusy === '/api/cron/promote-seo-pages' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             Promote Top 100
           </button>
+          <button
+            onClick={cleanBadSlugs}
+            disabled={cronBusy !== null}
+            className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            title="Detect repetitive/junk slugs (best-best-best…) and demote them from the sitemap. Pages stay in DB."
+          >
+            {cronBusy === 'clean-bad-slugs' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+            Clean Bad Slugs
+          </button>
+          <button
+            onClick={() => fireCron('/api/cron/seo-rerank-weekly', 'Weekly SEO rerank')}
+            disabled={cronBusy !== null}
+            className="px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            title="Re-score all pages, refresh sitemap priority, ping IndexNow for top movers"
+          >
+            {cronBusy === '/api/cron/seo-rerank-weekly' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
+            Run SEO Rerank
+          </button>
         </div>
       </div>
 
@@ -361,6 +444,131 @@ export default function SeoPagesAdmin() {
         )}
       </div>
 
+      {/* Slug Audit panel — lazy loaded on demand */}
+      <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <Shield className="w-4 h-4 text-amber-400" /> Slug Quality Audit
+            <span className="text-xs font-normal text-white/40">
+              · scans for "best-best-best", "tutorial-tutorial-tutorial", year-stacks &amp; junk fragments
+            </span>
+          </h2>
+          <button
+            onClick={loadSlugAudit}
+            disabled={slugAuditLoading}
+            className="px-3 py-1.5 rounded text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 disabled:opacity-50"
+          >
+            {slugAuditLoading ? 'Scanning…' : slugAudit ? 'Rescan' : 'Run Audit'}
+          </button>
+        </div>
+
+        {!slugAudit && !slugAuditLoading && (
+          <p className="text-sm text-white/50">
+            Click <span className="text-amber-300">Run Audit</span> to inspect every slug in the DB.
+            Bad slugs will not be deleted — only flagged. Use the red <strong>Clean Bad Slugs</strong> button at the top to demote them from the sitemap when ready.
+          </p>
+        )}
+
+        {slugAudit && (
+          <div className="space-y-4">
+            {/* Score distribution bar */}
+            <div>
+              <p className="text-[10px] uppercase text-white/40 tracking-wider mb-2">
+                Score distribution ({slugAudit.scanned.toLocaleString()} pages scanned)
+              </p>
+              <div className="flex h-6 rounded-lg overflow-hidden border border-white/10">
+                {(['90+', '70-89', '50-69', '30-49', '<30'] as const).map((bucket, i) => {
+                  const n = slugAudit.scoreHistogram[bucket] || 0;
+                  const total = slugAudit.scanned || 1;
+                  const pct = (n / total) * 100;
+                  if (pct === 0) return null;
+                  const color = ['bg-emerald-500', 'bg-emerald-400/70', 'bg-amber-400/80', 'bg-orange-500', 'bg-red-500'][i];
+                  return (
+                    <div
+                      key={bucket}
+                      className={color}
+                      style={{ width: `${pct}%` }}
+                      title={`${bucket}: ${n.toLocaleString()} pages (${pct.toFixed(1)}%)`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap gap-3 mt-2 text-xs">
+                {(['90+', '70-89', '50-69', '30-49', '<30'] as const).map((bucket, i) => {
+                  const n = slugAudit.scoreHistogram[bucket] || 0;
+                  const color = ['text-emerald-400', 'text-emerald-300', 'text-amber-300', 'text-orange-400', 'text-red-400'][i];
+                  return (
+                    <span key={bucket} className="text-white/60">
+                      <span className={`inline-block w-2 h-2 rounded-full mr-1 ${color.replace('text', 'bg')}`}></span>
+                      <span className={color}>{bucket}</span>
+                      <span className="text-white/50 tabular-nums ml-1">{n.toLocaleString()}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Flags breakdown */}
+            {Object.keys(slugAudit.flagsBucket || {}).length > 0 && (
+              <div>
+                <p className="text-[10px] uppercase text-white/40 tracking-wider mb-2">Most common spam patterns</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(slugAudit.flagsBucket)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 12)
+                    .map(([flag, n]) => (
+                      <span key={flag} className="px-2 py-1 text-xs bg-red-500/10 border border-red-500/20 rounded text-red-300">
+                        {flag}
+                        <span className="ml-1.5 text-red-400/60 tabular-nums">{n.toLocaleString()}</span>
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bad-slug count + CTA */}
+            <div className="flex flex-wrap items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <p className="text-sm text-white/80 flex-1 min-w-[200px]">
+                <span className="font-bold text-red-300">{slugAudit.eligibleForDemotion.toLocaleString()}</span>
+                {' '}indexable pages have spam-pattern slugs. Demoting them frees up Google's crawl budget for high-quality pages.
+              </p>
+              <button
+                onClick={cleanBadSlugs}
+                disabled={cronBusy !== null || slugAudit.eligibleForDemotion === 0}
+                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded text-sm disabled:opacity-40"
+              >
+                Demote {slugAudit.eligibleForDemotion.toLocaleString()} pages
+              </button>
+            </div>
+
+            {/* Sample bad slugs */}
+            {slugAudit.samples.length > 0 && (
+              <div>
+                <p className="text-[10px] uppercase text-white/40 tracking-wider mb-2">Sample bad slugs (first 12)</p>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-2">
+                  {slugAudit.samples.slice(0, 12).map(s => (
+                    <div key={s.slug} className="flex items-center gap-2 p-2 bg-white/[0.02] border border-white/5 rounded text-xs">
+                      <span className={`px-1.5 py-0.5 rounded font-bold tabular-nums ${
+                        s.score < 30 ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'
+                      }`}>{s.score}</span>
+                      <Link
+                        href={`/k/${s.slug}`}
+                        target="_blank"
+                        className="text-white/70 hover:text-white truncate flex-1 font-mono text-[11px]"
+                      >/k/{s.slug}</Link>
+                      <span className="text-red-400/70 text-[10px]">
+                        {s.flags.slice(0, 2).join(', ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Filters */}
       <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] flex flex-wrap gap-3 items-center">
         <div className="flex items-center gap-2 flex-1 min-w-[220px]">
@@ -416,6 +624,10 @@ export default function SeoPagesAdmin() {
       {selected.size > 0 && (
         <div className="p-3 rounded-xl border border-red-500/30 bg-red-500/5 flex items-center gap-3">
           <span className="text-sm text-white">{selected.size} selected</span>
+          <button
+            onClick={() => doBulk('rebuild')} disabled={actionBusy}
+            className="px-3 py-1.5 rounded text-xs font-bold bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 disabled:opacity-40"
+          >Rebuild content</button>
           <button
             onClick={() => doBulk('promote')} disabled={actionBusy}
             className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 rounded text-xs font-bold disabled:opacity-50"
@@ -510,6 +722,12 @@ export default function SeoPagesAdmin() {
                         className="p-1.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white/70"
                         title="Edit"
                       ><Edit3 className="w-3.5 h-3.5" /></Link>
+                      <button
+                        onClick={() => rebuildOne(p.slug)}
+                        disabled={actionBusy}
+                        className="p-1.5 rounded bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 disabled:opacity-40"
+                        title="Rebuild content + rescore (no delete)"
+                      ><RefreshCw className="w-3.5 h-3.5" /></button>
                       <button
                         onClick={() => deleteOne(p.slug)}
                         className="p-1.5 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400"

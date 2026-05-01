@@ -10,6 +10,8 @@
  * that reflect what Google's raters actually penalise.
  */
 
+import { scoreSlug } from './slugQuality';
+
 export interface ScoreInputs {
   wordCount: number;
   viralScore: number;   // 0–100 — algorithmic/viral fit
@@ -18,12 +20,16 @@ export interface ScoreInputs {
   hashtagCount: number;
   faqCount: number;
   ageHours?: number;    // hours since page creation (freshness)
+  slug?: string;        // URL slug — penalised when garbage (best-best-best...)
 }
 
-// Threshold lowered to 55 so quality new pages (1200+ words, no views yet)
-// can reach "pending" status and be promoted by the daily cron.
-export const INDEXABLE_THRESHOLD = 55;
-export const DAILY_PROMOTION_CAP = 200;
+// Threshold raised to 75: Google was rejecting ~98% of submitted pages because
+// 55 was too permissive — let near-template pages into the sitemap and burned
+// crawl budget. 75 forces real word-count + uniqueness before a page is shown
+// to Google. Daily cap reduced 200 → 50 so we never flood the sitemap with
+// borderline content that drags down sitewide quality signals.
+export const INDEXABLE_THRESHOLD = 75;
+export const DAILY_PROMOTION_CAP = 50;
 
 export function computeQualityScore(i: ScoreInputs): number {
   // 1) Word-count gate (max 35 pts). Google wants substance.
@@ -55,8 +61,19 @@ export function computeQualityScore(i: ScoreInputs): number {
     ? Math.max(0, 5 - i.ageHours / 48)   // full 5 pts at 0h, 0 at 240h (10 days)
     : 5;                                   // unknown age → assume fresh
 
-  const raw = wcScore + viralPart + trendPart + viewsPart + hashtagPart + faqPart + agePart;
-  return Math.min(100, Math.round(raw));
+  // 7) Slug-quality penalty (up to -25). A garbage slug like
+  //    "best-best-best-tutorial-tutorial-2026" never gets indexed cleanly
+  //    by Google no matter how good the content is — it reads as a doorway.
+  let slugPenalty = 0;
+  if (i.slug) {
+    const ss = scoreSlug(i.slug);
+    if (ss.isGarbage) slugPenalty = 25;
+    else if (ss.score < 70) slugPenalty = 15;
+    else if (ss.score < 85) slugPenalty = 5;
+  }
+
+  const raw = wcScore + viralPart + trendPart + viewsPart + hashtagPart + faqPart + agePart - slugPenalty;
+  return Math.max(0, Math.min(100, Math.round(raw)));
 }
 
 export function isIndexableScore(score: number): boolean {
@@ -74,6 +91,7 @@ export function rescorePage(page: {
   views?: number;
   hashtags?: string[];
   content?: string;
+  slug?: string;
 }): number {
   // Derive wordCount from content if stale/zero
   let wordCount = page.wordCount || 0;
@@ -91,5 +109,6 @@ export function rescorePage(page: {
     views: page.views || 0,
     hashtagCount: (page.hashtags || []).length,
     faqCount: Math.max(0, faqCount),
+    slug: page.slug,
   });
 }

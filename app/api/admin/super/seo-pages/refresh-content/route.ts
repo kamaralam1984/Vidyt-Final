@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
         views: 0,
         hashtagCount: built.hashtags.length,
         faqCount: built.faqs.length,
+        slug: page.slug,
       });
 
       ops.push({

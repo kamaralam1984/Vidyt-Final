@@ -77,6 +77,7 @@ async function run() {
       views: p.views || 0,
       hashtagCount: built.hashtags.length,
       faqCount: built.faqs.length,
+      slug: p.slug,
     });
 
     // Histogram
