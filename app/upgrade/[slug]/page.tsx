@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import {
   Lightbulb,
@@ -10,7 +9,6 @@ import {
   Scissors,
   Image as ImageIcon,
   Sparkles,
-  ArrowRight,
   CheckCircle2,
   Lock,
   Zap,
@@ -18,6 +16,7 @@ import {
 } from 'lucide-react';
 import MarketingNavbar from '@/components/MarketingNavbar';
 import MarketingFooter from '@/components/MarketingFooter';
+import UpgradePageCta from '@/components/UpgradePageCta';
 import { TOOL_MARKETING, TOOL_MARKETING_SLUGS } from '@/data/toolMarketing';
 
 const ICONS = {
@@ -153,20 +152,13 @@ export default async function UpgradePage({
             {tool.hero.sub}
           </p>
 
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 rounded-2xl bg-[#FF0000] px-8 py-4 text-base font-bold text-white transition hover:bg-[#CC0000] hover:scale-[1.02] shadow-[0_0_30px_rgba(239,68,68,0.4)]"
-            >
-              Upgrade to Pro <ArrowRight className="h-5 w-5" />
-            </Link>
-            <Link
-              href="/pricing#compare"
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-8 py-4 text-base font-bold text-white transition hover:bg-white/10"
-            >
-              Compare Plans
-            </Link>
-          </div>
+          <UpgradePageCta
+            toolTitle={tool.title}
+            toolHref={tool.toolHref}
+            featureFlag={tool.featureFlag}
+            gradient={tool.gradient}
+            variant="hero"
+          />
 
           <p className="mt-5 text-xs text-white/40">
             ✅ 7-day money-back · ✅ Cancel anytime · ✅ Used by 10,000+ creators
@@ -290,13 +282,14 @@ export default async function UpgradePage({
             </ul>
           </div>
 
-          <div className="mt-8 text-center">
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 rounded-2xl bg-[#FF0000] px-8 py-4 text-base font-bold text-white transition hover:bg-[#CC0000] hover:scale-[1.02]"
-            >
-              Unlock {tool.title} Now <ArrowRight className="h-5 w-5" />
-            </Link>
+          <div className="mt-8 flex justify-center">
+            <UpgradePageCta
+              toolTitle={tool.title}
+              toolHref={tool.toolHref}
+              featureFlag={tool.featureFlag}
+              gradient={tool.gradient}
+              variant="inline"
+            />
           </div>
         </div>
       </section>
@@ -363,20 +356,13 @@ export default async function UpgradePage({
               <p className="text-base sm:text-lg text-white/60 mb-8 max-w-xl mx-auto">
                 {tool.ctaSub}
               </p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <Link
-                  href="/pricing"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-[#FF0000] px-10 py-4 text-base font-bold text-white transition hover:bg-[#CC0000] hover:scale-[1.02] shadow-[0_0_40px_rgba(239,68,68,0.5)]"
-                >
-                  Upgrade to Pro <ArrowRight className="h-5 w-5" />
-                </Link>
-                <Link
-                  href="/pricing#compare"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-10 py-4 text-base font-bold text-white transition hover:bg-white/10"
-                >
-                  See all plans
-                </Link>
-              </div>
+              <UpgradePageCta
+                toolTitle={tool.title}
+                toolHref={tool.toolHref}
+                featureFlag={tool.featureFlag}
+                gradient={tool.gradient}
+                variant="final"
+              />
               <p className="mt-5 text-xs text-white/40">
                 7-day money-back guarantee · Cancel anytime
               </p>

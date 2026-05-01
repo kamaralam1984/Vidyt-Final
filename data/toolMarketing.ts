@@ -19,6 +19,10 @@ export type ToolMarketingEntry = {
     | 'Image'
     | 'Sparkles';
   gradient: string;
+  /** Where to send users who already have access to this tool */
+  toolHref: string;
+  /** Feature flag key on user.plan.features used to detect access */
+  featureFlag: string;
   hero: { headline: string; sub: string };
   intro: string[];
   benefits: { emoji: string; title: string; desc: string }[];
@@ -42,6 +46,8 @@ export const TOOL_MARKETING: Record<string, ToolMarketingEntry> = {
     tagline: 'Never run out of viral video ideas — ever again.',
     iconName: 'Lightbulb',
     gradient: 'from-amber-400 to-orange-500',
+    toolHref: '/ai/script-generator?mode=ideas',
+    featureFlag: 'daily_ideas',
     hero: {
       headline: 'Wake up to 10 viral-ready video ideas — every single day.',
       sub: "Stop staring at a blank script. Stop guessing what's trending. VidYT's Daily Ideas engine delivers niche-specific, trend-scored video concepts to your inbox each morning — already validated against millions of recent uploads in your category.",
@@ -105,6 +111,8 @@ export const TOOL_MARKETING: Record<string, ToolMarketingEntry> = {
     tagline: 'Your full-time YouTube growth mentor — on demand.',
     iconName: 'Brain',
     gradient: 'from-sky-400 to-indigo-500',
+    toolHref: '/ai/script-generator?mode=coach',
+    featureFlag: 'ai_coach',
     hero: {
       headline: 'A YouTube growth mentor in your pocket. Ask. Get answers. Grow.',
       sub: 'AI Coach reads your channel like a top consultant would — your retention curves, click-through rates, upload cadence, thumbnail patterns, niche dynamics — and gives you specific, actionable advice on whatever you ask. No fluff, no generic tips, no "post consistently" filler.',
@@ -168,6 +176,8 @@ export const TOOL_MARKETING: Record<string, ToolMarketingEntry> = {
     tagline: 'Find the keywords your audience is already searching — before competitors do.',
     iconName: 'Search',
     gradient: 'from-emerald-400 to-teal-500',
+    toolHref: '/dashboard/youtube-seo?tab=keywords',
+    featureFlag: 'keyword_research',
     hero: {
       headline: 'Stop guessing keywords. Find the ones already winning.',
       sub: "Most creators pick keywords by intuition. The smart ones use data. VidYT's Keyword Research engine pulls real YouTube search-volume, competition density, and rising-keyword signals — so you build titles, descriptions and tags around demand, not hope.",
@@ -231,6 +241,8 @@ export const TOOL_MARKETING: Record<string, ToolMarketingEntry> = {
     tagline: 'From topic → ready-to-record script in under 60 seconds.',
     iconName: 'FileText',
     gradient: 'from-violet-500 to-purple-600',
+    toolHref: '/ai/script-generator',
+    featureFlag: 'script_writer',
     hero: {
       headline: 'Write scripts that hook, hold, and convert — automatically.',
       sub: "VidYT's AI Script Writer is trained on 100,000+ viral video transcripts. It writes complete scripts with proven hook frameworks, retention-tested storytelling structures, natural CTAs, and SEO keyword integration — so you stop staring at a blank page and start filming.",
@@ -294,6 +306,8 @@ export const TOOL_MARKETING: Record<string, ToolMarketingEntry> = {
     tagline: 'Titles that get clicks — predicted, not guessed.',
     iconName: 'Type',
     gradient: 'from-rose-500 to-red-600',
+    toolHref: '/dashboard/youtube-seo?tab=titles',
+    featureFlag: 'title_generator',
     hero: {
       headline: 'Write a title that gets 2x the clicks. Or 10. Take your pick.',
       sub: "VidYT's Title Generator analyzes 50,000+ viral title patterns, predicts CTR before you publish, and generates 10+ algorithm-tuned variations per topic — complete with A/B options, power-word swaps and click-trigger suggestions.",
@@ -357,6 +371,8 @@ export const TOOL_MARKETING: Record<string, ToolMarketingEntry> = {
     tagline: 'Long video in. 10 viral Shorts out. Fully automated.',
     iconName: 'Scissors',
     gradient: 'from-fuchsia-500 to-pink-600',
+    toolHref: '/ai/shorts-creator',
+    featureFlag: 'ai_shorts_clipping',
     hero: {
       headline: 'One long video → ten viral Shorts. Done in minutes, not hours.',
       sub: 'AI Shorts Clipping watches your long-form video, identifies the most engaging 30–60 second moments, auto-crops them to 9:16, adds animated captions, syncs trending music, and exports ready-to-upload Shorts. Repurposing finally takes 5 minutes, not 5 hours.',
@@ -420,6 +436,8 @@ export const TOOL_MARKETING: Record<string, ToolMarketingEntry> = {
     tagline: 'Cinema-quality thumbnails in seconds. No Photoshop required.',
     iconName: 'Image',
     gradient: 'from-emerald-500 to-teal-600',
+    toolHref: '/dashboard/youtube-seo?tab=thumbnails',
+    featureFlag: 'ai_thumbnail_maker',
     hero: {
       headline: 'Thumbnails that look like film posters. Made in 30 seconds.',
       sub: "VidYT's AI Thumbnail Maker generates cinematic, click-engineered thumbnails in 8 art styles — Cinematic, MrBeast, Anime, Neon, 3D, Realistic, Hand-drawn, Minimalist — with face-enhancement, 3D VFX text and contrast optimization built in.",
@@ -483,6 +501,8 @@ export const TOOL_MARKETING: Record<string, ToolMarketingEntry> = {
     tagline: 'Score every video before you publish. Fix what\'s holding it back.',
     iconName: 'Sparkles',
     gradient: 'from-sky-400 to-purple-500',
+    toolHref: '/dashboard/youtube-seo',
+    featureFlag: 'optimize',
     hero: {
       headline: 'Know how strong your video is — before it goes live.',
       sub: "VidYT's Optimize engine scores every video on title, description, tags, thumbnail, hook, length, posting time, and SEO — gives you a single 0–100 score, and tells you exactly what to fix to push it higher. Stop publishing blind.",
