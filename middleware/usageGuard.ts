@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   checkUsageLimit,
-  checkFeatureUsage,
+  checkFeatureLimit,
   recordUsage,
   recordFeatureUsage,
 } from '@/lib/usageControl';
@@ -53,7 +53,7 @@ export function withUsageLimit(handler: ProtectedHandler, feature: string) {
 
 /**
  * Registry-aware variant. Uses lib/featureLimits.ts FEATURE_LIMITS_REGISTRY
- * via checkFeatureUsage / recordFeatureUsage so it correctly handles
+ * via checkFeatureLimit / recordFeatureUsage so it correctly handles
  * day / week / month / lifetime period buckets defined per-feature on the plan.
  *
  * Use this for features that live in the featureLimits map (keyword_research,
@@ -70,7 +70,7 @@ export function withFeatureLimit(handler: ProtectedHandler, featureKey: string) 
     const userId = user.id;
     const planId = (user.subscription || 'free') as string;
 
-    const check = await checkFeatureUsage(userId, planId, featureKey);
+    const check = await checkFeatureLimit(userId, planId, featureKey);
 
     if (!check.allowed) {
       return NextResponse.json({
