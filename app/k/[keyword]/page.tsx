@@ -91,7 +91,10 @@ export async function generateMetadata({ params }: { params: { keyword: string }
   // Only indexable once promoted by the daily quality cron.
   const indexable = !!page.isIndexable;
   return {
-    title: page.metaTitle,
+    // .absolute prevents the root layout's `%s | VidYT` template from
+    // double-appending. Existing DB pages have "| VidYT" baked into
+    // metaTitle (legacy format), so without absolute we get "X | VidYT | VidYT".
+    title: { absolute: page.metaTitle },
     description: page.metaDescription,
     alternates: { canonical },
     robots: {
