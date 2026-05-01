@@ -1,5 +1,8 @@
 import Notification from '@/models/Notification';
-import { sendBroadcastNotificationEmail } from '@/services/email';
+import {
+  sendUsageAlertEmail,
+  sendLimitReachedMarketingEmail,
+} from '@/services/email';
 
 type UsageValue = {
   used: number;
@@ -10,6 +13,7 @@ type UserForAlerts = {
   id: string;
   email?: string;
   name?: string;
+  language?: 'en' | 'hi';
   preferences?: {
     notifications?: boolean;
     emailUpdates?: boolean;
@@ -17,10 +21,20 @@ type UserForAlerts = {
 };
 
 const TRACKED_FEATURES: Record<string, string> = {
+  // Core
   video_upload: 'Video Upload',
   video_analysis: 'Video Analysis',
   schedule_posts: 'Schedule Posts',
   bulk_scheduling: 'Bulk Scheduling',
+  analyses: 'Video Analyses',
+  titleSuggestions: 'Title Suggestions',
+  // AI Studio
+  daily_ideas: 'Daily Ideas',
+  ai_coach: 'AI Coach',
+  keyword_research: 'Keyword Research',
+  script_writer: 'Script Writer',
+  ai_thumbnail_maker: 'AI Thumbnail Maker',
+  ai_shorts_clipping: 'AI Shorts Clipping',
 };
 
 export async function maybeTriggerUsageAlerts(
@@ -30,6 +44,7 @@ export async function maybeTriggerUsageAlerts(
   const today = new Date().toISOString().split('T')[0];
   const wantsInApp = user.preferences?.notifications !== false;
   const wantsEmail = user.preferences?.emailUpdates !== false;
+  const lang = user.language === 'hi' ? 'hi' : 'en';
 
   const jobs = Object.entries(TRACKED_FEATURES).map(async ([featureKey, label]) => {
     const usage = usageMap[featureKey];
@@ -65,12 +80,11 @@ export async function maybeTriggerUsageAlerts(
     }
 
     if (wantsEmail && user.email) {
-      await sendBroadcastNotificationEmail(
-        user.email,
-        type === 'limit_reached' ? 'Limit Reached - Vid YT' : 'Usage Warning - Vid YT',
-        `${message}\n\nPlan details: https://www.vidyt.com/subscription\nUpgrade: https://www.vidyt.com/pricing`,
-        user.name,
-      );
+      if (type === 'limit_reached') {
+        await sendLimitReachedMarketingEmail(user.email, user.name, label, lang);
+      } else {
+        await sendUsageAlertEmail(user.email, user.name, 'near', lang);
+      }
     }
   });
 

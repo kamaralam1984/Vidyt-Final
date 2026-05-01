@@ -438,7 +438,7 @@ function FeatureCard({ feature }: { feature: Feature }) {
   const flag = FEATURE_TO_FLAG_MAP[feature.id];
   const isLocked = authenticated && plan && flag ? !((plan.features || {}) as any)[flag] : false;
 
-  const href = feature.href;
+  const href = isLocked ? '/pricing' : feature.href;
 
   return (
     <Link
