@@ -23,9 +23,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const tool = seoToolsList.find((t) => t.slug === params.slug);
   if (!tool) return { title: 'Tool Not Found' };
   return {
-    title: tool.metaTitle,
+    // .absolute prevents the root layout's `%s | VidYT` template from
+    // double-appending — every entry in seoToolsList already ends with
+    // "| VidYT" so the template would produce "X | VidYT | VidYT".
+    title: { absolute: tool.metaTitle },
     description: tool.metaDescription,
-    alternates: { canonical: `https://www.vidyt.com/tools/${tool.slug}` }
+    alternates: { canonical: `https://www.vidyt.com/tools/${tool.slug}` },
   };
 }
 

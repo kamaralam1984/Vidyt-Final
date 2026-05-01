@@ -637,7 +637,9 @@ export function buildSeoContent(rawKeyword: string, opts: {
 
   const wordCount = countWords(built.content);
 
-  const metaTitle = `${kwCap} | ${stats.growthRate} Growth · Viral Guide ${year} | VidYT`;
+  // Don't append "| VidYT" — root layout's title template (`%s | VidYT`)
+  // adds it automatically. Including it here produced "X | VidYT | VidYT".
+  const metaTitle = `${kwCap} — ${stats.growthRate} Growth · Viral Guide ${year}`;
   const metaDescription = `${kwCap} averages ${stats.avgViews} views in the ${category} category with ${stats.growthRate} monthly search growth. Get titles, hashtags, and an SEO playbook — free AI tools by VidYT.`;
 
   // Diverse hashtag stack (mixes broad, niche, and long-tail tags)

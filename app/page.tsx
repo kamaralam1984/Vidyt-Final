@@ -5,6 +5,7 @@ import { yearlyUsdFromMonthly } from '@/lib/planPricing';
 import { getPlanRoll } from '@/lib/planLimits';
 import { headers, cookies } from 'next/headers';
 import HomeClient, { type MarketingPlan } from '@/components/HomeClient';
+import PopularKPagesGrid from '@/components/PopularKPagesGrid';
 
 async function getPlans(): Promise<MarketingPlan[]> {
   await connectDB();
@@ -86,6 +87,10 @@ export default async function HomePage() {
         initialUserPlanId={planId}
         features={planFeatures ? planFeatures.features : null}
       />
+      {/* Internal linking grid — passes PageRank from homepage to top /k/ pages
+          and gives Googlebot a fast crawl path into deep content. Server-rendered
+          so the links are in the initial HTML response. */}
+      <PopularKPagesGrid />
       {/* Google OAuth verification — server-rendered so Googlebot sees Privacy/Terms in raw HTML */}
       <div style={{
         position: 'fixed',

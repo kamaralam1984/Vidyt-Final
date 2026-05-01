@@ -39,6 +39,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://www.vidyt.com"),
   alternates: {
     canonical: "/",
+    // hreflang — tells Google which URL to serve per region/language.
+    // x-default points to the global English version.
+    languages: {
+      'en': 'https://www.vidyt.com/',
+      'en-US': 'https://www.vidyt.com/',
+      'en-IN': 'https://www.vidyt.com/',
+      'hi-IN': 'https://www.vidyt.com/',
+      'x-default': 'https://www.vidyt.com/',
+    },
   },
   appleWebApp: {
     capable: true,
@@ -95,13 +104,49 @@ const ORGANIZATION_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "VidYT",
+  "alternateName": "Vid YT",
   "url": "https://www.vidyt.com",
-  "logo": "https://www.vidyt.com/Logo.webp",
+  "logo": {
+    "@type": "ImageObject",
+    "url": "https://www.vidyt.com/Logo.webp",
+    "width": 512,
+    "height": 512,
+  },
   "description": "AI-powered YouTube SEO & video optimization platform trusted by 10,000+ creators.",
+  "foundingDate": "2024",
   "sameAs": [
     "https://www.youtube.com/@vidyt",
-    "https://twitter.com/vidytcom"
-  ]
+    "https://twitter.com/vidytcom",
+    "https://www.instagram.com/vidyt",
+    "https://www.linkedin.com/company/vidyt",
+    "https://www.facebook.com/vidyt",
+  ],
+  "contactPoint": [{
+    "@type": "ContactPoint",
+    "contactType": "customer support",
+    "url": "https://www.vidyt.com/contact",
+    "availableLanguage": ["English", "Hindi"],
+  }],
+};
+
+// WebSite schema with SearchAction — Google uses this to display a
+// site-search box (sitelinks searchbox) directly under your SERP listing.
+// The query target points at /trending which already accepts ?q= filtering.
+const WEBSITE_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "VidYT",
+  "alternateName": "Vid YT",
+  "url": "https://www.vidyt.com",
+  "inLanguage": ["en", "en-IN", "hi-IN"],
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "https://www.vidyt.com/trending?q={search_term_string}",
+    },
+    "query-input": "required name=search_term_string",
+  },
 };
 
 const SOFTWARE_SCHEMA = {
@@ -149,6 +194,10 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_SCHEMA) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_SCHEMA) }}
         />
         <script
           type="application/ld+json"

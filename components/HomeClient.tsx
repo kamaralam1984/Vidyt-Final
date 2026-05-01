@@ -260,10 +260,12 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       </section>
 
-      {/* Google OAuth verification — visible h1 + description required */}
+      {/* Google OAuth verification — visible heading + description required.
+          Demoted from h1 to h2: SEO best-practice is one h1/page, and OAuth
+          verification accepts any visible heading with the app name. */}
       <section className="px-6 pb-0 pt-8 bg-[#0F0F0F]">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">AI Tools for Content Creators</h1>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">AI Tools for Content Creators</h2>
           <p className="text-[#AAAAAA] text-lg leading-relaxed">
             Vidyt is an AI-powered platform that helps creators generate video ideas,
             analyze trends, and grow their audience faster. Users can sign in with Google
