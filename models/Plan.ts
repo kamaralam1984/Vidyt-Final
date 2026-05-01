@@ -76,9 +76,9 @@ export interface IPlan extends Document {
 // ── Default limits per plan (used when record has no limits set) ──────────
 const defaultLimits = {
   free:       { analysesLimit: 5,   analysesPeriod: 'month', titleSuggestions: 3,  hashtagCount: 10, competitorsTracked: 3   },
-  starter:    { analysesLimit: 10,  analysesPeriod: 'day',   titleSuggestions: 5,  hashtagCount: 15, competitorsTracked: 10  },
-  pro:        { analysesLimit: 30,  analysesPeriod: 'day',   titleSuggestions: 10, hashtagCount: 20, competitorsTracked: 50  },
-  enterprise: { analysesLimit: 100, analysesPeriod: 'day',   titleSuggestions: 10, hashtagCount: 20, competitorsTracked: -1  },
+  starter:    { analysesLimit: 1,   analysesPeriod: 'day',   titleSuggestions: 5,  hashtagCount: 15, competitorsTracked: 5   },
+  pro:        { analysesLimit: 5,   analysesPeriod: 'day',   titleSuggestions: 10, hashtagCount: 20, competitorsTracked: 25  },
+  enterprise: { analysesLimit: 15,  analysesPeriod: 'day',   titleSuggestions: 25, hashtagCount: 30, competitorsTracked: 100 },
   custom:     { analysesLimit: 500, analysesPeriod: 'day',   titleSuggestions: 50, hashtagCount: 50, competitorsTracked: -1  },
   owner:      { analysesLimit: -1,  analysesPeriod: 'month', titleSuggestions: -1, hashtagCount: -1, competitorsTracked: -1  },
 };

@@ -111,60 +111,60 @@ const PLANS = [
     name: 'Starter',
     label: 'Starter Plan',
     role: 'user',
-    priceMonthly: 3,
-    priceYearly: 30,
+    priceMonthly: 2,
+    priceYearly: 20,
     currency: 'USD',
     billingPeriod: 'both',
-    features: ['10 video analyses per day', 'Standard viral prediction', 'Real-time trends', 'Email support'],
-    limits: { analysesLimit: 10, analysesPeriod: 'day', titleSuggestions: 5, hashtagCount: 15, competitorsTracked: 10 },
-    featureFlags: { 
+    features: ['1 video analysis per day', 'Standard viral prediction', 'Real-time trends', 'Email support'],
+    limits: { analysesLimit: 1, analysesPeriod: 'day', titleSuggestions: 5, hashtagCount: 15, competitorsTracked: 5 },
+    featureFlags: {
       advancedAiViralPrediction: true, realTimeTrendAnalysis: true, emailSupport: true, competitorAnalysis: true,
-      daily_ideas: true, ai_coach: false, keyword_research: true, script_writer: true,
+      daily_ideas: true, ai_coach: false, keyword_research: false, script_writer: false,
       title_generator: true, channel_audit_tool: false, ai_shorts_clipping: false,
-      ai_thumbnail_maker: true, optimize: false
+      ai_thumbnail_maker: false, optimize: false
     },
 
-    limitsDisplay: { videos: '10/days', analyses: 'Standard', storage: '—', support: 'Email' },
+    limitsDisplay: { videos: '1/day', analyses: 'Standard', storage: '—', support: 'Email' },
   },
   {
     planId: 'pro',
     name: 'Pro',
     label: 'Pro Plan',
     role: 'manager',
-    priceMonthly: 15,
-    priceYearly: 150,
+    priceMonthly: 8,
+    priceYearly: 80,
     currency: 'USD',
     billingPeriod: 'both',
-    features: ['30 video analyses per day', 'Advanced AI prediction', 'Best posting times', 'Priority email support'],
-    limits: { analysesLimit: 30, analysesPeriod: 'day', titleSuggestions: 10, hashtagCount: 20, competitorsTracked: 50 },
-    featureFlags: { 
-      advancedAiViralPrediction: true, realTimeTrendAnalysis: true, bestPostingTimePredictions: true, 
+    features: ['5 video analyses per day', 'Advanced AI prediction', 'Best posting times', 'Priority email support'],
+    limits: { analysesLimit: 5, analysesPeriod: 'day', titleSuggestions: 10, hashtagCount: 20, competitorsTracked: 25 },
+    featureFlags: {
+      advancedAiViralPrediction: true, realTimeTrendAnalysis: true, bestPostingTimePredictions: true,
       emailSupport: true, competitorAnalysis: true, priorityProcessing: true,
       daily_ideas: true, ai_coach: true, keyword_research: true, script_writer: true,
       title_generator: true, channel_audit_tool: true, ai_shorts_clipping: true,
       ai_thumbnail_maker: true, optimize: true
     },
 
-    limitsDisplay: { videos: '30/days', analyses: 'Advanced', storage: '—', support: 'Priority Email' },
+    limitsDisplay: { videos: '5/day', analyses: 'Advanced', storage: '—', support: 'Priority Email' },
   },
   {
     planId: 'enterprise',
     name: 'Enterprise',
     label: 'Enterprise Plan',
     role: 'admin',
-    priceMonthly: 25,
-    priceYearly: 250,
+    priceMonthly: 20,
+    priceYearly: 200,
     currency: 'USD',
     billingPeriod: 'both',
-    features: ['100 video analyses per day', 'Team collaboration', 'White-label reports', '24/7 priority support'],
-    limits: { analysesLimit: 100, analysesPeriod: 'day', titleSuggestions: 10, hashtagCount: 20, competitorsTracked: -1 },
-    featureFlags: { 
-      advancedAiViralPrediction: true, realTimeTrendAnalysis: true, bestPostingTimePredictions: true, 
+    features: ['15 video analyses per day', 'Team collaboration', 'White-label reports', '24/7 priority support'],
+    limits: { analysesLimit: 15, analysesPeriod: 'day', titleSuggestions: 25, hashtagCount: 30, competitorsTracked: 100 },
+    featureFlags: {
+      advancedAiViralPrediction: true, realTimeTrendAnalysis: true, bestPostingTimePredictions: true,
       emailSupport: true, competitorAnalysis: true, priorityProcessing: true, teamCollaboration: true,
       whiteLabelReports: true, customAiModelTraining: true, dedicatedAccountManager: true, prioritySupport24x7: true,
       advancedAnalyticsDashboard: true, customIntegrations: true
     },
-    limitsDisplay: { videos: '100/days', analyses: 'Custom AI', storage: 'Unlimited', support: '24/7 Priority' },
+    limitsDisplay: { videos: '15/day', analyses: 'Custom AI', storage: 'Unlimited', support: '24/7 Priority' },
   },
   {
     planId: 'custom',

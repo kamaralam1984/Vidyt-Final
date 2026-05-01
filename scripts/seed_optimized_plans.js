@@ -58,31 +58,31 @@ const optimizedPlans = [
   {
     planId: 'starter',
     name: 'Starter',
-    label: 'Growth Plan',
+    label: 'Starter Plan',
     description: 'For rising creators and small brands',
-    priceMonthly: 12,
-    priceYearly: 99,
+    priceMonthly: 2,
+    priceYearly: 20,
     currency: 'USD',
     isActive: true,
     role: 'user',
-    features: ['15 AI analyses per month', '5 Video schedules', 'Standard Viral Prediction', 'Email Support'],
-    limits: { 
-      video_upload: 5, 
-      video_analysis: 15, 
-      schedule_posts: 5, 
-      bulk_scheduling: 5,
-      titleSuggestions: 5, 
-      hashtagCount: 15, 
-      competitorsTracked: 5 
+    features: ['1 video analysis per day', '5 Video schedules', 'Standard Viral Prediction', 'Email Support'],
+    limits: {
+      video_upload: 1,
+      video_analysis: 1,
+      schedule_posts: 5,
+      bulk_scheduling: 0,
+      titleSuggestions: 5,
+      hashtagCount: 15,
+      competitorsTracked: 5
     },
-    limitsDisplay: { videos: '5/month', analyses: '15/month', storage: '—', support: 'Email' },
+    limitsDisplay: { videos: '1/day', analyses: '1/day', storage: '—', support: 'Email' },
     featureFlags: {
       daily_ideas: true,
-      ai_coach: true,
-      keyword_research: true,
-      script_writer: true,
+      ai_coach: false,
+      keyword_research: false,
+      script_writer: false,
       title_generator: true,
-      channel_audit_tool: true,
+      channel_audit_tool: false,
       ai_shorts_clipping: false,
       ai_thumbnail_maker: false
     }
@@ -92,22 +92,22 @@ const optimizedPlans = [
     name: 'Pro',
     label: 'Professional',
     description: 'Everything you need to go viral daily',
-    priceMonthly: 39,
-    priceYearly: 349,
+    priceMonthly: 8,
+    priceYearly: 80,
     currency: 'USD',
     isActive: true,
     role: 'manager',
-    features: ['5 analyses PER DAY', 'Unlimited Video schedules', 'Advanced AI prediction', 'Priority Support'],
-    limits: { 
-      video_upload: 15, 
-      video_analysis: 5, // Daily-based
-      schedule_posts: -1, 
-      bulk_scheduling: 50,
-      titleSuggestions: 15, 
-      hashtagCount: 30, 
-      competitorsTracked: 20 
+    features: ['5 analyses PER DAY', '30 Video schedules', 'Advanced AI prediction', 'Priority Support'],
+    limits: {
+      video_upload: 5,
+      video_analysis: 5,
+      schedule_posts: 30,
+      bulk_scheduling: 25,
+      titleSuggestions: 10,
+      hashtagCount: 20,
+      competitorsTracked: 25
     },
-    limitsDisplay: { videos: '15/month', analyses: '5/Day', storage: '—', support: 'Priority' },
+    limitsDisplay: { videos: '5/day', analyses: '5/Day', storage: '—', support: 'Priority' },
     featureFlags: {
       daily_ideas: true,
       ai_coach: true,
@@ -121,25 +121,25 @@ const optimizedPlans = [
   },
   {
     planId: 'enterprise',
-    name: 'Agency',
-    label: 'Elite Agency',
+    name: 'Enterprise',
+    label: 'Enterprise Plan',
     description: 'Scale multiple channels with team power',
-    priceMonthly: 99,
-    priceYearly: 899,
+    priceMonthly: 20,
+    priceYearly: 200,
     currency: 'USD',
     isActive: true,
     role: 'admin',
-    features: ['20 analyses PER DAY', 'Unlimited everything', 'White-label Reports', '24/7 Dedicated Support'],
-    limits: { 
-      video_upload: -1, 
-      video_analysis: 20, // Daily-based
-      schedule_posts: -1, 
+    features: ['15 analyses PER DAY', 'Unlimited schedules', 'White-label Reports', '24/7 Dedicated Support'],
+    limits: {
+      video_upload: 15,
+      video_analysis: 15,
+      schedule_posts: -1,
       bulk_scheduling: -1,
-      titleSuggestions: -1, 
-      hashtagCount: -1, 
-      competitorsTracked: -1 
+      titleSuggestions: 25,
+      hashtagCount: 30,
+      competitorsTracked: 100
     },
-    limitsDisplay: { videos: 'Unlimited', analyses: '20/Day', storage: '—', support: 'VIP' },
+    limitsDisplay: { videos: '15/day', analyses: '15/Day', storage: '—', support: 'VIP' },
     featureFlags: {
       daily_ideas: true,
       ai_coach: true,

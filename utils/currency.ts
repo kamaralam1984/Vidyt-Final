@@ -31,9 +31,9 @@ export function getCurrencySymbol(currencyCode: string = 'INR'): string {
 /** USD base prices for all plans */
 export const PLAN_PRICES_USD: Record<string, number> = {
   free: 0,
-  starter: 3,
-  pro: 15,
-  enterprise: 25,
+  starter: 2,
+  pro: 8,
+  enterprise: 20,
   custom: 50,
 };
 

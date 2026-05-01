@@ -39,7 +39,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    price: 3,
+    price: 2,
     currency: 'USD',
     interval: 'month',
     features: getPlanRoll('starter').featureList,
@@ -51,7 +51,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 15,
+    price: 8,
     currency: 'USD',
     interval: 'month',
     features: getPlanRoll('pro').featureList,
@@ -63,7 +63,7 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 25,
+    price: 20,
     currency: 'USD',
     interval: 'month',
     features: getPlanRoll('enterprise').featureList,

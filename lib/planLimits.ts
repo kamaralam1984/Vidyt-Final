@@ -117,18 +117,18 @@ const STARTER_ROLL: PlanRoll = {
   id: 'starter',
   name: 'Starter',
   role: 'user',
-  limits: { 
-    video_upload: 15, 
-    video_analysis: 15, 
-    analysesLimit: 15,
+  limits: {
+    video_upload: 1,
+    video_analysis: 1,
+    analysesLimit: 1,
     analysesPeriod: 'day',
-    schedule_posts: 5, 
-    bulk_scheduling: 10,
-    titleSuggestions: 5, 
-    hashtagCount: 15, 
-    competitorsTracked: 10 
+    schedule_posts: 5,
+    bulk_scheduling: 0,
+    titleSuggestions: 5,
+    hashtagCount: 15,
+    competitorsTracked: 5
   },
-  limitsDisplay: { videos: '10/days', analyses: 'Standard AI', storage: '—', support: 'Email' },
+  limitsDisplay: { videos: '1/day', analyses: 'Standard AI', storage: '—', support: 'Email' },
   features: {
     advancedAiViralPrediction: true,
     realTimeTrendAnalysis: true,
@@ -145,33 +145,33 @@ const STARTER_ROLL: PlanRoll = {
     customIntegrations: false,
     daily_ideas: true,
     ai_coach: false,
-    keyword_research: true,
-    script_writer: true,
+    keyword_research: false,
+    script_writer: false,
     title_generator: true,
     channel_audit_tool: false,
     ai_shorts_clipping: false,
     ai_thumbnail_maker: false,
-    optimize: true,
+    optimize: false,
   },
-  featureList: ['10 video analyses/day', 'Standard viral prediction', 'Real-time trends', 'Email support'],
+  featureList: ['1 video analysis/day', 'Standard viral prediction', 'Real-time trends', 'Email support'],
 };
 
 const PRO_ROLL: PlanRoll = {
   id: 'pro',
   name: 'Pro',
   role: 'manager',
-  limits: { 
-    video_upload: 30, 
-    video_analysis: 30, 
-    analysesLimit: 30,
+  limits: {
+    video_upload: 5,
+    video_analysis: 5,
+    analysesLimit: 5,
     analysesPeriod: 'day',
-    schedule_posts: 10, 
-    bulk_scheduling: 50,
-    titleSuggestions: 10, 
-    hashtagCount: 20, 
-    competitorsTracked: 50 
+    schedule_posts: 30,
+    bulk_scheduling: 25,
+    titleSuggestions: 10,
+    hashtagCount: 20,
+    competitorsTracked: 25
   },
-  limitsDisplay: { videos: '30/days', analyses: 'Advanced AI', storage: '—', support: 'Email' },
+  limitsDisplay: { videos: '5/day', analyses: 'Advanced AI', storage: '—', support: 'Priority' },
   features: {
     advancedAiViralPrediction: true,
     realTimeTrendAnalysis: true,
@@ -196,25 +196,25 @@ const PRO_ROLL: PlanRoll = {
     ai_thumbnail_maker: true,
     optimize: true,
   },
-  featureList: ['30 video analyses/day', 'Advanced AI prediction', 'Best posting times', 'Priority support'],
+  featureList: ['5 video analyses/day', 'Advanced AI prediction', 'Best posting times', 'Priority support'],
 };
 
 const ENTERPRISE_ROLL: PlanRoll = {
   id: 'enterprise',
   name: 'Enterprise',
   role: 'admin',
-  limits: { 
-    video_upload: -1, 
-    video_analysis: -1, 
-    analysesLimit: -1,
+  limits: {
+    video_upload: 15,
+    video_analysis: 15,
+    analysesLimit: 15,
     analysesPeriod: 'day',
-    schedule_posts: -1, 
+    schedule_posts: -1,
     bulk_scheduling: -1,
-    titleSuggestions: 10, 
-    hashtagCount: 20, 
-    competitorsTracked: -1 
+    titleSuggestions: 25,
+    hashtagCount: 30,
+    competitorsTracked: 100
   },
-  limitsDisplay: { videos: '100/days', analyses: 'Custom AI', storage: '—', support: '24/7 Priority' },
+  limitsDisplay: { videos: '15/day', analyses: 'Custom AI', storage: '—', support: '24/7 Priority' },
   features: {
     advancedAiViralPrediction: true,
     realTimeTrendAnalysis: true,
@@ -239,7 +239,7 @@ const ENTERPRISE_ROLL: PlanRoll = {
     ai_thumbnail_maker: true,
     optimize: true,
   },
-  featureList: ['100 videos /day', 'Team collaboration', 'White-label reports', '24/7 priority support'],
+  featureList: ['15 video analyses/day', 'Team collaboration', 'White-label reports', '24/7 priority support'],
 };
 
 const CUSTOM_ROLL: PlanRoll = {

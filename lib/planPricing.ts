@@ -6,9 +6,9 @@ import { yearlyUsdFromMonthly as yearlyFromMonthlyPure, usdAmountForBilling as u
 
 export const PLAN_PRICES: Record<string, { month: number; year: number }> = {
   free: { month: 0, year: 0 },
-  starter: { month: 3, year: 30 },
-  pro: { month: 15, year: 150 },
-  enterprise: { month: 25, year: 250 },
+  starter: { month: 2, year: 20 },
+  pro: { month: 8, year: 80 },
+  enterprise: { month: 20, year: 200 },
   custom: { month: 50, year: 500 },
 };
 
