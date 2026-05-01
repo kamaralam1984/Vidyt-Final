@@ -53,6 +53,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
 
   const [userUniqueId, setUserUniqueId] = useState<string>('');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [disabledItems, setDisabledItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchSystems = async () => {
@@ -93,6 +94,41 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
     fetchPlatformControls();
     fetchUserInfo();
   }, []);
+
+  // Poll usage and disable sidebar items whose quota is exhausted.
+  // Refetches on mount, on route change (after user uses a feature), every
+  // 60s while sidebar is open, and when the tab regains visibility.
+  useEffect(() => {
+    let cancelled = false;
+    const fetchUsage = async () => {
+      try {
+        const res = await axios.get('/api/user/usage', { headers: getAuthHeaders() });
+        const sidebarUsage: Array<{ id: string; used?: number; limit?: number }> =
+          res.data?.sidebarUsage || [];
+        const disabled = new Set<string>();
+        for (const entry of sidebarUsage) {
+          if (
+            typeof entry.limit === 'number' &&
+            entry.limit > 0 &&
+            typeof entry.used === 'number' &&
+            entry.used >= entry.limit
+          ) {
+            disabled.add(entry.id);
+          }
+        }
+        if (!cancelled) setDisabledItems(disabled);
+      } catch (_) { /* ignore */ }
+    };
+    fetchUsage();
+    const interval = setInterval(fetchUsage, 60_000);
+    const onVis = () => { if (!document.hidden) fetchUsage(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [pathname]);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -190,6 +226,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                   <>
                     {menuItems.map((item, index) => {
                       const Icon = item.icon;
+                      const isDisabled = disabledItems.has(item.id);
                       return (
                         <motion.li
                           key={item.label}
@@ -197,24 +234,38 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.05 }}
                         >
-                          <Link
-                            href={item.href}
-                            className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname === item.href
-                                ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20'
-                                : 'hover:bg-[#212121] text-[#AAAAAA]'
-                              }`}
-                          >
-                            <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${pathname === item.href
-                                ? 'text-white'
-                                : 'text-[#AAAAAA] group-hover:text-white'
-                              }`} />
-                            <span className={`${pathname === item.href
-                                ? 'text-white font-medium'
-                                : 'group-hover:text-white'
-                              }`}>
-                              {item.label}
-                            </span>
-                          </Link>
+                          {isDisabled ? (
+                            <div
+                              aria-disabled="true"
+                              title="Limit reached — upgrade your plan"
+                              className="flex items-center gap-3 p-3 rounded-lg text-[#666] cursor-not-allowed opacity-50 select-none"
+                            >
+                              <Icon className="w-5 h-5 text-[#666]" />
+                              <span className="line-through">{item.label}</span>
+                              <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FF0000]/20 text-[#FF0000]">
+                                Limit
+                              </span>
+                            </div>
+                          ) : (
+                            <Link
+                              href={item.href}
+                              className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname === item.href
+                                  ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20'
+                                  : 'hover:bg-[#212121] text-[#AAAAAA]'
+                                }`}
+                            >
+                              <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${pathname === item.href
+                                  ? 'text-white'
+                                  : 'text-[#AAAAAA] group-hover:text-white'
+                                }`} />
+                              <span className={`${pathname === item.href
+                                  ? 'text-white font-medium'
+                                  : 'group-hover:text-white'
+                                }`}>
+                                {item.label}
+                              </span>
+                            </Link>
+                          )}
                         </motion.li>
                       );
                     })}
@@ -225,16 +276,31 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
                         </li>
                         {aiStudioItems.map((item, index) => {
                           const Icon = item.icon;
+                          const isDisabled = disabledItems.has(item.id);
                           return (
                             <motion.li key={item.href} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: (menuItems.length + index) * 0.05 }}>
-                              <Link
-                                href={item.href}
-                                className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname === item.href ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20' : 'hover:bg-[#212121] text-[#AAAAAA]'
-                                  }`}
-                              >
-                                <Icon className={`w-5 h-5 ${pathname === item.href ? 'text-white' : 'text-[#AAAAAA] group-hover:text-white'}`} />
-                                <span className={pathname === item.href ? 'text-white font-medium' : 'group-hover:text-white'}>{item.label}</span>
-                              </Link>
+                              {isDisabled ? (
+                                <div
+                                  aria-disabled="true"
+                                  title="Limit reached — upgrade your plan"
+                                  className="flex items-center gap-3 p-3 rounded-lg text-[#666] cursor-not-allowed opacity-50 select-none"
+                                >
+                                  <Icon className="w-5 h-5 text-[#666]" />
+                                  <span className="line-through">{item.label}</span>
+                                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FF0000]/20 text-[#FF0000]">
+                                    Limit
+                                  </span>
+                                </div>
+                              ) : (
+                                <Link
+                                  href={item.href}
+                                  className={`flex items-center gap-3 p-3 rounded-lg transition-all group ${pathname === item.href ? 'bg-[#FF0000] text-white shadow-lg shadow-[#FF0000]/20' : 'hover:bg-[#212121] text-[#AAAAAA]'
+                                    }`}
+                                >
+                                  <Icon className={`w-5 h-5 ${pathname === item.href ? 'text-white' : 'text-[#AAAAAA] group-hover:text-white'}`} />
+                                  <span className={pathname === item.href ? 'text-white font-medium' : 'group-hover:text-white'}>{item.label}</span>
+                                </Link>
+                              )}
                             </motion.li>
                           );
                         })}
