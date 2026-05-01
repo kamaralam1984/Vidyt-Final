@@ -860,7 +860,7 @@ export async function sendAccountDeletionVerificationEmail(
 /**
  * Send Limit-Reached Marketing Email — persuasive HTML for 100% usage.
  * Stronger conversion copy than sendUsageAlertEmail's 'reached' variant:
- * urgency, social proof, scarcity, testimonial, money-back guarantee.
+ * urgency, social proof, scarcity, testimonial.
  */
 export async function sendLimitReachedMarketingEmail(
   email: string,
@@ -903,8 +903,8 @@ export async function sendLimitReachedMarketingEmail(
       : '"Went from 30K to 210K subscribers in 8 months after upgrading. The AI script writer alone is worth Pro." — Rohit S., Tech Creator';
 
     const guarantee = isHi
-      ? '✅ 7-दिन पैसे वापसी की गारंटी · ✅ कभी भी रद्द करें · ✅ कोई छिपा शुल्क नहीं'
-      : '✅ 7-day money-back guarantee · ✅ Cancel anytime · ✅ No hidden fees';
+      ? '✅ कभी भी रद्द करें · ✅ कोई छिपा शुल्क नहीं · ✅ 10,000+ क्रिएटर्स'
+      : '✅ Cancel anytime · ✅ No hidden fees · ✅ Trusted by 10,000+ creators';
 
     const cta = isHi ? 'अभी अपग्रेड करें — 30% बचाएं' : 'Upgrade Now — Save 30%';
     const ps = isHi

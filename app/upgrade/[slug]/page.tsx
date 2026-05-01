@@ -161,7 +161,7 @@ export default async function UpgradePage({
           />
 
           <p className="mt-5 text-xs text-white/40">
-            ✅ 7-day money-back · ✅ Cancel anytime · ✅ Used by 10,000+ creators
+            ✅ Cancel anytime · ✅ Used by 10,000+ creators · ✅ No hidden fees
           </p>
         </div>
       </section>
@@ -364,7 +364,7 @@ export default async function UpgradePage({
                 variant="final"
               />
               <p className="mt-5 text-xs text-white/40">
-                7-day money-back guarantee · Cancel anytime
+                Cancel anytime · No hidden fees
               </p>
             </div>
           </div>
