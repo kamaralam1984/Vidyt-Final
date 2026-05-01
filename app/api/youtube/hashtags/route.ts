@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
+import { withFeatureLimit } from '@/middleware/usageGuard';
 
 type ViralLevel = 'high' | 'medium' | 'low';
 type ContentType = 'video' | 'short' | 'live';
@@ -24,8 +25,8 @@ function buildViralHashtags(seed: string, _contentType: ContentType = 'video'): 
   });
 }
 
-export async function GET(request: NextRequest) {
-  const denied = await denyIfNoFeature(request, 'youtube_seo');
+async function handleGet(request: NextRequest) {
+  const denied = await denyIfNoFeature(request, 'hashtags');
   if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
@@ -35,3 +36,5 @@ export async function GET(request: NextRequest) {
   const hashtags = buildViralHashtags(keyword, contentType);
   return NextResponse.json({ hashtags });
 }
+
+export const GET = withFeatureLimit(handleGet, 'hashtagsPerPost');

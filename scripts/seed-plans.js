@@ -87,7 +87,7 @@ const PLANS = [
         videoUploads:       { value: 5,  period: 'month' },
         keyword_research:   { value: 10, period: 'day' },
         trendAnalysis:      { value: 3,  period: 'day' },
-        hashtagsPerPost:    { value: 10, period: 'lifetime' },
+        hashtagsPerPost:    { value: 10, period: 'day' },
       },
     },
     featureFlags: {

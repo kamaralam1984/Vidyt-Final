@@ -2,8 +2,9 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { discoverTrends } from '@/services/trends/discovery';
+import { withFeatureLimit } from '@/middleware/usageGuard';
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'all'; // 'all', 'spikes', 'opportunities'
@@ -35,3 +36,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withFeatureLimit(handleGet, 'trendAnalysis');

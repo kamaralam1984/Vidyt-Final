@@ -5,8 +5,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import { routeAI } from '@/lib/ai-router';
 import { seedSeoPages } from '@/lib/seedSeoPages';
+import { withFeatureLimit } from '@/middleware/usageGuard';
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   let parsedKeyword = 'viral content';
   let parsedPage = 'SEO_TOOLS_PAGE';
 
@@ -216,3 +217,5 @@ Create a unified keyword intelligence system that works seamlessly across all pa
     return NextResponse.json({ success: true, data: fallbackData, isFallback: true, errorDetails: error.message });
   }
 }
+
+export const POST = withFeatureLimit(handlePost, 'keyword_research');

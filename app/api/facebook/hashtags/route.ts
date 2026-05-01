@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
+import { withFeatureLimit } from '@/middleware/usageGuard';
 
 type ViralLevel = 'high' | 'medium' | 'low';
 type ContentType = 'post' | 'reel' | 'live';
@@ -23,7 +24,7 @@ function buildHashtags(seed: string, contentType: ContentType): { tag: string; v
   });
 }
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const allowedRoles = ['super-admin', 'admin', 'manager', 'user'];
@@ -36,3 +37,5 @@ export async function GET(request: NextRequest) {
   const hashtags = buildHashtags(keyword, contentType);
   return NextResponse.json({ hashtags });
 }
+
+export const GET = withFeatureLimit(handleGet, 'hashtagsPerPost');

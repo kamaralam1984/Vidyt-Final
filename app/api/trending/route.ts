@@ -2,8 +2,9 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getTrendingTopics } from '@/services/trendingEngine';
+import { withFeatureLimit } from '@/middleware/usageGuard';
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const keywords = searchParams.get('keywords')?.split(',').filter(Boolean) || [];
@@ -11,7 +12,6 @@ export async function GET(request: NextRequest) {
 
     const trendingTopics = await getTrendingTopics(keywords, platform);
 
-    // Map to include all fields for frontend
     const mapped = trendingTopics.map((t) => ({
       keyword: t.keyword,
       score: t.score,
@@ -32,3 +32,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch trending topics', trendingTopics: [] }, { status: 500 });
   }
 }
+
+export const GET = withFeatureLimit(handleGet, 'trendAnalysis');
