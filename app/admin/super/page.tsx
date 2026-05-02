@@ -91,6 +91,7 @@ export default function SuperAdminPage() {
   const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['manager', 'admin', 'enterprise', 'super-admin']);
   const [aiStudioSaving, setAiStudioSaving] = useState(false);
   const [aiStudioMsg, setAiStudioMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [aiToolsMsg, setAiToolsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [aiToolsAccess, setAiToolsAccess] = useState<Record<string, string[]>>({});
   const [aiToolsSaving, setAiToolsSaving] = useState(false);
   const [apiConfigStatus, setApiConfigStatus] = useState<Record<string, boolean | Record<string, boolean>>>({});
@@ -1108,35 +1109,54 @@ export default function SuperAdminPage() {
                   </div>
                 ))}
               </div>
-              <button
-                disabled={aiToolsSaving}
-                onClick={async () => {
-                  const token = localStorage.getItem('token');
-                  if (!token) return;
-                  setAiToolsSaving(true);
-                  try {
-                    const res = await fetch('/api/admin/features/ai-tools', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({ features: aiToolsAccess }),
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                      if (data.features) setAiToolsAccess(data.features);
-                      // saved
-                    } else {
-                      console.error('AI tools save failed:', data.error);
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  disabled={aiToolsSaving}
+                  onClick={async () => {
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                      setAiToolsMsg({ type: 'error', text: 'Not logged in' });
+                      return;
                     }
-                  } catch (err) {
-                    console.error('AI tools save error:', err);
-                  } finally {
-                    setAiToolsSaving(false);
-                  }
-                }}
-                className="mt-4 px-4 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 font-medium"
-              >
-                {aiToolsSaving ? 'Saving...' : 'Save tools access'}
-              </button>
+                    setAiToolsSaving(true);
+                    setAiToolsMsg(null);
+                    try {
+                      const res = await fetch('/api/admin/features/ai-tools', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ features: aiToolsAccess }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        if (data.features) setAiToolsAccess(data.features);
+                        setAiToolsMsg({ type: 'success', text: '✓ Saved — applied live' });
+                      } else {
+                        const detail = data.error || `HTTP ${res.status}`;
+                        console.error('AI tools save failed:', detail);
+                        setAiToolsMsg({ type: 'error', text: `Save failed: ${detail}` });
+                      }
+                    } catch (err: any) {
+                      console.error('AI tools save error:', err);
+                      setAiToolsMsg({ type: 'error', text: `Network error: ${err?.message || 'unknown'}` });
+                    } finally {
+                      setAiToolsSaving(false);
+                      setTimeout(() => setAiToolsMsg(null), 4000);
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 font-medium"
+                >
+                  {aiToolsSaving ? 'Saving...' : 'Save tools access'}
+                </button>
+                {aiToolsMsg && (
+                  <span
+                    className={`text-sm font-medium ${
+                      aiToolsMsg.type === 'success' ? 'text-emerald-400' : 'text-red-400'
+                    }`}
+                  >
+                    {aiToolsMsg.text}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         ) : viewMode === 'apiConfig' ? (
