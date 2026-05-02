@@ -90,6 +90,7 @@ export default function SuperAdminPage() {
   const [plansSaving, setPlansSaving] = useState(false);
   const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['manager', 'admin', 'enterprise', 'super-admin']);
   const [aiStudioSaving, setAiStudioSaving] = useState(false);
+  const [aiStudioMsg, setAiStudioMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [aiToolsAccess, setAiToolsAccess] = useState<Record<string, string[]>>({});
   const [aiToolsSaving, setAiToolsSaving] = useState(false);
   const [apiConfigStatus, setApiConfigStatus] = useState<Record<string, boolean | Record<string, boolean>>>({});
@@ -1016,34 +1017,54 @@ export default function SuperAdminPage() {
                   </label>
                 ))}
               </div>
-              <button
-                disabled={aiStudioSaving}
-                onClick={async () => {
-                  const token = localStorage.getItem('token');
-                  if (!token) return;
-                  setAiStudioSaving(true);
-                  try {
-                    const res = await fetch('/api/admin/features/ai-studio', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({ allowedRoles: aiStudioRoles }),
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                      setAiStudioRoles(data.allowedRoles || aiStudioRoles);
-                    } else {
-                      console.error('Save failed:', data.error);
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  disabled={aiStudioSaving}
+                  onClick={async () => {
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                      setAiStudioMsg({ type: 'error', text: 'Not logged in' });
+                      return;
                     }
-                  } catch (err) {
-                    console.error('Save error:', err);
-                  } finally {
-                    setAiStudioSaving(false);
-                  }
-                }}
-                className="mt-4 px-4 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 font-medium"
-              >
-                {aiStudioSaving ? 'Saving...' : 'Save'}
-              </button>
+                    setAiStudioSaving(true);
+                    setAiStudioMsg(null);
+                    try {
+                      const res = await fetch('/api/admin/features/ai-studio', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ allowedRoles: aiStudioRoles }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        setAiStudioRoles(data.allowedRoles || aiStudioRoles);
+                        setAiStudioMsg({ type: 'success', text: '✓ Saved — applied live' });
+                      } else {
+                        const detail = data.error || `HTTP ${res.status}`;
+                        console.error('Save failed:', detail);
+                        setAiStudioMsg({ type: 'error', text: `Save failed: ${detail}` });
+                      }
+                    } catch (err: any) {
+                      console.error('Save error:', err);
+                      setAiStudioMsg({ type: 'error', text: `Network error: ${err?.message || 'unknown'}` });
+                    } finally {
+                      setAiStudioSaving(false);
+                      setTimeout(() => setAiStudioMsg(null), 4000);
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] disabled:opacity-50 font-medium"
+                >
+                  {aiStudioSaving ? 'Saving...' : 'Save'}
+                </button>
+                {aiStudioMsg && (
+                  <span
+                    className={`text-sm font-medium ${
+                      aiStudioMsg.type === 'success' ? 'text-emerald-400' : 'text-red-400'
+                    }`}
+                  >
+                    {aiStudioMsg.text}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
               <p className="text-sm font-medium text-white mb-3">Select roles for individual AI tools:</p>

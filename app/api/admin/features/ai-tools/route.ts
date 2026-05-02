@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import FeatureAccess from '@/models/FeatureAccess';
+import { emitPlanUpdate } from '@/lib/socket-server';
 
 const DEFAULT_ROLES = ['manager', 'admin', 'super-admin'];
 
@@ -20,6 +21,18 @@ const FEATURE_KEYS = [
 ] as const;
 
 type FeatureKey = (typeof FEATURE_KEYS)[number];
+
+const FEATURE_LABELS: Record<FeatureKey, string> = {
+  daily_ideas: 'Daily Ideas',
+  ai_coach: 'AI Coach',
+  keyword_research: 'Keyword Research',
+  script_writer: 'Script Writer',
+  title_generator: 'Title Generator',
+  channel_audit: 'YouTube SEO / Channel Tools',
+  ai_shorts_clipping: 'AI Shorts Creator',
+  ai_thumbnail_maker: 'AI Thumbnail Generator',
+  optimize: 'Viral Optimizer',
+};
 
 function serialize(doc: any | null) {
   const roles = doc?.allowedRoles?.length ? (doc.allowedRoles as string[]) : DEFAULT_ROLES;
@@ -61,19 +74,25 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'features object required' }, { status: 400 });
     }
 
-    const validRoles = ['user', 'manager', 'admin', 'super-admin'];
+    // Match the role set the admin UI exposes (includes enterprise + custom).
+    const validRoles = ['user', 'manager', 'admin', 'enterprise', 'custom', 'super-admin'];
 
     await connectDB();
 
     for (const key of FEATURE_KEYS) {
       const rawRoles = Array.isArray(incoming[key]) ? incoming[key] : DEFAULT_ROLES;
       const roles = rawRoles.filter((r) => validRoles.includes(r));
+      const finalRoles = roles.length ? roles : DEFAULT_ROLES;
       await FeatureAccess.findOneAndUpdate(
         { feature: key },
-        { feature: key, allowedRoles: roles.length ? roles : DEFAULT_ROLES },
-        { upsert: true, new: true }
+        {
+          $set: { allowedRoles: finalRoles, enabled: true },
+          $setOnInsert: { feature: key, label: FEATURE_LABELS[key] || key, group: 'ai_tool' },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
     }
+    emitPlanUpdate({ scope: 'plan-config', planId: 'ai_tools_access', action: 'updated' });
 
     const docs = await FeatureAccess.find({
       feature: { $in: FEATURE_KEYS },
@@ -86,6 +105,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ success: true, features: byFeature });
   } catch (e: any) {
+    console.error('[ai-tools access] save error:', e);
     return NextResponse.json({ error: e.message || 'Failed' }, { status: 500 });
   }
 }
