@@ -5,6 +5,19 @@ import connectDB from '@/lib/mongodb';
 import Plan from '@/models/Plan';
 import { getUserFromRequest } from '@/lib/auth';
 import { isSuperAdminRole } from '@/lib/adminAuth';
+import { emitPlanUpdate } from '@/lib/socket-server';
+import { refreshPlanCache } from '@/lib/planSync';
+import { deleteCacheJSON } from '@/lib/cache';
+import { memDelete } from '@/lib/in-memory-cache';
+
+async function invalidatePublicPlanCache() {
+  // /api/subscriptions/plans uses these keys (see app/api/subscriptions/plans/route.ts)
+  for (const key of ['api:plans:1', 'api:plans:0']) {
+    memDelete(key);
+    try { await deleteCacheJSON(key); } catch { /* redis optional */ }
+  }
+  try { await refreshPlanCache(); } catch { /* server cache optional */ }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -129,6 +142,8 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`[API/Plans] Plan created: ${plan.planId}`);
+    await invalidatePublicPlanCache();
+    emitPlanUpdate({ scope: 'plan', planId: plan.planId, action: 'created' });
     return NextResponse.json({
       success: true,
       plan: {
@@ -237,6 +252,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     console.log(`[API/Plans] Plan updated: ${plan.planId}`);
+    await invalidatePublicPlanCache();
+    emitPlanUpdate({ scope: 'plan', planId: plan.planId, action: 'updated' });
     return NextResponse.json({
       success: true,
       plan: {
@@ -290,6 +307,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     console.log(`[API/Plans] Plan deactivated: ${plan.planId}`);
+    await invalidatePublicPlanCache();
+    emitPlanUpdate({ scope: 'plan', planId: plan.planId, action: 'deactivated' });
     return NextResponse.json({
       success: true,
       message: 'Plan deactivated successfully',

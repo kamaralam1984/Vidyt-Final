@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
+import { getSocket } from '@/hooks/useSocket';
 import {
   Check,
   Zap,
@@ -60,64 +61,64 @@ export default function PricingPage() {
   const [fxRates, setFxRates] = useState<Record<string, number> | null>(null);
   const { locale } = useLocale();
 
-  useEffect(() => {
-    // Fetch user's current plan
-    const fetchUserPlan = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          const response = await axios.get('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setUserPlan(
-            response.data.user?.subscription ||
-            response.data.user?.subscriptionPlan?.planId ||
-            'free'
-          );
-        }
-      } catch (error) {
-        console.error('Error fetching user plan:', error);
-      }
-    };
-
-    // Fetch plans with active discounts
-    const fetchPlans = async () => {
-      try {
-        setPlansLoading(true);
-        const res = await axios.get('/api/subscriptions/plans');
-        const apiPlans = res.data?.plans || [];
-
-        const formattedPlans = apiPlans.map((p: any) => {
-          const roll = getPlanRoll(p.id);
-          const price = Number(p.price) || 0;
-          const priceYear =
-            typeof p.priceYearly === 'number' && p.priceYearly > 0 ? p.priceYearly : price * 10;
-
-          return {
-            id: p.id || p.dbId,
-            dbId: p.dbId,
-            name: p.name,
-            price,
-            priceYear,
-            period: p.interval || 'month',
-            description: p.description || 'Custom Plan',
-            features: p.features || [],
-            popular: p.id === 'pro' || p.popular || false,
-            role: p.role || roll.role,
-            level: p.level || (roll as any).level,
-            limitsDisplay: p.limitsDisplay || roll.limitsDisplay,
-            discount: p.discount,
-          };
+  // Fetch user's current plan
+  const fetchUserPlan = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const response = await axios.get('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        setActivePlans(formattedPlans);
-      } catch (error) {
-        console.error('Error fetching plans with discounts:', error);
-      } finally {
-        setPlansLoading(false);
+        setUserPlan(
+          response.data.user?.subscription ||
+          response.data.user?.subscriptionPlan?.planId ||
+          'free'
+        );
       }
-    };
+    } catch (error) {
+      console.error('Error fetching user plan:', error);
+    }
+  }, []);
 
+  // Fetch plans with active discounts
+  const fetchPlans = useCallback(async (opts: { silent?: boolean } = {}) => {
+    try {
+      if (!opts.silent) setPlansLoading(true);
+      const res = await axios.get('/api/subscriptions/plans');
+      const apiPlans = res.data?.plans || [];
+
+      const formattedPlans = apiPlans.map((p: any) => {
+        const roll = getPlanRoll(p.id);
+        const price = Number(p.price) || 0;
+        const priceYear =
+          typeof p.priceYearly === 'number' && p.priceYearly > 0 ? p.priceYearly : price * 10;
+
+        return {
+          id: p.id || p.dbId,
+          dbId: p.dbId,
+          name: p.name,
+          price,
+          priceYear,
+          period: p.interval || 'month',
+          description: p.description || 'Custom Plan',
+          features: p.features || [],
+          popular: p.id === 'pro' || p.popular || false,
+          role: p.role || roll.role,
+          level: p.level || (roll as any).level,
+          limitsDisplay: p.limitsDisplay || roll.limitsDisplay,
+          discount: p.discount,
+        };
+      });
+
+      setActivePlans(formattedPlans);
+    } catch (error) {
+      console.error('Error fetching plans with discounts:', error);
+    } finally {
+      if (!opts.silent) setPlansLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchRates = async () => {
       try {
         const res = await fetch('/api/public/currency-rates');
@@ -139,7 +140,28 @@ export default function PricingPage() {
     return () => {
       document.body.removeChild(script);
     };
-  }, []);
+  }, [fetchUserPlan, fetchPlans]);
+
+  // Live propagation:
+  //   - Logged-in users get a socket push on `plan:updated` and refetch instantly.
+  //   - Anonymous visitors (no JWT, can't connect) fall back to revalidating on
+  //     window focus, so returning to the tab pulls fresh prices/limits.
+  useEffect(() => {
+    const onUpdate = () => { fetchPlans({ silent: true }); fetchUserPlan(); };
+
+    const socket = getSocket();
+    socket?.on('plan:updated', onUpdate);
+    socket?.on('subscription:updated', onUpdate);
+
+    const onFocus = () => onUpdate();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      socket?.off('plan:updated', onUpdate);
+      socket?.off('subscription:updated', onUpdate);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [fetchPlans, fetchUserPlan]);
 
   const payBusy = (planId: string) =>
     loading === `rzp:${planId}` || loading === `paypal:${planId}`;

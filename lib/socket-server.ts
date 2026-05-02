@@ -127,3 +127,29 @@ export function emitRevenueUpdate(revenue: Record<string, unknown>) {
     io.to('admin-room').emit('revenue_update', revenue);
   } catch { /* ignore */ }
 }
+
+/**
+ * Broadcast a plan/subscription config change to every connected socket.
+ * Listened to by `useUser` (re-fetches /api/auth/me) and the public pricing
+ * page (re-fetches /api/subscriptions/plans). Anonymous visitors who can't
+ * authenticate over the socket fall back to focus-based revalidation.
+ */
+export function emitPlanUpdate(
+  payload: { scope?: 'plan' | 'plan-config' | 'discount' | 'control'; planId?: string; action?: string } = {}
+) {
+  try {
+    const io = getIO();
+    io.emit('plan:updated', { ...payload, ts: new Date().toISOString() });
+  } catch { /* socket not initialized (e.g. tests) */ }
+}
+
+/**
+ * Targeted update for a single user — used when admin changes that user's
+ * subscription override. Reaches only the `user-${userId}` room.
+ */
+export function emitUserSubscriptionUpdate(userId: string, payload: Record<string, unknown> = {}) {
+  try {
+    const io = getIO();
+    io.to(`user-${userId}`).emit('subscription:updated', { ...payload, ts: new Date().toISOString() });
+  } catch { /* ignore */ }
+}

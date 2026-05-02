@@ -6,6 +6,9 @@ import Plan from '@/models/Plan';
 import PlatformControl from '@/models/PlatformControl';
 import { getUserFromRequest } from '@/lib/auth';
 import { refreshPlanCache } from '@/lib/planSync';
+import { emitPlanUpdate } from '@/lib/socket-server';
+import { deleteCacheJSON } from '@/lib/cache';
+import { memDelete } from '@/lib/in-memory-cache';
 
 /**
  * GET /api/admin/plan-config
@@ -110,6 +113,15 @@ export async function PATCH(request: NextRequest) {
 
     // Clear the runtime cache so changes apply immediately
     await refreshPlanCache();
+
+    // Invalidate the public /api/subscriptions/plans cache (mem + redis)
+    for (const key of ['api:plans:1', 'api:plans:0']) {
+      memDelete(key);
+      try { await deleteCacheJSON(key); } catch { /* redis optional */ }
+    }
+
+    // Push live update to every connected client
+    emitPlanUpdate({ scope: 'plan-config', planId, action: 'updated' });
 
     return NextResponse.json({
       success: true,
