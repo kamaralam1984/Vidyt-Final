@@ -23,13 +23,13 @@ export interface ScoreInputs {
   slug?: string;        // URL slug — penalised when garbage (best-best-best...)
 }
 
-// Threshold raised to 75: Google was rejecting ~98% of submitted pages because
-// 55 was too permissive — let near-template pages into the sitemap and burned
-// crawl budget. 75 forces real word-count + uniqueness before a page is shown
-// to Google. Daily cap reduced 200 → 50 so we never flood the sitemap with
-// borderline content that drags down sitewide quality signals.
+// Threshold stays at 75 (forces real word-count + clean slug before Google
+// sees the page). Cap raised 50 → 100 — paired with the curated generator
+// (75/day) + trending cron (20/day) we now have the budget to actually
+// promote 100 quality pages per day, growing the indexable count instead of
+// stalling at the 86-page floor.
 export const INDEXABLE_THRESHOLD = 75;
-export const DAILY_PROMOTION_CAP = 50;
+export const DAILY_PROMOTION_CAP = 100;
 
 export function computeQualityScore(i: ScoreInputs): number {
   // 1) Word-count gate (max 35 pts). Google wants substance.

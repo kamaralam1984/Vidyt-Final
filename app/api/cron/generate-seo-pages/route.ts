@@ -46,11 +46,12 @@ export async function GET(request: NextRequest) {
     const year = new Date().getFullYear();
     let created = 0;
     let upgraded = 0;
-    // Lowered 100 → 20 (quality over quantity). Combined with the trending
-    // cron's 20/day, total daily creation is now 40 — well below the
-    // INDEXABLE_THRESHOLD=75 promotion cap so only proven-good pages enter
-    // the sitemap.
-    const target = 20;
+    // 75/day from the curated DAILY_NICHES × KEYWORD_TEMPLATES pool. Combined
+    // with the trending cron, daily creation lands around 95 — sized to feed
+    // the DAILY_PROMOTION_CAP of 100 indexable pages a day. These keywords are
+    // pre-validated (clean nouns + templates, no token salad) so quality stays
+    // above INDEXABLE_THRESHOLD.
+    const target = 75;
 
     // ── 1. Generate new pages via the shared 5-variant builder ─────────────
     //   Uses buildSeoContent so this cron and generate-trending-pages stay

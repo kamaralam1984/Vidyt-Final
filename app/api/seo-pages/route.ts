@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import SeoPage from '@/models/SeoPage';
+import { sanitizeSeoKeyword } from '@/lib/seoKeywordSanitizer';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
@@ -76,8 +77,16 @@ VidYT is the world's #1 AI-powered video optimization platform. We help creators
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const keyword = (searchParams.get('keyword') || '').trim();
-    if (!keyword) return NextResponse.json({ error: 'keyword required' }, { status: 400 });
+    const rawKeyword = (searchParams.get('keyword') || '').trim();
+    if (!rawKeyword) return NextResponse.json({ error: 'keyword required' }, { status: 400 });
+
+    // Quality gate — junk keywords (long, repeated tokens, year stacks) never
+    // become an indexable page. Fixes the runaway 457k-rejected backlog.
+    const verdict = sanitizeSeoKeyword(rawKeyword);
+    if (!verdict.ok || !verdict.cleaned) {
+      return NextResponse.json({ skipped: true, reason: verdict.reason }, { status: 200 });
+    }
+    const keyword = verdict.cleaned;
 
     await connectDB();
     const slug = slugify(keyword);
@@ -100,8 +109,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Increment views
-    await SeoPage.updateOne({ _id: page._id }, { $inc: { views: 1 } });
+    if (page) {
+      await SeoPage.updateOne({ _id: page._id }, { $inc: { views: 1 } });
+    }
 
     return NextResponse.json({ page });
   } catch (e: any) {
