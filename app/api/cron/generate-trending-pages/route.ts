@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb';
 import SeoPage from '@/models/SeoPage';
 import { buildSeoContent } from '@/lib/seoContentBuilder';
 import { computeQualityScore } from '@/lib/qualityScorer';
+import { sanitizeSeoKeyword } from '@/lib/seoKeywordSanitizer';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
@@ -114,31 +115,18 @@ Start creating viral ${kw} content today. VidYT's free plan includes 5 video ana
   return { title, metaTitle, metaDescription, content, hashtags, relatedKeywords, viralScore: score, category };
 }
 
-// Soft cap: stop generating new pages once we hit this many SeoPage docs.
-// We do NOT auto-delete — owner has explicitly opted out of automatic deletion;
-// only manual cleanup is allowed. Once at cap, this cron simply skips creation.
-const MAX_SEO_PAGES = 5000;
+// Soft cap removed — quality gate (sanitizer + INDEXABLE_THRESHOLD=75) and
+// the new Repair Rejected endpoint handle backlog management. The page count
+// itself isn't the constraint anymore.
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     let created = 0;
-    // Lowered 100 → 20: quality > quantity. Google was rejecting ~98% of
-    // template-similar pages, hurting sitewide trust. 20 unique high-quality
-    // pages/day is well under Googlebot's appetite for a young domain.
-    const target = 20;
-
-    // At capacity: skip creation entirely. NEVER auto-delete (owner policy).
-    const totalCount = await SeoPage.countDocuments();
-    if (totalCount >= MAX_SEO_PAGES) {
-      return NextResponse.json({
-        success: true,
-        skipped: true,
-        totalCount,
-        message: `At soft cap (${MAX_SEO_PAGES}) — no new pages generated. Manual cleanup required to free space.`,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    // 50 trending pages/day. Combined with generate-seo-pages curated cron
+    // (75/day) the pipeline produces ~125/day, sized to feed the
+    // DAILY_PROMOTION_CAP of 100 indexable pages a day.
+    const target = 50;
 
     const allTrending: { keyword: string; score: number }[] = [];
 
@@ -201,14 +189,44 @@ export async function GET(request: NextRequest) {
       } catch { /* silent */ }
     }
 
-    // 4) Deduplicate
+    // 4) Pull trending hashtags from each platform's hashtag feed and
+    //    queue them as trending keyword candidates. Hashtags Google will
+    //    actually rank are short clean words, so they fit the sanitizer fine.
+    try {
+      const platforms = ['youtube', 'instagram', 'facebook'];
+      for (const p of platforms) {
+        try {
+          const url = new URL(`/api/${p}/hashtags`, request.url);
+          url.searchParams.set('keyword', 'viral');
+          const res = await fetch(url.toString(), { cache: 'no-store' });
+          if (!res.ok) continue;
+          const j = await res.json();
+          const tags: any[] = Array.isArray(j?.hashtags) ? j.hashtags : [];
+          for (const h of tags.slice(0, 25)) {
+            const tag = String(h?.tag || h || '').replace(/^#/, '').trim();
+            if (!tag) continue;
+            const score = typeof h?.viralScore === 'number'
+              ? Math.max(60, Math.min(95, Math.round(h.viralScore)))
+              : 75;
+            allTrending.push({ keyword: tag, score });
+          }
+        } catch { /* per-platform best-effort */ }
+      }
+    } catch { /* never block the cron on a hashtag-feed glitch */ }
+
+    // 5) Deduplicate + drop junk via the shared sanitizer so trending news
+    //    headlines like "Long Politician Headline About Some Event Today..."
+    //    don't land as 13-token doorway slugs.
     const seen = new Set<string>();
-    const unique = allTrending.filter(t => {
-      const slug = slugify(t.keyword);
-      if (seen.has(slug) || slug.length < 3) return false;
+    const unique: { keyword: string; score: number }[] = [];
+    for (const t of allTrending) {
+      const verdict = sanitizeSeoKeyword(t.keyword);
+      if (!verdict.ok || !verdict.cleaned) continue;
+      const slug = slugify(verdict.cleaned);
+      if (!slug || slug.length < 3 || seen.has(slug)) continue;
       seen.add(slug);
-      return true;
-    });
+      unique.push({ keyword: verdict.cleaned, score: t.score });
+    }
 
     // 5) Create pages — rich content via seoContentBuilder, quality-scored
     //    upfront so the promote cron can immediately pick the best ones.
