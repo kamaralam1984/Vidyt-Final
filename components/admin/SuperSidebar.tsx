@@ -28,6 +28,7 @@ import {
   Rocket,
   CreditCard,
   FileText,
+  Activity,
   Menu,
   X,
 } from 'lucide-react';
@@ -60,6 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/admin/super/sessions', label: 'Sessions', icon: Clock },
       { href: '/admin/super/ai-monitoring', label: 'AI Monitoring', icon: Cpu },
       { href: '/admin/super/website-audit', label: 'Website Audit', icon: Globe, isPremium: true },
+      { href: '/admin/super/activity-logs', label: 'Activity Log', icon: Activity },
     ],
   },
   {
