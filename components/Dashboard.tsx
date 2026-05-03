@@ -479,10 +479,40 @@ export default function Dashboard() {
   }, [searchParams]);
 
   useEffect(() => {
-    axios.get('/api/features/all', { headers: getAuthHeaders() })
-      .then(r => { if (r.data.features) setAllowedSystems(r.data.features); })
-      .catch(() => setAllowedSystems({}))
-      .finally(() => setConfigLoaded(true));
+    const fetchFeatures = () =>
+      axios.get('/api/features/all', { headers: getAuthHeaders() })
+        .then(r => { if (r.data.features) setAllowedSystems(r.data.features); })
+        .catch(() => setAllowedSystems({}))
+        .finally(() => setConfigLoaded(true));
+
+    fetchFeatures();
+
+    // Live refresh when the super-admin toggles features in Manage Plans —
+    // socket push, plus tab focus / visibilitychange as fallback.
+    let socket: any = null;
+    let detach: (() => void) | null = null;
+    (async () => {
+      try {
+        const mod = await import('@/hooks/useSocket');
+        socket = mod.getSocket?.();
+        if (socket) {
+          socket.on('plan:updated', fetchFeatures);
+          socket.on('subscription:updated', fetchFeatures);
+        }
+      } catch {}
+      const onFocus = () => fetchFeatures();
+      const onVis = () => { if (!document.hidden) fetchFeatures(); };
+      window.addEventListener('focus', onFocus);
+      document.addEventListener('visibilitychange', onVis);
+      detach = () => {
+        socket?.off?.('plan:updated', fetchFeatures);
+        socket?.off?.('subscription:updated', fetchFeatures);
+        window.removeEventListener('focus', onFocus);
+        document.removeEventListener('visibilitychange', onVis);
+      };
+    })();
+
+    return () => { detach?.(); };
   }, []);
 
   // Lazy load analysis scores

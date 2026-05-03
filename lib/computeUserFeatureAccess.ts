@@ -175,8 +175,12 @@ export function computeUserFeatureAccess(
       f.group === 'sidebar' ||
       f.group === 'dashboard' ||
       f.group === 'other' ||
-      f.group === 'yt_seo_sections'
+      f.group === 'yt_seo_sections' ||
+      f.group === 'quick_tools' ||
+      f.group === 'channel_intelligence'
     ) {
+      // All admin-toggleable groups go through navFeatureAccess so the
+      // Manage Plans Plan Features checkboxes drive what the user sees.
       planOk = navPlanAllowsFeature(f, input.plan, planId, input.platforms);
     } else {
       planOk = true;
