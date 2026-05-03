@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
         companyName: pendingUser.companyName,
         phone: pendingUser.phone,
         loginPin: pendingUser.loginPin,
-        role: 'user',
+        role: 'free',
         subscription: 'free',
         emailVerified: true,
         subscriptionPlan: {

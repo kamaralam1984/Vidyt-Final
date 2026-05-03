@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         email: payload.email,
         name: payload.name || payload.email.split('@')[0],
         profilePicture: payload.picture,
-        role: 'user',
+        role: 'free',
         subscription: 'free',
         emailVerified: payload.email_verified || true
       });

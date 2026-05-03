@@ -9,7 +9,7 @@ export interface IUser extends Document {
   companyName?: string;
   phone?: string;
   loginPin?: string;
-  role: 'user' | 'admin' | 'manager' | 'super-admin' | 'superadmin' | 'enterprise';
+  role: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'super-admin' | 'superadmin' | 'user' | 'admin' | 'manager';
   subscription: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'owner';
   subscriptionExpiresAt?: Date;
   subscriptionPlan?: {
@@ -99,7 +99,7 @@ const UserSchema = new Schema<IUser>({
   companyName: { type: String },
   phone: { type: String },
   loginPin: { type: String },
-  role: { type: String, enum: ['user', 'admin', 'manager', 'super-admin', 'superadmin', 'enterprise'], default: 'user' },
+  role: { type: String, enum: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin', 'superadmin', 'user', 'admin', 'manager'], default: 'free' },
   subscription: { type: String, enum: ['free', 'starter', 'pro', 'enterprise', 'custom', 'owner'], default: 'free' },
   subscriptionExpiresAt: { type: Date },
   subscriptionPlan: {

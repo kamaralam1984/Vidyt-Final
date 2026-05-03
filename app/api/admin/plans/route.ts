@@ -234,10 +234,14 @@ export async function PATCH(request: NextRequest) {
     if (billingPeriod !== undefined) updateData.billingPeriod = billingPeriod;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (role !== undefined) {
-      // NEW: Validate role
-      if (!['user', 'manager', 'admin', 'super-admin'].includes(role)) {
-        return NextResponse.json({ 
-          error: 'Invalid role. Must be: user, manager, admin, or super-admin' 
+      const ALLOWED = [
+        'free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin',
+        // legacy
+        'user', 'manager', 'admin',
+      ];
+      if (!ALLOWED.includes(role)) {
+        return NextResponse.json({
+          error: `Invalid role. Must be one of: ${ALLOWED.join(', ')}`,
         }, { status: 400 });
       }
       updateData.role = role;

@@ -14,7 +14,9 @@ export interface IPlan extends Document {
   billingPeriod: 'month' | 'year' | 'both';
 
   // ── Role assigned to users on this plan ──────────────────────────────
-  role: 'user' | 'manager' | 'admin' | 'super-admin';
+  // Plan-name roles (free/starter/pro/enterprise/custom) plus super-admin
+  // for the owner. Legacy values (user/manager/admin) still accepted on read.
+  role: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'super-admin' | 'user' | 'manager' | 'admin';
 
   // ── Usage limits (super-admin configurable) ───────────────────────────
   limits: {
@@ -100,8 +102,8 @@ const PlanSchema = new Schema<IPlan>(
     // Role
     role: {
       type: String,
-      enum: ['user', 'manager', 'admin', 'super-admin'],
-      default: 'user',
+      enum: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin', 'user', 'manager', 'admin'],
+      default: 'free',
     },
 
     // Limits
