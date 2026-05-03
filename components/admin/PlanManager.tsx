@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, Plus, Edit2, Trash2, Check, X, Eye, EyeOff, Shield, Users } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
+import { ALL_FEATURES } from '@/utils/features';
+import { FEATURE_LIMITS_REGISTRY, type FeaturePeriod } from '@/lib/featureLimits';
 
 interface Plan {
   id: string;
@@ -35,32 +37,85 @@ interface Plan {
 }
 
 /**
- * Sidebar items the super-admin can toggle per plan from this form. Keep this
- * list in sync with utils/features.ts ALL_FEATURES (group: 'sidebar') — Sidebar.tsx
- * gates each item via plan.navFeatureAccess[id], so saving here flows straight
- * to every connected user's sidebar via the plan:updated socket push.
+ * All features the super-admin can toggle per plan, derived live from
+ * utils/features.ts so this form never falls out of sync with the registry.
+ * Grouped by category for readability. Sidebar.tsx + UnifiedFeatureMatrix +
+ * computeUserFeatureAccess all read plan.navFeatureAccess[id], so saving here
+ * flows to every connected user via the plan:updated socket push.
  */
-const SIDEBAR_FEATURE_OPTIONS: { id: string; label: string }[] = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'videos', label: 'My Videos' },
-  { id: 'youtube_seo', label: 'YouTube Live SEO Analyzer' },
-  { id: 'keyword_intelligence', label: 'Keyword Intelligence Engine' },
-  { id: 'facebook_seo', label: 'Facebook SEO Analyzer' },
-  { id: 'instagram_seo', label: 'Instagram SEO Analyzer' },
-  { id: 'viral_optimizer', label: 'AI Viral Optimization Engine' },
-  { id: 'facebook_audit', label: 'Facebook Audit' },
-  { id: 'trending', label: 'Trending' },
-  { id: 'hashtags', label: 'Hashtags' },
-  { id: 'posting_time', label: 'Posting Time' },
-  { id: 'analytics', label: 'Analytics' },
-  { id: 'calendar', label: 'Content Calendar' },
-  { id: 'script_generator', label: 'Script Generator' },
-  { id: 'ai_coach', label: 'AI Coach' },
-  { id: 'thumbnail_generator', label: 'Thumbnail Generator' },
-  { id: 'hook_generator', label: 'Hook Generator' },
-  { id: 'shorts_creator', label: 'Shorts Creator' },
-  { id: 'youtube_growth', label: 'YouTube Growth' },
+const FEATURE_GROUP_LABELS: Record<string, string> = {
+  sidebar: 'Sidebar Items',
+  dashboard: 'Dashboard Widgets & Buttons',
+  ai_studio: 'AI Studio & Plan Features',
+  platform: 'Platform Access',
+  yt_seo_sections: 'YouTube SEO Sections',
+  channel_intelligence: 'Channel Intelligence',
+  quick_tools: 'Quick Tools',
+  other: 'Other',
+};
+
+const FEATURES_BY_GROUP: { group: string; label: string; items: { id: string; label: string }[] }[] = [
+  'sidebar',
+  'dashboard',
+  'ai_studio',
+  'platform',
+  'yt_seo_sections',
+  'channel_intelligence',
+  'quick_tools',
+  'other',
+]
+  .map((group) => ({
+    group,
+    label: FEATURE_GROUP_LABELS[group] || group,
+    items: ALL_FEATURES.filter((f) => f.group === group).map((f) => ({ id: f.id, label: f.label })),
+  }))
+  .filter((g) => g.items.length > 0);
+
+const ALL_FEATURE_IDS: string[] = ALL_FEATURES.map((f) => f.id);
+
+/** Period dropdown options for per-feature limits. */
+const PERIOD_OPTIONS: { value: FeaturePeriod; label: string }[] = [
+  { value: 'day', label: 'Per Day' },
+  { value: 'week', label: 'Per Week' },
+  { value: 'month', label: 'Per Month' },
+  { value: 'lifetime', label: 'Lifetime' },
 ];
+
+const FEATURE_LIMIT_GROUP_LABELS: Record<string, string> = {
+  core: 'Core Quotas',
+  ai_studio: 'AI Studio Quotas',
+  analytics: 'Analytics Quotas',
+  social: 'Social Quotas',
+  storage: 'Storage Quotas',
+  collaboration: 'Collaboration Quotas',
+};
+
+const LIMITS_BY_GROUP = ['core', 'ai_studio', 'analytics', 'social', 'storage', 'collaboration']
+  .map((group) => ({
+    group,
+    label: FEATURE_LIMIT_GROUP_LABELS[group] || group,
+    items: FEATURE_LIMITS_REGISTRY.filter((d) => d.group === group),
+  }))
+  .filter((g) => g.items.length > 0);
+
+/**
+ * Build a complete featureLimits map covering every registry key — uses the
+ * existing per-plan value if present, otherwise the registry default. Ensures
+ * the form always shows every quota even for plans seeded before a key existed.
+ */
+function hydrateFeatureLimits(
+  existing?: Record<string, { value?: number; period?: string }>
+): Record<string, { value: number; period: FeaturePeriod }> {
+  const out: Record<string, { value: number; period: FeaturePeriod }> = {};
+  for (const def of FEATURE_LIMITS_REGISTRY) {
+    const cur = existing?.[def.key];
+    out[def.key] = {
+      value: typeof cur?.value === 'number' ? cur.value : def.defaultValue,
+      period: ((cur?.period as FeaturePeriod) || def.defaultPeriod) as FeaturePeriod,
+    };
+  }
+  return out;
+}
 
 const EMPTY_LIMITS = {
   analysesLimit: 5,
@@ -164,8 +219,10 @@ export default function PlanManager() {
     limitsDisplayAnalyses: EMPTY_LIMITS_DISPLAY.analyses,
     limitsDisplayStorage: EMPTY_LIMITS_DISPLAY.storage,
     limitsDisplaySupport: EMPTY_LIMITS_DISPLAY.support,
-    // Sidebar items enabled for this plan (id -> on/off)
+    // Per-feature toggles (any group: sidebar / dashboard / ai_studio / platform / etc.)
     navFeatureAccess: {} as Record<string, boolean>,
+    // Registry-driven per-feature numeric quotas. -1 = Unlimited.
+    featureLimits: {} as Record<string, { value: number; period: FeaturePeriod }>,
   });
 
   // Role access data: planId -> list of roles with feature access
@@ -273,12 +330,23 @@ export default function PlanManager() {
 
       // Build the limits / limitsDisplay payloads. Only include fields the
       // admin actually filled — leave the rest of the existing plan doc alone.
+      // Build the registry-driven featureLimits map. Pull the current form
+      // value for each registry key, falling back to its registry default.
+      const featureLimitsPayload: Record<string, { value: number; period: FeaturePeriod }> = {};
+      for (const def of FEATURE_LIMITS_REGISTRY) {
+        const cur = formData.featureLimits[def.key];
+        featureLimitsPayload[def.key] = {
+          value: cur?.value !== undefined ? Number(cur.value) : def.defaultValue,
+          period: (cur?.period as FeaturePeriod) || def.defaultPeriod,
+        };
+      }
       const limitsPayload = {
         analysesLimit: Number(formData.analysesLimit),
         analysesPeriod: formData.analysesPeriod,
         titleSuggestions: Number(formData.titleSuggestions),
         hashtagCount: Number(formData.hashtagCount),
         competitorsTracked: Number(formData.competitorsTracked),
+        featureLimits: featureLimitsPayload,
       };
       const limitsDisplayPayload = {
         videos: formData.limitsDisplayVideos,
@@ -286,11 +354,12 @@ export default function PlanManager() {
         storage: formData.limitsDisplayStorage,
         support: formData.limitsDisplaySupport,
       };
-      // Send only the sidebar feature ids — partial merge in the API protects
-      // any non-sidebar keys (dashboard groups etc.) already on the plan doc.
+      // Cover every feature id from utils/features.ts ALL_FEATURES — partial
+      // merge in the API still protects any keys outside this set (e.g.
+      // legacy ones that may have been added to a plan doc by other admin tools).
       const navFeatureAccessPayload: Record<string, boolean> = {};
-      for (const opt of SIDEBAR_FEATURE_OPTIONS) {
-        navFeatureAccessPayload[opt.id] = !!formData.navFeatureAccess[opt.id];
+      for (const id of ALL_FEATURE_IDS) {
+        navFeatureAccessPayload[id] = !!formData.navFeatureAccess[id];
       }
 
       let response;
@@ -360,6 +429,7 @@ export default function PlanManager() {
       limitsDisplayStorage: ld.storage ?? '',
       limitsDisplaySupport: ld.support ?? '',
       navFeatureAccess: { ...(plan.navFeatureAccess || {}) },
+      featureLimits: hydrateFeatureLimits(plan.limits?.featureLimits),
     });
     setEditingId(plan.id);
     setShowForm(true);
@@ -427,6 +497,7 @@ export default function PlanManager() {
       limitsDisplayStorage: EMPTY_LIMITS_DISPLAY.storage,
       limitsDisplaySupport: EMPTY_LIMITS_DISPLAY.support,
       navFeatureAccess: {},
+      featureLimits: hydrateFeatureLimits(undefined),
     });
     setEditingId(null);
     setShowForm(false);
@@ -664,18 +735,18 @@ export default function PlanManager() {
               </div>
             </div>
 
-            {/* Sidebar Features — items shown in the user's left sidebar for this plan */}
+            {/* Plan Features — every feature on the platform, grouped by category */}
             <div className="border-t border-gray-700 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-semibold text-gray-300">
-                  Sidebar Features <span className="text-xs font-normal text-gray-500">(left-side menu items shown to users on this plan)</span>
+                  Plan Features <span className="text-xs font-normal text-gray-500">(every UI feature gated by this plan)</span>
                 </h4>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       const all: Record<string, boolean> = {};
-                      SIDEBAR_FEATURE_OPTIONS.forEach((o) => { all[o.id] = true; });
+                      ALL_FEATURE_IDS.forEach((id) => { all[id] = true; });
                       setFormData({ ...formData, navFeatureAccess: all });
                     }}
                     className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-300"
@@ -686,7 +757,7 @@ export default function PlanManager() {
                     type="button"
                     onClick={() => {
                       const none: Record<string, boolean> = {};
-                      SIDEBAR_FEATURE_OPTIONS.forEach((o) => { none[o.id] = false; });
+                      ALL_FEATURE_IDS.forEach((id) => { none[id] = false; });
                       setFormData({ ...formData, navFeatureAccess: none });
                     }}
                     className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-300"
@@ -695,24 +766,108 @@ export default function PlanManager() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {SIDEBAR_FEATURE_OPTIONS.map((opt) => {
-                  const checked = !!formData.navFeatureAccess[opt.id];
-                  return (
-                    <label key={opt.id} className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded cursor-pointer hover:border-gray-500">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          navFeatureAccess: { ...formData.navFeatureAccess, [opt.id]: e.target.checked },
-                        })}
-                        className="accent-green-500"
-                      />
-                      <span className="text-xs text-gray-200">{opt.label}</span>
-                    </label>
-                  );
-                })}
+              <div className="space-y-4">
+                {FEATURES_BY_GROUP.map((g) => (
+                  <div key={g.group}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{g.label}</p>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...formData.navFeatureAccess };
+                            g.items.forEach((it) => { next[it.id] = true; });
+                            setFormData({ ...formData, navFeatureAccess: next });
+                          }}
+                          className="text-[10px] px-1.5 py-0.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-400"
+                        >
+                          All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...formData.navFeatureAccess };
+                            g.items.forEach((it) => { next[it.id] = false; });
+                            setFormData({ ...formData, navFeatureAccess: next });
+                          }}
+                          className="text-[10px] px-1.5 py-0.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-400"
+                        >
+                          None
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {g.items.map((opt) => {
+                        const checked = !!formData.navFeatureAccess[opt.id];
+                        return (
+                          <label key={opt.id} className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded cursor-pointer hover:border-gray-500">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                navFeatureAccess: { ...formData.navFeatureAccess, [opt.id]: e.target.checked },
+                              })}
+                              className="accent-green-500"
+                            />
+                            <span className="text-xs text-gray-200">{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Per-feature numeric quotas — every key from FEATURE_LIMITS_REGISTRY */}
+            <div className="border-t border-gray-700 pt-4">
+              <h4 className="text-sm font-semibold text-gray-300 mb-3">
+                Feature Quotas <span className="text-xs font-normal text-gray-500">(per-feature numeric limits — use -1 for Unlimited)</span>
+              </h4>
+              <div className="space-y-4">
+                {LIMITS_BY_GROUP.map((g) => (
+                  <div key={g.group}>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{g.label}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {g.items.map((def) => {
+                        const cur = formData.featureLimits[def.key] || { value: def.defaultValue, period: def.defaultPeriod };
+                        return (
+                          <div key={def.key} className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded">
+                            <span className="text-xs text-gray-200 flex-1 min-w-0 truncate" title={def.label}>{def.label}</span>
+                            <input
+                              type="number"
+                              value={cur.value}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                featureLimits: {
+                                  ...formData.featureLimits,
+                                  [def.key]: { ...cur, value: Number(e.target.value) },
+                                },
+                              })}
+                              className="w-20 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
+                            />
+                            <select
+                              value={cur.period}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                featureLimits: {
+                                  ...formData.featureLimits,
+                                  [def.key]: { ...cur, period: e.target.value as FeaturePeriod },
+                                },
+                              })}
+                              className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs"
+                            >
+                              {PERIOD_OPTIONS.map((p) => (
+                                <option key={p.value} value={p.value}>{p.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
