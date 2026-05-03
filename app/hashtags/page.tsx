@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
@@ -11,8 +11,18 @@ import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useTranslations } from '@/context/translations';
 import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
+import { useUser } from '@/hooks/useUser';
 
 type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
+
+const HASHTAG_FOCUS_LIMIT_BY_PLAN: Record<string, number> = {
+  free: 3,
+  starter: 6,
+  pro: 15,
+  enterprise: 30,
+  custom: 30,
+  owner: Infinity,
+};
 
 interface ViralHashtag {
   tag: string;
@@ -45,8 +55,12 @@ const STATIC_FALLBACK: Record<Platform, string[]> = {
 
 export default function HashtagsPage() {
   const { t } = useTranslations();
+  const { plan } = useUser();
   const [platform, setPlatform] = useState<Platform>('youtube');
   const [hashtags, setHashtags] = useState<ViralHashtag[]>([]);
+
+  const planId = (plan?.id || 'free') as string;
+  const focusLimit = HASHTAG_FOCUS_LIMIT_BY_PLAN[planId] ?? HASHTAG_FOCUS_LIMIT_BY_PLAN.free;
   const [loading, setLoading] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
@@ -197,15 +211,30 @@ export default function HashtagsPage() {
     });
   };
 
-  const filteredHashtags = hashtags.filter(h => {
-    if (activeCategory !== 'All' && h.category !== activeCategory) return false;
-    if (searchFilter && !h.tag.toLowerCase().includes(searchFilter.toLowerCase())) return false;
-    return true;
-  });
+  // Apply category + search filters first, then layer plan-based focus on top:
+  // top N (per plan, sorted by viralScore desc) get scores remapped to 90–98%
+  // and stay clickable; the rest render blurred + inert. Same pattern as
+  // /dashboard/keyword-intelligence and /trending — keeps the AI quota safe.
+  const displayedHashtags = useMemo(() => {
+    const filtered = hashtags.filter(h => {
+      if (activeCategory !== 'All' && h.category !== activeCategory) return false;
+      if (searchFilter && !h.tag.toLowerCase().includes(searchFilter.toLowerCase())) return false;
+      return true;
+    });
+    const ranked = [...filtered].sort((a, b) => (b.viralScore || 0) - (a.viralScore || 0));
+    return ranked.map((h, i) => {
+      if (i < focusLimit) {
+        return { ...h, focused: true, viralScore: Math.max(90, 98 - i) };
+      }
+      return { ...h, focused: false };
+    });
+  }, [hashtags, activeCategory, searchFilter, focusLimit]);
+
+  const focusedHashtags = useMemo(() => displayedHashtags.filter(h => h.focused), [displayedHashtags]);
 
   const selectedCount = selectedTags.size;
-  const highViralCount = hashtags.filter(h => h.viralScore >= 75).length;
-  const avgScore = hashtags.length > 0 ? Math.round(hashtags.reduce((s, h) => s + h.viralScore, 0) / hashtags.length) : 0;
+  const highViralCount = focusedHashtags.filter(h => h.viralScore >= 75).length;
+  const avgScore = focusedHashtags.length > 0 ? Math.round(focusedHashtags.reduce((s, h) => s + h.viralScore, 0) / focusedHashtags.length) : 0;
 
   return (
     <DashboardLayout>
@@ -229,19 +258,26 @@ export default function HashtagsPage() {
               </div>
 
               {/* Stats */}
-              <div className="flex gap-3">
-                <div className="bg-[#111] border border-[#222] rounded-xl px-3 py-2 text-center">
-                  <p className="text-[10px] text-[#666] uppercase font-bold">Total</p>
-                  <p className="text-lg font-black text-white">{hashtags.length}</p>
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex gap-3">
+                  <div className="bg-[#111] border border-[#222] rounded-xl px-3 py-2 text-center">
+                    <p className="text-[10px] text-[#666] uppercase font-bold">Focused</p>
+                    <p className="text-lg font-black text-white">{focusedHashtags.length}</p>
+                  </div>
+                  <div className="bg-[#111] border border-[#222] rounded-xl px-3 py-2 text-center">
+                    <p className="text-[10px] text-[#666] uppercase font-bold">Viral</p>
+                    <p className="text-lg font-black text-emerald-400">{highViralCount}</p>
+                  </div>
+                  <div className="bg-[#111] border border-[#222] rounded-xl px-3 py-2 text-center">
+                    <p className="text-[10px] text-[#666] uppercase font-bold">Avg Score</p>
+                    <p className={`text-lg font-black ${avgScore >= 70 ? 'text-emerald-400' : 'text-amber-400'}`}>{avgScore}%</p>
+                  </div>
                 </div>
-                <div className="bg-[#111] border border-[#222] rounded-xl px-3 py-2 text-center">
-                  <p className="text-[10px] text-[#666] uppercase font-bold">Viral</p>
-                  <p className="text-lg font-black text-emerald-400">{highViralCount}</p>
-                </div>
-                <div className="bg-[#111] border border-[#222] rounded-xl px-3 py-2 text-center">
-                  <p className="text-[10px] text-[#666] uppercase font-bold">Avg Score</p>
-                  <p className={`text-lg font-black ${avgScore >= 70 ? 'text-emerald-400' : 'text-amber-400'}`}>{avgScore}%</p>
-                </div>
+                <p className="text-[10px] text-[#888]">
+                  {planId === 'owner'
+                    ? 'Owner: unlimited focused hashtags.'
+                    : `${planId.charAt(0).toUpperCase() + planId.slice(1)} plan: ${focusLimit} focused (90–98%).`}
+                </p>
               </div>
             </div>
           </div>
@@ -308,8 +344,8 @@ export default function HashtagsPage() {
             )}
             <button onClick={() => {
               const tags = selectedCount > 0
-                ? hashtags.filter(h => selectedTags.has(h.tag))
-                : hashtags;
+                ? focusedHashtags.filter(h => selectedTags.has(h.tag))
+                : focusedHashtags;
               copyText(tags.map(h => h.tag).join(' '), 'all');
             }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition">
               {copiedItem === 'all' ? <><Check className="w-4 h-4" /> {t('common.copied')}</> : <><Copy className="w-4 h-4" /> {selectedCount > 0 ? `Copy ${selectedCount}` : t('hashtags.copyAll')}</>}
@@ -324,32 +360,38 @@ export default function HashtagsPage() {
               <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
               <p className="text-sm text-[#888]">{t('common.loading')}</p>
             </div>
-          ) : filteredHashtags.length > 0 ? (
+          ) : displayedHashtags.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {filteredHashtags.map((item, i) => {
+              {displayedHashtags.map((item, i) => {
+                const locked = !item.focused;
                 const isSelected = selectedTags.has(item.tag);
                 const isHot = item.viralScore >= 75;
                 const isMedium = item.viralScore >= 55;
                 const scoreBg = isHot ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : isMedium ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30';
+                const blurStyle: React.CSSProperties | undefined = locked
+                  ? { filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }
+                  : undefined;
 
                 return (
                   <motion.button key={`${item.tag}-${i}`} type="button"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.015 }}
-                    onClick={() => toggleTag(item.tag)}
+                    onClick={() => { if (!locked) toggleTag(item.tag); }}
                     className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition border ${
-                      isSelected
-                        ? 'bg-blue-600/20 border-blue-500 text-blue-200 shadow-lg shadow-blue-500/10'
-                        : 'bg-[#111] border-[#333] hover:border-blue-500/50 text-white hover:bg-[#151515]'
+                      locked
+                        ? 'bg-[#111] border-[#222] text-white cursor-default select-none'
+                        : isSelected
+                          ? 'bg-blue-600/20 border-blue-500 text-blue-200 shadow-lg shadow-blue-500/10'
+                          : 'bg-[#111] border-[#333] hover:border-blue-500/50 text-white hover:bg-[#151515]'
                     }`}
                   >
-                    {isHot && <Zap className="w-3 h-3 text-emerald-400" />}
-                    <span>{item.tag}</span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${scoreBg}`}>
+                    {isHot && !locked && <Zap className="w-3 h-3 text-emerald-400" />}
+                    <span style={blurStyle}>{item.tag}</span>
+                    <span style={blurStyle} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${scoreBg}`}>
                       {item.viralScore}%
                     </span>
-                    {isSelected && <Check className="w-3 h-3 text-blue-400" />}
+                    {isSelected && !locked && <Check className="w-3 h-3 text-blue-400" />}
                   </motion.button>
                 );
               })}
