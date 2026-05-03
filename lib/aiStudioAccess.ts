@@ -5,7 +5,11 @@ import FeatureAccess from '@/models/FeatureAccess';
 import User from '@/models/User';
 import Plan from '@/models/Plan';
 import { ALL_FEATURES } from '@/utils/features';
+import { roleAllowed, isSuperAdminRole } from '@/lib/roleNormalizer';
 
+// Defaults still list legacy names — roleAllowed() resolves the new
+// plan-name aliases (pro→manager, enterprise/custom→admin) so the check
+// works for both old and new naming.
 const DEFAULT_AI_STUDIO_ROLES = ['manager', 'admin', 'super-admin'];
 const DEFAULT_TOOL_ROLES = ['manager', 'admin', 'super-admin'];
 
@@ -24,7 +28,7 @@ export async function requireAIStudioAccess(
     if (!user) return { allowed: false, status: 404, error: 'User not found' };
 
     const allowedRoles = doc?.allowedRoles?.length ? doc.allowedRoles : DEFAULT_AI_STUDIO_ROLES;
-    if (!allowedRoles.includes(authUser.role)) {
+    if (!roleAllowed(authUser.role as string, allowedRoles)) {
       return { allowed: false, status: 403, error: 'AI Studio access not granted for your role. Contact admin.' };
     }
     return { allowed: true, userId: authUser.id, role: authUser.role, user };
@@ -57,10 +61,10 @@ export async function requireAIToolAccess(
     }
 
     // Super-admin always has full access to all AI tools
-    const isSuperAdmin = studio.role === 'super-admin' || studio.role === 'superadmin';
+    const isSuperAdmin = isSuperAdminRole(studio.role);
 
     const allowedRoles = doc?.allowedRoles?.length ? doc.allowedRoles : DEFAULT_TOOL_ROLES;
-    if (!isSuperAdmin && !allowedRoles.includes(studio.role)) {
+    if (!isSuperAdmin && !roleAllowed(studio.role, allowedRoles)) {
       return {
         allowed: false,
         status: 403,

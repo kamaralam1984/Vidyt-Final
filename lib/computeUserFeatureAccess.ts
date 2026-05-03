@@ -1,5 +1,6 @@
 import { normalizePlan } from '@/lib/normalizePlan';
 import { ALL_FEATURES } from '@/utils/features';
+import { roleAllowed } from '@/lib/roleNormalizer';
 
 export interface FeatureAccessDoc {
   feature: string;
@@ -144,7 +145,9 @@ export function computeUserFeatureAccess(
     const enabled = db?.enabled !== false;
     const allowedRoles =
       db?.allowedRoles && db.allowedRoles.length > 0 ? db.allowedRoles : f.defaultRoles;
-    const roleOk = allowedRoles.includes(role);
+    // Use tier-aware match so a new `pro` user passes a defaultRoles list
+    // that still says `manager`, etc.
+    const roleOk = roleAllowed(role, allowedRoles);
 
     if (!enabled) {
       out[f.id] = false;

@@ -91,6 +91,35 @@ export function migrateRole(legacyRole: string, planId: string): string {
   return roleForPlan(planId);
 }
 
+/**
+ * Return every equivalent role name for a given role. Use when checking
+ * `allowedRoles.includes(actual)` so a `pro` user passes a feature whose
+ * `defaultRoles` lists `'manager'`, etc.
+ *
+ * Tier groupings:
+ *   user-tier:  free, starter, user
+ *   pro-tier:   pro, manager
+ *   admin-tier: enterprise, custom, admin
+ *   owner-tier: super-admin, superadmin
+ */
+export function roleAliases(role: string | undefined | null): string[] {
+  const r = String(role || '').toLowerCase();
+  if (r === 'super-admin' || r === 'superadmin') return ['super-admin', 'superadmin'];
+  if (r === 'enterprise' || r === 'custom' || r === 'admin') return ['enterprise', 'custom', 'admin'];
+  if (r === 'pro' || r === 'manager') return ['pro', 'manager'];
+  if (r === 'free' || r === 'starter' || r === 'user') return ['free', 'starter', 'user'];
+  return r ? [r] : [];
+}
+
+/** True if any alias of `actual` is listed in `allowedRoles`. */
+export function roleAllowed(actual: string | undefined | null, allowedRoles: string[] | undefined | null): boolean {
+  if (!allowedRoles || allowedRoles.length === 0) return false;
+  // Owner always passes — same as before.
+  if (isSuperAdminRole(actual)) return true;
+  const aliases = roleAliases(actual);
+  return aliases.some((a) => allowedRoles.includes(a));
+}
+
 /** Display label — used in admin tables. */
 export function roleLabel(role: string | undefined | null): string {
   const r = String(role || '').toLowerCase();
