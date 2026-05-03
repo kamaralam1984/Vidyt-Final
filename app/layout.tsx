@@ -166,11 +166,54 @@ const SOFTWARE_SCHEMA = {
   }
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // ── Maintenance gate ──────────────────────────────────────────────────
+  // Edge middleware can't fetch /api/public/site-settings (CF tunnel loop),
+  // so the gate lives here in the Node-side server layout. Reads SiteSettings
+  // directly from MongoDB (with 30s in-process cache) and the JWT cookie to
+  // exempt super-admins. Whitelisted paths skip the gate so the super-admin
+  // can sign in / toggle the flag back off.
+  const { headers, cookies } = await import('next/headers');
+  const { getSiteSettings } = await import('@/lib/getSiteSettings');
+  const { verifyToken } = await import('@/lib/auth-jwt');
+
+  const hdr = headers();
+  const pathname = hdr.get('x-vidyt-pathname') || '';
+  const isWhitelisted =
+    pathname === '/maintenance' ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml';
+
+  let maintenanceLock = false;
+  if (!isWhitelisted) {
+    try {
+      const settings = await getSiteSettings();
+      if (settings.maintenanceMode) {
+        const token = cookies().get('token')?.value;
+        let isSuper = false;
+        if (token) {
+          try {
+            const payload: any = await verifyToken(token);
+            isSuper = payload?.role === 'super-admin' || payload?.role === 'superadmin';
+          } catch {}
+        }
+        if (!isSuper) maintenanceLock = true;
+      }
+    } catch {
+      // DB unreachable → fail open (don't lock the site)
+    }
+  }
+
   return (
     <html lang="en" className={inter.variable}>
       <head>
@@ -237,18 +280,44 @@ export default function RootLayout({
             crossOrigin="anonymous"
           />
         )}
-        <ThemeProvider>
-          <LocaleProvider>
-            <LangDirectionSetter />
-            <PWARegister />
-            <TrackingScript />
-            <CookieConsent />
-            <CountrySelectPopup />
-            <SiteAnnouncementBanner />
-            {children}
-            <MobileAppDownloadBar />
-          </LocaleProvider>
-        </ThemeProvider>
+        {maintenanceLock ? (
+          <div
+            style={{
+              minHeight: '100vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#0F0F0F',
+              color: '#fff',
+              padding: '32px',
+            }}
+          >
+            <div style={{ textAlign: 'center', maxWidth: 480 }}>
+              <div style={{ fontSize: 48, marginBottom: 24, lineHeight: 1 }} aria-hidden>
+                🛠️
+              </div>
+              <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>
+                We&apos;ll be right back
+              </h1>
+              <p style={{ color: '#9CA3AF', lineHeight: 1.6, fontSize: 16 }}>
+                Vidyt is undergoing scheduled maintenance. Please check back in a few minutes.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <ThemeProvider>
+            <LocaleProvider>
+              <LangDirectionSetter />
+              <PWARegister />
+              <TrackingScript />
+              <CookieConsent />
+              <CountrySelectPopup />
+              <SiteAnnouncementBanner />
+              {children}
+              <MobileAppDownloadBar />
+            </LocaleProvider>
+          </ThemeProvider>
+        )}
       </body>
     </html>
   );

@@ -185,6 +185,9 @@ function nextWithHeaders(request: NextRequest, init?: any): NextResponse {
   if (!requestHeaders.get('x-forwarded-host')) {
     requestHeaders.set('x-forwarded-host', request.headers.get('host') || 'www.vidyt.com');
   }
+  // Expose pathname to RootLayout so it can run the maintenance gate from
+  // Node (direct DB read) instead of the Edge fetch loop.
+  requestHeaders.set('x-vidyt-pathname', request.nextUrl.pathname);
   return addSecurityHeaders(
     NextResponse.next({ ...init, request: { headers: requestHeaders } }),
     request
@@ -213,40 +216,6 @@ export async function middleware(request: NextRequest) {
   // ── CORS preflight ──
   if (request.method === 'OPTIONS') {
     return addSecurityHeaders(new NextResponse(null, { status: 204 }), request);
-  }
-
-  // ── Site-wide maintenance gate ──
-  // SiteSettings.maintenanceMode === true rewrites every public page to
-  // /maintenance. Whitelist /api /admin /_next /maintenance /login /auth and a
-  // few static assets so the super-admin can sign in & toggle the flag back
-  // off, and so health/auth flows continue working.
-  if (
-    !pathname.startsWith('/api/') &&
-    !pathname.startsWith('/admin') &&
-    !pathname.startsWith('/_next/') &&
-    !pathname.startsWith('/maintenance') &&
-    !pathname.startsWith('/login') &&
-    !pathname.startsWith('/auth') &&
-    pathname !== '/favicon.ico' &&
-    pathname !== '/robots.txt' &&
-    pathname !== '/sitemap.xml'
-  ) {
-    const settings = await getCachedSiteSettings(request);
-    if (settings?.maintenanceMode) {
-      let isSuper = false;
-      const token = request.cookies.get('token')?.value;
-      if (token) {
-        try {
-          const payload: any = await verifyToken(token);
-          isSuper = payload?.role === 'super-admin' || payload?.role === 'superadmin';
-        } catch {}
-      }
-      if (!isSuper) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/maintenance';
-        return NextResponse.rewrite(url);
-      }
-    }
   }
 
   // ── Health endpoints — public but rate-limited ──
