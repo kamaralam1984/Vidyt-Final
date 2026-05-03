@@ -136,12 +136,24 @@ export async function GET(request: NextRequest) {
       // recent activity (first 60)
       if (recent.length < 60) {
         const u = userMap.get(String(p.userId));
+        // Fall back to whatever the payment metadata captured at checkout —
+        // some rows survive a User deletion or were created before the user
+        // doc finished writing, so showing the raw user id beats "Unknown".
+        const meta: any = (p as any).metadata || {};
+        const fallbackEmail =
+          meta.email || meta.userEmail || meta.customer_email || meta.payerEmail || '';
+        const fallbackName =
+          meta.name || meta.userName || meta.customer_name || meta.payerName || '';
+        const userIdStr = p.userId ? String(p.userId) : '';
+        const shortId = userIdStr ? `User #${userIdStr.slice(-8)}` : 'Unknown';
+
         recent.push({
           id: String(p._id),
           orderId: p.orderId,
           paymentId: p.paymentId || null,
-          userName: u?.name || 'Unknown',
-          userEmail: u?.email || '—',
+          userId: userIdStr,
+          userName: u?.name || fallbackName || shortId,
+          userEmail: u?.email || fallbackEmail || (userIdStr || '—'),
           userCurrentPlan: u?.subscription || 'free',
           plan: p.plan,
           billingPeriod: p.billingPeriod || 'month',

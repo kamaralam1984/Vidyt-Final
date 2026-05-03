@@ -24,6 +24,7 @@ type Totals = {
 
 type PaymentRow = {
   id: string; orderId: string; paymentId: string | null;
+  userId?: string;
   userName: string; userEmail: string; userCurrentPlan: string;
   plan: string; billingPeriod: 'month' | 'year';
   amount: number; currency: string;
