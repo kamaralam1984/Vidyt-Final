@@ -286,6 +286,37 @@ export default function SeoPagesAdmin() {
     }
   }
 
+  async function repairRejected() {
+    if (!confirm(
+      'Repair the rejected backlog?\n\n' +
+      '• Junk-slug pages (best-best-best, year-stacks, 13+ tokens) → DELETED\n' +
+      '• Salvageable pages → content rebuilt + re-scored, promoted if ≥ 75\n' +
+      '• Indexable pages are never touched\n\n' +
+      'Runs in batches of 5000. Click again to keep working through the backlog.'
+    )) return;
+    setCronBusy('repair-rejected');
+    try {
+      const res = await axios.post(
+        '/api/admin/super/seo-pages/repair-rejected?mode=auto&limit=5000',
+        {},
+        { headers: getAuthHeaders() }
+      );
+      const d = res.data || {};
+      alert(
+        `Repair done.\n` +
+        `Scanned: ${d.scanned}\n` +
+        `Deleted (junk slugs): ${d.deleted}\n` +
+        `Upgraded (rebuilt): ${d.upgraded}\n` +
+        `Promoted to indexable: ${d.promoted}`
+      );
+      await Promise.all([loadStats(), loadList()]);
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Repair failed');
+    } finally {
+      setCronBusy(null);
+    }
+  }
+
   async function deleteOne(slug: string) {
     if (!confirm(`Delete page /k/${slug}?`)) return;
     try {
@@ -369,6 +400,15 @@ export default function SeoPagesAdmin() {
           >
             {cronBusy === 'clean-bad-slugs' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
             Clean Bad Slugs
+          </button>
+          <button
+            onClick={repairRejected}
+            disabled={cronBusy !== null}
+            className="px-3 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-300 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            title="Delete junk-slug rejected pages + rebuild salvageable ones (5000/batch). Indexable count climbs as borderline pages re-score above 75."
+          >
+            {cronBusy === 'repair-rejected' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+            Repair Rejected
           </button>
           <button
             onClick={() => fireCron('/api/cron/seo-rerank-weekly', 'Weekly SEO rerank')}
