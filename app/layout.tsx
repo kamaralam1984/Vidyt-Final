@@ -172,46 +172,48 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // ── Maintenance gate ──────────────────────────────────────────────────
-  // Edge middleware can't fetch /api/public/site-settings (CF tunnel loop),
-  // so the gate lives here in the Node-side server layout. Reads SiteSettings
-  // directly from MongoDB (with 30s in-process cache) and the JWT cookie to
-  // exempt super-admins. Whitelisted paths skip the gate so the super-admin
-  // can sign in / toggle the flag back off.
-  const { headers, cookies } = await import('next/headers');
-  const { getSiteSettings } = await import('@/lib/getSiteSettings');
-  const { verifyToken } = await import('@/lib/auth-jwt');
-
-  const hdr = headers();
-  const pathname = hdr.get('x-vidyt-pathname') || '';
-  const isWhitelisted =
-    pathname === '/maintenance' ||
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/api/') ||
-    pathname.startsWith('/_next/') ||
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/auth') ||
-    pathname === '/favicon.ico' ||
-    pathname === '/robots.txt' ||
-    pathname === '/sitemap.xml';
-
+  // Wrapped in one outer try/catch so a broken dynamic import / mongoose
+  // hiccup / cookies() edge case can never 502 the homepage. If anything
+  // throws, we fail OPEN (render the site as normal).
   let maintenanceLock = false;
-  if (!isWhitelisted) {
-    try {
-      const settings = await getSiteSettings();
-      if (settings.maintenanceMode) {
-        const token = cookies().get('token')?.value;
+  try {
+    const { headers, cookies } = await import('next/headers');
+    const { getSiteSettings } = await import('@/lib/getSiteSettings');
+
+    const hdr = headers();
+    const pathname = hdr.get('x-vidyt-pathname') || '';
+    const isWhitelisted =
+      pathname === '/maintenance' ||
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/api/') ||
+      pathname.startsWith('/_next/') ||
+      pathname.startsWith('/login') ||
+      pathname.startsWith('/auth') ||
+      pathname === '/favicon.ico' ||
+      pathname === '/robots.txt' ||
+      pathname === '/sitemap.xml';
+
+    if (!isWhitelisted) {
+      const settings = await getSiteSettings().catch(() => null);
+      if (settings?.maintenanceMode) {
         let isSuper = false;
-        if (token) {
-          try {
-            const payload: any = await verifyToken(token);
+        try {
+          const token = cookies().get('token')?.value;
+          if (token) {
+            const { verifyToken } = await import('@/lib/auth-jwt');
+            const payload: any = await verifyToken(token).catch(() => null);
             isSuper = payload?.role === 'super-admin' || payload?.role === 'superadmin';
-          } catch {}
+          }
+        } catch {
+          /* cookie/JWT issue — treat as not super-admin, fall through to lock */
         }
         if (!isSuper) maintenanceLock = true;
       }
-    } catch {
-      // DB unreachable → fail open (don't lock the site)
     }
+  } catch (e) {
+    // Any unexpected error in the gate → log + fail open. Site stays up.
+    try { console.error('[RootLayout maintenance gate]', e); } catch {}
+    maintenanceLock = false;
   }
 
   return (
