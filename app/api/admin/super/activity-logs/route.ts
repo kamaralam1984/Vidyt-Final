@@ -99,19 +99,34 @@ export async function GET(request: NextRequest) {
       safe(SlowQuery.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
     ]);
 
-    // Hydrate user emails for the rows that only carry a userId.
-    const userIds = new Set<string>();
-    failedPayments.forEach((p: any) => p.userId && userIds.add(String(p.userId)));
-    notifications.forEach((n: any) => n.userId && userIds.add(String(n.userId)));
-    const users = userIds.size
-      ? await User.find({ _id: { $in: Array.from(userIds) } })
-          .select('email name')
-          .lean()
-      : [];
-    const userMap = new Map<string, any>(users.map((u: any) => [String(u._id), u]));
+    // Hydrate user emails for the rows that only carry a userId. Wrapped in
+    // its own try/catch so an invalid ObjectId string in any source can't
+    // break the whole feed.
+    let userMap = new Map<string, any>();
+    try {
+      const userIds = new Set<string>();
+      const isOid = (s: any) => typeof s === 'string' && /^[a-f0-9]{24}$/i.test(s);
+      failedPayments.forEach((p: any) => {
+        const id = p?.userId ? String(p.userId) : '';
+        if (isOid(id)) userIds.add(id);
+      });
+      notifications.forEach((n: any) => {
+        const id = n?.userId ? String(n.userId) : '';
+        if (isOid(id)) userIds.add(id);
+      });
+      const users = userIds.size
+        ? await User.find({ _id: { $in: Array.from(userIds) } })
+            .select('email name')
+            .lean()
+        : [];
+      userMap = new Map<string, any>(users.map((u: any) => [String(u._id), u]));
+    } catch (e: any) {
+      console.error('[ActivityLog user lookup failed]', e?.message || e);
+    }
 
     const events: ActivityEvent[] = [];
 
+    try {
     for (const a of abuses as any[]) {
       events.push({
         id: 'abuse:' + String(a._id),
@@ -285,6 +300,10 @@ export async function GET(request: NextRequest) {
         },
       });
     }
+    } catch (e: any) {
+      // A single bad doc / unexpected field shape mustn't kill the whole feed.
+      console.error('[ActivityLog event-builder failed]', e?.message || e, e?.stack);
+    }
 
     events.sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -308,7 +327,14 @@ export async function GET(request: NextRequest) {
       events: events.slice(0, limit),
     });
   } catch (e: any) {
-    console.error('[ActivityLog API]', e);
-    return NextResponse.json({ error: 'Failed to fetch activity logs' }, { status: 500 });
+    console.error('[ActivityLog API]', e?.message || e, e?.stack);
+    return NextResponse.json(
+      {
+        error: 'Failed to fetch activity logs',
+        // Surface the cause to super-admins so the UI banner is actionable.
+        detail: String(e?.message || e),
+      },
+      { status: 500 }
+    );
   }
 }

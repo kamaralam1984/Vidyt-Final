@@ -121,7 +121,9 @@ export default function ActivityLogsPage() {
       });
       setData(res.data);
     } catch (e: any) {
-      setError(e?.response?.data?.error || e.message || 'Failed to load logs');
+      const apiErr = e?.response?.data?.error;
+      const apiDetail = e?.response?.data?.detail;
+      setError([apiErr, apiDetail].filter(Boolean).join(' — ') || e.message || 'Failed to load logs');
     } finally {
       setLoading(false);
     }
