@@ -5,7 +5,7 @@ import axios from 'axios';
 import {
   Search, Hash, TrendingUp, BarChart2, Zap, Download, Copy, Loader2,
   Sparkles, Youtube, Check, RefreshCw, Target, Globe, Film, Radio,
-  ArrowRight, ChevronRight, MessageCircle, Lightbulb, Award, Clock, Lock,
+  ArrowRight, ChevronRight, MessageCircle, Lightbulb, Award, Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthGuard from '@/components/AuthGuard';
@@ -324,11 +324,11 @@ export default function KeywordIntelligencePage() {
                 <div className="bg-[#181818] border border-[#2A2A2A] rounded-xl shadow-lg overflow-hidden">
                   <div className="p-4 border-b border-[#2A2A2A] flex flex-wrap justify-between items-center gap-3 bg-[#1A1A1A]">
                     <div className="flex flex-col gap-1">
-                      <h4 className="text-lg font-bold text-white flex items-center gap-2"><Search className="w-5 h-5" /> Focused Keywords ({totalKeywords}{lockedCount > 0 ? ` + ${lockedCount} locked` : ''})</h4>
+                      <h4 className="text-lg font-bold text-white flex items-center gap-2"><Search className="w-5 h-5" /> Focused Keywords ({totalKeywords})</h4>
                       <p className="text-[11px] text-[#888]">
                         {planId === 'owner'
                           ? 'Owner plan: unlimited focused keywords.'
-                          : `${planId.charAt(0).toUpperCase() + planId.slice(1)} plan: ${focusLimit} focused keywords (90–98% relevance). Upgrade to focus on more.`}
+                          : `${planId.charAt(0).toUpperCase() + planId.slice(1)} plan: ${focusLimit} focused keywords (90–98% relevance).`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -382,59 +382,53 @@ export default function KeywordIntelligencePage() {
                           const sColor = kw.seoScore >= 70 ? 'text-emerald-400' : kw.seoScore >= 50 ? 'text-amber-400' : 'text-red-400';
                           const dColor = kw.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : kw.difficulty === 'Medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20';
                           const locked = !kw.focused;
+                          // Locked rows: same columns as focused so layout stays uniform, but
+                          // every cell content is blurred + non-interactive. No "Out of Focus"
+                          // badge, no "Upgrade to unlock" text — keeps the UI quiet so users
+                          // don't refresh chasing more results (which would burn the AI quota).
+                          const blurStyle: React.CSSProperties | undefined = locked
+                            ? { filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }
+                            : undefined;
                           return (
-                            <tr key={idx} className={`transition-colors group ${locked ? 'opacity-40 select-none cursor-not-allowed' : 'hover:bg-[#1A1A1A]'}`}>
+                            <tr key={idx} className={`transition-colors group ${locked ? 'select-none' : 'hover:bg-[#1A1A1A]'}`}>
                               <td className="px-5 py-3 text-[#555] text-xs">{idx + 1}</td>
                               <td className="px-5 py-3 font-medium text-white">
-                                <div className="flex items-center gap-2">
-                                  {locked && <Lock className="w-3.5 h-3.5 text-[#666]" />}
-                                  <span className={locked ? 'text-[#888]' : ''}>{kw.keyword}</span>
+                                <span style={blurStyle}>{kw.keyword}</span>
+                              </td>
+                              <td className="px-5 py-3">
+                                <span style={blurStyle} className={`inline-block px-2 py-0.5 rounded text-xs border ${kw.searchVolume === 'High' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : kw.searchVolume === 'Medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>{kw.searchVolume}</span>
+                              </td>
+                              <td className="px-5 py-3">
+                                <span style={blurStyle} className={`inline-block px-2 py-0.5 rounded text-xs border ${dColor}`}>{kw.difficulty}</span>
+                              </td>
+                              <td className="px-5 py-3">
+                                <div style={blurStyle} className="flex items-center gap-2">
+                                  <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.trendScore >= 70 ? 'bg-emerald-500' : kw.trendScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.trendScore}%` }} /></div>
+                                  <span className={`text-xs font-bold ${tColor}`}>{kw.trendScore}%</span>
                                 </div>
                               </td>
-                              {locked ? (
-                                <td className="px-5 py-3" colSpan={5}>
-                                  <span className="px-2 py-0.5 rounded text-[11px] border bg-[#222] text-[#888] border-[#333] uppercase tracking-wide">Out of Focus</span>
-                                </td>
-                              ) : (
-                                <>
-                                  <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded text-xs border ${kw.searchVolume === 'High' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : kw.searchVolume === 'Medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>{kw.searchVolume}</span></td>
-                                  <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded text-xs border ${dColor}`}>{kw.difficulty}</span></td>
-                                  <td className="px-5 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.trendScore >= 70 ? 'bg-emerald-500' : kw.trendScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.trendScore}%` }} /></div>
-                                      <span className={`text-xs font-bold ${tColor}`}>{kw.trendScore}%</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-5 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.viralScore >= 70 ? 'bg-emerald-500' : kw.viralScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.viralScore}%` }} /></div>
-                                      <span className={`text-xs font-bold ${vColor}`}>{kw.viralScore}%</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-5 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.seoScore >= 70 ? 'bg-emerald-500' : kw.seoScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.seoScore}%` }} /></div>
-                                      <span className={`text-xs font-bold ${sColor}`}>{kw.seoScore}%</span>
-                                    </div>
-                                  </td>
-                                </>
-                              )}
+                              <td className="px-5 py-3">
+                                <div style={blurStyle} className="flex items-center gap-2">
+                                  <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.viralScore >= 70 ? 'bg-emerald-500' : kw.viralScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.viralScore}%` }} /></div>
+                                  <span className={`text-xs font-bold ${vColor}`}>{kw.viralScore}%</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3">
+                                <div style={blurStyle} className="flex items-center gap-2">
+                                  <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.seoScore >= 70 ? 'bg-emerald-500' : kw.seoScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.seoScore}%` }} /></div>
+                                  <span className={`text-xs font-bold ${sColor}`}>{kw.seoScore}%</span>
+                                </div>
+                              </td>
                               <td className="px-5 py-3 text-right">
-                                <div className="flex items-center gap-2 justify-end">
-                                  {locked ? (
-                                    <span className="text-[11px] text-[#666] italic">Upgrade to unlock</span>
-                                  ) : (
-                                    <>
-                                      <button onClick={() => copyText(kw.keyword, kw.keyword)}
-                                        className="px-2.5 py-1.5 bg-[#2A2A2A] hover:bg-[#333] rounded-lg text-xs text-[#CCC] flex items-center gap-1 transition">
-                                        {copiedItem === kw.keyword ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> <span className="text-emerald-400">Copied</span></> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
-                                      </button>
-                                      <button onClick={() => { setAppliedKeyword(kw.keyword); setGlobalSearch(kw.keyword); fetchKeywordIntelligence(kw.keyword); setTimeout(() => setAppliedKeyword(null), 2000); }}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${appliedKeyword === kw.keyword ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'}`}>
-                                        {appliedKeyword === kw.keyword ? <><Check className="w-3.5 h-3.5" /> Done</> : <><Search className="w-3.5 h-3.5" /> Analyze</>}
-                                      </button>
-                                    </>
-                                  )}
+                                <div style={blurStyle} className="flex items-center gap-2 justify-end">
+                                  <button onClick={() => !locked && copyText(kw.keyword, kw.keyword)}
+                                    className="px-2.5 py-1.5 bg-[#2A2A2A] hover:bg-[#333] rounded-lg text-xs text-[#CCC] flex items-center gap-1 transition">
+                                    {copiedItem === kw.keyword ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> <span className="text-emerald-400">Copied</span></> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                                  </button>
+                                  <button onClick={() => { if (locked) return; setAppliedKeyword(kw.keyword); setGlobalSearch(kw.keyword); fetchKeywordIntelligence(kw.keyword); setTimeout(() => setAppliedKeyword(null), 2000); }}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${appliedKeyword === kw.keyword ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'}`}>
+                                    {appliedKeyword === kw.keyword ? <><Check className="w-3.5 h-3.5" /> Done</> : <><Search className="w-3.5 h-3.5" /> Analyze</>}
+                                  </button>
                                 </div>
                               </td>
                             </tr>
