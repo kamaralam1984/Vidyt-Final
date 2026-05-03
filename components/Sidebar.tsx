@@ -68,20 +68,20 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
     }
   }, []);
 
-  useEffect(() => {
-    const fetchPlatformControls = async () => {
-      try {
-        const res = await axios.get('/api/user/controls', { headers: getAuthHeaders() });
-        if (res.data) {
-          setPlatformControls(res.data);
-        }
-      } catch (_) {
-        setPlatformControls({});
-      } finally {
-        setLoadingControls(false);
+  const fetchPlatformControls = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/user/controls', { headers: getAuthHeaders() });
+      if (res.data) {
+        setPlatformControls(res.data);
       }
-    };
+    } catch (_) {
+      setPlatformControls({});
+    } finally {
+      setLoadingControls(false);
+    }
+  }, []);
 
+  useEffect(() => {
     const fetchUserInfo = async () => {
       try {
         const res = await axios.get('/api/auth/me', { headers: getAuthHeaders() });
@@ -94,13 +94,16 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
     fetchSystems();
     fetchPlatformControls();
     fetchUserInfo();
-  }, [fetchSystems]);
+  }, [fetchSystems, fetchPlatformControls]);
 
-  // Live-refresh sidebar items when the super-admin toggles features in
-  // Manage Plans. Listens for plan:updated socket push, plus tab focus /
-  // visibilitychange as fallback for users without an active socket.
+  // Live-refresh sidebar items + platform map when the super-admin toggles
+  // features in Manage Plans or platforms in Control Center. Listens for
+  // plan:updated socket pushes, plus tab focus / visibilitychange fallback.
   useEffect(() => {
-    const refresh = () => fetchSystems();
+    const refresh = () => {
+      fetchSystems();
+      fetchPlatformControls();
+    };
     const socket = getSocket();
     socket?.on('plan:updated', refresh);
     socket?.on('subscription:updated', refresh);
@@ -116,7 +119,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [fetchSystems]);
+  }, [fetchSystems, fetchPlatformControls]);
 
   // Poll usage and disable sidebar items whose quota is exhausted.
   // Refetches on mount, on route change (after user uses a feature), every

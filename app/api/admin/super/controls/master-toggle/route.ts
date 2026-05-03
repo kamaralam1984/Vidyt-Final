@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb';
 import PlatformControl from '@/models/PlatformControl';
 import ControlLog from '@/models/ControlLog';
 import { requireSuperAdminAccess } from '@/lib/adminAuth';
+import { emitPlanUpdate } from '@/lib/socket-server';
 
 // Master switch - enables/disables all platforms
 export async function POST(request: NextRequest) {
@@ -38,6 +39,10 @@ export async function POST(request: NextRequest) {
             adminId: user.id,
             adminEmail: user.email
         });
+
+        // Push to every connected client so Sidebar / Dashboard refetch the
+        // platform map without a full page reload.
+        emitPlanUpdate({ scope: 'platform', planId: 'ALL', action: isEnabled ? 'enabled' : 'disabled' });
 
         return NextResponse.json({ success: true, message: `All platforms ${isEnabled ? 'enabled' : 'disabled'}` });
     } catch (error: any) {

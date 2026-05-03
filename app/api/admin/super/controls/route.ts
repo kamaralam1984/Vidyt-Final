@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb';
 import PlatformControl from '@/models/PlatformControl';
 import ControlLog from '@/models/ControlLog';
 import { requireSuperAdminAccess } from '@/lib/adminAuth';
+import { emitPlanUpdate } from '@/lib/socket-server';
 
 // GET all controls for Super Admin
 export async function GET(request: NextRequest) {
@@ -58,6 +59,10 @@ export async function POST(request: NextRequest) {
             adminId: user.id,
             adminEmail: user.email
         });
+
+        // Push to every connected client so Sidebar / Dashboard refetch the
+        // platform map without a full page reload.
+        emitPlanUpdate({ scope: 'platform', planId: platform, action: 'updated' });
 
         return NextResponse.json({ success: true, control: updatedControl });
     } catch (error: any) {
