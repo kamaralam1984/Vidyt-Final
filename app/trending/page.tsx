@@ -8,6 +8,8 @@ import { getAuthHeaders } from '@/utils/auth';
 import { useTranslations } from '@/context/translations';
 import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
 import { useUser } from '@/hooks/useUser';
+import { extractLimitReached, type LimitReachedInfo } from '@/lib/limitReachedClient';
+import LimitReachedNotice from '@/components/LimitReachedNotice';
 import {
   TrendingUp, Flame, Youtube, Facebook, Instagram, Film, Loader2, RefreshCw,
   Copy, Check, Search, ExternalLink, ChevronDown, Zap,
@@ -39,6 +41,7 @@ export default function TrendingPage() {
   const [trendingTopics, setTrendingTopics] = useState<Array<{ keyword: string; score: number; category?: string; rank?: number; source?: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
+  const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null);
 
   const planId = (plan?.id || 'free') as string;
   const focusLimit = TRENDING_FOCUS_LIMIT_BY_PLAN[planId] ?? TRENDING_FOCUS_LIMIT_BY_PLAN.free;
@@ -51,14 +54,21 @@ export default function TrendingPage() {
 
   const fetchTrendingTopics = async () => {
     setLoading(true);
+    setLimitInfo(null);
     try {
       const response = await axios.get(`/api/trending?platform=${platform}`, { headers: getAuthHeaders() });
       const topics = response.data.trendingTopics || [];
       setTrendingTopics(topics);
       // Auto-create SEO pages for all trending topics
       topics.slice(0, 20).forEach((t: any) => autoCreateSeoPage(t.keyword));
-    } catch {
-      setTrendingTopics([]);
+    } catch (err: any) {
+      const limit = extractLimitReached(err);
+      if (limit.reached) {
+        setTrendingTopics([]);
+        setLimitInfo({ ...limit, feature: limit.feature || 'trend analysis' });
+      } else {
+        setTrendingTopics([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -152,8 +162,14 @@ export default function TrendingPage() {
           })}
         </div>
 
-        {/* Loading */}
-        {loading ? (
+        {/* Loading / Limit Reached / Topics */}
+        {limitInfo ? (
+          <LimitReachedNotice
+            info={limitInfo}
+            featureLabel="trending topics"
+            onRetry={fetchTrendingTopics}
+          />
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-10 h-10 animate-spin text-orange-500 mb-4" />
             <p className="text-[#888] text-sm">{t('common.loading')}</p>

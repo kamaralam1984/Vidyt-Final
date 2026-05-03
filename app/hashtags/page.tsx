@@ -12,6 +12,8 @@ import { getAuthHeaders } from '@/utils/auth';
 import { useTranslations } from '@/context/translations';
 import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
 import { useUser } from '@/hooks/useUser';
+import { extractLimitReached, type LimitReachedInfo } from '@/lib/limitReachedClient';
+import LimitReachedNotice from '@/components/LimitReachedNotice';
 
 type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
 
@@ -67,6 +69,7 @@ export default function HashtagsPage() {
   const [customKeyword, setCustomKeyword] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchFilter, setSearchFilter] = useState('');
+  const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null);
 
   const copyText = (text: string, label: string) => {
     try { navigator.clipboard.writeText(text); } catch {}
@@ -77,6 +80,7 @@ export default function HashtagsPage() {
   const loadHashtags = async (activePlatform: Platform, keyword?: string) => {
     setLoading(true);
     setSelectedTags(new Set());
+    setLimitInfo(null);
     const pool = NICHE_KEYWORDS[activePlatform];
     const seedKeyword = keyword?.trim() || pool[Math.floor(Math.random() * pool.length)];
     autoCreateSeoPage(seedKeyword);
@@ -92,6 +96,7 @@ export default function HashtagsPage() {
       }, { headers: getAuthHeaders() });
 
       const data = aiRes.data?.data;
+      // Note: 403 LIMIT_REACHED throws into the catch below.
       if (data) {
         // AI-generated hashtags
         (data.hashtags || []).forEach((tag: string, i: number) => {
@@ -127,7 +132,17 @@ export default function HashtagsPage() {
           }
         });
       }
-    } catch (e) {
+    } catch (e: any) {
+      const limit = extractLimitReached(e);
+      if (limit.reached) {
+        // The AI keyword endpoint is the gated one — if its quota is gone we
+        // shouldn't quietly fall back to platform/static hashtags. Show the
+        // upgrade notice and clear results so the user can't keep refreshing.
+        setHashtags([]);
+        setLimitInfo({ ...limit, feature: limit.feature || 'hashtag generator' });
+        setLoading(false);
+        return;
+      }
       console.error('[HashtagGen] AI Intelligence failed:', e);
     }
 
@@ -355,7 +370,13 @@ export default function HashtagsPage() {
 
         {/* Hashtags Grid */}
         <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-          {loading && hashtags.length === 0 ? (
+          {limitInfo ? (
+            <LimitReachedNotice
+              info={limitInfo}
+              featureLabel="hashtag generator"
+              onRetry={() => loadHashtags(platform, customKeyword.trim() || undefined)}
+            />
+          ) : loading && hashtags.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
               <p className="text-sm text-[#888]">{t('common.loading')}</p>

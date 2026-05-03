@@ -13,6 +13,8 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { useTranslations } from '@/context/translations';
 import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
 import { useUser } from '@/hooks/useUser';
+import { extractLimitReached, type LimitReachedInfo } from '@/lib/limitReachedClient';
+import LimitReachedNotice from '@/components/LimitReachedNotice';
 
 const KEYWORD_FOCUS_LIMIT_BY_PLAN: Record<string, number> = {
   free: 3,
@@ -49,6 +51,7 @@ export default function KeywordIntelligencePage() {
   const [contentType, setContentType] = useState<ContentType>('video');
   const [keywordData, setKeywordData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -144,9 +147,10 @@ export default function KeywordIntelligencePage() {
   };
 
   const fetchKeywordIntelligence = useCallback(async (query: string) => {
-    if (!query.trim()) { setKeywordData(null); setNormalizedKeywords([]); return; }
+    if (!query.trim()) { setKeywordData(null); setNormalizedKeywords([]); setLimitInfo(null); return; }
     setIsSearching(true);
     setError(null);
+    setLimitInfo(null);
     autoCreateSeoPage(query);
     try {
       const res = await axios.post('/api/ai/keyword-intelligence', {
@@ -162,7 +166,15 @@ export default function KeywordIntelligencePage() {
         setError('Failed to fetch keyword data');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'An error occurred.');
+      const limit = extractLimitReached(err);
+      if (limit.reached) {
+        // Quota gone — drop any stale results and replace UI with the upgrade notice.
+        setKeywordData(null);
+        setNormalizedKeywords([]);
+        setLimitInfo({ ...limit, feature: limit.feature || 'keyword research' });
+      } else {
+        setError(err.response?.data?.error || err.message || 'An error occurred.');
+      }
     } finally {
       setIsSearching(false);
     }
@@ -263,10 +275,19 @@ export default function KeywordIntelligencePage() {
               })}
             </div>
 
-            {error && <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl text-sm">{error}</div>}
+            {error && !limitInfo && <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl text-sm">{error}</div>}
+
+            {/* Plan Limit Reached — replaces all results & tabs */}
+            {limitInfo && (
+              <LimitReachedNotice
+                info={limitInfo}
+                featureLabel="keyword research"
+                onRetry={() => fetchKeywordIntelligence(globalSearch)}
+              />
+            )}
 
             {/* Empty State */}
-            {!keywordData && !isSearching && globalSearch.length <= 2 && (
+            {!keywordData && !isSearching && !limitInfo && globalSearch.length <= 2 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20 text-center">
                 <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
                   <Sparkles className="w-20 h-20 text-purple-500/30 mb-4" />
