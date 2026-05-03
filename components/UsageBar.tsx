@@ -21,8 +21,8 @@ type SidebarUsageEntry = {
 
 const PERIOD_SUFFIX: Record<UsagePeriod, string> = {
   day: '/day',
-  week: '/wk',
-  month: '/mo',
+  week: '/week',
+  month: '/month',
   lifetime: '',
 };
 
@@ -37,10 +37,12 @@ function barPercent(used: number, limit: number): number {
   return Math.min(100, (used / limit) * 100);
 }
 
+// 3-tier health: green = plenty left, amber = getting close, red = near/at limit.
+// Thresholds tuned so users notice the colour shift before they hit the wall.
 function barColor(percent: number): string {
-  if (percent >= 100) return 'bg-[#FF0000]';
-  if (percent >= 80) return 'bg-yellow-400';
-  return 'bg-[#00E5FF]';
+  if (percent >= 85) return 'bg-red-500';
+  if (percent >= 60) return 'bg-amber-400';
+  return 'bg-emerald-500';
 }
 
 export default function UsageBar() {
@@ -204,7 +206,8 @@ function UsageRow({
 
   const p = barPercent(used, limit);
   const color = barColor(p);
-  const danger = p >= 80;
+  const warning = p >= 60 && p < 85;
+  const danger = p >= 85;
 
   return (
     <div>
@@ -234,8 +237,11 @@ function UsageRow({
         )}
       </div>
       <p className="text-[9px] text-[#666] mt-0.5">{Math.round(p)}% used</p>
-      {p >= 80 && p < 100 && (
-        <p className="text-[9px] text-yellow-500 mt-1 font-medium">Almost at limit</p>
+      {warning && (
+        <p className="text-[9px] text-amber-400 mt-1 font-medium">Usage getting high</p>
+      )}
+      {danger && p < 100 && (
+        <p className="text-[9px] text-red-500 mt-1 font-medium">Almost at limit</p>
       )}
       {p >= 100 && (
         <p className="text-[9px] text-[#FF0000] mt-1 font-medium">Limit reached</p>
