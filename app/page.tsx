@@ -30,6 +30,10 @@ async function getPlans(): Promise<MarketingPlan[]> {
       description: p.description || '',
       features: p.features || [],
       role: p.role,
+      // Admin-set values from Manage Plans — flow through to PricingCard so the
+      // homepage card matches whatever the super-admin configured.
+      limitsDisplay: p.limitsDisplay || undefined,
+      quotas: p.limits || undefined,
       discount: d ? { percentage: d.percentage, label: d.label } : undefined,
     };
   });

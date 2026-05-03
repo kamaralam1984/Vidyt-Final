@@ -22,6 +22,18 @@ async function plansHandler(request: NextRequest): Promise<NextResponse> {
       const priceMonthly = p.priceMonthly;
       const priceYearly = yearlyUsdFromMonthly(priceMonthly, p.priceYearly);
 
+      // Friendly display strings (videos / analyses / storage / support) — admin-set in Manage Plans, hardcoded fallback only if missing.
+      const limitsDisplay = p.limitsDisplay || (basePlan ? basePlan.limits : {
+        videos: 'Custom',
+        analyses: 'Custom',
+        storage: '—',
+        support: 'Priority',
+      });
+
+      // Numeric quotas the admin set in Manage Plans (analysesLimit, titleSuggestions, hashtagCount, competitorsTracked, featureLimits map).
+      // Surface them so PricingCard can render real "Plan Quotas" instead of just friendly strings.
+      const quotas = p.limits || {};
+
       return {
         id: p.planId,
         dbId: String(p._id),
@@ -35,12 +47,10 @@ async function plansHandler(request: NextRequest): Promise<NextResponse> {
         features: p.features || [],
         description: p.description || '',
         isCustom: p.isCustom,
-        limits: p.limitsDisplay || (basePlan ? basePlan.limits : {
-          videos: 'Custom',
-          analyses: 'Custom',
-          storage: '—',
-          support: 'Priority',
-        }),
+        // BACK-COMPAT: keep `limits` as the friendly display strings for old callers.
+        limits: limitsDisplay,
+        limitsDisplay,
+        quotas,
       };
     });
 

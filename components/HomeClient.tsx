@@ -52,6 +52,20 @@ export type MarketingPlan = {
   description: string;
   features: string[];
   role?: string;
+  limitsDisplay?: {
+    videos?: string;
+    analyses?: string;
+    storage?: string;
+    support?: string;
+  };
+  quotas?: {
+    analysesLimit?: number;
+    analysesPeriod?: 'day' | 'month';
+    titleSuggestions?: number;
+    hashtagCount?: number;
+    competitorsTracked?: number;
+    featureLimits?: Record<string, { value: number; period: 'day' | 'week' | 'month' | 'lifetime' }>;
+  };
   discount?: {
     percentage: number;
     label: string;
@@ -457,7 +471,9 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                   popular: p.popular,
                   role: p.role || roll.role,
                   level: (roll as any).level,
-                  limitsDisplay: roll.limitsDisplay,
+                  // Prefer admin-set values from Manage Plans; only fall back to hardcoded preset when missing.
+                  limitsDisplay: (p.limitsDisplay && Object.keys(p.limitsDisplay).length > 0 ? p.limitsDisplay : roll.limitsDisplay) as any,
+                  quotas: p.quotas,
                   discount: p.discount,
                 };
               })}

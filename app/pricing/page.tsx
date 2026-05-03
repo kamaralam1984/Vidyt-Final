@@ -105,7 +105,12 @@ export default function PricingPage() {
           popular: p.id === 'pro' || p.popular || false,
           role: p.role || roll.role,
           level: p.level || (roll as any).level,
-          limitsDisplay: p.limitsDisplay || roll.limitsDisplay,
+          // Admin-set in Manage Plans → falls back to hardcoded preset only when missing.
+          limitsDisplay:
+            p.limitsDisplay && Object.keys(p.limitsDisplay).length > 0
+              ? p.limitsDisplay
+              : roll.limitsDisplay,
+          quotas: p.quotas,
           discount: p.discount,
         };
       });
