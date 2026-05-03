@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
         limits: p.limits || {}, // Numeric quotas
         limitsDisplay: p.limitsDisplay || {}, // Friendly strings for the 4-cell card grid
         featureFlags: p.featureFlags || {}, // Add feature flags
+        navFeatureAccess: p.navFeatureAccess || {}, // Sidebar item toggles per plan
       })),
       roleMapping: {
         'free': 'user',
@@ -197,6 +198,7 @@ export async function PATCH(request: NextRequest) {
       limits, // NEW: Allow changing limits
       limitsDisplay,
       featureFlags, // NEW: Allow changing feature flags
+      navFeatureAccess, // Per-plan sidebar item toggles
     } = body;
 
     if (!id) {
@@ -255,6 +257,13 @@ export async function PATCH(request: NextRequest) {
       }
     }
     if (featureFlags !== undefined) updateData.featureFlags = featureFlags;
+    // Merge sidebar/feature toggles key-by-key — partial updates from the form
+    // shouldn't wipe untouched feature ids from other groups.
+    if (navFeatureAccess !== undefined && navFeatureAccess && typeof navFeatureAccess === 'object') {
+      for (const [k, v] of Object.entries(navFeatureAccess)) {
+        updateData[`navFeatureAccess.${k}`] = v;
+      }
+    }
 
     await connectDB();
     const plan = await Plan.findByIdAndUpdate(id, updateData, { new: true });

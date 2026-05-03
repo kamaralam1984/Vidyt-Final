@@ -31,7 +31,36 @@ interface Plan {
     storage?: string;
     support?: string;
   };
+  navFeatureAccess?: Record<string, boolean>;
 }
+
+/**
+ * Sidebar items the super-admin can toggle per plan from this form. Keep this
+ * list in sync with utils/features.ts ALL_FEATURES (group: 'sidebar') — Sidebar.tsx
+ * gates each item via plan.navFeatureAccess[id], so saving here flows straight
+ * to every connected user's sidebar via the plan:updated socket push.
+ */
+const SIDEBAR_FEATURE_OPTIONS: { id: string; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'videos', label: 'My Videos' },
+  { id: 'youtube_seo', label: 'YouTube Live SEO Analyzer' },
+  { id: 'keyword_intelligence', label: 'Keyword Intelligence Engine' },
+  { id: 'facebook_seo', label: 'Facebook SEO Analyzer' },
+  { id: 'instagram_seo', label: 'Instagram SEO Analyzer' },
+  { id: 'viral_optimizer', label: 'AI Viral Optimization Engine' },
+  { id: 'facebook_audit', label: 'Facebook Audit' },
+  { id: 'trending', label: 'Trending' },
+  { id: 'hashtags', label: 'Hashtags' },
+  { id: 'posting_time', label: 'Posting Time' },
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'calendar', label: 'Content Calendar' },
+  { id: 'script_generator', label: 'Script Generator' },
+  { id: 'ai_coach', label: 'AI Coach' },
+  { id: 'thumbnail_generator', label: 'Thumbnail Generator' },
+  { id: 'hook_generator', label: 'Hook Generator' },
+  { id: 'shorts_creator', label: 'Shorts Creator' },
+  { id: 'youtube_growth', label: 'YouTube Growth' },
+];
 
 const EMPTY_LIMITS = {
   analysesLimit: 5,
@@ -135,6 +164,8 @@ export default function PlanManager() {
     limitsDisplayAnalyses: EMPTY_LIMITS_DISPLAY.analyses,
     limitsDisplayStorage: EMPTY_LIMITS_DISPLAY.storage,
     limitsDisplaySupport: EMPTY_LIMITS_DISPLAY.support,
+    // Sidebar items enabled for this plan (id -> on/off)
+    navFeatureAccess: {} as Record<string, boolean>,
   });
 
   // Role access data: planId -> list of roles with feature access
@@ -255,6 +286,12 @@ export default function PlanManager() {
         storage: formData.limitsDisplayStorage,
         support: formData.limitsDisplaySupport,
       };
+      // Send only the sidebar feature ids — partial merge in the API protects
+      // any non-sidebar keys (dashboard groups etc.) already on the plan doc.
+      const navFeatureAccessPayload: Record<string, boolean> = {};
+      for (const opt of SIDEBAR_FEATURE_OPTIONS) {
+        navFeatureAccessPayload[opt.id] = !!formData.navFeatureAccess[opt.id];
+      }
 
       let response;
       const hdr = getAuthHeaders();
@@ -269,6 +306,7 @@ export default function PlanManager() {
             features,
             limits: limitsPayload,
             limitsDisplay: limitsDisplayPayload,
+            navFeatureAccess: navFeatureAccessPayload,
           },
           { headers: hdr, timeout: 30_000 }
         );
@@ -282,6 +320,7 @@ export default function PlanManager() {
             features,
             limits: limitsPayload,
             limitsDisplay: limitsDisplayPayload,
+            navFeatureAccess: navFeatureAccessPayload,
           },
           { headers: hdr, timeout: 30_000 }
         );
@@ -320,6 +359,7 @@ export default function PlanManager() {
       limitsDisplayAnalyses: ld.analyses ?? '',
       limitsDisplayStorage: ld.storage ?? '',
       limitsDisplaySupport: ld.support ?? '',
+      navFeatureAccess: { ...(plan.navFeatureAccess || {}) },
     });
     setEditingId(plan.id);
     setShowForm(true);
@@ -386,6 +426,7 @@ export default function PlanManager() {
       limitsDisplayAnalyses: EMPTY_LIMITS_DISPLAY.analyses,
       limitsDisplayStorage: EMPTY_LIMITS_DISPLAY.storage,
       limitsDisplaySupport: EMPTY_LIMITS_DISPLAY.support,
+      navFeatureAccess: {},
     });
     setEditingId(null);
     setShowForm(false);
@@ -620,6 +661,58 @@ export default function PlanManager() {
                     className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Sidebar Features — items shown in the user's left sidebar for this plan */}
+            <div className="border-t border-gray-700 pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-gray-300">
+                  Sidebar Features <span className="text-xs font-normal text-gray-500">(left-side menu items shown to users on this plan)</span>
+                </h4>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const all: Record<string, boolean> = {};
+                      SIDEBAR_FEATURE_OPTIONS.forEach((o) => { all[o.id] = true; });
+                      setFormData({ ...formData, navFeatureAccess: all });
+                    }}
+                    className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-300"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const none: Record<string, boolean> = {};
+                      SIDEBAR_FEATURE_OPTIONS.forEach((o) => { none[o.id] = false; });
+                      setFormData({ ...formData, navFeatureAccess: none });
+                    }}
+                    className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-300"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {SIDEBAR_FEATURE_OPTIONS.map((opt) => {
+                  const checked = !!formData.navFeatureAccess[opt.id];
+                  return (
+                    <label key={opt.id} className="flex items-center gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded cursor-pointer hover:border-gray-500">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          navFeatureAccess: { ...formData.navFeatureAccess, [opt.id]: e.target.checked },
+                        })}
+                        className="accent-green-500"
+                      />
+                      <span className="text-xs text-gray-200">{opt.label}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
