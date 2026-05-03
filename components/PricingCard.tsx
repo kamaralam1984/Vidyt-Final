@@ -69,6 +69,17 @@ const formatQuotaValue = (n: number | undefined) => {
 const periodSuffix = (p?: string) =>
   p === 'day' ? '/day' : p === 'week' ? '/week' : p === 'month' ? '/month' : p === 'lifetime' ? ' total' : '';
 
+// featureLimits map keys that are already represented by a flat numeric field
+// on plan.quotas — prevent the card from rendering them twice (e.g. seed-plans
+// stores both `analysesLimit` and `featureLimits.analyses`).
+const FEATURE_LIMITS_DUP_KEYS = new Set([
+  'analyses',
+  'titleSuggestions',
+  'hashtagCount',
+  'hashtagsPerPost',
+  'competitorsTracked',
+]);
+
 interface PricingCardProps {
   plan: PricingPlan;
   billingPeriod: 'month' | 'year';
@@ -263,14 +274,16 @@ export default function PricingCard({
                 </li>
               )}
               {plan.quotas.featureLimits &&
-                Object.entries(plan.quotas.featureLimits).map(([key, val]) => (
-                  <li key={key} className="flex justify-between">
-                    <span className="text-[#AAAAAA]">{FEATURE_LIMIT_LABELS[key] || key.replace(/_/g, ' ')}</span>
-                    <span className="text-white font-semibold">
-                      {formatQuotaValue(val?.value)}{periodSuffix(val?.period)}
-                    </span>
-                  </li>
-                ))}
+                Object.entries(plan.quotas.featureLimits)
+                  .filter(([key]) => !FEATURE_LIMITS_DUP_KEYS.has(key))
+                  .map(([key, val]) => (
+                    <li key={key} className="flex justify-between">
+                      <span className="text-[#AAAAAA]">{FEATURE_LIMIT_LABELS[key] || key.replace(/_/g, ' ')}</span>
+                      <span className="text-white font-semibold">
+                        {formatQuotaValue(val?.value)}{periodSuffix(val?.period)}
+                      </span>
+                    </li>
+                  ))}
             </ul>
           </div>
         )}
