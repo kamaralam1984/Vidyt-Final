@@ -21,6 +21,7 @@ const CookieConsent = dynamic(() => import("@/components/CookieConsent"), { ssr:
 const LangDirectionSetter = dynamic(() => import("@/components/LangDirectionSetter"), { ssr: false });
 const CountrySelectPopup = dynamic(() => import("@/components/CountrySelectPopup"), { ssr: false });
 const MobileAppDownloadBar = dynamic(() => import("@/components/MobileAppDownloadBar"), { ssr: false });
+const SiteAnnouncementBanner = dynamic(() => import("@/components/SiteAnnouncementBanner"), { ssr: false });
 
 export const viewport: Viewport = {
   themeColor: "#0F0F0F",
@@ -243,6 +244,7 @@ export default function RootLayout({
             <TrackingScript />
             <CookieConsent />
             <CountrySelectPopup />
+            <SiteAnnouncementBanner />
             {children}
             <MobileAppDownloadBar />
           </LocaleProvider>

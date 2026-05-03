@@ -9,6 +9,7 @@ import { sendOTPEmail } from '@/services/email';
 import { hashPassword, normalizePlan, VALID_PLANS } from '@/lib/auth';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { getClientIP } from '@/lib/rateLimiter';
+import { getSiteSettings } from '@/lib/getSiteSettings';
 import { z } from 'zod';
 
 // Basic rate limiting to prevent OTP and sign up abuse
@@ -50,6 +51,16 @@ const prepareSignupSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Site-wide registration gate — Control Center "User Registration" toggle.
+    // Existing users can still log in; only new sign-ups are blocked.
+    const siteSettings = await getSiteSettings();
+    if (!siteSettings.registrationOpen) {
+      return NextResponse.json(
+        { error: 'New signups are temporarily closed. Please try again later.' },
+        { status: 403 }
+      );
+    }
+
     await connectDB();
 
     const body = await request.json();

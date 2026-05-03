@@ -12,6 +12,32 @@ const CLOUDFLARE_IP_RANGES = [
   '190.93.240.0/20', '197.234.240.0/22', '198.41.128.0/17',
 ];
 
+// ─── In-memory site-settings cache (Edge-compatible) ──────────────────────────
+// SiteSettings drive the maintenance gate. Cached 30s in-process so the gate
+// doesn't fetch the public endpoint on every request.
+let edgeSiteSettingsCache: {
+  data: { maintenanceMode?: boolean; registrationOpen?: boolean; announcement?: string; announcementActive?: boolean } | null;
+  expiresAt: number;
+} | null = null;
+
+async function getCachedSiteSettings(request: NextRequest) {
+  const now = Date.now();
+  if (edgeSiteSettingsCache && now < edgeSiteSettingsCache.expiresAt) return edgeSiteSettingsCache.data;
+  try {
+    const res = await fetch(new URL('/api/public/site-settings', request.url), { cache: 'no-store' });
+    if (!res.ok) {
+      edgeSiteSettingsCache = { data: null, expiresAt: now + 30_000 };
+      return null;
+    }
+    const data = await res.json();
+    edgeSiteSettingsCache = { data, expiresAt: now + 30_000 };
+    return data;
+  } catch {
+    edgeSiteSettingsCache = { data: null, expiresAt: now + 30_000 };
+    return null;
+  }
+}
+
 // ─── In-memory rate limiter (Edge-compatible) ─────────────────────────────────
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
@@ -187,6 +213,40 @@ export async function middleware(request: NextRequest) {
   // ── CORS preflight ──
   if (request.method === 'OPTIONS') {
     return addSecurityHeaders(new NextResponse(null, { status: 204 }), request);
+  }
+
+  // ── Site-wide maintenance gate ──
+  // SiteSettings.maintenanceMode === true rewrites every public page to
+  // /maintenance. Whitelist /api /admin /_next /maintenance /login /auth and a
+  // few static assets so the super-admin can sign in & toggle the flag back
+  // off, and so health/auth flows continue working.
+  if (
+    !pathname.startsWith('/api/') &&
+    !pathname.startsWith('/admin') &&
+    !pathname.startsWith('/_next/') &&
+    !pathname.startsWith('/maintenance') &&
+    !pathname.startsWith('/login') &&
+    !pathname.startsWith('/auth') &&
+    pathname !== '/favicon.ico' &&
+    pathname !== '/robots.txt' &&
+    pathname !== '/sitemap.xml'
+  ) {
+    const settings = await getCachedSiteSettings(request);
+    if (settings?.maintenanceMode) {
+      let isSuper = false;
+      const token = request.cookies.get('token')?.value;
+      if (token) {
+        try {
+          const payload: any = await verifyToken(token);
+          isSuper = payload?.role === 'super-admin' || payload?.role === 'superadmin';
+        } catch {}
+      }
+      if (!isSuper) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/maintenance';
+        return NextResponse.rewrite(url);
+      }
+    }
   }
 
   // ── Health endpoints — public but rate-limited ──

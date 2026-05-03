@@ -12,6 +12,7 @@ import Plan from '@/models/Plan';
 import { buildRazorpayOrderFromUsd } from '@/lib/paymentCurrency';
 import { computeSignupUsdCharge, SIGNUP_EARLY_BIRD_DISCOUNT } from '@/lib/paymentCurrencyShared';
 import { razorpay } from '@/services/payments/razorpay';
+import { getSiteSettings } from '@/lib/getSiteSettings';
 
 const verifyAndPaySchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -43,6 +44,17 @@ function checkRateLimit(email: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    // Site-wide registration gate — Control Center "User Registration" toggle.
+    // Stops the final create-user step even if a user already got an OTP before
+    // the admin closed registrations.
+    const siteSettings = await getSiteSettings();
+    if (!siteSettings.registrationOpen) {
+      return NextResponse.json(
+        { error: 'New signups are temporarily closed. Please try again later.' },
+        { status: 403 }
+      );
+    }
+
     await connectDB();
 
     const body = await request.json();

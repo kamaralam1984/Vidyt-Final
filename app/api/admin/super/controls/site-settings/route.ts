@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { invalidateSiteSettingsCache } from '@/lib/getSiteSettings';
 
 // Simple key-value settings stored in a single document
 const SiteSettingsSchema = new mongoose.Schema({
@@ -53,6 +54,10 @@ export async function POST(request: NextRequest) {
     { $set: update },
     { upsert: true, new: true }
   );
+
+  // Drop the in-process cache so the next request to maintenance gate /
+  // signup endpoints / banner sees the new values immediately.
+  invalidateSiteSettingsCache();
 
   return NextResponse.json({ success: true });
 }
