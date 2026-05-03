@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { useTranslations } from '@/context/translations';
 import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
+import { useUser } from '@/hooks/useUser';
 import {
   TrendingUp, Flame, Youtube, Facebook, Instagram, Film, Loader2, RefreshCw,
   Copy, Check, Search, ExternalLink, ChevronDown, Zap,
@@ -14,6 +15,15 @@ import {
 import Link from 'next/link';
 
 type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
+
+const TRENDING_FOCUS_LIMIT_BY_PLAN: Record<string, number> = {
+  free: 3,
+  starter: 6,
+  pro: 15,
+  enterprise: 30,
+  custom: 30,
+  owner: Infinity,
+};
 
 const PLATFORM_CONFIG: Record<Platform, { icon: typeof Youtube; color: string; bg: string; border: string }> = {
   youtube: { icon: Youtube, color: 'text-white', bg: 'bg-red-600', border: 'border-red-500/30' },
@@ -24,11 +34,14 @@ const PLATFORM_CONFIG: Record<Platform, { icon: typeof Youtube; color: string; b
 
 export default function TrendingPage() {
   const { t } = useTranslations();
+  const { plan } = useUser();
   const [platform, setPlatform] = useState<Platform>('youtube');
   const [trendingTopics, setTrendingTopics] = useState<Array<{ keyword: string; score: number; category?: string; rank?: number; source?: string }>>([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
+
+  const planId = (plan?.id || 'free') as string;
+  const focusLimit = TRENDING_FOCUS_LIMIT_BY_PLAN[planId] ?? TRENDING_FOCUS_LIMIT_BY_PLAN.free;
 
   const copyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -53,13 +66,28 @@ export default function TrendingPage() {
 
   useEffect(() => {
     fetchTrendingTopics();
-    setShowAll(false);
   }, [platform]);
 
-  const displayedTopics = showAll ? trendingTopics : trendingTopics.slice(0, 15);
-  const topKeyword = trendingTopics[0]?.keyword || '';
-  const avgScore = trendingTopics.length > 0 ? Math.round(trendingTopics.reduce((s, t) => s + t.score, 0) / trendingTopics.length) : 0;
-  const highViralCount = trendingTopics.filter(t => t.score >= 75).length;
+  // Sort by score desc, mark top N as focused (scores remapped to 90–98%),
+  // rest become "locked" (rendered blurred & non-interactive). Same pattern as
+  // /dashboard/keyword-intelligence so users can't read locked rows clearly,
+  // which prevents refresh-spamming the AI quota.
+  const displayedTopics = useMemo(() => {
+    if (trendingTopics.length === 0) return [];
+    const ranked = [...trendingTopics].sort((a, b) => (b.score || 0) - (a.score || 0));
+    return ranked.map((topic, i) => {
+      if (i < focusLimit) {
+        return { ...topic, focused: true, score: Math.max(90, 98 - i) };
+      }
+      return { ...topic, focused: false };
+    });
+  }, [trendingTopics, focusLimit]);
+
+  const focusedTopics = useMemo(() => displayedTopics.filter(t => t.focused), [displayedTopics]);
+
+  const topKeyword = focusedTopics[0]?.keyword || '';
+  const avgScore = focusedTopics.length > 0 ? Math.round(focusedTopics.reduce((s, t) => s + t.score, 0) / focusedTopics.length) : 0;
+  const highViralCount = focusedTopics.filter(t => t.score >= 75).length;
 
   return (
     <DashboardLayout>
@@ -89,11 +117,11 @@ export default function TrendingPage() {
             </div>
 
             {/* Live Stats */}
-            {!loading && trendingTopics.length > 0 && (
+            {!loading && focusedTopics.length > 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 grid grid-cols-3 gap-3">
                 <div className="bg-[#111]/60 border border-[#222] rounded-xl p-3 text-center">
-                  <p className="text-xs text-[#666] uppercase font-bold">Total Trends</p>
-                  <p className="text-xl font-black text-white">{trendingTopics.length}</p>
+                  <p className="text-xs text-[#666] uppercase font-bold">Focused Trends</p>
+                  <p className="text-xl font-black text-white">{focusedTopics.length}</p>
                 </div>
                 <div className="bg-[#111]/60 border border-[#222] rounded-xl p-3 text-center">
                   <p className="text-xs text-[#666] uppercase font-bold">High Viral</p>
@@ -161,11 +189,18 @@ export default function TrendingPage() {
 
             {/* Topics List */}
             <div className="bg-[#181818] border border-[#212121] rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-[#212121] flex items-center justify-between">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-orange-400" /> {t('trending.title')} — {(platform || '').charAt(0).toUpperCase() + (platform || '').slice(1)}
-                </h2>
-                <button onClick={() => copyText(trendingTopics.map(t => t.keyword).join(', '), 'all')}
+              <div className="p-4 border-b border-[#212121] flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-col gap-0.5">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-orange-400" /> {t('trending.title')} — {(platform || '').charAt(0).toUpperCase() + (platform || '').slice(1)}
+                  </h2>
+                  <p className="text-[11px] text-[#888]">
+                    {planId === 'owner'
+                      ? 'Owner plan: unlimited focused trends.'
+                      : `${planId.charAt(0).toUpperCase() + planId.slice(1)} plan: ${focusLimit} focused trends (90–98% relevance).`}
+                  </p>
+                </div>
+                <button onClick={() => copyText(focusedTopics.map(t => t.keyword).join(', '), 'all')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-[#222] hover:bg-[#333] rounded-lg text-xs text-[#CCC]">
                   {copiedItem === 'all' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   {copiedItem === 'all' ? t('common.copied') : t('hashtags.copyAll')}
@@ -174,47 +209,51 @@ export default function TrendingPage() {
 
               <div className="divide-y divide-[#1a1a1a]">
                 {displayedTopics.map((topic, i) => {
+                  const locked = !topic.focused;
                   const isHot = topic.score >= 75;
                   const isMedium = topic.score >= 55;
                   const barColor = isHot ? 'bg-emerald-500' : isMedium ? 'bg-amber-500' : 'bg-red-500';
                   const textColor = isHot ? 'text-emerald-400' : isMedium ? 'text-amber-400' : 'text-red-400';
                   const badge = isHot ? 'VIRAL' : isMedium ? 'TRENDING' : 'LOW';
                   const badgeBg = isHot ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : isMedium ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20';
+                  const blurStyle: React.CSSProperties | undefined = locked
+                    ? { filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }
+                    : undefined;
 
                   return (
-                    <motion.div key={topic.keyword} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#111] transition group">
-                      {/* Rank */}
+                    <motion.div key={`${topic.keyword}-${i}`} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                      className={`flex items-center gap-4 px-5 py-3.5 transition group ${locked ? 'select-none' : 'hover:bg-[#111]'}`}>
+                      {/* Rank — kept clear so layout reads as a continuous list */}
                       <span className={`text-sm font-black w-8 text-center ${i < 3 ? 'text-orange-400' : 'text-[#555]'}`}>
                         {i < 3 ? '🔥' : `${i + 1}`}
                       </span>
 
                       {/* Keyword + Category */}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0" style={blurStyle}>
                         <p className="text-sm font-bold text-white truncate">{topic.keyword}</p>
                         {topic.category && <p className="text-[10px] text-[#666] truncate">{topic.category}</p>}
                       </div>
 
                       {/* Badge */}
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${badgeBg} hidden sm:inline`}>
+                      <span style={blurStyle} className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${badgeBg} hidden sm:inline`}>
                         {badge}
                       </span>
 
                       {/* Score Bar */}
-                      <div className="w-20 h-2 bg-[#333] rounded-full overflow-hidden">
+                      <div style={blurStyle} className="w-20 h-2 bg-[#333] rounded-full overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: `${topic.score}%` }} transition={{ delay: i * 0.03, duration: 0.5 }}
                           className={`h-full rounded-full ${barColor}`} />
                       </div>
 
                       {/* Score */}
-                      <span className={`text-xs font-black w-10 text-right ${textColor}`}>{topic.score}%</span>
+                      <span style={blurStyle} className={`text-xs font-black w-10 text-right ${textColor}`}>{topic.score}%</span>
 
                       {/* Actions */}
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => copyText(topic.keyword, `kw-${i}`)} className="p-1.5 bg-[#222] hover:bg-[#333] rounded-lg">
+                      <div style={blurStyle} className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => !locked && copyText(topic.keyword, `kw-${i}`)} className="p-1.5 bg-[#222] hover:bg-[#333] rounded-lg">
                           {copiedItem === `kw-${i}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#888]" />}
                         </button>
-                        <Link href={`/dashboard/keyword-intelligence?q=${encodeURIComponent(topic.keyword)}`} className="p-1.5 bg-[#222] hover:bg-[#333] rounded-lg">
+                        <Link href={locked ? '#' : `/dashboard/keyword-intelligence?q=${encodeURIComponent(topic.keyword)}`} className="p-1.5 bg-[#222] hover:bg-[#333] rounded-lg">
                           <Search className="w-3.5 h-3.5 text-[#888]" />
                         </Link>
                       </div>
@@ -222,14 +261,6 @@ export default function TrendingPage() {
                   );
                 })}
               </div>
-
-              {/* Show More */}
-              {trendingTopics.length > 15 && !showAll && (
-                <button onClick={() => setShowAll(true)}
-                  className="w-full py-3 text-sm text-orange-400 hover:text-orange-300 font-bold flex items-center justify-center gap-1 border-t border-[#212121] hover:bg-[#111] transition">
-                  <ChevronDown className="w-4 h-4" /> Show All {trendingTopics.length} Topics
-                </button>
-              )}
             </div>
           </div>
         ) : (
