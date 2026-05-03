@@ -195,16 +195,20 @@ function TrendingWidget() {
             <p className="text-xs text-[#555]">No trending data</p>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {topics.map((t, i) => (
-              <div key={t.keyword} className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white/[0.03] transition-colors">
-                <span className="text-[10px] font-bold text-[#333] w-4 shrink-0">#{i + 1}</span>
-                <span className="text-xs text-white flex-1 truncate">{t.keyword}</span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <div className="w-12 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+              <div
+                key={t.keyword}
+                title={t.keyword}
+                className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+              >
+                <span className="text-[10px] font-bold text-[#444] w-4 shrink-0 mt-0.5">#{i + 1}</span>
+                <span className="text-xs text-white flex-1 leading-snug break-words">{t.keyword}</span>
+                <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                  <div className="w-10 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
                     <div className="h-full bg-orange-500 rounded-full" style={{ width: `${Math.min(t.score, 100)}%` }} />
                   </div>
-                  <span className="text-[9px] text-[#555] w-6 text-right">{Math.round(t.score)}</span>
+                  <span className="text-[9px] text-[#666] w-6 text-right tabular-nums">{Math.round(t.score)}</span>
                 </div>
               </div>
             ))}
