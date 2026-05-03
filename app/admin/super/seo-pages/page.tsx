@@ -286,6 +286,66 @@ export default function SeoPagesAdmin() {
     }
   }
 
+  async function deleteAllRejected() {
+    if (!confirm(
+      'DELETE every non-indexable /k/ page right now?\n\n' +
+      '• Wipes the rejected backlog (likely 400k+ rows)\n' +
+      '• Indexable pages stay untouched\n' +
+      '• Cannot be undone — pages are removed from the database\n\n' +
+      'Recommended: click Recreate Fresh after this to seed clean replacements.'
+    )) return;
+    if (!confirm('Are you absolutely sure? Click OK to proceed with the bulk delete.')) return;
+    setCronBusy('delete-all-rejected');
+    try {
+      const res = await axios.post(
+        '/api/admin/super/seo-pages/delete-all-rejected',
+        {},
+        { headers: getAuthHeaders() }
+      );
+      const d = res.data || {};
+      alert(
+        `Deleted ${d.deleted} rejected pages.\n` +
+        `Total before: ${d.totalBefore}\n` +
+        `Total after: ${d.totalAfter}`
+      );
+      await Promise.all([loadStats(), loadList()]);
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Bulk delete failed');
+    } finally {
+      setCronBusy(null);
+    }
+  }
+
+  async function recreateFresh() {
+    if (!confirm(
+      'Recreate fresh pages?\n\n' +
+      '• Runs curated generator (75 niche pages)\n' +
+      '• Runs trending generator (50 trending + hashtag pages)\n' +
+      '• Runs the promote cron (top 100 by score → indexable + IndexNow)\n\n' +
+      'Click again later for more — generators skip slugs that already exist.'
+    )) return;
+    setCronBusy('recreate-fresh');
+    try {
+      const res = await axios.post(
+        '/api/admin/super/seo-pages/recreate-fresh',
+        {},
+        { headers: getAuthHeaders() }
+      );
+      const d = res.data || {};
+      alert(
+        `Pipeline complete.\n` +
+        `Curated created: ${d.steps?.curated?.created || 0}\n` +
+        `Trending created: ${d.steps?.trending?.created || 0}\n` +
+        `Promoted to indexable: ${d.steps?.promoted?.promoted || 0}`
+      );
+      await Promise.all([loadStats(), loadList()]);
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Recreate failed');
+    } finally {
+      setCronBusy(null);
+    }
+  }
+
   async function repairRejected() {
     if (!confirm(
       'Repair the rejected backlog?\n\n' +
@@ -409,6 +469,24 @@ export default function SeoPagesAdmin() {
           >
             {cronBusy === 'repair-rejected' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
             Repair Rejected
+          </button>
+          <button
+            onClick={deleteAllRejected}
+            disabled={cronBusy !== null}
+            className="px-3 py-2 bg-rose-600/30 hover:bg-rose-600/40 border border-rose-500/40 text-rose-200 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            title="Wipe ALL non-indexable /k/ pages from the database. Indexable pages preserved. Pair with Recreate Fresh to seed clean replacements."
+          >
+            {cronBusy === 'delete-all-rejected' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+            Delete All Rejected
+          </button>
+          <button
+            onClick={recreateFresh}
+            disabled={cronBusy !== null}
+            className="px-3 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-300 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            title="One-click pipeline: curated generator + trending generator + promote-top-100 + IndexNow ping. Run this after Delete All Rejected to seed clean pages."
+          >
+            {cronBusy === 'recreate-fresh' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            Recreate Fresh
           </button>
           <button
             onClick={() => fireCron('/api/cron/seo-rerank-weekly', 'Weekly SEO rerank')}
