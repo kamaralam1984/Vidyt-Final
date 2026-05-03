@@ -15,6 +15,9 @@ import DeletionLog from '@/models/DeletionLog';
 import Payment from '@/models/Payment';
 import Notification from '@/models/Notification';
 import User from '@/models/User';
+import AIJobLog from '@/models/AIJobLog';
+import SlowQuery from '@/models/SlowQuery';
+import { ErrorLog } from '@/lib/errorLogger';
 
 type Severity = 'critical' | 'warning' | 'info';
 type Source =
@@ -23,7 +26,10 @@ type Source =
   | 'control'
   | 'deletion'
   | 'payment'
-  | 'notification';
+  | 'notification'
+  | 'error'
+  | 'ai_job'
+  | 'slow_query';
 
 interface ActivityEvent {
   id: string;
@@ -69,6 +75,9 @@ export async function GET(request: NextRequest) {
       deletions,
       failedPayments,
       notifications,
+      errors,
+      aiJobs,
+      slowQueries,
     ] = await Promise.all([
       AbuseLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean(),
       AuditAlert.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean(),
@@ -76,6 +85,9 @@ export async function GET(request: NextRequest) {
       DeletionLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean(),
       Payment.find({ status: 'failed', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean(),
       Notification.find({ type: 'limit_reached', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean(),
+      ErrorLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean(),
+      AIJobLog.find({ status: 'failed', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean(),
+      SlowQuery.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean(),
     ]);
 
     // Hydrate user emails for the rows that only carry a userId.
@@ -190,6 +202,78 @@ export async function GET(request: NextRequest) {
         message: n.message || '',
         actor: u?.email || (n.userId ? String(n.userId) : undefined),
         timestamp: n.createdAt,
+      });
+    }
+
+    for (const er of errors as any[]) {
+      // 5xx → critical, 4xx → warning, otherwise treat by type:
+      // 'server' / 'database' / 'payment' / 'ai' = critical;
+      // 'api' = warning; 'client' = info.
+      const code = Number(er.statusCode || 0);
+      let severity: Severity = 'info';
+      if (code >= 500 || ['server', 'database', 'payment', 'ai'].includes(String(er.type))) {
+        severity = 'critical';
+      } else if (code >= 400 || er.type === 'api') {
+        severity = 'warning';
+      }
+      events.push({
+        id: 'error:' + String(er._id),
+        source: 'error',
+        severity,
+        type: String(er.type || 'error'),
+        title: `${String(er.type || 'error').toUpperCase()} · ${er.route || 'unknown route'}${code ? ` · ${code}` : ''}`,
+        message: er.message || '',
+        actor: er.userId ? String(er.userId) : undefined,
+        timestamp: er.createdAt,
+        details: {
+          stack: er.stack,
+          statusCode: er.statusCode,
+          userAgent: er.userAgent,
+          metadata: er.metadata,
+          resolved: er.resolved,
+        },
+      });
+    }
+
+    for (const j of aiJobs as any[]) {
+      events.push({
+        id: 'ai:' + String(j._id),
+        source: 'ai_job',
+        severity: 'critical',
+        type: `ai_job_failed:${j.jobType || 'unknown'}`,
+        title: `AI Job Failed · ${j.jobType || 'unknown'}`,
+        message: j.error || 'Job failed without an error message',
+        actor: j.userId ? String(j.userId) : undefined,
+        timestamp: j.createdAt,
+        details: {
+          attempts: j.attempts,
+          queueJobId: j.queueJobId,
+          input: j.input,
+        },
+      });
+    }
+
+    for (const sq of slowQueries as any[]) {
+      // > 5s = critical, 1.5–5s = warning, otherwise info.
+      const d = Number(sq.durationMs || 0);
+      const severity: Severity = d >= 5000 ? 'critical' : d >= 1500 ? 'warning' : 'info';
+      events.push({
+        id: 'slow:' + String(sq._id),
+        source: 'slow_query',
+        severity,
+        type: `slow_${sq.kind || 'op'}`,
+        title: `Slow ${sq.kind || 'operation'} · ${sq.label || sq.route || sq.collection || 'unknown'} · ${d}ms`,
+        message: `Took ${d}ms${sq.thresholdMs ? ` (threshold ${sq.thresholdMs}ms)` : ''}`,
+        actor: sq.route || sq.collection,
+        timestamp: sq.createdAt,
+        details: {
+          durationMs: sq.durationMs,
+          thresholdMs: sq.thresholdMs,
+          route: sq.route,
+          collection: sq.collection,
+          query: sq.query,
+          metadata: sq.metadata,
+        },
       });
     }
 

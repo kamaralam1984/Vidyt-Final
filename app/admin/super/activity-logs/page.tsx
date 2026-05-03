@@ -19,11 +19,23 @@ import {
   RefreshCw,
   Filter,
   Loader2,
+  Bug,
+  Cpu,
+  Timer,
 } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
 
 type Severity = 'critical' | 'warning' | 'info';
-type Source = 'abuse' | 'audit' | 'control' | 'deletion' | 'payment' | 'notification';
+type Source =
+  | 'abuse'
+  | 'audit'
+  | 'control'
+  | 'deletion'
+  | 'payment'
+  | 'notification'
+  | 'error'
+  | 'ai_job'
+  | 'slow_query';
 
 interface LogEvent {
   id: string;
@@ -72,6 +84,9 @@ const SOURCE_META: Record<Source, { label: string; icon: any; color: string }> =
   deletion: { label: 'Deletion', icon: Trash2, color: 'text-pink-300' },
   payment: { label: 'Payment', icon: CreditCard, color: 'text-emerald-300' },
   notification: { label: 'Notification', icon: Bell, color: 'text-amber-300' },
+  error: { label: 'Server Error', icon: Bug, color: 'text-red-400' },
+  ai_job: { label: 'AI Job', icon: Cpu, color: 'text-fuchsia-300' },
+  slow_query: { label: 'Slow Query', icon: Timer, color: 'text-yellow-300' },
 };
 
 function timeAgo(iso: string) {
@@ -190,7 +205,7 @@ export default function ActivityLogsPage() {
         ))}
         <span className="w-px h-5 bg-white/10 mx-1" />
         <span className="text-xs text-white/40 uppercase tracking-wider mr-1">Source</span>
-        {(['all', 'abuse', 'audit', 'control', 'deletion', 'payment', 'notification'] as const).map((s) => (
+        {(['all', 'abuse', 'audit', 'control', 'deletion', 'payment', 'notification', 'error', 'ai_job', 'slow_query'] as const).map((s) => (
           <button
             key={s}
             onClick={() => setSource(s)}
