@@ -8,6 +8,7 @@ import Plan from '@/models/Plan';
 import PlatformControl from '@/models/PlatformControl';
 import { ALL_FEATURES } from '@/utils/features';
 import { navPlanAllowsFeature } from '@/lib/computeUserFeatureAccess';
+import { invalidatePublicPlanCache } from '@/lib/invalidatePlanCache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -200,6 +201,12 @@ export async function PATCH(request: NextRequest) {
         console.error(`Error updating feature ${id}:`, err);
         results.push({ id, type, target, status: 'error', message: err.message });
       }
+    }
+
+    // Bust the public plans cache so /pricing & homepage cards reflect any
+    // featureFlags / navFeatureAccess changes immediately.
+    if (results.some(r => r.status === 'success' && (r as any).type === 'plan')) {
+      await invalidatePublicPlanCache();
     }
 
     return NextResponse.json({ success: true, results });

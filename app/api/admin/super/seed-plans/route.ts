@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Plan from '@/models/Plan';
 import { getUserFromRequest } from '@/lib/auth';
 import { isSuperAdminRole } from '@/lib/adminAuth';
+import { invalidatePublicPlanCache } from '@/lib/invalidatePlanCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -188,9 +189,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Optimized plans seeded successfully via API route.' 
+    // Bust the public plans cache so the next /pricing fetch sees fresh seed data.
+    await invalidatePublicPlanCache();
+
+    return NextResponse.json({
+      success: true,
+      message: 'Optimized plans seeded successfully via API route.'
     });
 
   } catch (error: any) {

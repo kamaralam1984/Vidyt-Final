@@ -98,13 +98,15 @@ async function plansHandler(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-// Cache plans for 5 minutes — plans change rarely, this saves significant DB load
+// Cache plans for 30s — admin endpoints invalidate explicitly via
+// invalidatePublicPlanCache(), but TTL acts as a safety net so any save path
+// that forgets to invalidate still propagates within half a minute.
 export const GET = withApiCache(plansHandler, {
   key: (req) => {
     const url = new URL(req.url);
     const withDiscounts = url.searchParams.get('withDiscounts') ?? '1';
     return `api:plans:${withDiscounts}`;
   },
-  ttl: 300, // 5 minutes
-  cacheControl: 'public, max-age=60, stale-while-revalidate=240',
+  ttl: 30,
+  cacheControl: 'public, max-age=15, stale-while-revalidate=15',
 });
