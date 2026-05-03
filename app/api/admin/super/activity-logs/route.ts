@@ -68,14 +68,17 @@ export async function GET(request: NextRequest) {
     const limitParam = parseInt(url.searchParams.get('limit') || '500', 10);
     const limit = Math.min(Number.isFinite(limitParam) ? limitParam : 500, 2000);
 
-    // Each source runs in its own catch so a single broken model / missing
-    // collection / schema mismatch can't 500 the whole feed. The bad source
-    // just falls through to an empty list.
-    const safe = <T,>(p: Promise<T[]>): Promise<T[]> =>
-      p.catch((e) => {
-        console.error('[ActivityLog source failed]', e?.message || e);
+    // Each source runs in its own try/catch — must wrap the FUNCTION not the
+    // Promise, otherwise a sync TypeError (e.g. an undefined model export
+    // throwing on .find) escapes the wrapper and 500s the whole feed.
+    const trySafe = async <T,>(label: string, fn: () => Promise<T[]>): Promise<T[]> => {
+      try {
+        return await fn();
+      } catch (e: any) {
+        console.error(`[ActivityLog source ${label} failed]`, e?.message || e);
         return [] as T[];
-      });
+      }
+    };
 
     const [
       abuses,
@@ -88,15 +91,15 @@ export async function GET(request: NextRequest) {
       aiJobs,
       slowQueries,
     ] = await Promise.all([
-      safe(AbuseLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
-      safe(AuditAlert.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
-      safe(ControlLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
-      safe(DeletionLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
-      safe(Payment.find({ status: 'failed', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
-      safe(Notification.find({ type: 'limit_reached', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
-      safe(ErrorLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
-      safe(AIJobLog.find({ status: 'failed', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
-      safe(SlowQuery.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('abuse', () => AbuseLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('audit', () => AuditAlert.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('control', () => ControlLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('deletion', () => DeletionLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('payment', () => Payment.find({ status: 'failed', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('notification', () => Notification.find({ type: 'limit_reached', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('error', () => ErrorLog.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('ai_job', () => AIJobLog.find({ status: 'failed', createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
+      trySafe('slow_query', () => SlowQuery.find({ createdAt: { $gte: since } }).sort({ createdAt: -1 }).limit(limit).lean() as any),
     ]);
 
     // Hydrate user emails for the rows that only carry a userId. Wrapped in
