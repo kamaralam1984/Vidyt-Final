@@ -17,7 +17,36 @@ interface Plan {
   isCustom: boolean;
   isActive: boolean;
   billingPeriod: string;
+  limits?: {
+    analysesLimit?: number;
+    analysesPeriod?: 'day' | 'month';
+    titleSuggestions?: number;
+    hashtagCount?: number;
+    competitorsTracked?: number;
+    featureLimits?: Record<string, { value: number; period: 'day' | 'week' | 'month' | 'lifetime' }>;
+  };
+  limitsDisplay?: {
+    videos?: string;
+    analyses?: string;
+    storage?: string;
+    support?: string;
+  };
 }
+
+const EMPTY_LIMITS = {
+  analysesLimit: 5,
+  analysesPeriod: 'month' as 'day' | 'month',
+  titleSuggestions: 3,
+  hashtagCount: 10,
+  competitorsTracked: 3,
+};
+
+const EMPTY_LIMITS_DISPLAY = {
+  videos: '',
+  analyses: '',
+  storage: '',
+  support: '',
+};
 
 /** One row from GET /api/admin/unified-feature-matrix */
 interface MatrixFeatureRow {
@@ -95,6 +124,17 @@ export default function PlanManager() {
     currency: 'USD',
     features: '',
     billingPeriod: 'both',
+    // Numeric quotas surfaced on /pricing Plan Quotas section
+    analysesLimit: EMPTY_LIMITS.analysesLimit,
+    analysesPeriod: EMPTY_LIMITS.analysesPeriod,
+    titleSuggestions: EMPTY_LIMITS.titleSuggestions,
+    hashtagCount: EMPTY_LIMITS.hashtagCount,
+    competitorsTracked: EMPTY_LIMITS.competitorsTracked,
+    // Friendly display strings shown in 4-cell grid (Videos / Analyses / Storage / Support)
+    limitsDisplayVideos: EMPTY_LIMITS_DISPLAY.videos,
+    limitsDisplayAnalyses: EMPTY_LIMITS_DISPLAY.analyses,
+    limitsDisplayStorage: EMPTY_LIMITS_DISPLAY.storage,
+    limitsDisplaySupport: EMPTY_LIMITS_DISPLAY.support,
   });
 
   // Role access data: planId -> list of roles with feature access
@@ -200,6 +240,22 @@ export default function PlanManager() {
         .map((f) => f.trim())
         .filter((f) => f);
 
+      // Build the limits / limitsDisplay payloads. Only include fields the
+      // admin actually filled — leave the rest of the existing plan doc alone.
+      const limitsPayload = {
+        analysesLimit: Number(formData.analysesLimit),
+        analysesPeriod: formData.analysesPeriod,
+        titleSuggestions: Number(formData.titleSuggestions),
+        hashtagCount: Number(formData.hashtagCount),
+        competitorsTracked: Number(formData.competitorsTracked),
+      };
+      const limitsDisplayPayload = {
+        videos: formData.limitsDisplayVideos,
+        analyses: formData.limitsDisplayAnalyses,
+        storage: formData.limitsDisplayStorage,
+        support: formData.limitsDisplaySupport,
+      };
+
       let response;
       const hdr = getAuthHeaders();
       if (editingId) {
@@ -211,6 +267,8 @@ export default function PlanManager() {
             priceMonthly: Number(formData.priceMonthly),
             priceYearly: formData.priceYearly ? Number(formData.priceYearly) : undefined,
             features,
+            limits: limitsPayload,
+            limitsDisplay: limitsDisplayPayload,
           },
           { headers: hdr, timeout: 30_000 }
         );
@@ -222,6 +280,8 @@ export default function PlanManager() {
             priceMonthly: Number(formData.priceMonthly),
             priceYearly: formData.priceYearly ? Number(formData.priceYearly) : undefined,
             features,
+            limits: limitsPayload,
+            limitsDisplay: limitsDisplayPayload,
           },
           { headers: hdr, timeout: 30_000 }
         );
@@ -240,6 +300,8 @@ export default function PlanManager() {
   };
 
   const handleEdit = (plan: Plan) => {
+    const limits = plan.limits || {};
+    const ld = plan.limitsDisplay || {};
     setFormData({
       planId: plan.planId,
       name: plan.name,
@@ -249,6 +311,15 @@ export default function PlanManager() {
       currency: plan.currency,
       features: plan.features.join('\n'),
       billingPeriod: plan.billingPeriod,
+      analysesLimit: limits.analysesLimit ?? EMPTY_LIMITS.analysesLimit,
+      analysesPeriod: (limits.analysesPeriod as 'day' | 'month') ?? EMPTY_LIMITS.analysesPeriod,
+      titleSuggestions: limits.titleSuggestions ?? EMPTY_LIMITS.titleSuggestions,
+      hashtagCount: limits.hashtagCount ?? EMPTY_LIMITS.hashtagCount,
+      competitorsTracked: limits.competitorsTracked ?? EMPTY_LIMITS.competitorsTracked,
+      limitsDisplayVideos: ld.videos ?? '',
+      limitsDisplayAnalyses: ld.analyses ?? '',
+      limitsDisplayStorage: ld.storage ?? '',
+      limitsDisplaySupport: ld.support ?? '',
     });
     setEditingId(plan.id);
     setShowForm(true);
@@ -306,6 +377,15 @@ export default function PlanManager() {
       currency: 'USD',
       features: '',
       billingPeriod: 'both',
+      analysesLimit: EMPTY_LIMITS.analysesLimit,
+      analysesPeriod: EMPTY_LIMITS.analysesPeriod,
+      titleSuggestions: EMPTY_LIMITS.titleSuggestions,
+      hashtagCount: EMPTY_LIMITS.hashtagCount,
+      competitorsTracked: EMPTY_LIMITS.competitorsTracked,
+      limitsDisplayVideos: EMPTY_LIMITS_DISPLAY.videos,
+      limitsDisplayAnalyses: EMPTY_LIMITS_DISPLAY.analyses,
+      limitsDisplayStorage: EMPTY_LIMITS_DISPLAY.storage,
+      limitsDisplaySupport: EMPTY_LIMITS_DISPLAY.support,
     });
     setEditingId(null);
     setShowForm(false);
@@ -438,6 +518,109 @@ export default function PlanManager() {
                 onChange={(e) => setFormData({ ...formData, features: e.target.value })}
                 className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 font-mono text-sm"
               />
+            </div>
+
+            {/* Pricing-card display strings (top of card's 4-cell grid) */}
+            <div className="border-t border-gray-700 pt-4">
+              <h4 className="text-sm font-semibold mb-3 text-gray-300">Limits Display (shown on pricing card grid)</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Videos</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 5/month"
+                    value={formData.limitsDisplayVideos}
+                    onChange={(e) => setFormData({ ...formData, limitsDisplayVideos: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Analyses</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Standard"
+                    value={formData.limitsDisplayAnalyses}
+                    onChange={(e) => setFormData({ ...formData, limitsDisplayAnalyses: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Storage</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Unlimited"
+                    value={formData.limitsDisplayStorage}
+                    onChange={(e) => setFormData({ ...formData, limitsDisplayStorage: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Support</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Priority Email"
+                    value={formData.limitsDisplaySupport}
+                    onChange={(e) => setFormData({ ...formData, limitsDisplaySupport: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Numeric quotas (Plan Quotas section on pricing card; -1 = unlimited) */}
+            <div className="border-t border-gray-700 pt-4">
+              <h4 className="text-sm font-semibold mb-3 text-gray-300">
+                Plan Quotas <span className="text-xs font-normal text-gray-500">(numeric — use -1 for Unlimited)</span>
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Analyses Limit</label>
+                  <input
+                    type="number"
+                    value={formData.analysesLimit}
+                    onChange={(e) => setFormData({ ...formData, analysesLimit: Number(e.target.value) })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Analyses Period</label>
+                  <select
+                    value={formData.analysesPeriod}
+                    onChange={(e) => setFormData({ ...formData, analysesPeriod: e.target.value as 'day' | 'month' })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  >
+                    <option value="day">Per Day</option>
+                    <option value="month">Per Month</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Title Suggestions</label>
+                  <input
+                    type="number"
+                    value={formData.titleSuggestions}
+                    onChange={(e) => setFormData({ ...formData, titleSuggestions: Number(e.target.value) })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Hashtag Count</label>
+                  <input
+                    type="number"
+                    value={formData.hashtagCount}
+                    onChange={(e) => setFormData({ ...formData, hashtagCount: Number(e.target.value) })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Competitors Tracked</label>
+                  <input
+                    type="number"
+                    value={formData.competitorsTracked}
+                    onChange={(e) => setFormData({ ...formData, competitorsTracked: Number(e.target.value) })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-2">

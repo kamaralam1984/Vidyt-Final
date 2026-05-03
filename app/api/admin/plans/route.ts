@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
         billingPeriod: p.billingPeriod,
         isActive: p.isActive,
         role: p.role || 'user', // Add role information
-        limits: p.limits || {}, // Add limits
+        limits: p.limits || {}, // Numeric quotas
+        limitsDisplay: p.limitsDisplay || {}, // Friendly strings for the 4-cell card grid
         featureFlags: p.featureFlags || {}, // Add feature flags
       })),
       roleMapping: {
@@ -240,8 +241,19 @@ export async function PATCH(request: NextRequest) {
       updateData.role = role;
     }
     if (label !== undefined) updateData.label = label;
-    if (limits !== undefined) updateData.limits = limits;
-    if (limitsDisplay !== undefined) updateData.limitsDisplay = limitsDisplay;
+    // Merge subdocs key-by-key with dot notation so partial updates from the
+    // PlanManager form don't wipe untouched fields (e.g. limits.featureLimits
+    // map seeded by /api/admin/super/seed-plans).
+    if (limits !== undefined && limits && typeof limits === 'object') {
+      for (const [k, v] of Object.entries(limits)) {
+        updateData[`limits.${k}`] = v;
+      }
+    }
+    if (limitsDisplay !== undefined && limitsDisplay && typeof limitsDisplay === 'object') {
+      for (const [k, v] of Object.entries(limitsDisplay)) {
+        updateData[`limitsDisplay.${k}`] = v;
+      }
+    }
     if (featureFlags !== undefined) updateData.featureFlags = featureFlags;
 
     await connectDB();
