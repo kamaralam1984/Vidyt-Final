@@ -31,9 +31,14 @@ export async function POST(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const { message, status, priority } = await req.json();
+        const { message, status, priority, assignedToAdmin } = await req.json();
 
-        if (!message && !status && !priority) {
+        if (
+            message === undefined &&
+            status === undefined &&
+            priority === undefined &&
+            assignedToAdmin === undefined
+        ) {
             return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
         }
 
@@ -41,22 +46,34 @@ export async function POST(
             await TicketReply.create({
                 ticketId: ticket._id,
                 sender: isAdmin ? 'admin' : 'user',
-                message
+                message,
             });
+            // Admin reply implicitly hands the ticket from AI to a human:
+            // flip the flags so the queue stops showing it as "AI" or "Pending".
+            if (isAdmin) {
+                ticket.assignedToAdmin = true;
+                ticket.aiAutoReplied = false;
+            }
         }
 
-        if (status || priority) {
-            // Admins can update any status/priority
-            // Regular users can only close their own tickets
+        if (
+            status !== undefined ||
+            priority !== undefined ||
+            assignedToAdmin !== undefined
+        ) {
             if (isAdmin) {
                 if (status) ticket.status = status;
                 if (priority) ticket.priority = priority;
-                await ticket.save();
+                if (typeof assignedToAdmin === 'boolean') {
+                    ticket.assignedToAdmin = assignedToAdmin;
+                    if (assignedToAdmin) ticket.aiAutoReplied = false;
+                }
             } else if (status === 'closed' && ticket.userId.toString() === user._id.toString()) {
                 ticket.status = 'closed';
-                await ticket.save();
             }
         }
+
+        await ticket.save();
 
         return NextResponse.json({ success: true });
 

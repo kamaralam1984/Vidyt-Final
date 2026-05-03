@@ -8,7 +8,7 @@ import axios from 'axios';
 import {
   Loader2, Headphones, Search, Filter, AlertCircle, Clock, CheckCircle2,
   Activity, ChevronLeft, ChevronRight, ArrowUpDown, Bot, UserCog, RefreshCw,
-  Mail,
+  Mail, Sparkles, Hand, Check, Send, Zap,
 } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
 
@@ -73,6 +73,11 @@ export default function SuperAdminSupportTickets() {
   const resolvedToday = tickets.filter(t => t.status === 'resolved' && new Date(t.createdAt).toDateString() === new Date().toDateString());
   const needsAdmin = tickets.filter(t => t.assignedToAdmin && t.status === 'open');
   const aiHandled = tickets.filter(t => t.aiAutoReplied);
+  const awaitingAi = tickets.filter(t => !t.aiAutoReplied && !t.assignedToAdmin && t.status === 'open');
+  // AI resolution rate: of all tickets the AI auto-replied to, what % are resolved/closed.
+  const aiResolutionRate = aiHandled.length > 0
+    ? Math.round((aiHandled.filter(t => t.status === 'resolved' || t.status === 'closed').length / aiHandled.length) * 100)
+    : 0;
 
   // Filter
   const filtered = tickets.filter(t => {
@@ -129,7 +134,7 @@ export default function SuperAdminSupportTickets() {
     }
   };
 
-  const handleBulkUpdate = async (updates: { status?: string; priority?: string }) => {
+  const handleBulkUpdate = async (updates: { status?: string; priority?: string; assignedToAdmin?: boolean }) => {
     if (selectedIds.size === 0) return;
     setBulkUpdating(true);
     try {
@@ -144,6 +149,50 @@ export default function SuperAdminSupportTickets() {
       alert('Some updates failed');
     } finally {
       setBulkUpdating(false);
+    }
+  };
+
+  const reRunAI = async (ticketId: string) => {
+    try {
+      await axios.post('/api/support/ai-reply', { ticketId, autoReply: true }, { headers: getAuthHeaders() });
+      await fetchTickets();
+    } catch {
+      alert('AI re-run failed');
+    }
+  };
+
+  const bulkReRunAI = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkUpdating(true);
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map(id =>
+          axios.post('/api/support/ai-reply', { ticketId: id, autoReply: true }, { headers: getAuthHeaders() })
+            .catch(() => null)
+        )
+      );
+      await fetchTickets();
+      setSelectedIds(new Set());
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const takeOver = async (ticketId: string) => {
+    try {
+      await axios.post(`/api/support/tickets/${ticketId}/reply`, { assignedToAdmin: true }, { headers: getAuthHeaders() });
+      await fetchTickets();
+    } catch {
+      alert('Take over failed');
+    }
+  };
+
+  const quickResolve = async (ticketId: string) => {
+    try {
+      await axios.post(`/api/support/tickets/${ticketId}/reply`, { status: 'resolved' }, { headers: getAuthHeaders() });
+      await fetchTickets();
+    } catch {
+      alert('Resolve failed');
     }
   };
 
@@ -184,12 +233,14 @@ export default function SuperAdminSupportTickets() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-8">
         {[
           { label: 'Total Open', value: openTickets.length, icon: Clock, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
           { label: 'High Priority', value: highPriority.length, icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/10' },
+          { label: 'Awaiting AI', value: awaitingAi.length, icon: Sparkles, color: 'text-purple-400', bg: 'bg-purple-500/10' },
           { label: 'Needs Admin', value: needsAdmin.length, icon: UserCog, color: 'text-amber-400', bg: 'bg-amber-500/10' },
           { label: 'AI Handled', value: aiHandled.length, icon: Bot, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+          { label: 'AI Resolution %', value: `${aiResolutionRate}%`, icon: Zap, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
           { label: 'Resolved Today', value: resolvedToday.length, icon: CheckCircle2, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
         ].map((stat, i) => (
           <div key={i} className="bg-[#181818] border border-[#212121] rounded-xl p-4 flex items-center gap-4 hover:border-[#333] transition-colors">
@@ -232,7 +283,7 @@ export default function SuperAdminSupportTickets() {
           <option value="all">All Handlers</option>
           <option value="ai">AI Handled</option>
           <option value="admin">Admin Assigned</option>
-          <option value="pending">Pending</option>
+          <option value="pending">Awaiting AI</option>
         </select>
       </div>
 
@@ -240,7 +291,13 @@ export default function SuperAdminSupportTickets() {
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-3 mb-4 p-3 bg-[#FF0000]/10 border border-[#FF0000]/20 rounded-xl">
           <span className="text-sm font-medium text-white">{selectedIds.size} selected</span>
-          <div className="flex gap-2 ml-auto">
+          <div className="flex gap-2 ml-auto flex-wrap">
+            <button disabled={bulkUpdating} onClick={bulkReRunAI} className="px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-bold hover:bg-blue-600/30 disabled:opacity-50 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Re-run AI
+            </button>
+            <button disabled={bulkUpdating} onClick={() => handleBulkUpdate({ assignedToAdmin: true })} className="px-3 py-1.5 bg-amber-600/20 border border-amber-500/30 text-amber-400 rounded-lg text-xs font-bold hover:bg-amber-600/30 disabled:opacity-50 flex items-center gap-1">
+              <Hand className="w-3 h-3" /> Take Over
+            </button>
             <button disabled={bulkUpdating} onClick={() => handleBulkUpdate({ status: 'resolved' })} className="px-3 py-1.5 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-bold hover:bg-emerald-600/30 disabled:opacity-50">
               Mark Resolved
             </button>
@@ -280,9 +337,10 @@ export default function SuperAdminSupportTickets() {
                     <span className="flex items-center gap-1">Status <ArrowUpDown className="w-3 h-3" /></span>
                   </th>
                   <th className="px-4 py-3">AI Score</th>
-                  <th className="px-4 py-3 cursor-pointer select-none hover:text-white text-right" onClick={() => toggleSort('createdAt')}>
-                    <span className="flex items-center gap-1 justify-end">Age <ArrowUpDown className="w-3 h-3" /></span>
+                  <th className="px-4 py-3 cursor-pointer select-none hover:text-white" onClick={() => toggleSort('createdAt')}>
+                    <span className="flex items-center gap-1">Age <ArrowUpDown className="w-3 h-3" /></span>
                   </th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1A1A1A]">
@@ -339,8 +397,42 @@ export default function SuperAdminSupportTickets() {
                         <span className="text-[10px] text-[#444]">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-[10px] text-[#888]" onClick={() => router.push(`/support/${ticket._id}`)}>
+                    <td className="px-4 py-3 text-[10px] text-[#888]" onClick={() => router.push(`/support/${ticket._id}`)}>
                       {timeAgo(ticket.createdAt)}
+                    </td>
+                    <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => reRunAI(ticket._id)}
+                          title="Re-run AI on this ticket"
+                          className="p-1.5 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => takeOver(ticket._id)}
+                          title="Take over (admin will handle)"
+                          className="p-1.5 rounded-md bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20"
+                        >
+                          <Hand className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => router.push(`/support/${ticket._id}`)}
+                          title="Open ticket & reply"
+                          className="p-1.5 rounded-md bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </button>
+                        {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                          <button
+                            onClick={() => quickResolve(ticket._id)}
+                            title="Mark resolved"
+                            className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
