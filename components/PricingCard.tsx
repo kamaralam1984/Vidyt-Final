@@ -153,14 +153,22 @@ export default function PricingCard({
           </motion.div>
           <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
 
-          {/* Role Badge (Only in full variant or if explicitly requested) */}
-          {plan.role && (
+          {/* Role Badge — role NAME == plan NAME convention. Derived from
+              plan.id so the badge stays accurate even before any DB role
+              migration runs. Owner plan stays as "Owner Role". */}
+          {plan.id && (
             <div className="flex items-center justify-center gap-2 mb-3">
               <span
                 className="px-3 py-1 rounded-full text-xs font-semibold text-white"
                 style={{ backgroundColor: metadata.color }}
               >
-                {(plan?.role || 'user').charAt(0).toUpperCase() + (plan?.role || 'user').slice(1)} Role
+                {(() => {
+                  const id = String(plan.id || '').toLowerCase();
+                  const label = id === 'owner'
+                    ? 'Owner'
+                    : id.charAt(0).toUpperCase() + id.slice(1);
+                  return `${label} Role`;
+                })()}
               </span>
               {plan.level && (
                 <span className="text-xs text-[#AAAAAA] font-medium">
