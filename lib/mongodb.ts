@@ -90,6 +90,15 @@ async function connectDB() {
     throw new Error('Database connection failed. Please ensure MongoDB is running.');
   }
 
+  // Attach slow-query hooks to every registered model. Idempotent — symbol
+  // guard inside the helper skips schemas that are already hooked.
+  try {
+    const { attachSlowQueryHooksToAllModels } = await import('./slowQueryHooks');
+    attachSlowQueryHooksToAllModels();
+  } catch {
+    /* never break the connection bootstrap on a logging-side issue */
+  }
+
   return cached.conn;
 }
 
