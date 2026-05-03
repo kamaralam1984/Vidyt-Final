@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { getSocket } from '@/hooks/useSocket';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import NextImage from 'next/image';
@@ -55,19 +56,19 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [disabledItems, setDisabledItems] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const fetchSystems = async () => {
-      try {
-        const res = await axios.get('/api/features/all', { headers: getAuthHeaders() });
-        if (res.data.features) {
-          setAllowedSystems(res.data.features);
-        }
-      } catch (_) {
-      } finally {
-        setLoadingSystems(false);
+  const fetchSystems = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/features/all', { headers: getAuthHeaders() });
+      if (res.data.features) {
+        setAllowedSystems(res.data.features);
       }
-    };
+    } catch (_) {
+    } finally {
+      setLoadingSystems(false);
+    }
+  }, []);
 
+  useEffect(() => {
     const fetchPlatformControls = async () => {
       try {
         const res = await axios.get('/api/user/controls', { headers: getAuthHeaders() });
@@ -93,7 +94,29 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
     fetchSystems();
     fetchPlatformControls();
     fetchUserInfo();
-  }, []);
+  }, [fetchSystems]);
+
+  // Live-refresh sidebar items when the super-admin toggles features in
+  // Manage Plans. Listens for plan:updated socket push, plus tab focus /
+  // visibilitychange as fallback for users without an active socket.
+  useEffect(() => {
+    const refresh = () => fetchSystems();
+    const socket = getSocket();
+    socket?.on('plan:updated', refresh);
+    socket?.on('subscription:updated', refresh);
+
+    const onFocus = () => refresh();
+    const onVis = () => { if (!document.hidden) refresh(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => {
+      socket?.off('plan:updated', refresh);
+      socket?.off('subscription:updated', refresh);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [fetchSystems]);
 
   // Poll usage and disable sidebar items whose quota is exhausted.
   // Refetches on mount, on route change (after user uses a feature), every
