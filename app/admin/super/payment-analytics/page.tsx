@@ -398,12 +398,12 @@ export default function PaymentAnalyticsPage() {
             <div className="h-48">
               {data.byGateway.length === 0 ? <EmptyBlock /> : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.byGateway}>
+                  <BarChart data={data.byGateway} barCategoryGap="40%" maxBarSize={60}>
                     <CartesianGrid stroke="#ffffff08" vertical={false} />
                     <XAxis dataKey="gateway" stroke="#ffffff40" fontSize={11} />
                     <YAxis stroke="#ffffff40" fontSize={10} allowDecimals={false} />
                     <Tooltip contentStyle={{ background: '#0f0f12', border: '1px solid #ffffff1a', borderRadius: 10 }} />
-                    <Bar dataKey="count" fill="#a78bfa" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="count" fill="#a78bfa" radius={[6, 6, 0, 0]} barSize={50} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

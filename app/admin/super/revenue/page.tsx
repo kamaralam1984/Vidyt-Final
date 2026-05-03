@@ -197,7 +197,7 @@ export default function RevenuePage() {
         <h3 className="text-sm font-semibold text-white mb-1">Monthly Revenue</h3>
         <p className="text-xs text-white/30 mb-5">Last 12 months earned</p>
         <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={data?.monthlyRevenue || []}>
+          <BarChart data={data?.monthlyRevenue || []} barCategoryGap="20%" maxBarSize={48}>
             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
             <XAxis dataKey="month" tick={{ fill: '#ffffff30', fontSize: 10 }} tickLine={false} axisLine={false} />
             <YAxis tick={{ fill: '#ffffff30', fontSize: 10 }} tickLine={false} axisLine={false}
@@ -208,7 +208,7 @@ export default function RevenuePage() {
               labelStyle={{ color: '#ffffff80', fontSize: 11 }}
               formatter={(v: any) => [formatCurrency(v, data?.currency || 'USD'), 'Revenue']}
             />
-            <Bar dataKey="revenue" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="revenue" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={36} />
           </BarChart>
         </ResponsiveContainer>
       </div>
