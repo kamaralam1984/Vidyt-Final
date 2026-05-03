@@ -1,17 +1,27 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import {
   Search, Hash, TrendingUp, BarChart2, Zap, Download, Copy, Loader2,
   Sparkles, Youtube, Check, RefreshCw, Target, Globe, Film, Radio,
-  ArrowRight, ChevronRight, MessageCircle, Lightbulb, Award, Clock,
+  ArrowRight, ChevronRight, MessageCircle, Lightbulb, Award, Clock, Lock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthGuard from '@/components/AuthGuard';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useTranslations } from '@/context/translations';
 import { autoCreateSeoPage } from '@/lib/autoCreateSeoPage';
+import { useUser } from '@/hooks/useUser';
+
+const KEYWORD_FOCUS_LIMIT_BY_PLAN: Record<string, number> = {
+  free: 3,
+  starter: 6,
+  pro: 15,
+  enterprise: 30,
+  custom: 30,
+  owner: Infinity,
+};
 
 const getAuthHeaders = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -31,6 +41,7 @@ const PLATFORM_ICONS: Record<Platform, React.ReactNode> = {
 
 export default function KeywordIntelligencePage() {
   const { t } = useTranslations();
+  const { plan } = useUser();
   const [activeTab, setActiveTab] = useState<TabType>('keywords');
   const [globalSearch, setGlobalSearch] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -44,27 +55,61 @@ export default function KeywordIntelligencePage() {
   const [normalizedKeywords, setNormalizedKeywords] = useState<any[]>([]);
   const [appliedKeyword, setAppliedKeyword] = useState<string | null>(null);
 
+  const planId = (plan?.id || 'free') as string;
+  const focusLimit = KEYWORD_FOCUS_LIMIT_BY_PLAN[planId] ?? KEYWORD_FOCUS_LIMIT_BY_PLAN.free;
+
+  // Sort keywords by quality (combined score), assign 90-98% scores to top N (focused),
+  // rest become "out of focus" (locked, non-clickable). Preserves original scores on locked.
+  const displayedKeywords = useMemo(() => {
+    if (normalizedKeywords.length === 0) return [];
+    const ranked = [...normalizedKeywords].sort((a, b) => {
+      const sa = (a.seoScore || 0) + (a.viralScore || 0) + (a.trendScore || 0);
+      const sb = (b.seoScore || 0) + (b.viralScore || 0) + (b.trendScore || 0);
+      return sb - sa;
+    });
+    return ranked.map((kw, i) => {
+      if (i < focusLimit) {
+        // Focused: scores remapped into 90..98 range (descending by rank)
+        const score = Math.max(90, 98 - i);
+        return {
+          ...kw,
+          focused: true,
+          trendScore: score,
+          viralScore: score,
+          seoScore: score,
+          searchVolume: 'High',
+          competition: 'High',
+          difficulty: 'Hard',
+        };
+      }
+      return { ...kw, focused: false };
+    });
+  }, [normalizedKeywords, focusLimit]);
+
+  const focusedKeywords = useMemo(() => displayedKeywords.filter((k) => k.focused), [displayedKeywords]);
+
   const copyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopiedItem(label);
     setTimeout(() => setCopiedItem(null), 2000);
   };
 
-  // Compute dynamic scores from API data
-  const avgSeoScore = normalizedKeywords.length > 0
-    ? Math.round(normalizedKeywords.reduce((sum, k) => sum + (k.seoScore || 0), 0) / normalizedKeywords.length)
+  // Stats reflect FOCUSED keywords only (locked ones are out of focus).
+  const avgSeoScore = focusedKeywords.length > 0
+    ? Math.round(focusedKeywords.reduce((sum, k) => sum + (k.seoScore || 0), 0) / focusedKeywords.length)
     : 0;
-  const avgViralScore = normalizedKeywords.length > 0
-    ? Math.round(normalizedKeywords.reduce((sum, k) => sum + (k.viralScore || 0), 0) / normalizedKeywords.length)
+  const avgViralScore = focusedKeywords.length > 0
+    ? Math.round(focusedKeywords.reduce((sum, k) => sum + (k.viralScore || 0), 0) / focusedKeywords.length)
     : 0;
-  const avgTrendScore = normalizedKeywords.length > 0
-    ? Math.round(normalizedKeywords.reduce((sum, k) => sum + (k.trendScore || 0), 0) / normalizedKeywords.length)
+  const avgTrendScore = focusedKeywords.length > 0
+    ? Math.round(focusedKeywords.reduce((sum, k) => sum + (k.trendScore || 0), 0) / focusedKeywords.length)
     : 0;
   const viralPotentialLabel = avgViralScore >= 80 ? 'Very High' : avgViralScore >= 65 ? 'High' : avgViralScore >= 50 ? 'Medium' : 'Low';
   const viralPotentialColor = avgViralScore >= 80 ? 'text-emerald-400' : avgViralScore >= 65 ? 'text-amber-400' : avgViralScore >= 50 ? 'text-yellow-400' : 'text-red-400';
-  const estimatedCtr = normalizedKeywords.length > 0 ? Math.min(15, 3 + (avgSeoScore / 100) * 12).toFixed(1) : '0';
-  const totalKeywords = normalizedKeywords.length;
-  const highViralCount = normalizedKeywords.filter(k => k.viralScore >= 70).length;
+  const estimatedCtr = focusedKeywords.length > 0 ? Math.min(15, 3 + (avgSeoScore / 100) * 12).toFixed(1) : '0';
+  const totalKeywords = focusedKeywords.length;
+  const lockedCount = displayedKeywords.length - focusedKeywords.length;
+  const highViralCount = focusedKeywords.filter(k => k.viralScore >= 70).length;
 
   const normalizeData = (data: any) => {
     const list: any[] = [];
@@ -278,19 +323,26 @@ export default function KeywordIntelligencePage() {
                 {/* Keyword Table */}
                 <div className="bg-[#181818] border border-[#2A2A2A] rounded-xl shadow-lg overflow-hidden">
                   <div className="p-4 border-b border-[#2A2A2A] flex flex-wrap justify-between items-center gap-3 bg-[#1A1A1A]">
-                    <h4 className="text-lg font-bold text-white flex items-center gap-2"><Search className="w-5 h-5" /> All Keywords ({totalKeywords})</h4>
+                    <div className="flex flex-col gap-1">
+                      <h4 className="text-lg font-bold text-white flex items-center gap-2"><Search className="w-5 h-5" /> Focused Keywords ({totalKeywords}{lockedCount > 0 ? ` + ${lockedCount} locked` : ''})</h4>
+                      <p className="text-[11px] text-[#888]">
+                        {planId === 'owner'
+                          ? 'Owner plan: unlimited focused keywords.'
+                          : `${planId.charAt(0).toUpperCase() + planId.slice(1)} plan: ${focusLimit} focused keywords (90–98% relevance). Upgrade to focus on more.`}
+                      </p>
+                    </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => fetchKeywordIntelligence(globalSearch)} disabled={isSearching}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-medium transition disabled:opacity-50">
                         {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Refresh
                       </button>
-                      <button onClick={() => copyText(normalizedKeywords.map(k => k.keyword).join(', '), 'all')}
+                      <button onClick={() => copyText(focusedKeywords.map(k => k.keyword).join(', '), 'all')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2A2A2A] hover:bg-[#333] rounded-lg text-xs text-[#CCC]">
                         {copiedItem === 'all' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />} {copiedItem === 'all' ? 'Copied!' : 'Copy All'}
                       </button>
                       <button onClick={() => {
                         let csv = "Keyword,Search Volume,Competition,Difficulty,Trend Score,Viral Score,SEO Score\n";
-                        normalizedKeywords.forEach(k => { csv += `"${k.keyword}",${k.searchVolume},${k.competition},${k.difficulty},${k.trendScore},${k.viralScore},${k.seoScore}\n`; });
+                        focusedKeywords.forEach(k => { csv += `"${k.keyword}",${k.searchVolume},${k.competition},${k.difficulty},${k.trendScore},${k.viralScore},${k.seoScore}\n`; });
                         const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob);
                         const a = document.createElement('a'); a.href = url; a.download = `keywords_${globalSearch.replace(/\s+/g, '_')}.csv`; a.click();
                       }} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-xs font-medium">
@@ -313,49 +365,76 @@ export default function KeywordIntelligencePage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#2A2A2A]">
-                        {[...normalizedKeywords].sort((a, b) => {
-                          if (!sortConfig) return 0;
-                          const ak = a[sortConfig.key]; const bk = b[sortConfig.key];
-                          return ak < bk ? (sortConfig.direction === 'asc' ? -1 : 1) : ak > bk ? (sortConfig.direction === 'asc' ? 1 : -1) : 0;
-                        }).map((kw, idx) => {
+                        {(() => {
+                          // Sort focused & locked separately so locked rows always sink to the bottom,
+                          // even when the user clicks a column header.
+                          const sortFn = (a: any, b: any) => {
+                            if (!sortConfig) return 0;
+                            const ak = a[sortConfig.key]; const bk = b[sortConfig.key];
+                            return ak < bk ? (sortConfig.direction === 'asc' ? -1 : 1) : ak > bk ? (sortConfig.direction === 'asc' ? 1 : -1) : 0;
+                          };
+                          const focused = displayedKeywords.filter(k => k.focused).sort(sortFn);
+                          const locked = displayedKeywords.filter(k => !k.focused).sort(sortFn);
+                          return [...focused, ...locked];
+                        })().map((kw, idx) => {
                           const tColor = kw.trendScore >= 70 ? 'text-emerald-400' : kw.trendScore >= 50 ? 'text-amber-400' : 'text-red-400';
                           const vColor = kw.viralScore >= 70 ? 'text-emerald-400' : kw.viralScore >= 50 ? 'text-amber-400' : 'text-red-400';
                           const sColor = kw.seoScore >= 70 ? 'text-emerald-400' : kw.seoScore >= 50 ? 'text-amber-400' : 'text-red-400';
                           const dColor = kw.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : kw.difficulty === 'Medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20';
+                          const locked = !kw.focused;
                           return (
-                            <tr key={idx} className="hover:bg-[#1A1A1A] transition-colors group">
+                            <tr key={idx} className={`transition-colors group ${locked ? 'opacity-40 select-none cursor-not-allowed' : 'hover:bg-[#1A1A1A]'}`}>
                               <td className="px-5 py-3 text-[#555] text-xs">{idx + 1}</td>
-                              <td className="px-5 py-3 font-medium text-white">{kw.keyword}</td>
-                              <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded text-xs border ${kw.searchVolume === 'High' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : kw.searchVolume === 'Medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>{kw.searchVolume}</span></td>
-                              <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded text-xs border ${dColor}`}>{kw.difficulty}</span></td>
-                              <td className="px-5 py-3">
+                              <td className="px-5 py-3 font-medium text-white">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.trendScore >= 70 ? 'bg-emerald-500' : kw.trendScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.trendScore}%` }} /></div>
-                                  <span className={`text-xs font-bold ${tColor}`}>{kw.trendScore}</span>
+                                  {locked && <Lock className="w-3.5 h-3.5 text-[#666]" />}
+                                  <span className={locked ? 'text-[#888]' : ''}>{kw.keyword}</span>
                                 </div>
                               </td>
-                              <td className="px-5 py-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.viralScore >= 70 ? 'bg-emerald-500' : kw.viralScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.viralScore}%` }} /></div>
-                                  <span className={`text-xs font-bold ${vColor}`}>{kw.viralScore}</span>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.seoScore >= 70 ? 'bg-emerald-500' : kw.seoScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.seoScore}%` }} /></div>
-                                  <span className={`text-xs font-bold ${sColor}`}>{kw.seoScore}</span>
-                                </div>
-                              </td>
+                              {locked ? (
+                                <td className="px-5 py-3" colSpan={5}>
+                                  <span className="px-2 py-0.5 rounded text-[11px] border bg-[#222] text-[#888] border-[#333] uppercase tracking-wide">Out of Focus</span>
+                                </td>
+                              ) : (
+                                <>
+                                  <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded text-xs border ${kw.searchVolume === 'High' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : kw.searchVolume === 'Medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>{kw.searchVolume}</span></td>
+                                  <td className="px-5 py-3"><span className={`px-2 py-0.5 rounded text-xs border ${dColor}`}>{kw.difficulty}</span></td>
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.trendScore >= 70 ? 'bg-emerald-500' : kw.trendScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.trendScore}%` }} /></div>
+                                      <span className={`text-xs font-bold ${tColor}`}>{kw.trendScore}%</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.viralScore >= 70 ? 'bg-emerald-500' : kw.viralScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.viralScore}%` }} /></div>
+                                      <span className={`text-xs font-bold ${vColor}`}>{kw.viralScore}%</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-12 h-1.5 bg-[#222] rounded-full"><div className={`h-full rounded-full ${kw.seoScore >= 70 ? 'bg-emerald-500' : kw.seoScore >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${kw.seoScore}%` }} /></div>
+                                      <span className={`text-xs font-bold ${sColor}`}>{kw.seoScore}%</span>
+                                    </div>
+                                  </td>
+                                </>
+                              )}
                               <td className="px-5 py-3 text-right">
                                 <div className="flex items-center gap-2 justify-end">
-                                  <button onClick={() => copyText(kw.keyword, kw.keyword)}
-                                    className="px-2.5 py-1.5 bg-[#2A2A2A] hover:bg-[#333] rounded-lg text-xs text-[#CCC] flex items-center gap-1 transition">
-                                    {copiedItem === kw.keyword ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> <span className="text-emerald-400">Copied</span></> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
-                                  </button>
-                                  <button onClick={() => { setAppliedKeyword(kw.keyword); setGlobalSearch(kw.keyword); fetchKeywordIntelligence(kw.keyword); setTimeout(() => setAppliedKeyword(null), 2000); }}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${appliedKeyword === kw.keyword ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'}`}>
-                                    {appliedKeyword === kw.keyword ? <><Check className="w-3.5 h-3.5" /> Done</> : <><Search className="w-3.5 h-3.5" /> Analyze</>}
-                                  </button>
+                                  {locked ? (
+                                    <span className="text-[11px] text-[#666] italic">Upgrade to unlock</span>
+                                  ) : (
+                                    <>
+                                      <button onClick={() => copyText(kw.keyword, kw.keyword)}
+                                        className="px-2.5 py-1.5 bg-[#2A2A2A] hover:bg-[#333] rounded-lg text-xs text-[#CCC] flex items-center gap-1 transition">
+                                        {copiedItem === kw.keyword ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> <span className="text-emerald-400">Copied</span></> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                                      </button>
+                                      <button onClick={() => { setAppliedKeyword(kw.keyword); setGlobalSearch(kw.keyword); fetchKeywordIntelligence(kw.keyword); setTimeout(() => setAppliedKeyword(null), 2000); }}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition ${appliedKeyword === kw.keyword ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'}`}>
+                                        {appliedKeyword === kw.keyword ? <><Check className="w-3.5 h-3.5" /> Done</> : <><Search className="w-3.5 h-3.5" /> Analyze</>}
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -363,7 +442,7 @@ export default function KeywordIntelligencePage() {
                         })}
                       </tbody>
                     </table>
-                    {normalizedKeywords.length === 0 && <div className="p-8 text-center text-[#666]">No keywords found.</div>}
+                    {displayedKeywords.length === 0 && <div className="p-8 text-center text-[#666]">No keywords found.</div>}
                   </div>
                 </div>
               </motion.div>
