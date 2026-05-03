@@ -39,12 +39,9 @@ export function withUsageLimit(handler: ProtectedHandler, feature: string) {
     // 2. Execute actual handler
     const response = await handler(req);
 
-    // 3. Increment usage on success (2xx)
-    if (response.status >= 200 && response.status < 300) {
+    // 3. Increment usage on success (2xx) — owner is unlimited, skip recording
+    if (response.status >= 200 && response.status < 300 && planId !== 'owner') {
       await recordUsage(userId, feature);
-
-      // OPTIONAL: Add usage headers or inject into response body if it's JSON
-      // For now, we'll keep it simple as requested
     }
 
     return response;

@@ -3,7 +3,7 @@ import Usage from '../models/Usage';
 import Notification from '../models/Notification';
 import User from '../models/User';
 import Plan from '../models/Plan';
-import { getPlanLimits } from './planLimits';
+import { getPlanLimits, isOwnerPlan } from './planLimits';
 import { sendBroadcastNotificationEmail } from '@/services/email';
 import { resolveFeatureLimit, type FeaturePeriod } from './featureLimits';
 
@@ -44,6 +44,10 @@ function periodBucket(period: FeaturePeriod, now: Date = new Date()): string {
  * period bucket. Records 80% warning and 100% block notifications.
  */
 export async function checkFeatureLimit(userId: string, planId: string, featureKey: string): Promise<UsageResult> {
+  if (isOwnerPlan(planId)) {
+    return { allowed: true, current: 0, limit: -1, feature: featureKey };
+  }
+
   await connectDB();
 
   const planDoc = await Plan.findOne({ planId }).lean();
@@ -83,6 +87,10 @@ export async function checkFeatureLimit(userId: string, planId: string, featureK
  * Triggers warnings at 80% and blocks at 100%.
  */
 export async function checkUsageLimit(userId: string, planId: string, feature: string): Promise<UsageResult> {
+  if (isOwnerPlan(planId)) {
+    return { allowed: true, current: 0, limit: -1, feature };
+  }
+
   await connectDB();
   const limits = getPlanLimits(planId);
   const limit = (limits as any)[feature];
@@ -133,6 +141,8 @@ export async function recordUsage(userId: string, feature: string, period: Featu
  * configured for that feature on the given plan.
  */
 export async function recordFeatureUsage(userId: string, planId: string, featureKey: string) {
+  if (isOwnerPlan(planId)) return;
+
   await connectDB();
   const planDoc = await Plan.findOne({ planId }).lean();
   const resolved = resolveFeatureLimit((planDoc as any)?.limits || {}, featureKey);
