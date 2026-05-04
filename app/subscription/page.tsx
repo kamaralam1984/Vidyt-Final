@@ -152,7 +152,18 @@ export default function SubscriptionPage() {
 
       setUsage(usageData);
 
-      setInvoices(invoicesRes.data.invoices || []);
+      const fetchedInvoices = invoicesRes.data.invoices || [];
+      if (plan === 'owner' && fetchedInvoices.length === 0) {
+        fetchedInvoices.push({
+          id: 'owner-plan',
+          plan: 'owner',
+          amount: 0,
+          currency: 'INR',
+          status: 'paid',
+          date: new Date().toISOString(),
+        });
+      }
+      setInvoices(fetchedInvoices);
     } catch (error) {
       console.error('Error fetching subscription data:', error);
     } finally {
@@ -216,7 +227,12 @@ export default function SubscriptionPage() {
 
   const getPlanName = (plan: string | undefined) => {
     if (!plan) return 'Unknown';
-    return (plan || 'Unknown').charAt(0).toUpperCase() + (plan || 'Unknown').slice(1);
+    const names: Record<string, string> = {
+      owner: 'Owner', 'super-admin': 'Owner', superadmin: 'Owner',
+      free: 'Free', starter: 'Starter', pro: 'Pro',
+      enterprise: 'Enterprise', custom: 'Custom',
+    };
+    return names[plan.toLowerCase()] ?? (plan.charAt(0).toUpperCase() + plan.slice(1));
   };
 
   if (loading) {
@@ -452,7 +468,7 @@ export default function SubscriptionPage() {
                       </div>
                       <div>
                         <p className="text-white font-semibold">
-                          {getPlanName(invoice.plan)} Plan - {formatAmount(invoice.amount, invoice.currency || 'INR')}
+                          {getPlanName(invoice.plan)} Plan{invoice.amount > 0 ? ` - ${formatAmount(invoice.amount, invoice.currency || 'INR')}` : ' - Complimentary'}
                         </p>
                         <p className="text-[#AAAAAA] text-sm">
                           {new Date(invoice.date).toLocaleDateString()}
