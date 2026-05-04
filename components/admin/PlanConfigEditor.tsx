@@ -108,12 +108,12 @@ const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
 };
 
 const ROLE_OPTIONS = [
-  { value: 'user', label: 'User', color: '#888' },
-  { value: 'manager', label: 'Manager', color: '#3B82F6' },
-  { value: 'admin', label: 'Admin', color: '#F59E0B' },
-  { value: 'enterprise', label: 'Enterprise Plan', color: '#10B981' },
-  { value: 'super-admin', label: 'Super Admin', color: '#EF4444' },
+  { value: 'free', label: 'Free', color: '#6B7280' },
+  { value: 'starter', label: 'Starter', color: '#3B82F6' },
+  { value: 'pro', label: 'Pro', color: '#8B5CF6' },
+  { value: 'enterprise', label: 'Enterprise', color: '#10B981' },
   { value: 'custom', label: 'Custom', color: '#7C3AED' },
+  { value: 'super-admin', label: 'Super Admin', color: '#EF4444' },
 ];
 
 const PLAN_COLORS: Record<string, string> = {

@@ -206,26 +206,32 @@ export async function loginUser(
  * Get role from plan: Free → user, Pro → manager, Enterprise → admin.
  * Super-admin is only preserved when the user's email matches SUPER_ADMIN_EMAIL env var.
  */
-export function getRoleFromPlanAndUser(user: { email?: string; role?: string; subscription?: string; subscriptionPlan?: { planId?: string } }): 'user' | 'admin' | 'manager' | 'super-admin' | 'enterprise' {
+export function getRoleFromPlanAndUser(user: { email?: string; role?: string; subscription?: string; subscriptionPlan?: { planId?: string } }): 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'super-admin' {
   if (user.role === 'super-admin' || user.role === 'superadmin') {
     const ownerEmail = process.env.SUPER_ADMIN_EMAIL;
     if (!ownerEmail || user.email === ownerEmail) return 'super-admin';
-    // DB role is super-admin but email doesn't match owner — treat as regular user
   }
   const rawPlan = user.subscriptionPlan?.planId || user.subscription || 'free';
   const plan = normalizePlan(rawPlan);
   if (plan === 'enterprise') return 'enterprise';
-  if (plan === 'pro') return 'manager';
-  return 'user';
+  if (plan === 'custom') return 'custom';
+  if (plan === 'pro') return 'pro';
+  if (plan === 'starter') return 'starter';
+  return 'free';
 }
 
 /**
  * Check if user has permission
  */
-export function hasPermission(user: AuthUser | null, requiredRole: 'user' | 'admin' | 'manager' | 'enterprise'): boolean {
+export function hasPermission(user: AuthUser | null, requiredRole: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom'): boolean {
   if (!user) return false;
   if (user.role === 'super-admin') return true;
-  const roleHierarchy: Record<string, number> = { user: 1, manager: 2, admin: 3, enterprise: 4 };
+  const roleHierarchy: Record<string, number> = {
+    free: 1, user: 1,
+    starter: 2,
+    pro: 3, manager: 3,
+    enterprise: 4, custom: 4, admin: 4,
+  };
   return (roleHierarchy[user.role] ?? 0) >= (roleHierarchy[requiredRole] ?? 0);
 }
 

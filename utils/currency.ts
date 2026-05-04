@@ -44,12 +44,12 @@ export type PlanId = (typeof VALID_PLANS)[number];
 
 /** Maps plan → role after subscription */
 export const PLAN_ROLE_MAP: Record<string, string> = {
-  free: 'user',
-  starter: 'user',
-  pro: 'manager',
-  enterprise: 'admin',
-  custom: 'admin',
-  owner: 'superadmin',
+  free: 'free',
+  starter: 'starter',
+  pro: 'pro',
+  enterprise: 'enterprise',
+  custom: 'custom',
+  owner: 'super-admin',
 };
 
 /** Human-readable plan labels */

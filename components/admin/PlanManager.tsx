@@ -143,21 +143,27 @@ interface MatrixFeatureRow {
 }
 
 const ROLE_COLORS: Record<string, string> = {
+  'free':        'bg-gray-500/20 text-gray-300 border border-gray-500/30',
   'user':        'bg-gray-500/20 text-gray-300 border border-gray-500/30',
-  'manager':     'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-  'admin':       'bg-orange-500/20 text-orange-400 border border-orange-500/30',
-  'super-admin': 'bg-red-500/20 text-red-400 border border-red-500/30',
+  'starter':     'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  'pro':         'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+  'manager':     'bg-purple-500/20 text-purple-400 border border-purple-500/30',
   'enterprise':  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-  'custom':      'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+  'admin':       'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+  'custom':      'bg-orange-500/20 text-orange-400 border border-orange-500/30',
+  'super-admin': 'bg-red-500/20 text-red-400 border border-red-500/30',
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  'user':        'User',
-  'manager':     'Manager',
-  'admin':       'Admin',
-  'super-admin': 'Super Admin',
-  'enterprise':  'Enterprise Plan',
+  'free':        'Free',
+  'user':        'Free',
+  'starter':     'Starter',
+  'pro':         'Pro',
+  'manager':     'Pro',
+  'enterprise':  'Enterprise',
+  'admin':       'Enterprise',
   'custom':      'Custom',
+  'super-admin': 'Super Admin',
 };
 
 const MATRIX_GROUP_ORDER = ['sidebar', 'dashboard', 'ai_studio', 'platform', 'yt_seo_sections', 'other'];

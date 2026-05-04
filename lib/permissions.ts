@@ -25,13 +25,14 @@ import type { AuthUser } from './auth-jwt';
 
 // ──────────────── Role Hierarchy ────────────────
 export const ROLE_HIERARCHY = {
-  'user': 1,
-  'manager': 2,
-  'admin': 3,
-  'super-admin': 4,
+  'free': 1, 'user': 1,
+  'starter': 2,
+  'pro': 3, 'manager': 3,
+  'enterprise': 4, 'custom': 4, 'admin': 4,
+  'super-admin': 99,
 } as const;
 
-export type RoleLevel = 'user' | 'manager' | 'admin' | 'super-admin';
+export type RoleLevel = 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'super-admin' | 'user' | 'manager' | 'admin';
 
 // ──────────────── Permission Definitions ────────────────
 
@@ -40,55 +41,55 @@ export type RoleLevel = 'user' | 'manager' | 'admin' | 'super-admin';
  */
 export const PERMISSIONS = {
   // Video & Analysis
-  uploadVideo: ['user', 'manager', 'admin', 'super-admin'],
-  analyzeVideo: ['user', 'manager', 'admin', 'super-admin'],
-  deleteVideo: ['user', 'manager', 'admin', 'super-admin'],
-  bulkUpload: ['manager', 'admin', 'super-admin'],
+  uploadVideo: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  analyzeVideo: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  deleteVideo: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  bulkUpload: ['pro', 'enterprise', 'custom', 'super-admin'],
 
   // AI Studio
-  useAIStudio: ['user', 'manager', 'admin', 'super-admin'],
-  scriptWriter: ['user', 'manager', 'admin', 'super-admin'],
-  thumbnailIdeas: ['user', 'manager', 'admin', 'super-admin'],
-  hookGenerator: ['user', 'manager', 'admin', 'super-admin'],
-  shortsCreator: ['user', 'manager', 'admin', 'super-admin'],
-  aiCoach: ['manager', 'admin', 'super-admin'],
-  channelAudit: ['manager', 'admin', 'super-admin'],
+  useAIStudio: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  scriptWriter: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  thumbnailIdeas: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  hookGenerator: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  shortsCreator: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  aiCoach: ['pro', 'enterprise', 'custom', 'super-admin'],
+  channelAudit: ['pro', 'enterprise', 'custom', 'super-admin'],
 
   // Analytics
-  viewOwnAnalytics: ['user', 'manager', 'admin', 'super-admin'],
-  viewAdvancedAnalytics: ['manager', 'admin', 'super-admin'],
-  viewTeamAnalytics: ['manager', 'admin', 'super-admin'],
-  exportReports: ['manager', 'admin', 'super-admin'],
-  createCustomReports: ['manager', 'admin', 'super-admin'],
-  whiteLabel: ['admin', 'super-admin'],
+  viewOwnAnalytics: ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'],
+  viewAdvancedAnalytics: ['pro', 'enterprise', 'custom', 'super-admin'],
+  viewTeamAnalytics: ['pro', 'enterprise', 'custom', 'super-admin'],
+  exportReports: ['pro', 'enterprise', 'custom', 'super-admin'],
+  createCustomReports: ['pro', 'enterprise', 'custom', 'super-admin'],
+  whiteLabel: ['enterprise', 'custom', 'super-admin'],
 
   // Team Management
-  createTeam: ['manager', 'admin', 'super-admin'],
-  inviteMembers: ['manager', 'admin', 'super-admin'],
-  manageTeamMembers: ['manager', 'admin', 'super-admin'],
-  removeMembers: ['manager', 'admin', 'super-admin'],
-  setMemberRoles: ['admin', 'super-admin'],
-  viewAuditLogs: ['admin', 'super-admin'],
+  createTeam: ['pro', 'enterprise', 'custom', 'super-admin'],
+  inviteMembers: ['pro', 'enterprise', 'custom', 'super-admin'],
+  manageTeamMembers: ['pro', 'enterprise', 'custom', 'super-admin'],
+  removeMembers: ['pro', 'enterprise', 'custom', 'super-admin'],
+  setMemberRoles: ['enterprise', 'custom', 'super-admin'],
+  viewAuditLogs: ['enterprise', 'custom', 'super-admin'],
 
   // Content Management
-  useContentCalendar: ['manager', 'admin', 'super-admin'],
-  schedulePost: ['manager', 'admin', 'super-admin'],
-  bulkScheduling: ['manager', 'admin', 'super-admin'],
+  useContentCalendar: ['pro', 'enterprise', 'custom', 'super-admin'],
+  schedulePost: ['pro', 'enterprise', 'custom', 'super-admin'],
+  bulkScheduling: ['pro', 'enterprise', 'custom', 'super-admin'],
 
   // Competitor Analysis
-  trackCompetitors: ['manager', 'admin', 'super-admin'],
-  comparePerformance: ['manager', 'admin', 'super-admin'],
-  benchmarking: ['manager', 'admin', 'super-admin'],
+  trackCompetitors: ['pro', 'enterprise', 'custom', 'super-admin'],
+  comparePerformance: ['pro', 'enterprise', 'custom', 'super-admin'],
+  benchmarking: ['pro', 'enterprise', 'custom', 'super-admin'],
 
   // API & Integration
-  useAPI: ['admin', 'super-admin'],
-  createAPIKeys: ['admin', 'super-admin'],
-  manageWebhooks: ['admin', 'super-admin'],
-  customIntegrations: ['admin', 'super-admin'],
+  useAPI: ['enterprise', 'custom', 'super-admin'],
+  createAPIKeys: ['enterprise', 'custom', 'super-admin'],
+  manageWebhooks: ['enterprise', 'custom', 'super-admin'],
+  customIntegrations: ['enterprise', 'custom', 'super-admin'],
 
   // Admin Only
-  accessAdmin: ['admin', 'super-admin'],
-  accessTeamAdmin: ['manager', 'admin', 'super-admin'],
+  accessAdmin: ['enterprise', 'custom', 'super-admin'],
+  accessTeamAdmin: ['pro', 'enterprise', 'custom', 'super-admin'],
 
   // Super Admin Only
   accessSuperAdmin: ['super-admin'],
@@ -106,8 +107,8 @@ export const PERMISSIONS = {
   viewMetrics: ['super-admin'],
 
   // AI Training (Enterprise/Custom)
-  trainCustomModels: ['admin', 'super-admin'],
-  fineTuneModels: ['admin', 'super-admin'],
+  trainCustomModels: ['enterprise', 'custom', 'super-admin'],
+  fineTuneModels: ['enterprise', 'custom', 'super-admin'],
 } as const;
 
 export type PermissionAction = keyof typeof PERMISSIONS;

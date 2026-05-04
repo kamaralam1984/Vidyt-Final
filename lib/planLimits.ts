@@ -159,7 +159,7 @@ const STARTER_ROLL: PlanRoll = {
 const PRO_ROLL: PlanRoll = {
   id: 'pro',
   name: 'Pro',
-  role: 'manager',
+  role: 'pro',
   limits: {
     video_upload: 5,
     video_analysis: 5,

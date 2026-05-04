@@ -88,7 +88,7 @@ export default function SuperAdminPage() {
   const [plans, setPlans] = useState<any[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [plansSaving, setPlansSaving] = useState(false);
-  const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['manager', 'admin', 'enterprise', 'super-admin']);
+  const [aiStudioRoles, setAiStudioRoles] = useState<string[]>(['pro', 'enterprise', 'custom', 'super-admin']);
   const [aiStudioSaving, setAiStudioSaving] = useState(false);
   const [aiStudioMsg, setAiStudioMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [aiToolsMsg, setAiToolsMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -996,14 +996,14 @@ export default function SuperAdminPage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-white">Allow AI Studio for these roles:</p>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setAiStudioRoles(['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'])}
+                  <button type="button" onClick={() => setAiStudioRoles(['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'])}
                     className="text-[10px] px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded hover:bg-emerald-500/20">Select All</button>
                   <button type="button" onClick={() => setAiStudioRoles([])}
                     className="text-[10px] px-2 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20">Clear All</button>
                 </div>
               </div>
               <div className="space-y-2">
-                {['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'].map((role) => (
+                {['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'].map((role) => (
                   <label key={role} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1086,7 +1086,7 @@ export default function SuperAdminPage() {
                     <p className="text-sm font-bold text-white">{tool.label}</p>
                     <p className="text-[10px] text-[#888] mb-2">{(tool as any).desc}</p>
                     <div className="flex flex-wrap gap-3">
-                      {['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'].map((role) => (
+                      {['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'].map((role) => (
                         <label key={role} className="flex items-center gap-2 cursor-pointer text-xs">
                           <input
                             type="checkbox"
@@ -1489,7 +1489,7 @@ export default function SuperAdminPage() {
                           <div className="space-y-2">
                             <p className="text-[10px] font-medium text-[#888] uppercase tracking-wider">Allowed Roles</p>
                             <div className="flex flex-wrap gap-2">
-                              {['user', 'manager', 'admin', 'enterprise', 'super-admin', 'custom'].map((role) => {
+                              {['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin'].map((role) => {
                                 const linkedPlans = plans.filter(p => p.role === role).map(p => p.label || p.planId);
                                 return (
                                   <div key={role} className="flex flex-col gap-1">
@@ -1838,11 +1838,12 @@ export default function SuperAdminPage() {
                           disabled={roleChangingId === u.id}
                           className="bg-[#0F0F0F] border border-[#333333] rounded px-2 py-1 text-xs capitalize"
                         >
-                          <option value="user">User</option>
-                          <option value="manager">Manager</option>
-                          <option value="admin">Admin</option>
-                          <option value="super-admin">Super Admin</option>
+                          <option value="free">Free</option>
+                          <option value="starter">Starter</option>
+                          <option value="pro">Pro</option>
+                          <option value="enterprise">Enterprise</option>
                           <option value="custom">Custom</option>
+                          <option value="super-admin">Super Admin</option>
                         </select>
                         {roleChangingId === u.id && <Loader2 className="w-3 h-3 inline ml-1 animate-spin" />}
                       </td>
@@ -1929,7 +1930,7 @@ export default function SuperAdminPage() {
                     <div>
                       <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Role</label>
                       <select value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]">
-                        <option value="user">User</option><option value="manager">Manager</option><option value="admin">Admin</option><option value="enterprise">Enterprise Plan</option><option value="super-admin">Super Admin</option><option value="custom">Custom</option>
+                        <option value="free">Free</option><option value="starter">Starter</option><option value="pro">Pro</option><option value="enterprise">Enterprise</option><option value="custom">Custom</option><option value="super-admin">Super Admin</option>
                       </select>
                     </div>
                     <div>
@@ -1964,7 +1965,7 @@ export default function SuperAdminPage() {
                     <div>
                       <label className="block text-xs font-medium text-[#AAAAAA] mb-1">Role</label>
                       <select value={modifyForm.role} onChange={(e) => setModifyForm((f) => ({ ...f, role: e.target.value }))} className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#333333] rounded-lg focus:ring-2 focus:ring-[#FF0000]">
-                        <option value="user">User</option><option value="manager">Manager</option><option value="admin">Admin</option><option value="super-admin">Super Admin</option>
+                        <option value="free">Free</option><option value="starter">Starter</option><option value="pro">Pro</option><option value="enterprise">Enterprise</option><option value="custom">Custom</option><option value="super-admin">Super Admin</option>
                       </select>
                     </div>
                     <div>

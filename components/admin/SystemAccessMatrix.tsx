@@ -6,11 +6,12 @@ import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 
 const ROLES = [
-  { id: 'user', label: 'User' },
-  { id: 'manager', label: 'Manager' },
-  { id: 'admin', label: 'Admin' },
-  { id: 'super-admin', label: 'Super Admin' },
+  { id: 'free', label: 'Free' },
+  { id: 'starter', label: 'Starter' },
+  { id: 'pro', label: 'Pro' },
+  { id: 'enterprise', label: 'Enterprise' },
   { id: 'custom', label: 'Custom' },
+  { id: 'super-admin', label: 'Super Admin' },
 ];
 
 export default function SystemAccessMatrix() {

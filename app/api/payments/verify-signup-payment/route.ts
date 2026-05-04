@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Role mapping
-    const role = (PLAN_ROLE_MAP[planId] || 'user') as 'user' | 'manager' | 'admin';
+    const role = (PLAN_ROLE_MAP[planId] || 'free') as 'free' | 'starter' | 'pro' | 'enterprise' | 'custom';
 
     const planSnap = await getActivePlanPricing(planId);
     let priceUsd = 0;

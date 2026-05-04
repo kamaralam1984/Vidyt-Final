@@ -131,7 +131,7 @@ export default function Navbar() {
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${isSuperRoleNav
                 ? 'bg-[#FF0000]/20 text-[#FF0000]'
                 : userRole === 'admin' ? 'bg-[#FF0000]/20 text-[#FF0000]'
-                  : userRole === 'manager' ? 'bg-yellow-400/20 text-yellow-400'
+                  : (userRole === 'pro' || userRole === 'manager') ? 'bg-yellow-400/20 text-yellow-400'
                     : 'bg-[#212121] text-[#AAAAAA]'
               }`}>
               <User className="w-3.5 h-3.5" />

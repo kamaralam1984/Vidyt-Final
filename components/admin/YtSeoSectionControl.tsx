@@ -5,12 +5,12 @@ import { Youtube, Save, Loader2, Check, X, RefreshCw, Eye, EyeOff, Shield } from
 import { getAuthHeaders } from '@/utils/auth';
 
 const ROLES = [
-  { id: 'user', label: 'User', color: '#6B7280' },
-  { id: 'manager', label: 'Manager', color: '#3B82F6' },
-  { id: 'admin', label: 'Admin', color: '#F59E0B' },
-  { id: 'enterprise', label: 'Enterprise Plan', color: '#10B981' }, // Added Enterprise Plan
-  { id: 'super-admin', label: 'Super Admin', color: '#EF4444' },
+  { id: 'free', label: 'Free', color: '#6B7280' },
+  { id: 'starter', label: 'Starter', color: '#3B82F6' },
+  { id: 'pro', label: 'Pro', color: '#8B5CF6' },
+  { id: 'enterprise', label: 'Enterprise', color: '#10B981' },
   { id: 'custom', label: 'Custom', color: '#7C3AED' },
+  { id: 'super-admin', label: 'Super Admin', color: '#EF4444' },
 ];
 
 const SECTION_ICONS: Record<string, string> = {

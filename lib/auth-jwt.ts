@@ -24,7 +24,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key-chang
 const getSecretKey = () => new TextEncoder().encode(JWT_SECRET);
 const getRefreshKey = () => new TextEncoder().encode(REFRESH_SECRET);
 
-export type UserRole = 'user' | 'manager' | 'admin' | 'super-admin' | 'enterprise';
+export type UserRole = 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'super-admin' | 'user' | 'manager' | 'admin';
 
 export interface AuthUser {
   id: string;

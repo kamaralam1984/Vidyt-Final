@@ -218,8 +218,8 @@ export default function PlanControlPanel() {
                   <div>
                     <div className="text-xs text-gray-400 font-semibold mb-2">Change Role</div>
                     <div className="grid grid-cols-2 gap-2">
-                      {['user', 'manager', 'admin'].map((role) => {
-                        const roleData = roleInfo[role];
+                      {['free', 'starter', 'pro', 'enterprise', 'custom'].map((role) => {
+                        const roleData = roleInfo[role] || roleInfo['free'];
                         return (
                           <button
                             key={role}
@@ -227,15 +227,11 @@ export default function PlanControlPanel() {
                             disabled={loading || plan.role === role}
                             className={`px-3 py-2 rounded text-xs font-semibold transition ${
                               plan.role === role
-                                ? `${roleData.badgeColor} text-white opacity-50 cursor-not-allowed`
-                                : `${roleData.badgeColor} text-white hover:opacity-80 disabled:opacity-50`
+                                ? `${roleData?.badgeColor} text-white opacity-50 cursor-not-allowed`
+                                : `${roleData?.badgeColor} text-white hover:opacity-80 disabled:opacity-50`
                             }`}
                           >
-                            {role === 'user'
-                              ? 'User'
-                              : role === 'manager'
-                              ? 'Manager'
-                              : 'Admin'}
+                            {role.charAt(0).toUpperCase() + role.slice(1)}
                           </button>
                         );
                       })}
@@ -271,7 +267,7 @@ export default function PlanControlPanel() {
               },
               {
                 level: 2,
-                role: 'Manager',
+                role: 'Pro',
                 color: 'bg-red-500',
                 details: 'Pro plan',
                 permissions: 'All User + Teams, Scheduling, Team analytics',

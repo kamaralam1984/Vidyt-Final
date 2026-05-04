@@ -10,8 +10,8 @@ import { roleAllowed, isSuperAdminRole } from '@/lib/roleNormalizer';
 // Defaults still list legacy names — roleAllowed() resolves the new
 // plan-name aliases (pro→manager, enterprise/custom→admin) so the check
 // works for both old and new naming.
-const DEFAULT_AI_STUDIO_ROLES = ['manager', 'admin', 'super-admin'];
-const DEFAULT_TOOL_ROLES = ['manager', 'admin', 'super-admin'];
+const DEFAULT_AI_STUDIO_ROLES = ['pro', 'enterprise', 'custom', 'super-admin'];
+const DEFAULT_TOOL_ROLES = ['pro', 'enterprise', 'custom', 'super-admin'];
 
 export async function requireAIStudioAccess(
   request: NextRequest

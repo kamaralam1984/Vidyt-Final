@@ -62,7 +62,7 @@ export function checkAPIPermission(
  */
 export function requireRole(
   user: AuthUser | null,
-  minRole: 'user' | 'manager' | 'admin' | 'super-admin',
+  minRole: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'super-admin',
   actionName: string = minRole
 ) {
   if (!user) {
@@ -80,10 +80,15 @@ export function requireRole(
 
   if (!hasMinRole(user, minRole)) {
     const roleNames: Record<string, string> = {
-      'user': 'Free/Starter',
+      'free': 'Free',
+      'starter': 'Starter',
+      'pro': 'Pro',
+      'enterprise': 'Enterprise',
+      'custom': 'Custom',
+      'super-admin': 'Super Admin',
+      'user': 'Free',
       'manager': 'Pro',
       'admin': 'Enterprise',
-      'super-admin': 'Super Admin',
     };
 
     return {
@@ -191,7 +196,7 @@ export async function extractUser(request: NextRequest): Promise<AuthUser | null
  * export const POST = protected(async (req, user) => {...})
  */
 export function protectedRoute(
-  minRole: 'user' | 'manager' | 'admin' | 'super-admin',
+  minRole: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | 'super-admin',
   actionName: string = minRole
 ) {
   return (handler: (req: NextRequest, user: AuthUser) => Promise<NextResponse>) => {
@@ -234,19 +239,28 @@ export function protectedRoute(
 export function getUpgradeMessage(action: string, currentRole: string): string {
   const upgradePaths: Record<string, Record<string, string>> = {
     createTeam: {
+      'free': 'Upgrade to Pro plan to create teams',
+      'starter': 'Upgrade to Pro plan to create teams',
+      'pro': 'Upgrade to Enterprise to manage unlimited teams',
+      'enterprise': 'Already have team features',
       'user': 'Upgrade to Pro plan to create teams',
       'manager': 'Upgrade to Enterprise to manage unlimited teams',
-      'admin': 'Already have team features',
     },
     useAPI: {
+      'free': 'Upgrade to Enterprise plan to use API',
+      'starter': 'Upgrade to Enterprise plan to use API',
+      'pro': 'Upgrade to Enterprise plan to use API',
+      'enterprise': 'API available in Enterprise plan',
       'user': 'Upgrade to Enterprise plan to use API',
       'manager': 'Upgrade to Enterprise plan to use API',
-      'admin': 'API available in Enterprise plan',
     },
     whiteLabel: {
+      'free': 'Upgrade to Enterprise for white-label features',
+      'starter': 'Upgrade to Enterprise for white-label features',
+      'pro': 'Upgrade to Enterprise for white-label features',
+      'enterprise': 'White-label available in Enterprise plan',
       'user': 'Upgrade to Enterprise for white-label features',
       'manager': 'Upgrade to Enterprise for white-label features',
-      'admin': 'White-label available in Enterprise plan',
     },
   };
 

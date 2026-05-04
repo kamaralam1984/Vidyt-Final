@@ -424,7 +424,7 @@ export default function PricingPage() {
                   plans: ['Free', 'Starter'],
                 },
                 {
-                  role: 'Manager',
+                  role: 'Pro',
                   level: 2,
                   color: '#FF0000',
                   features: ['All User Features', 'Create Teams', 'Invite Members', 'Team Analytics'],

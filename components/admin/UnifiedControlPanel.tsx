@@ -387,9 +387,9 @@ export default function UnifiedControlPanel() {
                       <div>
                         <h4 className="text-[10px] text-[#555] uppercase tracking-wider font-bold mb-2">Role Access</h4>
                         <div className="space-y-1.5">
-                          {['user', 'manager', 'admin'].map(role => {
+                          {['free', 'starter', 'pro', 'enterprise', 'custom'].map(role => {
                             const ri = roleInfo[role];
-                            const allowed = control.allowedRoles || ['user', 'manager', 'admin'];
+                            const allowed = control.allowedRoles || ['free', 'starter', 'pro', 'enterprise', 'custom'];
                             return (
                               <label key={role} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-[#1a1a1a] transition">
                                 <input type="checkbox" checked={allowed.includes(role)}
