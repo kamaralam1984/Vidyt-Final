@@ -7,6 +7,8 @@ import PlanDiscount from '@/models/PlanDiscount';
 import Plan from '@/models/Plan';
 import { yearlyUsdFromMonthly } from '@/lib/planPricing';
 import { withApiCache } from '@/lib/withApiCache';
+import { getPlanRoll } from '@/lib/planLimits';
+import { FEATURE_LIMITS_REGISTRY } from '@/lib/featureLimits';
 
 async function plansHandler(request: NextRequest): Promise<NextResponse> {
   try {
@@ -30,9 +32,24 @@ async function plansHandler(request: NextRequest): Promise<NextResponse> {
         support: 'Priority',
       });
 
-      // Numeric quotas the admin set in Manage Plans (analysesLimit, titleSuggestions, hashtagCount, competitorsTracked, featureLimits map).
-      // Surface them so PricingCard can render real "Plan Quotas" instead of just friendly strings.
-      const quotas = p.limits || {};
+      // Build Plan Quotas: only include featureLimits entries where the
+      // corresponding boolean feature is enabled for this plan. This keeps
+      // Plan Quotas count aligned with the features list — admin enables a
+      // feature → its quota automatically appears on the pricing card.
+      const roll = getPlanRoll(p.planId);
+      const filteredFeatureLimits: Record<string, { value: number; period: string }> = {};
+      for (const def of FEATURE_LIMITS_REGISTRY) {
+        if (def.featureGate === 'never') continue;
+        if (def.featureGate && !roll.features[def.featureGate as keyof typeof roll.features]) continue;
+        const dbVal = (p.limits?.featureLimits as any)?.[def.key];
+        const value = dbVal?.value ?? def.defaultValue;
+        if (value === 0) continue;
+        filteredFeatureLimits[def.key] = { value, period: dbVal?.period ?? def.defaultPeriod };
+      }
+      const quotas = {
+        ...(p.limits || {}),
+        featureLimits: filteredFeatureLimits,
+      };
 
       return {
         id: p.planId,

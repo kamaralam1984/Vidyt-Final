@@ -29,6 +29,13 @@ export interface FeatureLimitDef {
    * enforcement continues to work without changes.
    */
   legacyKey?: string;
+  /**
+   * Boolean feature key (from PlanFeatures) that must be `true` for this quota
+   * to appear in Plan Quotas on the pricing card.
+   * - Omit (undefined) → always show (core quotas like analyses, titleSuggestions)
+   * - 'never' → never show in pricing display (storage/technical fields)
+   */
+  featureGate?: string | 'never';
 }
 
 export interface FeatureGroupDef {
@@ -48,42 +55,42 @@ export const FEATURE_GROUPS: FeatureGroupDef[] = [
 ];
 
 export const FEATURE_LIMITS_REGISTRY: FeatureLimitDef[] = [
-  // ── Core ──────────────────────────────────────────────────────────────
+  // ── Core — always show on pricing card (no featureGate) ───────────────
   { key: 'analyses', label: 'Video Analyses', group: 'core', defaultValue: 5, defaultPeriod: 'month', legacyKey: 'analysesLimit' },
   { key: 'titleSuggestions', label: 'Title Suggestions', group: 'core', defaultValue: 3, defaultPeriod: 'day', legacyKey: 'titleSuggestions' },
   { key: 'hashtagsPerPost', label: 'Hashtags per Post', group: 'core', defaultValue: 10, defaultPeriod: 'lifetime', legacyKey: 'hashtagCount' },
-  { key: 'competitorsTracked', label: 'Competitors Tracked', group: 'core', defaultValue: 3, defaultPeriod: 'lifetime', legacyKey: 'competitorsTracked' },
+  { key: 'competitorsTracked', label: 'Competitors Tracked', group: 'core', defaultValue: 3, defaultPeriod: 'lifetime', legacyKey: 'competitorsTracked', featureGate: 'competitorAnalysis' },
 
-  // ── AI Studio ─────────────────────────────────────────────────────────
-  { key: 'daily_ideas', label: 'Daily Ideas Generations', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day' },
-  { key: 'ai_coach', label: 'AI Coach Sessions', group: 'ai_studio', defaultValue: 3, defaultPeriod: 'day' },
-  { key: 'keyword_research', label: 'Keyword Research Queries', group: 'ai_studio', defaultValue: 10, defaultPeriod: 'day' },
-  { key: 'script_writer', label: 'Scripts Generated', group: 'ai_studio', defaultValue: 3, defaultPeriod: 'day' },
-  { key: 'title_generator', label: 'Title Generator Calls', group: 'ai_studio', defaultValue: 10, defaultPeriod: 'day' },
-  { key: 'ai_shorts_clipping', label: 'AI Shorts Clips', group: 'ai_studio', defaultValue: 3, defaultPeriod: 'day' },
-  { key: 'ai_thumbnail_maker', label: 'AI Thumbnails', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day' },
-  { key: 'channel_audit_tool', label: 'Channel Audits', group: 'ai_studio', defaultValue: 1, defaultPeriod: 'month' },
-  { key: 'optimize', label: 'AI Optimization Runs', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day' },
-  { key: 'ultraAiEngine', label: 'Ultra AI Engine', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day' },
+  // ── AI Studio — gated by the matching boolean feature ─────────────────
+  { key: 'daily_ideas', label: 'Daily Ideas Generations', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day', featureGate: 'daily_ideas' },
+  { key: 'ai_coach', label: 'AI Coach Sessions', group: 'ai_studio', defaultValue: 3, defaultPeriod: 'day', featureGate: 'ai_coach' },
+  { key: 'keyword_research', label: 'Keyword Research Queries', group: 'ai_studio', defaultValue: 10, defaultPeriod: 'day', featureGate: 'keyword_research' },
+  { key: 'script_writer', label: 'Scripts Generated', group: 'ai_studio', defaultValue: 3, defaultPeriod: 'day', featureGate: 'script_writer' },
+  { key: 'title_generator', label: 'Title Generator Calls', group: 'ai_studio', defaultValue: 10, defaultPeriod: 'day', featureGate: 'title_generator' },
+  { key: 'ai_shorts_clipping', label: 'AI Shorts Clips', group: 'ai_studio', defaultValue: 3, defaultPeriod: 'day', featureGate: 'ai_shorts_clipping' },
+  { key: 'ai_thumbnail_maker', label: 'AI Thumbnails', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day', featureGate: 'ai_thumbnail_maker' },
+  { key: 'channel_audit_tool', label: 'Channel Audits', group: 'ai_studio', defaultValue: 1, defaultPeriod: 'month', featureGate: 'channel_audit_tool' },
+  { key: 'optimize', label: 'AI Optimization Runs', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day', featureGate: 'optimize' },
+  { key: 'ultraAiEngine', label: 'Ultra AI Engine', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day', featureGate: 'never' },
 
-  // ── Analytics ─────────────────────────────────────────────────────────
-  { key: 'viralPrediction', label: 'Viral Predictions', group: 'analytics', defaultValue: 5, defaultPeriod: 'day' },
-  { key: 'trendAnalysis', label: 'Trend Analysis Reports', group: 'analytics', defaultValue: 3, defaultPeriod: 'day' },
-  { key: 'postingTimePrediction', label: 'Posting Time Predictions', group: 'analytics', defaultValue: 10, defaultPeriod: 'day' },
-  { key: 'analyticsExports', label: 'Analytics Exports', group: 'analytics', defaultValue: 5, defaultPeriod: 'month' },
+  // ── Analytics — gated by the matching boolean feature ─────────────────
+  { key: 'viralPrediction', label: 'Viral Predictions', group: 'analytics', defaultValue: 5, defaultPeriod: 'day', featureGate: 'advancedAiViralPrediction' },
+  { key: 'trendAnalysis', label: 'Trend Analysis Reports', group: 'analytics', defaultValue: 3, defaultPeriod: 'day', featureGate: 'realTimeTrendAnalysis' },
+  { key: 'postingTimePrediction', label: 'Posting Time Predictions', group: 'analytics', defaultValue: 10, defaultPeriod: 'day', featureGate: 'bestPostingTimePredictions' },
+  { key: 'analyticsExports', label: 'Analytics Exports', group: 'analytics', defaultValue: 5, defaultPeriod: 'month', featureGate: 'advancedAnalyticsDashboard' },
 
   // ── Social ────────────────────────────────────────────────────────────
-  { key: 'socialAccountsConnected', label: 'Social Accounts Connected', group: 'social', defaultValue: 1, defaultPeriod: 'lifetime' },
+  { key: 'socialAccountsConnected', label: 'Social Accounts Connected', group: 'social', defaultValue: 1, defaultPeriod: 'lifetime', featureGate: 'never' },
   { key: 'scheduledPosts', label: 'Scheduled Posts', group: 'social', defaultValue: 10, defaultPeriod: 'month' },
 
-  // ── Storage ───────────────────────────────────────────────────────────
-  { key: 'storageGB', label: 'Storage (GB)', group: 'storage', defaultValue: 1, defaultPeriod: 'lifetime' },
-  { key: 'videoUploads', label: 'Video Uploads', group: 'storage', defaultValue: 5, defaultPeriod: 'month' },
-  { key: 'videoDurationMinutes', label: 'Max Video Duration (min)', group: 'storage', defaultValue: 10, defaultPeriod: 'lifetime' },
+  // ── Storage — never shown on pricing card (shown in limitsDisplay instead) ──
+  { key: 'storageGB', label: 'Storage (GB)', group: 'storage', defaultValue: 1, defaultPeriod: 'lifetime', featureGate: 'never' },
+  { key: 'videoUploads', label: 'Video Uploads', group: 'storage', defaultValue: 5, defaultPeriod: 'month', featureGate: 'never' },
+  { key: 'videoDurationMinutes', label: 'Max Video Duration (min)', group: 'storage', defaultValue: 10, defaultPeriod: 'lifetime', featureGate: 'never' },
 
-  // ── Collaboration ─────────────────────────────────────────────────────
-  { key: 'teamSeats', label: 'Team Seats', group: 'collaboration', defaultValue: 1, defaultPeriod: 'lifetime' },
-  { key: 'apiCalls', label: 'API Calls', group: 'collaboration', defaultValue: 100, defaultPeriod: 'day' },
+  // ── Collaboration — gated by the matching boolean feature ─────────────
+  { key: 'teamSeats', label: 'Team Seats', group: 'collaboration', defaultValue: 1, defaultPeriod: 'lifetime', featureGate: 'teamCollaboration' },
+  { key: 'apiCalls', label: 'API Calls', group: 'collaboration', defaultValue: 100, defaultPeriod: 'day', featureGate: 'customIntegrations' },
 ];
 
 export const PERIOD_OPTIONS: { value: FeaturePeriod; label: string }[] = [
