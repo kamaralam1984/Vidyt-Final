@@ -23,12 +23,11 @@ export interface ScoreInputs {
   slug?: string;        // URL slug — penalised when garbage (best-best-best...)
 }
 
-// Threshold at 55: a page with 900+ words + 5 FAQs + clean slug scores ~57
-// without any trending rank or views — that's real content quality.
-// 75 was mathematically impossible for non-trending pages (max non-trending
-// score ≈ 70), which caused 99% of pages to stay rejected forever.
-export const INDEXABLE_THRESHOLD = 55;
-export const DAILY_PROMOTION_CAP = 100;
+// Threshold at 25: pages with at least 25/100 quality score get indexed.
+// Below 25 = literal garbage (empty content, pure junk slugs).
+// Google decides ranking — we only gate out the worst-of-worst.
+export const INDEXABLE_THRESHOLD = 25;
+export const DAILY_PROMOTION_CAP = 500;
 
 export function computeQualityScore(i: ScoreInputs): number {
   // 1) Word-count gate (max 35 pts). Google wants substance.

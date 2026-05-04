@@ -126,8 +126,8 @@ export async function GET(_request: NextRequest) {
           update: { $set: { qualityScore: score } },
         },
       });
-      if (score < INDEXABLE_THRESHOLD - 10) {
-        // Hysteresis: only demote if clearly below (threshold - 10) to avoid flapping
+      if (score < INDEXABLE_THRESHOLD - 5) {
+        // Demote pages that fall clearly below threshold (hysteresis of 5)
         demoteSlugs.push(p.slug);
       }
     }
