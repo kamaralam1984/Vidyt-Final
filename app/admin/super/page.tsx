@@ -501,10 +501,19 @@ export default function SuperAdminPage() {
     }
   };
 
+  const ROLE_SUBSCRIPTION_MAP: Record<string, string> = {
+    'free': 'free', 'starter': 'starter', 'pro': 'pro',
+    'enterprise': 'enterprise', 'custom': 'custom', 'super-admin': 'owner',
+    'user': 'free', 'manager': 'pro', 'admin': 'enterprise',
+  };
+
   const handleSetRole = async (userId: string, role: string) => {
     const token = localStorage.getItem('token');
     if (!token) return;
     setRoleChangingId(userId);
+    // Optimistic update — instant UI change
+    const newSub = ROLE_SUBSCRIPTION_MAP[role] || 'free';
+    setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role, subscription: newSub } : u));
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',

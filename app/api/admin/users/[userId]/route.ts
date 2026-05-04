@@ -29,6 +29,17 @@ export async function PATCH(
     if (action === 'update' || action === 'set-role') {
       if (body.role) {
         user.role = body.role;
+        const roleSubMap: Record<string, string> = {
+          'free': 'free', 'starter': 'starter', 'pro': 'pro',
+          'enterprise': 'enterprise', 'custom': 'custom', 'super-admin': 'owner',
+          'user': 'free', 'manager': 'pro', 'admin': 'enterprise',
+        };
+        const newSub = roleSubMap[body.role] || 'free';
+        user.subscription = newSub;
+        if (user.subscriptionPlan) {
+          user.subscriptionPlan.planId = newSub;
+          user.subscriptionPlan.planName = newSub.charAt(0).toUpperCase() + newSub.slice(1);
+        }
       }
       if (body.name !== undefined) {
         user.name = body.name;
