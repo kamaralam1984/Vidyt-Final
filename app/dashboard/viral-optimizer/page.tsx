@@ -54,9 +54,12 @@ export default function ViralOptimizerPage() {
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
 
   const [generatingSEO, setGeneratingSEO] = useState(false);
+  const [seoStatus, setSeoStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   const autoGenerateSEO = async (promptHint: string) => {
     if (!promptHint) return;
     setGeneratingSEO(true);
+    setSeoStatus(null);
     try {
       const fd = new FormData();
       fd.append('topic', promptHint);
@@ -70,11 +73,15 @@ export default function ViralOptimizerPage() {
         if (hashStr && !sug.description?.includes('#')) {
           setDescription((prev) => (prev ? `${prev}\n\n${hashStr}` : hashStr));
         }
+        setSeoStatus({ type: 'success', message: 'SEO generated successfully!' });
+      } else {
+        setSeoStatus({ type: 'error', message: 'No suggestions returned. Try a different topic.' });
       }
-    } catch(err) {
-      console.error(err);
+    } catch(err: any) {
+      setSeoStatus({ type: 'error', message: err?.response?.data?.error || 'Failed to generate SEO. Please try again.' });
     } finally {
       setGeneratingSEO(false);
+      setTimeout(() => setSeoStatus(null), 4000);
     }
   };
 
@@ -227,11 +234,12 @@ export default function ViralOptimizerPage() {
 
   const viralScore = (() => {
     if (!ctrData || !retentionData || !engagementData) return null;
-    const ctr = ctrData.ctrScore / 100;
-    const retention = retentionData.predictedRetention / 100;
-    const keywordScore = (ctrData.factors?.keywordRelevance ?? 60) / 100;
-    const engagement = engagementData.engagementRate / 100;
-    return Math.min(99, Math.round((0.3 * ctr + 0.3 * retention + 0.2 * keywordScore + 0.2 * engagement) * 100));
+    const ctr = Number(ctrData.ctrScore) / 100;
+    const retention = Number(retentionData.predictedRetention) / 100;
+    const keywordScore = Number(ctrData.factors?.keywordRelevance ?? 60) / 100;
+    const engagement = Number(engagementData.engagementRate) / 100;
+    const raw = (0.3 * ctr + 0.3 * retention + 0.2 * keywordScore + 0.2 * engagement) * 100;
+    return isNaN(raw) ? 50 : Math.min(99, Math.round(raw));
   })();
 
   const ctrPercentNumber = ctrData ? parseFloat(ctrData.ctrPercent) || 0 : 0;
@@ -241,12 +249,28 @@ export default function ViralOptimizerPage() {
 
   const viralColor = viralScore != null ? (viralScore >= 70 ? '#22c55e' : viralScore >= 40 ? '#eab308' : '#ef4444') : '#666';
 
+  const [thumbError, setThumbError] = useState<string | null>(null);
+
   const onThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setThumbnailFile(file);
-      setThumbnailPreview(URL.createObjectURL(file));
+    setThumbError(null);
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setThumbError('Only image files are allowed (JPG, PNG, WEBP).');
+      return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      setThumbError('Image must be under 5MB.');
+      return;
+    }
+    setThumbnailFile(file);
+    setThumbnailPreview(URL.createObjectURL(file));
+  };
+
+  const removeThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+    setThumbError(null);
   };
 
   if (allowed === null) {
@@ -390,17 +414,28 @@ export default function ViralOptimizerPage() {
                   </div>
                   <div>
                     <label className="block text-sm text-[#AAAAAA] mb-1">{t('viral.engine.thumbUpload')}</label>
-                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-[#333] rounded-lg cursor-pointer hover:bg-[#212121] transition">
-                      <input type="file" accept="image/*" className="hidden" onChange={onThumbnailChange} />
-                      {thumbnailPreview ? (
-                        <NextImage src={thumbnailPreview} alt="Thumb" width={120} height={64} className="h-16 object-contain rounded" unoptimized />
-                      ) : (
-                        <>
-                          <Upload className="w-6 h-6 text-[#666] mb-1" />
-                          <span className="text-xs text-[#888]">Choose thumbnail</span>
-                        </>
+                    <div className="relative">
+                      <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-[#333] rounded-lg cursor-pointer hover:bg-[#212121] transition">
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={onThumbnailChange} />
+                        {thumbnailPreview ? (
+                          <NextImage src={thumbnailPreview} alt="Thumb" width={120} height={64} className="h-16 object-contain rounded" unoptimized />
+                        ) : (
+                          <>
+                            <Upload className="w-6 h-6 text-[#666] mb-1" />
+                            <span className="text-xs text-[#888]">Choose thumbnail (JPG/PNG, max 5MB)</span>
+                          </>
+                        )}
+                      </label>
+                      {thumbnailPreview && (
+                        <button
+                          type="button"
+                          onClick={removeThumbnail}
+                          className="absolute top-1 right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs flex items-center justify-center leading-none"
+                          title="Remove thumbnail"
+                        >×</button>
                       )}
-                    </label>
+                    </div>
+                    {thumbError && <p className="text-xs text-red-400 mt-1">⚠ {thumbError}</p>}
                   </div>
                   <div>
                     <label className="block text-sm text-[#AAAAAA] mb-1">{t('viral.engine.scriptOptional')}</label>
@@ -422,7 +457,15 @@ export default function ViralOptimizerPage() {
                       {generatingSEO ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-purple-400" />}
                       {generatingSEO ? 'AI is generating high-ranking SEO...' : 'Auto-Generate SEO ✨'}
                     </button>
+                    {seoStatus && (
+                      <div className={`text-xs px-3 py-2 rounded-lg border ${seoStatus.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                        {seoStatus.type === 'success' ? '✓ ' : '⚠ '}{seoStatus.message}
+                      </div>
+                    )}
 
+                    {!title.trim() && !analyzing && (
+                      <p className="text-xs text-amber-400 text-center">⚠ Add a title for accurate analysis</p>
+                    )}
                     <button
                       type="button"
                       onClick={runAnalysis}
