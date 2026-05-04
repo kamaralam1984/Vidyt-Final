@@ -7,7 +7,7 @@ import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import {
   Rocket, RotateCcw, RefreshCw, Clock, HardDrive, Cpu, GitCommit,
-  AlertTriangle, CheckCircle2, Loader2, Play, Camera, Activity,
+  AlertTriangle, CheckCircle2, Loader2, Play, Camera, Activity, Upload, GitBranch,
 } from 'lucide-react';
 
 interface PM2App {
@@ -31,6 +31,14 @@ interface Snapshot {
   readableTime: string;
   kind: 'pre-deploy' | 'hourly' | 'manual';
 }
+interface GitStatus {
+  branch: string;
+  changedFiles: string[];
+  changedCount: number;
+  ahead: number;
+  recentCommits: string[];
+  gitDir: string;
+}
 
 function formatUptime(ms: number): string {
   if (!ms) return '—';
@@ -52,6 +60,10 @@ export default function DeployPage() {
   const [snapshotting, setSnapshotting] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [confirmRollback, setConfirmRollback] = useState<string | null>(null);
+  const [pushing, setPushing] = useState(false);
+  const [commitMessage, setCommitMessage] = useState('');
+  const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
+  const [gitStatusLoading, setGitStatusLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -68,11 +80,23 @@ export default function DeployPage() {
     }
   }, []);
 
+  const fetchGitStatus = useCallback(async () => {
+    try {
+      const res = await axios.get('/api/admin/super/deploy/push', { headers: getAuthHeaders() });
+      setGitStatus(res.data);
+    } catch {
+      // git status is best-effort
+    } finally {
+      setGitStatusLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(fetchAll, 15000);
+    fetchGitStatus();
+    const interval = setInterval(() => { fetchAll(); fetchGitStatus(); }, 15000);
     return () => clearInterval(interval);
-  }, [fetchAll]);
+  }, [fetchAll, fetchGitStatus]);
 
   const handleDeploy = async () => {
     if (!confirm('Pull latest from GitHub main and rebuild. A pre-deploy snapshot will be taken first. Continue?')) return;
@@ -103,6 +127,28 @@ export default function DeployPage() {
       setLogs(data?.logs || [`[error] ${err?.message}`]);
     } finally {
       setRollingBack(null);
+    }
+  };
+
+  const handlePush = async () => {
+    const msg = commitMessage.trim();
+    if (!msg && (gitStatus?.changedCount ?? 0) > 0) {
+      alert('Enter a commit message before pushing.');
+      return;
+    }
+    if (!confirm(`Push to GitHub (origin/main)${msg ? ` with message: "${msg}"` : ''}?`)) return;
+    setPushing(true);
+    setLogs(['⬆ Pushing to GitHub…']);
+    try {
+      const res = await axios.post('/api/admin/super/deploy/push', { message: msg || 'chore: update' }, { headers: getAuthHeaders(), timeout: 90000 });
+      setLogs(res.data?.logs || []);
+      if (res.data?.ok) setCommitMessage('');
+      await fetchGitStatus();
+    } catch (err: any) {
+      const data = err?.response?.data;
+      setLogs(data?.logs || [`[error] ${err?.message}`]);
+    } finally {
+      setPushing(false);
     }
   };
 
@@ -176,6 +222,66 @@ export default function DeployPage() {
           <RefreshCw className="w-4 h-4" />
           Refresh
         </button>
+      </div>
+
+      {/* Push to GitHub */}
+      <div className="bg-[#181818] border border-[#2a2a2a] rounded-xl p-5 mb-6">
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <Upload className="w-4 h-4 text-blue-400" /> Push to GitHub
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-[#111] rounded-lg p-3">
+            <div className="text-[10px] text-[#666] mb-1 flex items-center gap-1"><GitBranch className="w-3 h-3" /> Branch</div>
+            <div className="text-sm font-mono text-white">{gitStatusLoading ? '…' : (gitStatus?.branch || '—')}</div>
+          </div>
+          <div className="bg-[#111] rounded-lg p-3">
+            <div className="text-[10px] text-[#666] mb-1">Uncommitted changes</div>
+            <div className={`text-sm font-bold ${(gitStatus?.changedCount ?? 0) > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+              {gitStatusLoading ? '…' : `${gitStatus?.changedCount ?? 0} file${gitStatus?.changedCount === 1 ? '' : 's'}`}
+            </div>
+          </div>
+          <div className="bg-[#111] rounded-lg p-3">
+            <div className="text-[10px] text-[#666] mb-1">Commits ahead of origin</div>
+            <div className={`text-sm font-bold ${(gitStatus?.ahead ?? 0) > 0 ? 'text-blue-400' : 'text-emerald-400'}`}>
+              {gitStatusLoading ? '…' : (gitStatus?.ahead ?? 0)}
+            </div>
+          </div>
+        </div>
+        {gitStatus?.changedFiles && gitStatus.changedFiles.length > 0 && (
+          <div className="bg-[#0a0a0a] rounded-lg p-3 mb-4 max-h-32 overflow-y-auto">
+            <div className="text-[10px] text-[#666] mb-1">Changed files</div>
+            {gitStatus.changedFiles.map((f, i) => (
+              <div key={i} className="text-[11px] font-mono text-amber-300">{f}</div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={commitMessage}
+            onChange={e => setCommitMessage(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !pushing && handlePush()}
+            placeholder="Commit message (required if there are changes)…"
+            disabled={pushing}
+            className="flex-1 bg-[#111] border border-[#333] text-white text-sm rounded-lg px-3 py-2 placeholder:text-[#555] focus:outline-none focus:border-blue-500 disabled:opacity-50"
+          />
+          <button
+            onClick={handlePush}
+            disabled={pushing || deploying}
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm flex items-center gap-2 disabled:opacity-50 transition"
+          >
+            {pushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {pushing ? 'Pushing…' : 'Push'}
+          </button>
+        </div>
+        {gitStatus?.recentCommits && gitStatus.recentCommits.length > 0 && (
+          <div className="mt-3">
+            <div className="text-[10px] text-[#555] mb-1">Recent commits</div>
+            {gitStatus.recentCommits.map((c, i) => (
+              <div key={i} className="text-[10px] font-mono text-[#666]">{c}</div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
