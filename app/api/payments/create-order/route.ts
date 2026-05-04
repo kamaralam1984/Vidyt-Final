@@ -6,8 +6,6 @@ import { getUserFromRequest } from '@/lib/auth';
 import { isValidPlan } from '@/utils/currency';
 import { getActivePlanPricing, usdAmountForBilling } from '@/lib/planPricing';
 import { buildRazorpayOrderFromUsd } from '@/lib/paymentCurrency';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,19 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid plan selected for payment' }, { status: 400 });
     }
 
-    // ── One active plan per email check ──
-    // Same plan can be re-purchased. Different plan blocked while one is active.
-    await connectDB();
-    const dbUser = await User.findById(user.id).lean() as any;
-    if (dbUser && dbUser.subscription && dbUser.subscription !== 'free' && dbUser.subscription !== planId) {
-      const activePlan = dbUser.subscription.charAt(0).toUpperCase() + dbUser.subscription.slice(1);
-      return NextResponse.json(
-        { error: `You already have an active ${activePlan} plan. Please cancel it first before purchasing a different plan.` },
-        { status: 409 }
-      );
-    }
-
-    const planPricing = await getActivePlanPricing(planId);
+const planPricing = await getActivePlanPricing(planId);
     if (!planPricing) {
       return NextResponse.json({ error: 'Plan pricing not found' }, { status: 404 });
     }
