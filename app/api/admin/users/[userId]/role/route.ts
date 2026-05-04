@@ -10,12 +10,25 @@ import User, { type IUser } from '@/models/User';
 import Plan from '@/models/Plan';
 
 const PLAN_ROLE_MAPPING: Record<string, string> = {
-  'free': 'user',
-  'starter': 'user',
-  'pro': 'manager',
-  'enterprise': 'admin',
-  'custom': 'admin',
+  'free': 'free',
+  'starter': 'starter',
+  'pro': 'pro',
+  'enterprise': 'enterprise',
+  'custom': 'custom',
   'owner': 'super-admin',
+};
+
+const ROLE_TO_SUBSCRIPTION_MAP: Record<string, string> = {
+  'free': 'free',
+  'starter': 'starter',
+  'pro': 'pro',
+  'enterprise': 'enterprise',
+  'custom': 'custom',
+  'super-admin': 'owner',
+  // legacy aliases
+  'user': 'free',
+  'manager': 'pro',
+  'admin': 'enterprise',
 };
 
 /**
@@ -99,7 +112,7 @@ export async function POST(
     // Determine role based on plan or custom role
     const newRole = (customRole ||
       PLAN_ROLE_MAPPING[planId] ||
-      'user') as IUser['role'];
+      'free') as IUser['role'];
 
     // Update user with new plan and role
     targetUser.subscription = planId as IUser['subscription'];
@@ -153,8 +166,8 @@ export async function PUT(
     const body = await request.json();
     const { role, customLimits } = body;
 
-    // Validate role
-    if (!role || !['user', 'manager', 'admin', 'super-admin'].includes(role)) {
+    const VALID_ROLES = ['free', 'starter', 'pro', 'enterprise', 'custom', 'super-admin', 'user', 'manager', 'admin'];
+    if (!role || !VALID_ROLES.includes(role)) {
       return apiError('Invalid role', 'INVALID_ROLE', 400);
     }
 
@@ -163,9 +176,15 @@ export async function PUT(
       return apiError('User not found', 'USER_NOT_FOUND', 404);
     }
 
-    // Update role
+    // Update role and sync subscription
     const oldRole = targetUser.role;
     targetUser.role = role as IUser['role'];
+    const newSubscription = ROLE_TO_SUBSCRIPTION_MAP[role] || 'free';
+    targetUser.subscription = newSubscription as IUser['subscription'];
+    if (targetUser.subscriptionPlan) {
+      targetUser.subscriptionPlan.planId = newSubscription;
+      targetUser.subscriptionPlan.planName = newSubscription.charAt(0).toUpperCase() + newSubscription.slice(1);
+    }
 
     if (customLimits) {
       targetUser.customLimits = customLimits;
@@ -211,7 +230,7 @@ export async function DELETE(
 
     // Reset to default role based on subscription
     const subscription = targetUser.subscription || 'free';
-    const defaultRole = (PLAN_ROLE_MAPPING[subscription] || 'user') as IUser['role'];
+    const defaultRole = (PLAN_ROLE_MAPPING[subscription] || 'free') as IUser['role'];
 
     targetUser.role = defaultRole;
     targetUser.customLimits = undefined;
