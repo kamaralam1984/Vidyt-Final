@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Check, Star, ArrowRight, Loader2 } from 'lucide-react';
 import { PLAN_UI_METADATA, DEFAULT_PLAN_METADATA } from '@/constants/pricing';
+import { FEATURE_LIMITS_REGISTRY } from '@/lib/featureLimits';
 
 export interface PricingPlan {
   id: string;
@@ -41,24 +42,11 @@ export interface PricingPlan {
   };
 }
 
-const FEATURE_LIMIT_LABELS: Record<string, string> = {
-  trendAnalysis: 'Trend Analysis',
-  keyword_research: 'Keyword Research',
-  hashtagsPerPost: 'Hashtags per Post',
-  viralPrediction: 'Viral Predictions',
-  postingTimePrediction: 'Posting-Time Predictions',
-  analyticsExports: 'Analytics Exports',
-  scheduledPosts: 'Scheduled Posts',
-  ultraAiEngine: 'Ultra AI Engine',
-  channel_audit_tool: 'Channel Audit',
-  script_writer: 'Script Writer',
-  ai_thumbnail_maker: 'AI Thumbnail Maker',
-  ai_shorts_clipping: 'AI Shorts Clipping',
-  ai_coach: 'AI Coach',
-  daily_ideas: 'Daily Ideas',
-  videoUploads: 'Video Uploads',
-  titleSuggestions: 'Title Suggestions',
-};
+// Registry-driven labels — auto-synced with FEATURE_LIMITS_REGISTRY.
+// Adding a new entry to the registry automatically gives it a label here.
+const FEATURE_LIMIT_LABELS: Record<string, string> = Object.fromEntries(
+  FEATURE_LIMITS_REGISTRY.map((def) => [def.key, def.label])
+);
 
 const formatQuotaValue = (n: number | undefined) => {
   if (n === undefined || n === null) return '—';
@@ -283,7 +271,7 @@ export default function PricingCard({
               )}
               {plan.quotas.featureLimits &&
                 Object.entries(plan.quotas.featureLimits)
-                  .filter(([key]) => !FEATURE_LIMITS_DUP_KEYS.has(key))
+                  .filter(([key, val]) => !FEATURE_LIMITS_DUP_KEYS.has(key) && val?.value !== 0)
                   .map(([key, val]) => (
                     <li key={key} className="flex justify-between">
                       <span className="text-[#AAAAAA]">{FEATURE_LIMIT_LABELS[key] || key.replace(/_/g, ' ')}</span>
