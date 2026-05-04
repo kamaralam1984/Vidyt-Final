@@ -60,15 +60,15 @@ export async function POST(request: NextRequest) {
     }
 
     // ── One active plan per email check ──
+    // Same plan can be re-purchased. Different plan blocked while one is active.
     const UserModel = (await import('@/models/User')).default;
     const dbUser = await UserModel.findById(authUser.id).lean() as any;
-    if (dbUser && dbUser.subscription && dbUser.subscription !== 'free') {
-      if (dbUser.subscription === planId) {
-        return NextResponse.json(
-          { error: `You already have an active ${dbUser.subscription.charAt(0).toUpperCase() + dbUser.subscription.slice(1)} plan. Please contact support to upgrade or cancel first.` },
-          { status: 409 }
-        );
-      }
+    if (dbUser && dbUser.subscription && dbUser.subscription !== 'free' && dbUser.subscription !== planId) {
+      const activePlan = dbUser.subscription.charAt(0).toUpperCase() + dbUser.subscription.slice(1);
+      return NextResponse.json(
+        { error: `You already have an active ${activePlan} plan. Please cancel it first before purchasing a different plan.` },
+        { status: 409 }
+      );
     }
 
     const billingPeriod = body.billingPeriod === 'year' ? 'year' : 'month';
