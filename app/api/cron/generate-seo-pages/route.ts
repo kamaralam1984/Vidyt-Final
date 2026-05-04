@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
           slug,
         });
 
+        const meetsThreshold = qualityScore >= INDEXABLE_THRESHOLD;
         await SeoPage.create({
           slug,
           keyword,
@@ -91,13 +92,14 @@ export async function GET(request: NextRequest) {
           content: built.content,
           hashtags: built.hashtags,
           relatedKeywords: built.relatedKeywords,
+          faqs: built.faqs,
           viralScore: 75,
           category: built.category,
           wordCount: built.wordCount,
           qualityScore,
           source: 'auto_daily',
-          isIndexable: false, // promote-seo-pages cron decides this
-          publishedAt: null,
+          isIndexable: meetsThreshold,
+          publishedAt: meetsThreshold ? new Date() : null,
         });
         created++;
       }
@@ -150,11 +152,24 @@ export async function GET(request: NextRequest) {
     }
     if (upgradeOps.length) await SeoPage.bulkWrite(upgradeOps, { ordered: false });
 
+    // ── 3. Auto-promote all pending pages (score ≥ threshold, not yet indexable)
+    //   This covers: newly upgraded pages + any page that passed threshold but
+    //   was never picked up by the promote cron.
+    const pendingResult = await SeoPage.updateMany(
+      {
+        isIndexable: { $ne: true },
+        qualityScore: { $gte: INDEXABLE_THRESHOLD },
+      },
+      { $set: { isIndexable: true, publishedAt: new Date() } }
+    );
+    const autoPromoted = pendingResult.modifiedCount || 0;
+
     return NextResponse.json({
       success: true,
       created,
       upgraded,
-      message: `Generated ${created} new pages · Upgraded ${upgraded} thin pages`,
+      autoPromoted,
+      message: `Generated ${created} new · Upgraded ${upgraded} thin · Auto-promoted ${autoPromoted} pending`,
       timestamp: new Date().toISOString(),
     });
   } catch (e: any) {
