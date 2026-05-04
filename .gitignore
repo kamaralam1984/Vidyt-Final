@@ -61,3 +61,9 @@ mongod.conf
 mongodb-backup-*/
 .env.local.backup
 tunnel.log
+
+# VPS-local files (never push)
+.claude/
+.last-deployed-sha
+*.bak
+*.bak.*

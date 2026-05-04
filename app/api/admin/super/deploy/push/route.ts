@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (hasChanges) {
-    const add = await run(logs, 'Git add', `cd ${GIT_DIR} && git add -A`);
+    const add = await run(logs, 'Git add', `cd ${GIT_DIR} && git add -u`);
     if (!add.ok) return NextResponse.json({ ok: false, logs, error: 'git add failed' }, { status: 500 });
 
     const safeMsg = message.replace(/'/g, "'\\''");
