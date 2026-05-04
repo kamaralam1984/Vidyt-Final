@@ -110,7 +110,14 @@ const FREE_ROLL: PlanRoll = {
     ai_thumbnail_maker: false,
     optimize: false,
   },
-  featureList: ['5 video analyses/month', 'Basic viral score', 'Title optimization (3)', 'Hashtag generator (10)', 'Community support'],
+  featureList: [
+    '5 video analyses/month',
+    '3 title suggestions per use',
+    '10 hashtags per post',
+    'Basic viral score',
+    'YouTube SEO analyzer',
+    'Community support',
+  ],
 };
 
 const STARTER_ROLL: PlanRoll = {
@@ -153,7 +160,17 @@ const STARTER_ROLL: PlanRoll = {
     ai_thumbnail_maker: false,
     optimize: false,
   },
-  featureList: ['1 video analysis/day', 'Standard viral prediction', 'Real-time trends', 'Email support'],
+  featureList: [
+    '1 video analysis/day',
+    '5 title suggestions per use',
+    '15 hashtags per post',
+    'Schedule up to 5 posts',
+    'Advanced AI viral prediction',
+    'Real-time trend analysis',
+    'Daily video ideas',
+    'Title generator',
+    'Email support',
+  ],
 };
 
 const PRO_ROLL: PlanRoll = {
@@ -196,7 +213,22 @@ const PRO_ROLL: PlanRoll = {
     ai_thumbnail_maker: true,
     optimize: true,
   },
-  featureList: ['5 video analyses/day', 'Advanced AI prediction', 'Best posting times', 'Priority support'],
+  featureList: [
+    '5 video analyses/day',
+    '10 title suggestions per use',
+    '20 hashtags per post',
+    'Schedule up to 30 posts',
+    'Bulk scheduling (25 posts)',
+    'Best posting time predictions',
+    'AI Coach',
+    'Keyword research',
+    'Script writer',
+    'Channel audit tool',
+    'AI Shorts clipping',
+    'AI Thumbnail maker',
+    'Competitor analysis (25)',
+    'Priority support',
+  ],
 };
 
 const ENTERPRISE_ROLL: PlanRoll = {
@@ -239,7 +271,20 @@ const ENTERPRISE_ROLL: PlanRoll = {
     ai_thumbnail_maker: true,
     optimize: true,
   },
-  featureList: ['15 video analyses/day', 'Team collaboration', 'White-label reports', '24/7 priority support'],
+  featureList: [
+    '15 video analyses/day',
+    '25 title suggestions per use',
+    '30 hashtags per post',
+    'Unlimited post scheduling',
+    'Team collaboration',
+    'White-label reports',
+    'Custom AI model training',
+    'Dedicated account manager',
+    'Advanced analytics dashboard',
+    'Custom integrations',
+    'Competitor analysis (100)',
+    '24/7 Priority support',
+  ],
 };
 
 const CUSTOM_ROLL: PlanRoll = {
@@ -282,7 +327,17 @@ const CUSTOM_ROLL: PlanRoll = {
     ai_thumbnail_maker: true,
     optimize: true,
   },
-  featureList: ['Everything in Enterprise', 'Custom usage limits', 'Dedicated support team'],
+  featureList: [
+    'Unlimited video analyses',
+    '50 title suggestions per use',
+    '50 hashtags per post',
+    'Unlimited post scheduling',
+    'Unlimited bulk scheduling',
+    'Everything in Enterprise',
+    'Custom usage limits',
+    'Dedicated support team',
+    '24/7 Priority support',
+  ],
 };
 
 const OWNER_ROLL: PlanRoll = {
