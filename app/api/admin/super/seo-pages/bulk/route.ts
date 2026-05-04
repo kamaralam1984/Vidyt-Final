@@ -5,13 +5,16 @@ import { getUserFromRequest } from '@/lib/auth';
 import { isSuperAdminRole } from '@/lib/adminAuth';
 import { buildSeoContent } from '@/lib/seoContentBuilder';
 import { computeQualityScore } from '@/lib/qualityScorer';
+import { isGarbageSlug } from '@/lib/slugQuality';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/admin/super/seo-pages/bulk
- * body: { action: 'delete' | 'promote' | 'demote' | 'rebuild', slugs: string[] }
+ * body: { action: 'delete' | 'promote' | 'demote' | 'rebuild' | 'promote-all', slugs?: string[] }
  *
+ * 'promote-all' marks EVERY non-indexable page as indexable in one shot
+ * (skips only literal garbage slugs). No slugs array needed.
  * 'rebuild' re-runs buildSeoContent + recomputes qualityScore for each slug.
  * Page rows are never deleted by this action — only their content fields
  * and qualityScore change.
@@ -23,14 +26,39 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => null);
-  if (!body || !Array.isArray(body.slugs) || body.slugs.length === 0) {
+  if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+
+  await connectDB();
+  let affected = 0;
+
+  // ── promote-all: no slugs needed — index everything non-garbage ──────────
+  if (body.action === 'promote-all') {
+    const all = await SeoPage.find({ isIndexable: { $ne: true } })
+      .select('slug')
+      .lean() as any[];
+    const goodSlugs = all
+      .map((p: any) => p.slug as string)
+      .filter((s: string) => s && !isGarbageSlug(s));
+    if (goodSlugs.length === 0) {
+      return NextResponse.json({ success: true, action: 'promote-all', affected: 0, message: 'Nothing to promote' });
+    }
+    const BATCH = 1000;
+    for (let i = 0; i < goodSlugs.length; i += BATCH) {
+      const batch = goodSlugs.slice(i, i + BATCH);
+      const r = await SeoPage.updateMany(
+        { slug: { $in: batch }, isIndexable: { $ne: true } },
+        { $set: { isIndexable: true, publishedAt: new Date() } }
+      );
+      affected += r.modifiedCount || 0;
+    }
+    return NextResponse.json({ success: true, action: 'promote-all', affected, total: goodSlugs.length });
+  }
+
+  if (!Array.isArray(body.slugs) || body.slugs.length === 0) {
     return NextResponse.json({ error: 'Provide slugs array' }, { status: 400 });
   }
   const slugs: string[] = body.slugs.filter((s: any) => typeof s === 'string').slice(0, 500);
   if (slugs.length === 0) return NextResponse.json({ error: 'No valid slugs' }, { status: 400 });
-
-  await connectDB();
-  let affected = 0;
 
   if (body.action === 'delete') {
     const r = await SeoPage.deleteMany({ slug: { $in: slugs } });

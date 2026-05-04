@@ -23,12 +23,11 @@ export interface ScoreInputs {
   slug?: string;        // URL slug — penalised when garbage (best-best-best...)
 }
 
-// Threshold stays at 75 (forces real word-count + clean slug before Google
-// sees the page). Cap raised 50 → 100 — paired with the curated generator
-// (75/day) + trending cron (20/day) we now have the budget to actually
-// promote 100 quality pages per day, growing the indexable count instead of
-// stalling at the 86-page floor.
-export const INDEXABLE_THRESHOLD = 75;
+// Threshold at 55: a page with 900+ words + 5 FAQs + clean slug scores ~57
+// without any trending rank or views — that's real content quality.
+// 75 was mathematically impossible for non-trending pages (max non-trending
+// score ≈ 70), which caused 99% of pages to stay rejected forever.
+export const INDEXABLE_THRESHOLD = 55;
 export const DAILY_PROMOTION_CAP = 100;
 
 export function computeQualityScore(i: ScoreInputs): number {
@@ -92,15 +91,21 @@ export function rescorePage(page: {
   hashtags?: string[];
   content?: string;
   slug?: string;
+  faqs?: Array<any>;
 }): number {
-  // Derive wordCount from content if stale/zero
   let wordCount = page.wordCount || 0;
   if (!wordCount && page.content) {
     wordCount = page.content.replace(/[#*_`>|-]/g, ' ').split(/\s+/).filter(Boolean).length;
   }
 
-  // FAQ count: heuristic on content
-  const faqCount = (page.content || '').split(/^### \d+\./m).length - 1;
+  // Use stored faqs array (set by buildSeoContent) if available; fall back to
+  // the content-regex heuristic for legacy pages that pre-date the faqs field.
+  let faqCount = 0;
+  if (Array.isArray(page.faqs) && page.faqs.length > 0) {
+    faqCount = page.faqs.length;
+  } else {
+    faqCount = Math.max(0, (page.content || '').split(/^### \d+\./m).length - 1);
+  }
 
   return computeQualityScore({
     wordCount,
@@ -108,7 +113,7 @@ export function rescorePage(page: {
     trendingRank: page.trendingRank || 0,
     views: page.views || 0,
     hashtagCount: (page.hashtags || []).length,
-    faqCount: Math.max(0, faqCount),
+    faqCount,
     slug: page.slug,
   });
 }

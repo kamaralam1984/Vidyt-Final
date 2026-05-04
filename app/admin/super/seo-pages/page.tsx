@@ -346,11 +346,36 @@ export default function SeoPagesAdmin() {
     }
   }
 
+  async function promoteAll() {
+    if (!confirm(
+      'Promote ALL non-indexable pages to sitemap?\n\n' +
+      '• Only literal garbage slugs are skipped\n' +
+      '• All other pages → isIndexable = true immediately\n' +
+      '• This is the intended design: let Google decide quality\n\n' +
+      'Continue?'
+    )) return;
+    setCronBusy('promote-all');
+    try {
+      const res = await axios.post(
+        '/api/admin/super/seo-pages/bulk',
+        { action: 'promote-all' },
+        { headers: getAuthHeaders() }
+      );
+      const d = res.data || {};
+      alert(`Promote All done!\nPromoted: ${d.affected} pages`);
+      await Promise.all([loadStats(), loadList()]);
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Promote All failed');
+    } finally {
+      setCronBusy(null);
+    }
+  }
+
   async function repairRejected() {
     if (!confirm(
       'Repair the rejected backlog?\n\n' +
       '• Junk-slug pages (best-best-best, year-stacks, 13+ tokens) → DELETED\n' +
-      '• Salvageable pages → content rebuilt + re-scored, promoted if ≥ 75\n' +
+      '• Salvageable pages → content rebuilt + re-scored\n' +
       '• Indexable pages are never touched\n\n' +
       'Runs in batches of 5000. Click again to keep working through the backlog.'
     )) return;
@@ -445,12 +470,21 @@ export default function SeoPagesAdmin() {
             Generate Trending
           </button>
           <button
-            onClick={() => fireCron('/api/cron/promote-seo-pages', 'Promote top 100')}
+            onClick={() => fireCron('/api/cron/promote-seo-pages', 'Promote top 500')}
             disabled={cronBusy !== null}
             className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
           >
             {cronBusy === '/api/cron/promote-seo-pages' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-            Promote Top 100
+            Promote Top 500
+          </button>
+          <button
+            onClick={promoteAll}
+            disabled={cronBusy !== null}
+            className="px-3 py-2 bg-green-600/30 hover:bg-green-600/40 border border-green-500/40 text-green-200 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            title="Mark ALL non-garbage pages as indexable in one shot — let Google decide quality"
+          >
+            {cronBusy === 'promote-all' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            Promote ALL
           </button>
           <button
             onClick={cleanBadSlugs}

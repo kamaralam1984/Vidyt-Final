@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import SeoPage from '@/models/SeoPage';
 import { buildSeoContent } from '@/lib/seoContentBuilder';
-import { computeQualityScore } from '@/lib/qualityScorer';
+import { computeQualityScore, INDEXABLE_THRESHOLD } from '@/lib/qualityScorer';
 
 const DAILY_NICHES = [
   'Gaming', 'PUBG Mobile', 'Free Fire', 'Minecraft', 'GTA 5', 'Valorant', 'Roblox', 'Fortnite', 'Call of Duty', 'Apex Legends',
@@ -110,13 +110,22 @@ export async function GET(request: NextRequest) {
     const thinPages = await SeoPage.find({
       $or: [{ wordCount: { $lt: 400 } }, { wordCount: { $exists: false } }],
       isIndexable: { $ne: true },
-    }).select('slug keyword category').limit(200).lean();
+    }).select('slug keyword category').limit(500).lean();
 
     const upgradeOps: any[] = [];
     for (const p of thinPages as any[]) {
       const kw = (p.keyword || (p.slug as string).replace(/-/g, ' ')).trim();
       if (!kw) continue;
       const built = buildSeoContent(kw);
+      const upgradeScore = computeQualityScore({
+        wordCount: built.wordCount,
+        viralScore: 75,
+        trendingRank: 0,
+        views: 0,
+        hashtagCount: built.hashtags.length,
+        faqCount: built.faqs.length,
+        slug: p.slug,
+      });
       upgradeOps.push({
         updateOne: {
           filter: { slug: p.slug },
@@ -128,8 +137,10 @@ export async function GET(request: NextRequest) {
               content: built.content,
               hashtags: built.hashtags,
               relatedKeywords: built.relatedKeywords,
+              faqs: built.faqs,
               category: built.category,
               wordCount: built.wordCount,
+              qualityScore: upgradeScore,
               source: p.source || 'auto_daily',
             },
           },

@@ -59,7 +59,7 @@ export async function GET(_request: NextRequest) {
 
     // ── 1) Re-score all un-indexable candidates ─────────────────────────
     const candidates = await SeoPage.find({ isIndexable: { $ne: true } })
-      .select('slug wordCount viralScore trendingRank views hashtags content qualityScore')
+      .select('slug wordCount viralScore trendingRank views hashtags content qualityScore faqs')
       .limit(10000)
       .lean();
 
@@ -112,7 +112,7 @@ export async function GET(_request: NextRequest) {
     // ── 5) Demote pages that decayed below threshold ────────────────────
     //     Re-score currently-indexable pages too; drop ones that slipped.
     const published = await SeoPage.find({ isIndexable: true })
-      .select('slug wordCount viralScore trendingRank views hashtags content')
+      .select('slug wordCount viralScore trendingRank views hashtags content faqs')
       .limit(5000)
       .lean();
 
