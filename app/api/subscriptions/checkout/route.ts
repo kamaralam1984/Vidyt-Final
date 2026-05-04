@@ -59,6 +59,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Free plan does not require checkout' }, { status: 400 });
     }
 
+    // ── One active plan per email check ──
+    const UserModel = (await import('@/models/User')).default;
+    const dbUser = await UserModel.findById(authUser.id).lean() as any;
+    if (dbUser && dbUser.subscription && dbUser.subscription !== 'free') {
+      if (dbUser.subscription === planId) {
+        return NextResponse.json(
+          { error: `You already have an active ${dbUser.subscription.charAt(0).toUpperCase() + dbUser.subscription.slice(1)} plan. Please contact support to upgrade or cancel first.` },
+          { status: 409 }
+        );
+      }
+    }
+
     const billingPeriod = body.billingPeriod === 'year' ? 'year' : 'month';
 
     const origin = request.headers.get('origin') || 'http://localhost:3000';
