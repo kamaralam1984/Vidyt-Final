@@ -119,7 +119,9 @@ const nextConfig = {
                 " https://www.facebook.com" +
                 " https://connect.facebook.net" +
                 " https://www.google.com" +
-                " https://analytics.tiktok.com",
+                " https://analytics.tiktok.com" +
+                " https://capig.stape.nz" +
+                " https://*.stape.nz",
 
               // Images: allow data URIs and any HTTPS image (avatars, thumbnails, etc.)
               "img-src 'self' data: blob: https:",
