@@ -101,9 +101,8 @@ export default function PricingPage() {
           priceYear,
           period: p.interval || 'month',
           description: p.description || 'Custom Plan',
-          // Use plan-limits-derived featureList so displayed features always
-          // match the actual enforced limits — not a free-form DB array.
-          features: roll.featureList.length > 0 ? roll.featureList : (p.features || []),
+          // Use admin-written features from Plan Management (Features one per line).
+          features: p.features || [],
           popular: p.id === 'pro' || p.popular || false,
           role: p.role || roll.role,
           level: p.level || (roll as any).level,
