@@ -83,14 +83,17 @@ const nextConfig = {
                 " https://accounts.google.com" +
                 " https://pagead2.googlesyndication.com" +
                 " https://adservice.google.com" +
-                " https://challenges.cloudflare.com",
+                " https://challenges.cloudflare.com" +
+                " https://connect.facebook.net" +
+                " https://googleads.g.doubleclick.net" +
+                " https://analytics.tiktok.com",
 
               // Styles: inline only (Google Translate removed)
               "style-src 'self' 'unsafe-inline'" +
                 " https://www.gstatic.com",
 
               // XHR/fetch/WebSocket: GA, CF Insights, Razorpay, Google OAuth, AdSense
-              "connect-src 'self' wss: ws:" +
+              "connect-src 'self' wss: ws: data:" +
                 " https://www.vidyt.com" +
                 " https://www.vidyt.com:3000" +
                 " https://vidyt.com" +
@@ -112,7 +115,11 @@ const nextConfig = {
                 " https://adservice.google.com" +
                 " https://googleads.g.doubleclick.net" +
                 " https://challenges.cloudflare.com" +
-                " https://api.pwnedpasswords.com",
+                " https://api.pwnedpasswords.com" +
+                " https://www.facebook.com" +
+                " https://connect.facebook.net" +
+                " https://www.google.com" +
+                " https://analytics.tiktok.com",
 
               // Images: allow data URIs and any HTTPS image (avatars, thumbnails, etc.)
               "img-src 'self' data: blob: https:",

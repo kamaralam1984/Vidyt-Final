@@ -254,16 +254,21 @@ export default function ThumbnailGenerator() {
         try {
           // Fetch image as base64 first (external URLs may be blocked by remove.bg)
           let imageBase64: string | null = null;
-          try {
-            const imgFetch = await fetch(imageUrl);
-            const imgBlob = await imgFetch.blob();
-            imageBase64 = await new Promise<string>((res, rej) => {
-              const reader = new FileReader();
-              reader.onloadend = () => res(reader.result as string);
-              reader.onerror = rej;
-              reader.readAsDataURL(imgBlob);
-            });
-          } catch { /* fall through to imageUrl */ }
+          if (imageUrl.startsWith('data:')) {
+            // Already a data URL — use directly
+            imageBase64 = imageUrl;
+          } else {
+            try {
+              const imgFetch = await fetch(imageUrl);
+              const imgBlob = await imgFetch.blob();
+              imageBase64 = await new Promise<string>((res, rej) => {
+                const reader = new FileReader();
+                reader.onloadend = () => res(reader.result as string);
+                reader.onerror = rej;
+                reader.readAsDataURL(imgBlob);
+              });
+            } catch { /* fall through to imageUrl */ }
+          }
 
           const bgRes = await fetch('/api/ai/remove-bg', {
             method: 'POST',
