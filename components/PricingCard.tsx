@@ -238,51 +238,6 @@ export default function PricingCard({
           </div>
         )}
 
-        {/* Plan Quotas — admin-set numeric limits from Manage Plans */}
-        {variant === 'full' && plan.quotas && (
-          <div className="border-t border-[#212121] pt-4 mb-6">
-            <p className="text-[10px] text-[#666] uppercase font-bold tracking-wider mb-2">Plan Quotas</p>
-            <ul className="space-y-1.5 text-xs">
-              {plan.quotas.analysesLimit !== undefined && (
-                <li className="flex justify-between">
-                  <span className="text-[#AAAAAA]">Analyses</span>
-                  <span className="text-white font-semibold">
-                    {formatQuotaValue(plan.quotas.analysesLimit)}{periodSuffix(plan.quotas.analysesPeriod)}
-                  </span>
-                </li>
-              )}
-              {plan.quotas.titleSuggestions !== undefined && (
-                <li className="flex justify-between">
-                  <span className="text-[#AAAAAA]">Title Suggestions</span>
-                  <span className="text-white font-semibold">{formatQuotaValue(plan.quotas.titleSuggestions)}</span>
-                </li>
-              )}
-              {plan.quotas.hashtagCount !== undefined && (
-                <li className="flex justify-between">
-                  <span className="text-[#AAAAAA]">Hashtag Count</span>
-                  <span className="text-white font-semibold">{formatQuotaValue(plan.quotas.hashtagCount)}</span>
-                </li>
-              )}
-              {plan.quotas.competitorsTracked !== undefined && (
-                <li className="flex justify-between">
-                  <span className="text-[#AAAAAA]">Competitors Tracked</span>
-                  <span className="text-white font-semibold">{formatQuotaValue(plan.quotas.competitorsTracked)}</span>
-                </li>
-              )}
-              {plan.quotas.featureLimits &&
-                Object.entries(plan.quotas.featureLimits)
-                  .filter(([key, val]) => !FEATURE_LIMITS_DUP_KEYS.has(key) && val?.value !== 0)
-                  .map(([key, val]) => (
-                    <li key={key} className="flex justify-between">
-                      <span className="text-[#AAAAAA]">{FEATURE_LIMIT_LABELS[key] || key.replace(/_/g, ' ')}</span>
-                      <span className="text-white font-semibold">
-                        {formatQuotaValue(val?.value)}{periodSuffix(val?.period)}
-                      </span>
-                    </li>
-                  ))}
-            </ul>
-          </div>
-        )}
 
         {/* CTA Button */}
         <div className="mt-auto">
