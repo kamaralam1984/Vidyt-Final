@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Sparkles, Download, Loader2, RefreshCw, Copy, Check, Image as ImageIcon, Wand2, X, Pencil, ChevronRight, Upload } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
 import axios from 'axios';
-import { addTextOverlay } from '@/lib/textOverlay';
+import { addTextOverlay, type TextStyle } from '@/lib/textOverlay';
 import { useLocale } from '@/context/LocaleContext';
 
 const UI_STRINGS = {
@@ -134,6 +134,14 @@ export default function ThumbnailGenerator() {
   const [overlayText, setOverlayText]       = useState('');
   const [promptLoading, setPromptLoading]   = useState(false);
 
+  // Text overlay style
+  const [textStyle, setTextStyle]     = useState<TextStyle>('youtube');
+  const [textPosition, setTextPosition] = useState<'top' | 'center' | 'bottom'>('bottom');
+
+  // Background removal
+  const [removeBg, setRemoveBg]   = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
+
   // Result
   const [result, setResult]   = useState<Result | null>(null);
   const [error, setError]     = useState<string | null>(null);
@@ -239,16 +247,35 @@ export default function ThumbnailGenerator() {
 
       if (!imageUrl) throw new Error('Image generation failed. Check API keys in Super Admin.');
 
+      // Optional: remove background before text overlay
+      let processedUrl = imageUrl;
+      if (removeBg) {
+        setRemovingBg(true);
+        try {
+          const bgRes = await fetch('/api/ai/remove-bg', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrl }),
+          });
+          if (bgRes.ok) {
+            const bgData = await bgRes.json();
+            if (bgData.imageBase64) processedUrl = bgData.imageBase64;
+          }
+        } catch { /* silently fall back to original */ }
+        setRemovingBg(false);
+      }
+
       // Add bold text overlay (like a real thumbnail)
       const textToOverlay = overlayText.trim() || title.trim() || 'VIRAL';
-      let finalUrl = imageUrl;
+      let finalUrl = processedUrl;
       try {
-        finalUrl = await addTextOverlay(imageUrl, textToOverlay, {
-          position: 'bottom',
+        finalUrl = await addTextOverlay(processedUrl, textToOverlay, {
+          style: textStyle,
+          position: textPosition,
           glowColor: '#FF4400',
           color: '#FFFFFF',
         });
-      } catch { finalUrl = imageUrl; }
+      } catch { finalUrl = processedUrl; }
 
       setResult({ url: finalUrl, prompt: imagePrompt, ctr, provider, text: textToOverlay });
       setStep('done');
@@ -446,6 +473,53 @@ export default function ThumbnailGenerator() {
                     <p className="text-[10px] text-[#555] mt-1">{overlayText.length}/70 characters</p>
                   </div>
 
+                  {/* ── Text Style Picker ── */}
+                  <div>
+                    <label className="text-xs font-bold text-[#AAA] mb-2 block">🎨 Title Style (High CTR)</label>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {([
+                        { id: 'youtube',  label: 'YouTube', color: 'from-red-600 to-red-800', preview: '🔴' },
+                        { id: 'mrbeast',  label: 'MrBeast', color: 'from-yellow-500 to-orange-600', preview: '🟡' },
+                        { id: 'neon',     label: 'Neon',    color: 'from-cyan-500 to-purple-600', preview: '💜' },
+                        { id: 'breaking', label: 'Breaking', color: 'from-red-700 to-red-900', preview: '📺' },
+                        { id: 'minimal',  label: 'Minimal', color: 'from-gray-500 to-gray-700', preview: '⬜' },
+                      ] as const).map(s => (
+                        <button key={s.id} onClick={() => setTextStyle(s.id as TextStyle)}
+                          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-center transition border text-[10px] font-bold
+                            ${textStyle === s.id ? 'bg-white/10 border-white/40 text-white scale-105' : 'border-[#333] text-[#666] hover:border-[#555]'}`}>
+                          <span className="text-base">{s.preview}</span>
+                          <span>{s.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Text Position ── */}
+                  <div>
+                    <label className="text-xs font-bold text-[#AAA] mb-2 block">📍 Title Position</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['top', 'center', 'bottom'] as const).map(pos => (
+                        <button key={pos} onClick={() => setTextPosition(pos)}
+                          className={`py-2 rounded-xl text-xs font-bold border transition capitalize
+                            ${textPosition === pos ? 'bg-red-500/20 border-red-500/60 text-white' : 'border-[#333] text-[#666] hover:border-[#555]'}`}>
+                          {pos === 'top' ? '⬆ Top' : pos === 'center' ? '↔ Center' : '⬇ Bottom'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Background Removal ── */}
+                  <div className="flex items-center justify-between p-3 bg-[#111] border border-[#2a2a2a] rounded-xl">
+                    <div>
+                      <p className="text-xs font-bold text-white">🪄 Remove Background</p>
+                      <p className="text-[10px] text-[#666]">Needs REMOVE_BG_API_KEY in .env</p>
+                    </div>
+                    <button onClick={() => setRemoveBg(v => !v)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${removeBg ? 'bg-emerald-500' : 'bg-[#333]'}`}>
+                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${removeBg ? 'left-6' : 'left-1'}`} />
+                    </button>
+                  </div>
+
                   {uploadedImage && (
                     <div className="flex items-center gap-2 p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
                       <img src={`data:image/jpeg;base64,${uploadedImage}`} alt="" className="w-10 h-10 rounded-lg object-cover" />
@@ -482,7 +556,9 @@ export default function ThumbnailGenerator() {
                   </div>
                   <div className="text-center">
                     <p className="text-white font-black text-lg">{T.generatingTitle}</p>
-                    <p className="text-[#888] text-xs mt-1">{T.generatingSubtitle}</p>
+                    <p className="text-[#888] text-xs mt-1">
+                      {removingBg ? '🪄 Removing background…' : T.generatingSubtitle}
+                    </p>
                   </div>
                   {/* Animated progress dots */}
                   <div className="flex gap-1.5">
