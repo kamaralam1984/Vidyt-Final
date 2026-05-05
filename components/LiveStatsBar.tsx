@@ -193,27 +193,31 @@ function StatCard({
   );
 }
 
+const FALLBACK: Stats = { users: 10500, downloads: 7600, pageViews: 75000 };
+
 export default function LiveStatsBar() {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<Stats>(FALLBACK);
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/stats')
       .then((r) => r.json())
-      .then((data: Stats) => setStats(data))
+      .then((data: Stats) => {
+        if (data && data.users > 0) setStats(data);
+      })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!ref.current || !stats) return;
+    if (!ref.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setShouldAnimate(true); },
       { threshold: 0.2 }
     );
     observer.observe(ref.current);
     return () => observer.disconnect();
-  }, [stats]);
+  }, []);
 
   return (
     <section

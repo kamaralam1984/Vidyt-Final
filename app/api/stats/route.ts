@@ -29,7 +29,11 @@ export async function GET() {
       pageViews: stats.pageViews + BASE_PAGE_VIEWS,
     });
   } catch {
-    return NextResponse.json({ users: 0, downloads: 0, pageViews: 0 }, { status: 200 });
+    return NextResponse.json({
+      users: BASE_USERS,
+      downloads: BASE_DOWNLOADS,
+      pageViews: BASE_PAGE_VIEWS,
+    }, { status: 200 });
   }
 }
 
