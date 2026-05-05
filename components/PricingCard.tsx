@@ -287,25 +287,7 @@ export default function PricingCard({
                       </>
                     )}
                   </motion.button>
-                  {plan.price > 0 && onSubscribePaypal && (
-                    <motion.button
-                      type="button"
-                      onClick={() => onSubscribePaypal(plan)}
-                      disabled={payBusy}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full py-2.5 px-6 rounded-lg font-medium text-white border border-[#253b80] bg-[#0070ba]/20 hover:bg-[#0070ba]/40 flex items-center justify-center gap-2 text-sm"
-                    >
-                      {loading === `paypal:${plan.id}` ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Opening PayPal…
-                        </>
-                      ) : (
-                        <>Pay with PayPal</>
-                      )}
-                    </motion.button>
-                  )}
+                  {/* PayPal button hidden — re-enable when needed */}
                 </>
               )}
             </div>
