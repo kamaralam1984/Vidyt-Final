@@ -13,7 +13,7 @@ import Script from 'next/script';
  */
 
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '957730893901659';
-const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || 'AW-17845449983';
 const TIKTOK_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID;
 
 export default function RetargetingPixels() {
