@@ -252,16 +252,33 @@ export default function ThumbnailGenerator() {
       if (removeBg) {
         setRemovingBg(true);
         try {
+          // Fetch image as base64 first (external URLs may be blocked by remove.bg)
+          let imageBase64: string | null = null;
+          try {
+            const imgFetch = await fetch(imageUrl);
+            const imgBlob = await imgFetch.blob();
+            imageBase64 = await new Promise<string>((res, rej) => {
+              const reader = new FileReader();
+              reader.onloadend = () => res(reader.result as string);
+              reader.onerror = rej;
+              reader.readAsDataURL(imgBlob);
+            });
+          } catch { /* fall through to imageUrl */ }
+
           const bgRes = await fetch('/api/ai/remove-bg', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageUrl }),
+            body: JSON.stringify(imageBase64 ? { imageBase64 } : { imageUrl }),
           });
-          if (bgRes.ok) {
-            const bgData = await bgRes.json();
-            if (bgData.imageBase64) processedUrl = bgData.imageBase64;
+          const bgData = await bgRes.json();
+          if (bgRes.ok && bgData.imageBase64) {
+            processedUrl = bgData.imageBase64;
+          } else {
+            setError(`Background removal failed: ${bgData.error || 'Unknown error'}. Check REMOVE_BG_API_KEY.`);
           }
-        } catch { /* silently fall back to original */ }
+        } catch (e: any) {
+          setError(`Background removal error: ${e.message}`);
+        }
         setRemovingBg(false);
       }
 
@@ -279,6 +296,8 @@ export default function ThumbnailGenerator() {
 
       setResult({ url: finalUrl, prompt: imagePrompt, ctr, provider, text: textToOverlay });
       setStep('done');
+      // Clear bg error after success (partial errors already shown inline)
+      if (!removeBg) setError(null);
     } catch (e: any) {
       setError(e.response?.data?.error || e.message || 'Generation failed');
       setStep('prompt');
