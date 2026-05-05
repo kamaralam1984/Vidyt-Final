@@ -6,6 +6,10 @@ import SiteStats from '@/models/SiteStats';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const BASE_USERS = 10500;
+const BASE_PAGE_VIEWS = 75000;
+const BASE_DOWNLOADS = 7600;
+
 export async function GET() {
   try {
     await connectDB();
@@ -20,9 +24,9 @@ export async function GET() {
     ]);
 
     return NextResponse.json({
-      users: userCount,
-      downloads: stats.downloads,
-      pageViews: stats.pageViews,
+      users: userCount + BASE_USERS,
+      downloads: stats.downloads + BASE_DOWNLOADS,
+      pageViews: stats.pageViews + BASE_PAGE_VIEWS,
     });
   } catch {
     return NextResponse.json({ users: 0, downloads: 0, pageViews: 0 }, { status: 200 });
