@@ -22,6 +22,7 @@ const LangDirectionSetter = dynamic(() => import("@/components/LangDirectionSett
 const CountrySelectPopup = dynamic(() => import("@/components/CountrySelectPopup"), { ssr: false });
 const MobileAppDownloadBar = dynamic(() => import("@/components/MobileAppDownloadBar"), { ssr: false });
 const SiteAnnouncementBanner = dynamic(() => import("@/components/SiteAnnouncementBanner"), { ssr: false });
+const RetargetingPixels = dynamic(() => import("@/components/RetargetingPixels"), { ssr: false });
 
 export const viewport: Viewport = {
   themeColor: "#0F0F0F",
@@ -273,6 +274,8 @@ export default async function RootLayout({
             </Script>
           </>
         )}
+        {/* Retargeting Pixels — Facebook, Google Ads, TikTok */}
+        <RetargetingPixels />
         {/* Google AdSense — lazyOnload so it never blocks LCP/TBT */}
         {process.env.NEXT_PUBLIC_ADSENSE_ID && (
           <Script
