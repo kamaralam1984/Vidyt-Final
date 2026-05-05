@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Sparkles, Download, Loader2, RefreshCw, Copy, Check, Image as ImageIcon, Wand2, X, Pencil, ChevronRight, Upload } from 'lucide-react';
 import { getAuthHeaders } from '@/utils/auth';
 import axios from 'axios';
-import { addTextOverlay, type TextStyle } from '@/lib/textOverlay';
+import { addTextOverlay, type TextStyle, type BgStyle } from '@/lib/textOverlay';
 import { useLocale } from '@/context/LocaleContext';
 
 const UI_STRINGS = {
@@ -141,6 +141,7 @@ export default function ThumbnailGenerator() {
   // Background removal
   const [removeBg, setRemoveBg]   = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
+  const [bgStyle, setBgStyle]     = useState<BgStyle>('cosmic');
 
   // Result
   const [result, setResult]   = useState<Result | null>(null);
@@ -296,6 +297,7 @@ export default function ThumbnailGenerator() {
           position: textPosition,
           glowColor: '#FF4400',
           color: '#FFFFFF',
+          bgStyle: removeBg ? bgStyle : 'none',
         });
       } catch { finalUrl = processedUrl; }
 
@@ -500,18 +502,19 @@ export default function ThumbnailGenerator() {
                   {/* ── Text Style Picker ── */}
                   <div>
                     <label className="text-xs font-bold text-[#AAA] mb-2 block">🎨 Title Style (High CTR)</label>
-                    <div className="grid grid-cols-5 gap-1.5">
+                    <div className="grid grid-cols-3 gap-1.5">
                       {([
-                        { id: 'youtube',  label: 'YouTube', color: 'from-red-600 to-red-800', preview: '🔴' },
-                        { id: 'mrbeast',  label: 'MrBeast', color: 'from-yellow-500 to-orange-600', preview: '🟡' },
-                        { id: 'neon',     label: 'Neon',    color: 'from-cyan-500 to-purple-600', preview: '💜' },
-                        { id: 'breaking', label: 'Breaking', color: 'from-red-700 to-red-900', preview: '📺' },
-                        { id: 'minimal',  label: 'Minimal', color: 'from-gray-500 to-gray-700', preview: '⬜' },
+                        { id: 'youtube',   label: 'YouTube',   preview: '🔴' },
+                        { id: 'mrbeast',   label: 'MrBeast',   preview: '🟡' },
+                        { id: 'neon',      label: 'Neon',      preview: '💜' },
+                        { id: 'breaking',  label: 'Breaking',  preview: '📺' },
+                        { id: 'minimal',   label: 'Minimal',   preview: '⬜' },
+                        { id: 'cinematic', label: 'Cinematic', preview: '🎬' },
                       ] as const).map(s => (
                         <button key={s.id} onClick={() => setTextStyle(s.id as TextStyle)}
-                          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-center transition border text-[10px] font-bold
-                            ${textStyle === s.id ? 'bg-white/10 border-white/40 text-white scale-105' : 'border-[#333] text-[#666] hover:border-[#555]'}`}>
-                          <span className="text-base">{s.preview}</span>
+                          className={`flex items-center gap-2 p-2 rounded-xl text-left transition border text-[10px] font-bold
+                            ${textStyle === s.id ? 'bg-white/10 border-white/40 text-white' : 'border-[#333] text-[#666] hover:border-[#555]'}`}>
+                          <span className="text-sm">{s.preview}</span>
                           <span>{s.label}</span>
                         </button>
                       ))}
@@ -536,13 +539,38 @@ export default function ThumbnailGenerator() {
                   <div className="flex items-center justify-between p-3 bg-[#111] border border-[#2a2a2a] rounded-xl">
                     <div>
                       <p className="text-xs font-bold text-white">🪄 Remove Background</p>
-                      <p className="text-[10px] text-[#666]">Needs REMOVE_BG_API_KEY in .env</p>
+                      <p className="text-[10px] text-[#666]">Subject ko background se alag karo</p>
                     </div>
                     <button onClick={() => setRemoveBg(v => !v)}
                       className={`relative w-11 h-6 rounded-full transition-colors ${removeBg ? 'bg-emerald-500' : 'bg-[#333]'}`}>
                       <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${removeBg ? 'left-6' : 'left-1'}`} />
                     </button>
                   </div>
+
+                  {/* ── Background Gradient Picker (visible when removeBg is on) ── */}
+                  {removeBg && (
+                    <div className="p-3 bg-[#111] border border-emerald-500/30 rounded-xl space-y-2">
+                      <p className="text-xs font-bold text-emerald-400">🎨 Background Style</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {([
+                          { id: 'cosmic',  label: 'Cosmic',  preview: '🌌', color: '#250055' },
+                          { id: 'fire',    label: 'Fire',    preview: '🔥', color: '#5a1400' },
+                          { id: 'ocean',   label: 'Ocean',   preview: '🌊', color: '#003a70' },
+                          { id: 'forest',  label: 'Forest',  preview: '🌲', color: '#003a18' },
+                          { id: 'sunset',  label: 'Sunset',  preview: '🌅', color: '#4a1600' },
+                          { id: 'dark',    label: 'Dark',    preview: '🌑', color: '#181838' },
+                        ] as const).map(bg => (
+                          <button key={bg.id} onClick={() => setBgStyle(bg.id as BgStyle)}
+                            style={{ backgroundColor: bgStyle === bg.id ? bg.color + 'cc' : undefined }}
+                            className={`flex items-center gap-1.5 p-2 rounded-lg text-[10px] font-bold border transition
+                              ${bgStyle === bg.id ? 'border-white/50 text-white' : 'border-[#333] text-[#666] hover:border-[#555]'}`}>
+                            <span>{bg.preview}</span>
+                            <span>{bg.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {uploadedImage && (
                     <div className="flex items-center gap-2 p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
