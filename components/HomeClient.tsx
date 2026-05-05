@@ -32,6 +32,7 @@ import { useLocale } from '@/context/LocaleContext';
 import { useTranslations } from '@/context/translations';
 import { useUser } from '@/hooks/useUser';
 import dynamic from 'next/dynamic';
+import LiveStatsBar from '@/components/LiveStatsBar';
 const PricingSection = dynamic(() => import('@/components/PricingSection'), {
   loading: () => <div className="animate-pulse bg-[#181818] rounded-2xl h-64 w-full mx-auto max-w-5xl" />,
   ssr: false,
@@ -273,6 +274,8 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
           </div>
         </div>
       </section>
+
+      <LiveStatsBar />
 
       {/* Google OAuth verification — visible heading + description required.
           Demoted from h1 to h2: SEO best-practice is one h1/page, and OAuth

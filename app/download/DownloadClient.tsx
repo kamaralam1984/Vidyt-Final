@@ -349,6 +349,7 @@ export default function DownloadClient() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    fetch('/api/stats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'download' }) }).catch(() => {});
     setTimeout(() => setDownloading(false), 3000);
   };
 
