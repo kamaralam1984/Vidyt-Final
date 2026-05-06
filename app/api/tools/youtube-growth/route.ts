@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
       const real = await fetchChannelDataFromYouTube(channelUrl, apiKey, range);
       if (real) {
         const videos = real.videos;
-        const subscriberGrowthData = real.subscriberGrowthData.map((d: any) => ({ date: new Date(d.date).toISOString(), count: d.count }));
+        const subscriberGrowthData = real.subscriberGrowthData.map((d: any) => ({ date: new Date(d.date).toISOString(), count: d.count, gained: d.gained }));
         const viewsGrowthData = real.viewsGrowthData.map((d: any) => ({ date: new Date(d.date).toISOString(), views: d.views }));
         const aiInsights = generateYouTubeInsights(videos);
 
