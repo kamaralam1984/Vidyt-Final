@@ -51,10 +51,20 @@ let clientPromise: Promise<searchconsole_v1.Searchconsole | null> | null = null;
 function getClient(): Promise<searchconsole_v1.Searchconsole | null> {
   if (clientPromise) return clientPromise;
   clientPromise = (async () => {
-    const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
-    if (!raw) return null;
     try {
-      // Accept base64-encoded or raw JSON
+      // Prefer OAuth2 refresh token (works with Gmail accounts)
+      const refreshToken = process.env.GSC_OAUTH_REFRESH_TOKEN;
+      const clientId = process.env.GSC_OAUTH_CLIENT_ID;
+      const clientSecret = process.env.GSC_OAUTH_CLIENT_SECRET;
+      if (refreshToken && clientId && clientSecret) {
+        const oauth2 = new google.auth.OAuth2(clientId, clientSecret);
+        oauth2.setCredentials({ refresh_token: refreshToken });
+        return google.searchconsole({ version: 'v1', auth: oauth2 });
+      }
+
+      // Fallback: service account JSON
+      const raw = process.env.GSC_SERVICE_ACCOUNT_JSON;
+      if (!raw) return null;
       let jsonStr = raw.trim();
       if (!jsonStr.startsWith('{')) {
         jsonStr = Buffer.from(jsonStr, 'base64').toString('utf8');
@@ -66,7 +76,7 @@ function getClient(): Promise<searchconsole_v1.Searchconsole | null> {
       });
       return google.searchconsole({ version: 'v1', auth });
     } catch (e) {
-      console.error('[GSC] Failed to init service account:', e);
+      console.error('[GSC] Failed to init client:', e);
       return null;
     }
   })();
@@ -74,7 +84,7 @@ function getClient(): Promise<searchconsole_v1.Searchconsole | null> {
 }
 
 export function isGscConfigured(): boolean {
-  return !!process.env.GSC_SERVICE_ACCOUNT_JSON;
+  return !!(process.env.GSC_OAUTH_REFRESH_TOKEN || process.env.GSC_SERVICE_ACCOUNT_JSON);
 }
 
 function isoDaysAgo(days: number): string {
