@@ -96,13 +96,14 @@ export default function YoutubeGrowthPage() {
                 </div>
               </div>
               {/* YouTube-style pill filter */}
-              <div className="flex gap-1.5 bg-transparent">
+              <div className="flex gap-1.5 bg-transparent items-center">
                 {(['today', 'week', 'month', 'year'] as const).map((f) => (
-                  <button key={f} onClick={() => setFilter(f)}
-                    className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${filter === f ? 'bg-white text-[#0F0F0F]' : 'bg-[#272727] text-[#D0D0D0] hover:bg-[#3F3F3F]'}`}>
+                  <button key={f} onClick={() => setFilter(f)} disabled={loading}
+                    className={`px-4 py-2 rounded-full text-xs font-semibold transition-all disabled:opacity-60 ${filter === f ? 'bg-white text-[#0F0F0F]' : 'bg-[#272727] text-[#D0D0D0] hover:bg-[#3F3F3F]'}`}>
                     {filterLabels[f]}
                   </button>
                 ))}
+                {loading && data && <Loader2 className="w-4 h-4 animate-spin text-[#3EA6FF] ml-1" />}
               </div>
             </div>
 
@@ -135,12 +136,19 @@ export default function YoutubeGrowthPage() {
         )}
 
         {data && (
-          <div className="space-y-6">
+          <div className={`space-y-6 transition-opacity duration-200 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
             {/* Data info */}
             {data.message && (
               <div className="bg-[#1D1D1D] border border-[#272727] p-3 rounded-xl text-xs text-[#B0B0B0] flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-[#2BA640] animate-pulse" />
                 {data.message}
+              </div>
+            )}
+            {/* No videos in range notice */}
+            {data.noDataMessage && (
+              <div className="bg-[#1D1D1D] border border-amber-500/30 p-3 rounded-xl text-xs text-amber-400 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-amber-400" />
+                {data.noDataMessage}
               </div>
             )}
 

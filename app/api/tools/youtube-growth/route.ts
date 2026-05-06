@@ -172,11 +172,14 @@ async function fetchChannelDataFromYouTube(
       subscriberCount,
       totalWatchTime: Math.round(totalWatchTime),
       totalLikes: Math.round(totalLikes),
-      videos: rangeVideos.length > 0 ? rangeVideos : videos,
+      videos: rangeVideos.length > 0 ? rangeVideos : [],
       subscriberGrowthData,
       viewsGrowthData,
       range,
       videosInRange: rangeVideos.length,
+      noDataMessage: rangeVideos.length === 0
+        ? `No videos published in this period. Showing channel totals only.`
+        : null,
     };
   } catch (err) {
     console.error('Public fetch error:', err);
