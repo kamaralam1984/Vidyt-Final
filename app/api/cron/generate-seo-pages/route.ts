@@ -5,33 +5,83 @@ import connectDB from '@/lib/mongodb';
 import SeoPage from '@/models/SeoPage';
 import { buildSeoContent } from '@/lib/seoContentBuilder';
 import { computeQualityScore, INDEXABLE_THRESHOLD } from '@/lib/qualityScorer';
+import { sanitizeSeoKeyword } from '@/lib/seoKeywordSanitizer';
 
 const DAILY_NICHES = [
+  // Gaming
   'Gaming', 'PUBG Mobile', 'Free Fire', 'Minecraft', 'GTA 5', 'Valorant', 'Roblox', 'Fortnite', 'Call of Duty', 'Apex Legends',
+  'Among Us', 'Clash of Clans', 'Mobile Legends', 'League of Legends', 'Counter Strike', 'Bgmi', 'Warzone',
+  // YouTube & Creator
   'YouTube Growth', 'YouTube SEO', 'YouTube Shorts', 'YouTube Algorithm', 'YouTube Monetization',
-  'Instagram Reels', 'Instagram Growth', 'Instagram SEO', 'Instagram Hashtags', 'Instagram Followers',
-  'TikTok Viral', 'TikTok Growth', 'TikTok Algorithm', 'TikTok Hashtags', 'TikTok Trending',
-  'Facebook Reels', 'Facebook Page Growth', 'Facebook Video', 'Facebook Algorithm', 'Facebook Monetization',
+  'YouTube Channel', 'YouTube Analytics', 'YouTube Studio', 'YouTube Automation', 'YouTube Faceless',
+  // Instagram
+  'Instagram Reels', 'Instagram Growth', 'Instagram SEO', 'Instagram Followers', 'Instagram Stories',
+  'Instagram Marketing', 'Instagram Business', 'Instagram Explore',
+  // TikTok
+  'TikTok Growth', 'TikTok Algorithm', 'TikTok Trending', 'TikTok Marketing', 'TikTok Business',
+  'TikTok Monetization', 'TikTok Creator',
+  // Facebook
+  'Facebook Reels', 'Facebook Page Growth', 'Facebook Video', 'Facebook Monetization', 'Facebook Marketing',
+  // Food & Cooking
   'Cooking', 'Street Food', 'Baking', 'Indian Cooking', 'Healthy Recipes', 'Quick Meals',
+  'Vegan Recipes', 'Breakfast Ideas', 'Dinner Recipes', 'Dessert Recipes',
+  // Travel
   'Travel Vlog', 'Budget Travel', 'Solo Travel', 'Luxury Travel', 'Adventure Travel',
+  'India Travel', 'Europe Travel', 'International Travel',
+  // Fitness & Health
   'Fitness', 'Home Workout', 'Gym Tips', 'Weight Loss', 'Muscle Building', 'Yoga',
+  'Cardio Workout', 'Abs Workout', 'Running Tips', 'Keto Diet', 'Intermittent Fasting',
+  // Tech
   'Tech Review', 'Phone Review', 'Laptop Review', 'AI Tools', 'Best Apps', 'Gadgets',
+  'Smartphone Tips', 'Android Tips', 'iPhone Tips', 'Smart Home',
+  // Finance
   'Crypto', 'Bitcoin', 'Day Trading', 'Stock Market', 'Investing Tips', 'Passive Income',
+  'Personal Finance', 'Saving Money', 'Affiliate Marketing', 'Dropshipping',
+  // Beauty & Fashion
   'Makeup Tutorial', 'Skincare Routine', 'Hairstyle', 'Fashion Tips', 'Beauty Hacks',
+  'Natural Skincare', 'Hair Care', 'Nail Art',
+  // Music
   'Music Production', 'Beat Making', 'Guitar Tutorial', 'Singing Tips', 'DJ Mixing',
+  'Piano Tutorial', 'Music Promotion',
+  // Education
   'Study Tips', 'Exam Preparation', 'Online Courses', 'Language Learning', 'Math Tutorial',
+  'Science Tutorial', 'English Speaking',
+  // Mindset & Productivity
   'Motivational', 'Self Improvement', 'Productivity', 'Time Management', 'Goal Setting',
-  'Comedy', 'Funny Videos', 'Memes', 'Prank Videos', 'Stand Up Comedy',
-  'News Channel', 'Breaking News', 'Political News', 'World News', 'Sports News',
+  'Morning Routine', 'Mindfulness',
+  // Entertainment
+  'Comedy', 'Funny Videos', 'Memes', 'Stand Up Comedy', 'Reaction Videos',
+  // News
+  'News Channel', 'Breaking News', 'World News', 'Sports News',
+  // Creative
   'Photography', 'Video Editing', 'Premiere Pro', 'After Effects', 'Photoshop',
+  'CapCut Editing', 'Canva Design', 'Graphic Design',
+  // Pets & Animals
   'Pet Videos', 'Dog Training', 'Cat Videos', 'Pet Care', 'Animal Rescue',
+  // Kids & Family
+  'Kids Videos', 'Kids Learning', 'Parenting Tips', 'Family Vlog',
+  // Business
+  'Small Business', 'Startup Tips', 'Ecommerce', 'Amazon Selling', 'Freelancing',
+  // Lifestyle
+  'Daily Vlog', 'Room Tour', 'Morning Routine', 'Night Routine', 'Minimalism',
 ];
 
 const KEYWORD_TEMPLATES = [
-  '{niche} hashtags', '{niche} title generator', '{niche} description generator',
-  'best {niche} hashtags {year}', '{niche} SEO tips', '{niche} viral tips',
-  '{niche} keywords', 'how to grow {niche} channel', '{niche} trending topics',
-  '{niche} video ideas', 'best {niche} tags', '{niche} optimization',
+  // Core SEO tools
+  '{niche} title ideas', '{niche} description tips', '{niche} hashtags for youtube',
+  'best {niche} keywords {year}', '{niche} SEO guide', '{niche} viral strategy',
+  'how to rank {niche} videos', '{niche} content ideas', '{niche} trending now',
+  '{niche} video script', 'best tags for {niche}', '{niche} channel growth',
+  // Audience & platform
+  '{niche} for beginners', '{niche} tutorial {year}', '{niche} tips and tricks',
+  'grow {niche} channel fast', '{niche} shorts ideas', '{niche} reels ideas',
+  '{niche} tiktok strategy', '{niche} instagram growth',
+  // Monetization & business
+  '{niche} monetization tips', 'earn money from {niche}', '{niche} sponsorship guide',
+  '{niche} affiliate marketing', '{niche} passive income',
+  // Deep-dive angles
+  'complete {niche} guide {year}', '{niche} algorithm tips', '{niche} thumbnail ideas',
+  'best {niche} tools', '{niche} analytics guide', '{niche} promotion strategy',
 ];
 
 function slugify(text: string): string {
@@ -46,12 +96,11 @@ export async function GET(request: NextRequest) {
     const year = new Date().getFullYear();
     let created = 0;
     let upgraded = 0;
-    // 75/day from the curated DAILY_NICHES × KEYWORD_TEMPLATES pool. Combined
-    // with the trending cron, daily creation lands around 95 — sized to feed
-    // the DAILY_PROMOTION_CAP of 100 indexable pages a day. These keywords are
-    // pre-validated (clean nouns + templates, no token salad) so quality stays
-    // above INDEXABLE_THRESHOLD.
-    const target = 75;
+    // 200/day from the curated DAILY_NICHES × KEYWORD_TEMPLATES pool (~3,600
+    // unique combinations). Keywords are sanitized before creation to skip any
+    // niche+template combo that produces duplicate words (e.g. "Instagram
+    // Hashtags hashtags for youtube") — Google treats those as spam signals.
+    const target = 200;
 
     // ── 1. Generate new pages via the shared 5-variant builder ─────────────
     //   Uses buildSeoContent so this cron and generate-trending-pages stay
@@ -66,6 +115,12 @@ export async function GET(request: NextRequest) {
         if (created >= target) break;
 
         const keyword = template.replace('{niche}', niche).replace('{year}', String(year));
+
+        // Skip if this niche+template combination produces duplicate words
+        // (e.g. "Instagram Hashtags hashtags for youtube" → spam signal for Google)
+        const sanity = sanitizeSeoKeyword(keyword);
+        if (!sanity.ok) continue;
+
         const slug = slugify(keyword);
 
         const exists = await SeoPage.findOne({ slug }).select('_id wordCount').lean() as any;

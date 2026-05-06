@@ -126,9 +126,11 @@ function variantPlaybook(c: VariantCtx): { title: string; content: string; faqs:
   const ctrLift = (Math.round(seededRand(c.seed, 1) * 4 * 10) / 10) + 7.5; // 7.5–11.5
   const sample = Math.round(40 + seededRand(c.seed, 2) * 60);              // 40–100k
 
+  const playbookWord = c.kw.toLowerCase().includes('playbook') ? 'Strategy' : 'Playbook';
+  const playbookViralWord = c.kw.toLowerCase().includes('viral') ? 'SEO' : 'Viral SEO';
   const title = c.isTrending
-    ? `${c.kwCap} — Trending Playbook (${c.today}) | VidYT`
-    : `${c.kwCap} — The ${c.year} Viral SEO Playbook | VidYT`;
+    ? `${c.kwCap} — Trending ${playbookWord} (${c.today}) | VidYT`
+    : `${c.kwCap} — The ${c.year} ${playbookViralWord} ${playbookWord} | VidYT`;
 
   const content = `## ${c.kwCap}: ${c.year} Viral SEO Playbook
 
@@ -303,7 +305,8 @@ function variantComparison(c: VariantCtx): { title: string; content: string; faq
   const ttMult  = (1.5 + seededRand(c.seed, 23) * 2.5).toFixed(1); // TikTok skews higher
   const fbMult  = (0.6 + seededRand(c.seed, 24) * 1.0).toFixed(1);
 
-  const title = `Where to Publish ${c.kwCap} in ${c.year} — YouTube vs Reels vs TikTok | VidYT`;
+  const platformWord = c.kw.toLowerCase().includes('youtube') ? 'Best Platform' : 'YouTube vs Reels vs TikTok';
+  const title = `Where to Post ${c.kwCap} in ${c.year} — ${platformWord} | VidYT`;
 
   const content = `## ${c.kwCap}: Which Platform Pays You Most for This Keyword
 
@@ -405,7 +408,8 @@ function variantAudience(c: VariantCtx): { title: string; content: string; faqs:
   const cpm = (2 + seededRand(c.seed, 42) * 8).toFixed(2);        // $2–10
   const convRate = (1.2 + seededRand(c.seed, 43) * 3.5).toFixed(1); // 1.2–4.7%
 
-  const title = `Who Searches "${c.kwCap}"? — Audience & Marketing Guide ${c.year} | VidYT`;
+  const audGuideWord = c.kw.toLowerCase().includes('guide') ? 'Blueprint' : 'Guide';
+  const title = `Who Searches "${c.kwCap}"? — Audience & Marketing ${audGuideWord} ${c.year} | VidYT`;
 
   const content = `## Who Actually Searches for ${c.kwCap}
 
@@ -497,7 +501,9 @@ function variantQuickstart(c: VariantCtx): { title: string; content: string; faq
   const minutes = 18 + Math.round(seededRand(c.seed, 51) * 22);   // 18–40 min
   const ideaCount = 6 + Math.round(seededRand(c.seed, 52) * 4);   // 6–10 ideas
 
-  const title = `${c.kwCap} Quick-Start — Publish Your First Viral Video in ${minutes} Minutes | VidYT`;
+  const qsViralWord = c.kw.toLowerCase().includes('viral') ? 'Trending' : 'Viral';
+  const qsVideoWord = c.kw.toLowerCase().includes('video') ? 'Upload' : 'Video';
+  const title = `${c.kwCap} Quick-Start — Publish Your First ${qsViralWord} ${qsVideoWord} in ${minutes} Minutes | VidYT`;
 
   const content = `## ${c.kwCap}: The ${minutes}-Minute Quick-Start
 
@@ -766,8 +772,15 @@ export function buildSeoContent(rawKeyword: string, opts: {
   // Always include "| VidYT" suffix — /k/ pages use title.absolute (to avoid
   // double-appending on legacy DB records that already have it baked in), so
   // the metaTitle must carry the brand itself.
-  const metaTitle = `${kwCap} — ${stats.growthRate} Growth · Viral Guide ${year} | VidYT`;
-  const metaDescription = `${kwCap} averages ${stats.avgViews} views in the ${category} category with ${stats.growthRate} monthly search growth. Get titles, hashtags, and an SEO playbook — free AI tools by VidYT.`;
+  // Avoid repeating words already in kwCap (e.g. "YouTube Growth — 44% Growth"
+  // or "TikTok Viral — Viral Guide" are spam signals for Google).
+  const kwLower2 = kw.toLowerCase();
+  const growthWord  = kwLower2.includes('growth')  ? 'momentum'   : 'growth';
+  const viralWord   = kwLower2.includes('viral')   ? 'trending'   : 'viral';
+  const guideWord   = kwLower2.includes('guide')   ? 'playbook'   : 'guide';
+  const tipsWord    = kwLower2.includes('tips')    ? 'strategies' : 'tips';
+  const metaTitle = `${kwCap} — ${stats.growthRate} ${growthWord.charAt(0).toUpperCase() + growthWord.slice(1)} · ${viralWord.charAt(0).toUpperCase() + viralWord.slice(1)} ${guideWord.charAt(0).toUpperCase() + guideWord.slice(1)} ${year} | VidYT`;
+  const metaDescription = `${kwCap} averages ${stats.avgViews} views in the ${category} category with ${stats.growthRate} monthly search ${growthWord}. Get ${tipsWord}, hashtags, and an SEO playbook — free AI tools by VidYT.`;
 
   // Build hashtag stack — avoid concatenations that duplicate a word already
   // in the keyword (e.g. kw="viral tips" must not produce #viraltips + #viralviral).
