@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import SeoPage from '@/models/SeoPage';
 import { rescorePage, INDEXABLE_THRESHOLD, DAILY_PROMOTION_CAP } from '@/lib/qualityScorer';
+import { buildSeoContent } from '@/lib/seoContentBuilder';
+import { computeQualityScore } from '@/lib/qualityScorer';
 
 /**
  * Daily cron — quality-gated sitemap promotion.
@@ -56,6 +58,44 @@ export async function GET(_request: NextRequest) {
   try {
     await connectDB();
     const now = new Date();
+
+    // ── 0) Auto-repair thin/empty pages before scoring ──────────────────
+    // Pages with no content or wordCount=0 can never score above threshold.
+    // Regenerate up to 300 per cron run so the backlog clears over days.
+    const thinPages = await SeoPage.find({
+      isIndexable: { $ne: true },
+      $or: [{ wordCount: { $lt: 300 } }, { wordCount: { $exists: false } }, { content: { $in: [null, ''] } }],
+    })
+      .select('slug keyword')
+      .limit(300)
+      .lean();
+
+    if (thinPages.length > 0) {
+      const repairOps: any[] = [];
+      for (const p of thinPages as any[]) {
+        try {
+          const kw = (p.keyword || p.slug.replace(/-/g, ' ')).trim();
+          const built = buildSeoContent(kw);
+          const qs = computeQualityScore({
+            wordCount: built.wordCount, viralScore: 70, trendingRank: 0,
+            views: 0, hashtagCount: built.hashtags.length, faqCount: built.faqs.length,
+            slug: p.slug,
+          });
+          repairOps.push({
+            updateOne: {
+              filter: { slug: p.slug },
+              update: { $set: {
+                content: built.content, title: built.title, metaTitle: built.metaTitle,
+                metaDescription: built.metaDescription, hashtags: built.hashtags,
+                relatedKeywords: built.relatedKeywords, faqs: built.faqs,
+                wordCount: built.wordCount, category: built.category, qualityScore: qs,
+              }},
+            },
+          });
+        } catch { /* skip bad keyword */ }
+      }
+      if (repairOps.length) await SeoPage.bulkWrite(repairOps, { ordered: false });
+    }
 
     // ── 1) Re-score all un-indexable candidates ─────────────────────────
     const candidates = await SeoPage.find({ isIndexable: { $ne: true } })
@@ -144,6 +184,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      thinPagesRepaired: thinPages.length,
       candidatesScanned: candidates.length,
       eligibleCount: eligible.length,
       promoted,

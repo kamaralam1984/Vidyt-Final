@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Trending YouTube Topics & Keywords – VidYT',
   description: 'Discover what\'s trending on YouTube right now. Find viral topics, hot keywords and niche ideas to grow your channel faster with VidYT\'s trend tracker.',
-  keywords: ['trending youtube topics', 'youtube trending keywords', 'viral video ideas', 'youtube trending now', 'youtube niche ideas 2024'],
+  keywords: ['trending youtube topics', 'youtube trending keywords', 'viral video ideas', 'youtube trending now', 'youtube niche ideas 2026'],
   alternates: { canonical: 'https://www.vidyt.com/trending' },
   openGraph: {
     title: 'Trending YouTube Topics & Keywords – VidYT',

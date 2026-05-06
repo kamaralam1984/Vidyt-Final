@@ -4,9 +4,22 @@ import Script from 'next/script';
 import FAQAccordion from './FAQAccordion';
 
 export const metadata = {
-  title: 'Frequently Asked Questions | Vid YT',
-  description: 'Answers to common questions about VidYT pricing, AI features, YouTube SEO tools, billing, refunds, security, and supported platforms.',
+  title: 'VidYT FAQ – Pricing, AI Features, Billing & Platform Questions Answered',
+  description: 'Find answers to common VidYT questions. Covers pricing plans, AI tool features, YouTube SEO, billing, refund policy, account security and supported platforms.',
+  keywords: ['vidyt faq', 'vidyt pricing questions', 'youtube seo tool faq', 'vidyt how it works', 'vidyt refund policy', 'vidyt ai features'],
   alternates: { canonical: 'https://www.vidyt.com/faq' },
+  openGraph: {
+    title: 'VidYT FAQ – Your Questions Answered',
+    description: 'Everything you need to know about VidYT — pricing, AI tools, billing and YouTube SEO features.',
+    url: 'https://www.vidyt.com/faq',
+    siteName: 'VidYT',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'VidYT FAQ – Pricing, Features & Platform Questions',
+    description: 'Quick answers to the most common VidYT questions from creators.',
+  },
 };
 
 const faqs = [

@@ -4,12 +4,17 @@
 // SeoPage collection (which is what blew the rejected count to 457k).
 
 const STOP_PATTERNS: RegExp[] = [
-  /\b(20\d{2}).*\b\1\b/,            // year repeated: "2026 ... 2026"
-  /\b(\w+)\b(?:\s+\1\b){1,}/i,      // any token repeated 2+ times: "tutorial tutorial"
-  /best.*best.*best/i,              // "best ... best ... best" doorway pattern
-  /tutorial.*tutorial.*tutorial/i,  // "tutorial ... tutorial ... tutorial"
-  /tips.*tips.*tips/i,
-  /ideas.*ideas.*ideas/i,
+  /\b(20\d{2}).*\b\1\b/,                               // year repeated: "2026 ... 2026"
+  /\b(\w+)\b(?:\s+\1\b){1,}/i,                         // any token repeated consecutively: "tutorial tutorial"
+  /\b(\w{4,})\b.{1,40}\b\1\b/i,                        // any 4+ char word repeated anywhere in phrase
+  /\b(best|tips|tutorial|ideas|viral|trending|guide|hashtag|video|youtube)\b.+\b\1\b/i,
+  /best.*best/i,
+  /tips.*tips/i,
+  /tutorial.*tutorial/i,
+  /ideas.*ideas/i,
+  /viral.*viral/i,
+  /trending.*trending/i,
+  /guide.*guide/i,
 ];
 
 export interface SanitizeResult {

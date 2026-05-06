@@ -732,7 +732,12 @@ export function buildSeoContent(rawKeyword: string, opts: {
 } = {}): BuiltContent {
   const kw = rawKeyword.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
   const kwCap = capitalize(kw);
-  const baseWord = (kw.split(' ')[0] || kw).toLowerCase();
+  // Pick the first meaningful word — skip generic SEO prefixes so we don't
+  // end up with baseWord="viral" or baseWord="best" and then generate
+  // hashtags like #viralviral or #bestbest.
+  const GENERIC_PREFIXES = new Set(['best','top','viral','trending','free','new','how','what','why','all','good','great','latest','most']);
+  const kwParts = kw.toLowerCase().split(/\s+/);
+  const baseWord = kwParts.find(p => p.length >= 4 && !GENERIC_PREFIXES.has(p)) || kwParts[kwParts.length - 1] || kwParts[0];
   const year = new Date().getFullYear();
   const today = todayString();
   const category = categorize(kw);
@@ -764,33 +769,40 @@ export function buildSeoContent(rawKeyword: string, opts: {
   const metaTitle = `${kwCap} — ${stats.growthRate} Growth · Viral Guide ${year} | VidYT`;
   const metaDescription = `${kwCap} averages ${stats.avgViews} views in the ${category} category with ${stats.growthRate} monthly search growth. Get titles, hashtags, and an SEO playbook — free AI tools by VidYT.`;
 
-  // Diverse hashtag stack (mixes broad, niche, and long-tail tags)
-  const hashtags = [
-    `#${baseWord.replace(/\s+/g, '')}`,
-    `#${kw.replace(/\s+/g, '')}`,
-    `#${baseWord}${year}`,
-    `#${baseWord}viral`,
-    `#${baseWord}tutorial`,
-    `#best${baseWord}`,
-    `#top${baseWord}`,
+  // Build hashtag stack — avoid concatenations that duplicate a word already
+  // in the keyword (e.g. kw="viral tips" must not produce #viraltips + #viralviral).
+  const kwLower = kw.toLowerCase();
+  const kwTokens = new Set(kwLower.split(/\s+/));
+  const bw = baseWord.replace(/\s+/g, '');
+  const kwSlug = kw.replace(/\s+/g, '');
+  const hashtags: string[] = [
+    `#${bw}`,
+    bw !== kwSlug ? `#${kwSlug}` : null,
+    `#${bw}${year}`,
+    kwTokens.has('viral')    ? `#${bw}content`  : `#${bw}viral`,
+    kwTokens.has('tutorial') ? `#${bw}guide`    : `#${bw}tutorial`,
+    kwTokens.has('best')     ? `#top${bw}`      : `#best${bw}`,
+    kwTokens.has('top')      ? `#trending${bw}` : `#top${bw}`,
     '#viral', '#trending', '#fyp', '#explore', '#shorts', '#youtube',
     `#${category.toLowerCase().replace(/[^a-z]/g, '')}`,
     `#${category.toLowerCase().replace(/[^a-z]/g, '')}${year}`,
     '#creator', '#contentcreator', '#viralvideo', '#subscribe', '#growmychannel',
-  ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 20);
+  ].filter((v): v is string => !!v).filter((v, i, a) => a.indexOf(v) === i).slice(0, 20);
 
+  // Related keywords — check each suffix/prefix against existing keyword tokens
+  // to avoid generating spammy pairs like "viral minecraft viral" or "tips tips".
   const relatedKeywords = [
-    `${kw} ${year}`,
-    `${kw} tutorial`,
-    `best ${kw}`,
-    `${kw} tips`,
-    `how to ${kw}`,
-    `${kw} for beginners`,
-    `${kw} hashtags`,
-    `viral ${kw}`,
-    `${kw} ideas`,
-    `${kw} explained`,
-  ];
+    kwTokens.has(String(year))                          ? `${kw} complete guide`   : `${kw} ${year}`,
+    kwTokens.has('tutorial')                             ? `learn ${kw}`             : `${kw} tutorial`,
+    kwTokens.has('best')                                 ? `top ${kw}`               : `best ${kw}`,
+    kwTokens.has('tips')                                 ? `${kw} strategies`        : `${kw} tips`,
+    kwTokens.has('how')                                  ? `${kw} full walkthrough`  : `how to ${kw}`,
+    kwTokens.has('beginner') || kwTokens.has('beginners')? `${kw} starter guide`    : `${kw} for beginners`,
+    kwTokens.has('hashtag') || kwTokens.has('hashtags') ? `${kw} viral tags`        : `${kw} hashtags`,
+    kwTokens.has('viral')                                ? `trending ${kw}`          : `viral ${kw}`,
+    kwTokens.has('idea') || kwTokens.has('ideas')       ? `${kw} content plan`      : `${kw} ideas`,
+    kwTokens.has('explain') || kwTokens.has('explained')? `${kw} overview`          : `${kw} explained`,
+  ].filter((v, i, a) => a.indexOf(v) === i);
 
   return {
     title: built.title,

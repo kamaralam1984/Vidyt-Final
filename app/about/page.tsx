@@ -2,8 +2,22 @@ import MarketingNavbar from '@/components/MarketingNavbar';
 import MarketingFooter from '@/components/MarketingFooter';
 
 export const metadata = {
-  title: 'About | Vid YT',
-  description: 'Learn about Vid YT and our mission to provide AI-powered growth tools for YouTube creators. Operated by Kvl Business Solutions.',
+  title: 'About VidYT – AI-Powered YouTube Growth Platform for Creators',
+  description: 'VidYT helps YouTube creators grow with AI tools for titles, thumbnails, scripts and hashtags. Operated by Kvl Business Solutions. Trusted by 10,000+ creators worldwide.',
+  keywords: ['about vidyt', 'vidyt youtube tool', 'youtube growth platform', 'ai tools for creators', 'vidyt mission', 'kvl business solutions'],
+  alternates: { canonical: 'https://www.vidyt.com/about' },
+  openGraph: {
+    title: 'About VidYT – AI-Powered YouTube Growth Platform',
+    description: 'Learn how VidYT helps creators grow on YouTube with AI-powered SEO tools, scripts, thumbnails and hashtags.',
+    url: 'https://www.vidyt.com/about',
+    siteName: 'VidYT',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About VidYT – YouTube Growth Platform for Creators',
+    description: 'The story behind VidYT and how we help 10,000+ creators grow on YouTube.',
+  },
 };
 
 export default function AboutPage() {

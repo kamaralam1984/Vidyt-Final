@@ -23,11 +23,10 @@ export interface ScoreInputs {
   slug?: string;        // URL slug — penalised when garbage (best-best-best...)
 }
 
-// Threshold at 25: pages with at least 25/100 quality score get indexed.
-// Below 25 = literal garbage (empty content, pure junk slugs).
-// Google decides ranking — we only gate out the worst-of-worst.
-export const INDEXABLE_THRESHOLD = 25;
-export const DAILY_PROMOTION_CAP = 500;
+// Threshold at 20: enough to block truly empty pages while letting
+// content-rich pages with imperfect slugs through.
+export const INDEXABLE_THRESHOLD = 20;
+export const DAILY_PROMOTION_CAP = 2000;
 
 export function computeQualityScore(i: ScoreInputs): number {
   // 1) Word-count gate (max 35 pts). Google wants substance.
@@ -59,15 +58,15 @@ export function computeQualityScore(i: ScoreInputs): number {
     ? Math.max(0, 5 - i.ageHours / 48)   // full 5 pts at 0h, 0 at 240h (10 days)
     : 5;                                   // unknown age → assume fresh
 
-  // 7) Slug-quality penalty (up to -25). A garbage slug like
-  //    "best-best-best-tutorial-tutorial-2026" never gets indexed cleanly
-  //    by Google no matter how good the content is — it reads as a doorway.
+  // 7) Slug-quality penalty (up to -15). Content quality should dominate —
+  //    a great article with a slightly imperfect slug still deserves indexing.
+  //    Truly garbage slugs still get a hard penalty to block doorway pages.
   let slugPenalty = 0;
   if (i.slug) {
     const ss = scoreSlug(i.slug);
-    if (ss.isGarbage) slugPenalty = 25;
-    else if (ss.score < 70) slugPenalty = 15;
-    else if (ss.score < 85) slugPenalty = 5;
+    if (ss.isGarbage) slugPenalty = 15;
+    else if (ss.score < 70) slugPenalty = 8;
+    else if (ss.score < 85) slugPenalty = 3;
   }
 
   const raw = wcScore + viralPart + trendPart + viewsPart + hashtagPart + faqPart + agePart - slugPenalty;
