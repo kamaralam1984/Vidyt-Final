@@ -23,6 +23,7 @@ export const dynamic = 'force-dynamic';
  *   gsc=<0|1>         — include GSC per-page data (default 1; disable for fast load)
  */
 export async function GET(request: NextRequest) {
+ try {
   const user = await getUserFromRequest(request);
   if (!user || !isSuperAdminRole(user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -81,8 +82,13 @@ export async function GET(request: NextRequest) {
   let gscConnected = false;
   if (includeGsc && rows.length > 0) {
     const pathnames = (rows as any[]).map(r => `/k/${r.slug}`);
-    gscMap = await getPageStatsBatch(pathnames, 28);
-    gscConnected = gscMap.size > 0 || !!process.env.GSC_SERVICE_ACCOUNT_JSON;
+    try {
+      gscMap = await getPageStatsBatch(pathnames, 28);
+      gscConnected = gscMap.size > 0 || !!process.env.GSC_SERVICE_ACCOUNT_JSON;
+    } catch (e: any) {
+      console.error('[seo-pages/list] getPageStatsBatch failed:', e?.message || e);
+      gscConnected = false;
+    }
   }
 
   const items = (rows as any[]).map(r => {
@@ -143,4 +149,11 @@ export async function GET(request: NextRequest) {
     },
     gscConnected,
   });
+ } catch (e: any) {
+  console.error('[seo-pages/list] 500:', e?.stack || e?.message || e);
+  return NextResponse.json(
+    { error: e?.message || 'Internal error', detail: String(e?.stack || e).slice(0, 500) },
+    { status: 500 }
+  );
+ }
 }
