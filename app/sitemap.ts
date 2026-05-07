@@ -71,20 +71,44 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const connectDB = (await import('@/lib/mongodb')).default;
     const SeoPage = (await import('@/models/SeoPage')).default;
     await connectDB();
+    // 50k matches Google's per-sitemap cap. With the 70+ quality floor +
+    // daily cleanup cron, the indexable count stays well below this so no
+    // page ends up sitemap-orphaned just because of an arbitrary 2k limit.
     const pages = await SeoPage.find({ isIndexable: true })
       .select('slug updatedAt publishedAt qualityScore')
       .sort({ publishedAt: -1 })
-      .limit(2000)
+      .limit(50000)
       .lean();
     kPages = (pages as any[]).map(p => {
       const score = p.qualityScore || 70;
-      // Higher-quality pages → higher priority (0.5 → 0.8 range)
-      const priority = Math.min(0.8, 0.5 + (score - 60) / 100);
+      // Higher-quality pages → higher priority (0.5 → 0.85 range)
+      const priority = Math.min(0.85, 0.5 + (score - 60) / 100);
+      // Use publishedAt for lastModified — that's the field the
+      // freshness-rotation cron bumps to signal "active page" to Google.
+      // updatedAt drifts on every minor write (view counter etc.) which
+      // dilutes the freshness signal.
+      const lastModified = p.publishedAt ? new Date(p.publishedAt)
+        : (p.updatedAt ? new Date(p.updatedAt) : now);
       return {
         url: `${baseUrl}/k/${p.slug}`,
-        lastModified: p.updatedAt ? new Date(p.updatedAt) : (p.publishedAt ? new Date(p.publishedAt) : now),
+        lastModified,
         changeFrequency: 'weekly' as const,
         priority: Number(priority.toFixed(2)),
+        // Hreflang alternates so Google ranks the page across English-
+        // speaking markets (US/UK/IN/CA/AU). x-default is the universal
+        // fallback. Localised /hi/k/<slug> URLs can be added here later
+        // without changing the sitemap shape.
+        alternates: {
+          languages: {
+            'en':        `${baseUrl}/k/${p.slug}`,
+            'en-US':     `${baseUrl}/k/${p.slug}`,
+            'en-GB':     `${baseUrl}/k/${p.slug}`,
+            'en-IN':     `${baseUrl}/k/${p.slug}`,
+            'en-CA':     `${baseUrl}/k/${p.slug}`,
+            'en-AU':     `${baseUrl}/k/${p.slug}`,
+            'x-default': `${baseUrl}/k/${p.slug}`,
+          },
+        },
       };
     });
   } catch {
