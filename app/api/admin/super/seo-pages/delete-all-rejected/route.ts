@@ -20,16 +20,36 @@ async function purge(request: NextRequest) {
 
   await connectDB();
 
+  // Chunked delete — Cloudflare's 100s edge timeout cuts off any single
+  // request that runs longer. Find IDs first (fast, indexed), delete by
+  // _id (fastest possible path). UI calls in a loop until hasMore:false.
+  const url = new URL(request.url);
+  const limitParam = Number(url.searchParams.get('limit'));
+  const limit = Math.min(50000, Math.max(500, limitParam || 10000));
+
   const before = await SeoPage.estimatedDocumentCount();
-  const r = await SeoPage.deleteMany({ isIndexable: { $ne: true } });
+  const ids = await SeoPage.find({ isIndexable: { $ne: true } })
+    .select('_id')
+    .limit(limit)
+    .lean();
+  let deleted = 0;
+  if (ids.length > 0) {
+    const r = await SeoPage.deleteMany({ _id: { $in: ids.map((d: any) => d._id) } });
+    deleted = r.deletedCount || 0;
+  }
   const after = await SeoPage.estimatedDocumentCount();
+  const hasMore = ids.length >= limit;
 
   return NextResponse.json({
     success: true,
-    deleted: r.deletedCount || 0,
+    deleted,
+    limit,
+    hasMore,
     totalBefore: before,
     totalAfter: after,
-    message: 'All non-indexable pages deleted. Indexable pages preserved.',
+    message: hasMore
+      ? `Deleted ${deleted} pages. More remain — call again to continue.`
+      : 'All non-indexable pages deleted. Indexable pages preserved.',
     timestamp: new Date().toISOString(),
   });
 }

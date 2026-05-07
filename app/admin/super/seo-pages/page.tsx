@@ -301,20 +301,36 @@ export default function SeoPagesAdmin() {
     if (!confirm('Are you absolutely sure? Click OK to proceed with the bulk delete.')) return;
     setCronBusy('delete-all-rejected');
     try {
-      const res = await axios.post(
-        '/api/admin/super/seo-pages/delete-all-rejected',
-        {},
-        { headers: getAuthHeaders() }
-      );
-      const d = res.data || {};
+      // Loop until the server reports no more matches. Each call deletes
+      // up to `limit` rows in well under Cloudflare's 100s edge budget.
+      let totalDeleted = 0;
+      let totalBefore = 0;
+      let totalAfter = 0;
+      let iterations = 0;
+      // Hard cap so a runaway loop can't hammer the API forever.
+      const MAX_ITERATIONS = 200;
+      while (iterations < MAX_ITERATIONS) {
+        const res = await axios.post(
+          '/api/admin/super/seo-pages/delete-all-rejected?limit=10000',
+          {},
+          { headers: getAuthHeaders(), timeout: 90000 }
+        );
+        const d = res.data || {};
+        if (iterations === 0) totalBefore = d.totalBefore || 0;
+        totalDeleted += d.deleted || 0;
+        totalAfter = d.totalAfter || 0;
+        iterations++;
+        if (!d.hasMore) break;
+      }
       alert(
-        `Deleted ${d.deleted} rejected pages.\n` +
-        `Total before: ${d.totalBefore}\n` +
-        `Total after: ${d.totalAfter}`
+        `Deleted ${totalDeleted} rejected pages` +
+        (iterations > 1 ? ` over ${iterations} batches.\n` : '.\n') +
+        `Total before: ${totalBefore}\n` +
+        `Total after: ${totalAfter}`
       );
       await Promise.all([loadStats(), loadList()]);
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Bulk delete failed');
+      alert(e?.response?.data?.error || e?.message || 'Bulk delete failed');
     } finally {
       setCronBusy(null);
     }
@@ -328,19 +344,34 @@ export default function SeoPagesAdmin() {
     )) return;
     setCronBusy('delete-by-quality');
     try {
-      const res = await axios.post(
-        '/api/admin/super/seo-pages/delete-by-quality',
-        { threshold: deleteQualityThreshold, mode: 'lte' },
-        { headers: getAuthHeaders() }
-      );
-      const d = res.data || {};
+      // Loop until server reports no more matches. Same chunked pattern as
+      // deleteAllRejected — keeps each request inside the CF 100s budget.
+      let totalDeleted = 0;
+      let totalBefore = 0;
+      let totalAfter = 0;
+      let iterations = 0;
+      const MAX_ITERATIONS = 200;
+      while (iterations < MAX_ITERATIONS) {
+        const res = await axios.post(
+          '/api/admin/super/seo-pages/delete-by-quality',
+          { threshold: deleteQualityThreshold, mode: 'lte', limit: 10000 },
+          { headers: getAuthHeaders(), timeout: 90000 }
+        );
+        const d = res.data || {};
+        if (iterations === 0) totalBefore = d.totalBefore || 0;
+        totalDeleted += d.deletedCount || 0;
+        totalAfter = d.totalAfter || 0;
+        iterations++;
+        if (!d.hasMore) break;
+      }
       alert(
-        `Deleted ${d.deletedCount} pages (quality ≤ ${d.threshold}).\n` +
-        `Total before: ${d.totalBefore}\nTotal after: ${d.totalAfter}`
+        `Deleted ${totalDeleted} pages (quality ≤ ${deleteQualityThreshold})` +
+        (iterations > 1 ? ` over ${iterations} batches.\n` : '.\n') +
+        `Total before: ${totalBefore}\nTotal after: ${totalAfter}`
       );
       await Promise.all([loadStats(), loadList()]);
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Delete-by-quality failed');
+      alert(e?.response?.data?.error || e?.message || 'Delete-by-quality failed');
     } finally {
       setCronBusy(null);
     }
