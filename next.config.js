@@ -25,7 +25,10 @@ const nextConfig = {
       allowedOrigins: ['vidyt.com', 'www.vidyt.com'],
       bodySizeLimit: '50mb',
     },
-    // Keep heavy server-only packages out of the webpack bundle
+    // Keep heavy server-only packages out of the webpack bundle.
+    // googleapis + peers MUST stay external — Next's SWC minifier breaks
+    // their class inheritance ("Must call super constructor in derived
+    // class" at module load) which kills /api/admin/super/seo-pages/*.
     serverComponentsExternalPackages: [
       '@ffmpeg-installer/ffmpeg',
       'fluent-ffmpeg',
@@ -33,6 +36,11 @@ const nextConfig = {
       '@tensorflow/tfjs',
       '@tensorflow/tfjs-node',
       'sharp',
+      'googleapis',
+      'google-auth-library',
+      'gaxios',
+      'gtoken',
+      'google-logging-utils',
     ],
     // Tree-shake icon/component libraries — reduces per-page JS significantly
     optimizePackageImports: [
