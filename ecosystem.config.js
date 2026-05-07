@@ -28,17 +28,24 @@ module.exports = {
     {
       name: 'vidyt',
       script: 'npm',
-      args: 'start',
+      // Run the custom Express + Socket.io server (server.ts) instead of
+      // the default `next start` so the live dashboard's WebSocket-driven
+      // real-time updates work end-to-end. Falls back to polling only when
+      // a client genuinely can't upgrade — never as steady-state.
+      args: 'run start:ws',
       cwd: '/var/www/vidyt',
       exec_mode: 'fork',
       instances: 1,
       // Auto-restart when memory exceeds 2.2GB (system has 7.6GB total)
       max_memory_restart: '2200M',
-      // Node.js heap limit + aggressive GC to prevent leaks
-      node_args: '--max_old_space_size=2048 --expose-gc --gc-interval=100 --max-semi-space-size=64',
+      // Node.js heap limit + aggressive GC to prevent leaks. Pass via
+      // NODE_OPTIONS env so the npm-spawned ts-node child inherits it
+      // (PM2 node_args only apply to the direct npm process, not its
+      // grandchildren).
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        NODE_OPTIONS: '--max_old_space_size=2048 --expose-gc --max-semi-space-size=64',
       },
       // Wait for old process to fully release port before restarting
       kill_timeout: 8000,

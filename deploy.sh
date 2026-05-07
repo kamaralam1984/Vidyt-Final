@@ -28,19 +28,17 @@ fi
 
 echo "✅ Build successful!"
 
-# Step 3: Graceful PM2 reload (zero-downtime)
+# Step 3: PM2 startOrReload (config-aware reload)
+#  • startOrReload reads ecosystem.config.js fresh each run, so changes to
+#    `script`/`args`/`env`/`node_args` (e.g. switching from `next start` to
+#    the custom server.ts) actually take effect on the next deploy. Plain
+#    `pm2 reload <name>` keeps the old config in PM2's daemon memory.
+#  • --update-env ensures env-var changes (NODE_OPTIONS, etc.) propagate.
 echo ""
-echo "🔄 Reloading PM2 with new build..."
-
-# Check if PM2 app is running
-if pm2 list | grep -q "$APP_NAME"; then
-  pm2 reload "$APP_NAME" --update-env
-  echo "✅ PM2 reloaded!"
-else
-  echo "⚠️  PM2 app '$APP_NAME' not found. Starting fresh..."
-  pm2 start ecosystem.config.js
-  pm2 save
-fi
+echo "🔄 Reloading PM2 from ecosystem.config.js..."
+pm2 startOrReload ecosystem.config.js --update-env --only "$APP_NAME"
+echo "✅ PM2 reloaded with current ecosystem config!"
+pm2 save --force >/dev/null 2>&1 || true
 
 # Step 4: Verify
 sleep 3
