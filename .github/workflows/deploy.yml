@@ -31,21 +31,15 @@ jobs:
             echo "=== Fetching origin/main ==="
             git fetch origin main
 
-            COMMITS=$(git rev-list --reverse HEAD..origin/main)
-            if [ -z "$COMMITS" ]; then
-              echo "Nothing new on origin/main — VPS is up to date."
+            LOCAL=$(git rev-parse HEAD)
+            REMOTE=$(git rev-parse origin/main)
+            if [ "$LOCAL" = "$REMOTE" ]; then
+              echo "VPS is already up to date."
               exit 0
             fi
 
-            echo "=== Cherry-picking new commits ==="
-            for commit in $COMMITS; do
-              echo "→ $commit"
-              git cherry-pick -X theirs --no-edit "$commit" || {
-                echo "❌ Cherry-pick failed at $commit. Aborting."
-                git cherry-pick --abort || true
-                exit 1
-              }
-            done
+            echo "=== Syncing to origin/main ==="
+            git reset --hard origin/main
 
             echo "=== Running deploy.sh ==="
             ./deploy.sh
