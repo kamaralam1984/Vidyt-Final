@@ -311,7 +311,7 @@ export default function SeoPagesAdmin() {
       const MAX_ITERATIONS = 200;
       while (iterations < MAX_ITERATIONS) {
         const res = await axios.post(
-          '/api/admin/super/seo-pages/delete-all-rejected?limit=10000',
+          '/api/admin/super/seo-pages/delete-all-rejected?limit=2000',
           {},
           { headers: getAuthHeaders(), timeout: 90000 }
         );
@@ -354,7 +354,7 @@ export default function SeoPagesAdmin() {
       while (iterations < MAX_ITERATIONS) {
         const res = await axios.post(
           '/api/admin/super/seo-pages/delete-by-quality',
-          { threshold: deleteQualityThreshold, mode: 'lte', limit: 10000 },
+          { threshold: deleteQualityThreshold, mode: 'lte', limit: 2000 },
           { headers: getAuthHeaders(), timeout: 90000 }
         );
         const d = res.data || {};

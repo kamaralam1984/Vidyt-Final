@@ -25,10 +25,12 @@ async function purge(request: NextRequest) {
   // _id (fastest possible path). UI calls in a loop until hasMore:false.
   const url = new URL(request.url);
   const limitParam = Number(url.searchParams.get('limit'));
-  const limit = Math.min(50000, Math.max(500, limitParam || 10000));
+  const limit = Math.min(50000, Math.max(500, limitParam || 2000));
 
   const before = await SeoPage.estimatedDocumentCount();
-  const ids = await SeoPage.find({ isIndexable: { $ne: true } })
+  // Use `isIndexable: false` not `{$ne:true}` — $ne forces a collection
+  // scan that blows past timeouts on 80k+ row collections.
+  const ids = await SeoPage.find({ isIndexable: false })
     .select('_id')
     .limit(limit)
     .lean();

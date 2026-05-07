@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   // request that runs longer. We pick a batch size that comfortably
   // finishes in seconds; the UI calls this endpoint in a loop until
   // `hasMore:false`. Operator can override via body.limit.
-  const limit = Math.min(50000, Math.max(500, Number(body.limit) || 10000));
+  const limit = Math.min(50000, Math.max(500, Number(body.limit) || 2000));
 
   await connectDB();
 
@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
   const filter: any = mode === 'eq'
     ? { qualityScore: threshold }
     : { qualityScore: { $lte: threshold } };
-  if (!includeIndexable) filter.isIndexable = { $ne: true };
+  // Use `false` not `{$ne:true}` — $ne disables index usage and forces a
+  // collection scan, which on 80k+ rows blows past Cloudflare/axios timeouts.
+  if (!includeIndexable) filter.isIndexable = false;
 
   // Step 1: find matching _ids only (fast — uses {isIndexable, qualityScore}
   // compound index, no document hydration). Step 2: deleteMany by _id which
