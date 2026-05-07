@@ -67,3 +67,4 @@ tunnel.log
 .last-deployed-sha
 *.bak
 *.bak.*
+scripts/get-gsc-token.mjs
