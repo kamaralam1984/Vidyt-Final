@@ -6,6 +6,7 @@ import SeoPage from '@/models/SeoPage';
 import { buildSeoContent } from '@/lib/seoContentBuilder';
 import { computeQualityScore } from '@/lib/qualityScorer';
 import { sanitizeSeoKeyword } from '@/lib/seoKeywordSanitizer';
+import { GLOBAL_DAILY_CAP } from '@/lib/seoCategoryRegistry';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
@@ -115,18 +116,41 @@ Start creating viral ${kw} content today. VidYT's free plan includes 5 video ana
   return { title, metaTitle, metaDescription, content, hashtags, relatedKeywords, viralScore: score, category };
 }
 
-// Soft cap removed — quality gate (sanitizer + INDEXABLE_THRESHOLD=75) and
-// the new Repair Rejected endpoint handle backlog management. The page count
-// itself isn't the constraint anymore.
+// Owner spec: GLOBAL_DAILY_CAP = 60 across the whole pipeline. The curated
+// generate-seo-pages cron owns those 60 slots via category rotation, so this
+// trending cron is disabled by default. Set ?target=N (max 20) on a manual
+// run to slot a few real-time trends in — never via automated cron.
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     let created = 0;
-    // 50 trending pages/day. Combined with generate-seo-pages curated cron
-    // (75/day) the pipeline produces ~125/day, sized to feed the
-    // DAILY_PROMOTION_CAP of 100 indexable pages a day.
-    const target = 50;
+    // Default 0 — cron-driven runs do nothing, preserving the 60/day cap
+    // owned by generate-seo-pages. Manual operator runs can pass ?target=N
+    // (capped at 20 and only honoured when today's total leaves headroom).
+    const url = new URL(request.url);
+    const requested = Math.max(0, Math.min(20, parseInt(url.searchParams.get('target') || '0', 10) || 0));
+    if (requested === 0) {
+      return NextResponse.json({
+        success: true,
+        skipped: 'trending cron disabled by default — use ?target=N (max 20) for a manual injection',
+        cap: GLOBAL_DAILY_CAP,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    const startOfToday = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()));
+    const createdTodayBefore = await SeoPage.countDocuments({ createdAt: { $gte: startOfToday } });
+    const headroom = Math.max(0, GLOBAL_DAILY_CAP - createdTodayBefore);
+    const target = Math.min(requested, headroom);
+    if (target === 0) {
+      return NextResponse.json({
+        success: true,
+        skipped: 'global daily cap reached — no headroom for trending pages today',
+        createdTodayBefore,
+        cap: GLOBAL_DAILY_CAP,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     const allTrending: { keyword: string; score: number }[] = [];
 

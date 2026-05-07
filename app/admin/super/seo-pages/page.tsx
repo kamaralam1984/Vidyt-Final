@@ -134,6 +134,10 @@ export default function SeoPagesAdmin() {
   const [actionBusy, setActionBusy] = useState(false);
   const [cronBusy, setCronBusy] = useState<string | null>(null);
 
+  // Delete-by-quality dropdown — picks a max quality threshold and one click
+  // wipes every non-indexable page at-or-below that score.
+  const [deleteQualityThreshold, setDeleteQualityThreshold] = useState<number>(40);
+
   // Slug audit (lazy-loaded — calls clean-bad-slugs?action=dry)
   const [slugAudit, setSlugAudit] = useState<{
     scanned: number;
@@ -311,6 +315,32 @@ export default function SeoPagesAdmin() {
       await Promise.all([loadStats(), loadList()]);
     } catch (e: any) {
       alert(e?.response?.data?.error || 'Bulk delete failed');
+    } finally {
+      setCronBusy(null);
+    }
+  }
+
+  async function deleteByQuality() {
+    if (!confirm(
+      `DELETE every non-indexable page with qualityScore ≤ ${deleteQualityThreshold}?\n\n` +
+      '• Indexable pages stay untouched\n' +
+      '• Cannot be undone — pages are removed from the database'
+    )) return;
+    setCronBusy('delete-by-quality');
+    try {
+      const res = await axios.post(
+        '/api/admin/super/seo-pages/delete-by-quality',
+        { threshold: deleteQualityThreshold, mode: 'lte' },
+        { headers: getAuthHeaders() }
+      );
+      const d = res.data || {};
+      alert(
+        `Deleted ${d.deletedCount} pages (quality ≤ ${d.threshold}).\n` +
+        `Total before: ${d.totalBefore}\nTotal after: ${d.totalAfter}`
+      );
+      await Promise.all([loadStats(), loadList()]);
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Delete-by-quality failed');
     } finally {
       setCronBusy(null);
     }
@@ -513,6 +543,27 @@ export default function SeoPagesAdmin() {
             {cronBusy === 'delete-all-rejected' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
             Delete All Rejected
           </button>
+          <div className="flex items-stretch rounded-lg border border-rose-500/40 overflow-hidden bg-rose-600/20" title="Bulk-delete every non-indexable page with qualityScore at-or-below the selected threshold.">
+            <select
+              value={deleteQualityThreshold}
+              onChange={e => setDeleteQualityThreshold(parseInt(e.target.value, 10))}
+              disabled={cronBusy !== null}
+              className="px-2 py-2 bg-transparent text-rose-100 text-sm outline-none border-r border-rose-500/40 disabled:opacity-50"
+              aria-label="Quality threshold for delete"
+            >
+              {[20, 30, 40, 50, 60, 70].map(n => (
+                <option key={n} value={n} className="bg-zinc-900 text-rose-200">≤ {n} quality</option>
+              ))}
+            </select>
+            <button
+              onClick={deleteByQuality}
+              disabled={cronBusy !== null}
+              className="px-3 py-2 hover:bg-rose-600/40 text-rose-200 text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              {cronBusy === 'delete-by-quality' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Delete Below
+            </button>
+          </div>
           <button
             onClick={recreateFresh}
             disabled={cronBusy !== null}
