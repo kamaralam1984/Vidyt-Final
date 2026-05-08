@@ -4,116 +4,132 @@ import { seoToolsList } from '@/data/seoToolsList';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://www.vidyt.com";
+const BASE_URL = 'https://www.vidyt.com';
+// 5 000 /k/ URLs per chunk × 7 hreflang = 35k entries → safely under 50MB
+const K_CHUNK_SIZE = 5000;
+
+function staticEntries(): MetadataRoute.Sitemap {
   const now = new Date();
 
-  // 1. Core Pages (highest priority) — auth pages excluded (no SEO value)
-  const coreRoutes = [
-    { path: "", priority: 1, freq: 'daily' },
-    { path: "/pricing", priority: 0.9, freq: 'weekly' },
+  const core = [
+    { path: '', priority: 1, freq: 'daily' },
+    { path: '/pricing', priority: 0.9, freq: 'weekly' },
   ].map(r => ({
-    url: `${baseUrl}${r.path}`,
+    url: `${BASE_URL}${r.path}`,
     lastModified: now,
     changeFrequency: r.freq as any,
     priority: r.priority,
   }));
 
-  // 2. Public Feature Pages
   const publicPages = [
-    "/about", "/contact", "/faq", "/compare", "/blog", "/trending", "/hashtags",
-    "/posting-time", "/facebook-audit", "/viral-optimizer", "/download", "/get-app",
-    "/help", "/changelog", "/status", "/tools/youtube-growth",
+    '/about', '/contact', '/faq', '/compare', '/blog', '/trending', '/hashtags',
+    '/posting-time', '/facebook-audit', '/viral-optimizer', '/download', '/get-app',
+    '/help', '/changelog', '/status', '/tools/youtube-growth',
   ].map(path => ({
-    url: `${baseUrl}${path}`,
+    url: `${BASE_URL}${path}`,
     lastModified: now,
     changeFrequency: 'weekly' as const,
     priority: 0.7,
   }));
 
-  // 3. Legal Pages (AdSense required)
-  const legalPages = [
-    "/privacy-policy", "/terms", "/cookie-policy", "/refund-policy",
-    "/data-requests", "/security",
+  const legal = [
+    '/privacy-policy', '/terms', '/cookie-policy', '/refund-policy',
+    '/data-requests', '/security',
   ].map(path => ({
-    url: `${baseUrl}${path}`,
+    url: `${BASE_URL}${path}`,
     lastModified: now,
     changeFrequency: 'monthly' as const,
     priority: 0.4,
   }));
 
-  // 4. Blog Posts
-  const blogPosts = [
-    "/blog/youtube-seo-checklist",
-    "/blog/thumbnail-frameworks",
-    "/blog/viral-shorts-formula",
+  const blog = [
+    '/blog/youtube-seo-checklist',
+    '/blog/thumbnail-frameworks',
+    '/blog/viral-shorts-formula',
   ].map(path => ({
-    url: `${baseUrl}${path}`,
+    url: `${BASE_URL}${path}`,
     lastModified: now,
     changeFrequency: 'weekly' as const,
     priority: 0.6,
   }));
 
-  // 5. SEO Tool Pages (160+)
-  const toolRoutes = seoToolsList.map(tool => ({
-    url: `${baseUrl}/tools/${tool.slug}`,
+  const tools = seoToolsList.map(tool => ({
+    url: `${BASE_URL}/tools/${tool.slug}`,
     lastModified: now,
     changeFrequency: 'weekly' as const,
     priority: 0.7,
   }));
 
-  // 6. Dynamic /k/ SEO Pages — ONLY indexable (quality-gated) pages
-  //    Pages are promoted to isIndexable:true by the /api/cron/promote-seo-pages
-  //    cron (max 100/day). This keeps sitemap lean and feeds Google only
-  //    high-quality content, preventing "Crawled - currently not indexed" waste.
-  let kPages: MetadataRoute.Sitemap = [];
+  return [...core, ...publicPages, ...legal, ...blog, ...tools];
+}
+
+/**
+ * generateSitemaps — called by Next.js to build the sitemap index.
+ * id=0  → static pages
+ * id=1+ → /k/ SEO pages in chunks of K_CHUNK_SIZE
+ */
+export async function generateSitemaps() {
   try {
     const connectDB = (await import('@/lib/mongodb')).default;
     const SeoPage = (await import('@/models/SeoPage')).default;
     await connectDB();
-    // 50k matches Google's per-sitemap cap. With the 70+ quality floor +
-    // daily cleanup cron, the indexable count stays well below this so no
-    // page ends up sitemap-orphaned just because of an arbitrary 2k limit.
+    const total = await SeoPage.countDocuments({ isIndexable: true });
+    const kChunks = Math.max(1, Math.ceil(total / K_CHUNK_SIZE));
+    return Array.from({ length: kChunks + 1 }, (_, i) => ({ id: i }));
+  } catch {
+    return [{ id: 0 }];
+  }
+}
+
+export default async function sitemap({
+  id,
+}: {
+  id: number;
+}): Promise<MetadataRoute.Sitemap> {
+  // Chunk 0: static + tool pages (no DB needed)
+  if (id === 0) return staticEntries();
+
+  // Chunks 1+: /k/ pages
+  try {
+    const connectDB = (await import('@/lib/mongodb')).default;
+    const SeoPage = (await import('@/models/SeoPage')).default;
+    await connectDB();
+
+    const skip = (id - 1) * K_CHUNK_SIZE;
     const pages = await SeoPage.find({ isIndexable: true })
       .select('slug updatedAt publishedAt qualityScore')
       .sort({ publishedAt: -1 })
-      .limit(50000)
+      .skip(skip)
+      .limit(K_CHUNK_SIZE)
       .lean();
-    kPages = (pages as any[]).map(p => {
+
+    return (pages as any[]).map(p => {
       const score = p.qualityScore || 70;
-      // Higher-quality pages → higher priority (0.5 → 0.85 range)
-      const priority = Math.min(0.85, 0.5 + (score - 60) / 100);
-      // Use publishedAt for lastModified — that's the field the
-      // freshness-rotation cron bumps to signal "active page" to Google.
-      // updatedAt drifts on every minor write (view counter etc.) which
-      // dilutes the freshness signal.
-      const lastModified = p.publishedAt ? new Date(p.publishedAt)
-        : (p.updatedAt ? new Date(p.updatedAt) : now);
+      const priority = Number(Math.min(0.85, 0.5 + (score - 60) / 100).toFixed(2));
+      const lastModified = p.publishedAt
+        ? new Date(p.publishedAt)
+        : p.updatedAt
+        ? new Date(p.updatedAt)
+        : new Date();
       return {
-        url: `${baseUrl}/k/${p.slug}`,
+        url: `${BASE_URL}/k/${p.slug}`,
         lastModified,
         changeFrequency: 'weekly' as const,
-        priority: Number(priority.toFixed(2)),
-        // Hreflang alternates so Google ranks the page across English-
-        // speaking markets (US/UK/IN/CA/AU). x-default is the universal
-        // fallback. Localised /hi/k/<slug> URLs can be added here later
-        // without changing the sitemap shape.
+        priority,
         alternates: {
           languages: {
-            'en':        `${baseUrl}/k/${p.slug}`,
-            'en-US':     `${baseUrl}/k/${p.slug}`,
-            'en-GB':     `${baseUrl}/k/${p.slug}`,
-            'en-IN':     `${baseUrl}/k/${p.slug}`,
-            'en-CA':     `${baseUrl}/k/${p.slug}`,
-            'en-AU':     `${baseUrl}/k/${p.slug}`,
-            'x-default': `${baseUrl}/k/${p.slug}`,
+            en:          `${BASE_URL}/k/${p.slug}`,
+            'en-US':     `${BASE_URL}/k/${p.slug}`,
+            'en-GB':     `${BASE_URL}/k/${p.slug}`,
+            'en-IN':     `${BASE_URL}/k/${p.slug}`,
+            'en-CA':     `${BASE_URL}/k/${p.slug}`,
+            'en-AU':     `${BASE_URL}/k/${p.slug}`,
+            'x-default': `${BASE_URL}/k/${p.slug}`,
           },
         },
       };
     });
   } catch {
-    // DB not available — skip dynamic pages
+    return [];
   }
-
-  return [...coreRoutes, ...publicPages, ...legalPages, ...blogPosts, ...toolRoutes, ...kPages];
 }
