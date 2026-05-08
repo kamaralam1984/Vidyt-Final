@@ -37,6 +37,12 @@ async function getOrCreatePage(keyword: string): Promise<any> {
   let page: any = await SeoPage.findOne({ slug }).lean();
 
   if (!page) {
+    // Don't let crawlers / link-preview scrapers seed the DB with a page for
+    // every random slug they probe — that's how the admin sees hundreds of
+    // auto-created pages a day. Real users will still trigger on-demand
+    // creation; bots get notFound and the slug never enters the DB.
+    if (isBotRequest()) return null;
+
     const kw = keyword.replace(/-/g, ' ').trim();
     const built = buildSeoContent(kw, { isTrending: false });
     const qualityScore = computeQualityScore({
