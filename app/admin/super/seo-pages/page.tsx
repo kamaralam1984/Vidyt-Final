@@ -358,8 +358,8 @@ export default function SeoPagesAdmin() {
       while (iterations < MAX_ITERATIONS) {
         const res = await axios.post(
           '/api/admin/super/seo-pages/delete-by-quality',
-          { threshold: deleteQualityThreshold, mode: 'lte', limit: 2000, includeIndexable: deleteIncludeIndexable },
-          { headers: getAuthHeaders(), timeout: 90000 }
+          { threshold: deleteQualityThreshold, mode: 'lte', limit: 500, includeIndexable: deleteIncludeIndexable },
+          { headers: getAuthHeaders(), timeout: 120000 }
         );
         const d = res.data || {};
         if (iterations === 0) totalBefore = d.totalBefore || 0;
