@@ -43,6 +43,18 @@ async function getOrCreatePage(keyword: string): Promise<any> {
     // creation; bots get notFound and the slug never enters the DB.
     if (isBotRequest()) return null;
 
+    // Hard cap: max 100 SeoPage docs created per calendar day across ALL
+    // sources (user_search + cron auto_daily + cron trending). Once today
+    // hits 100, stop creating until tomorrow.
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const todayCount = await SeoPage.countDocuments({
+      createdAt: { $gte: startOfDay }
+    });
+
+    if (todayCount >= 100) return null;
+
     const kw = keyword.replace(/-/g, ' ').trim();
     const built = buildSeoContent(kw, { isTrending: false });
     const qualityScore = computeQualityScore({
