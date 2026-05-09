@@ -30,6 +30,7 @@ run_endpoint() {
   echo
 }
 
+run_endpoint "generate-seo-pages"       "/api/cron/generate-seo-pages"
 run_endpoint "generate-trending-pages" "/api/cron/generate-trending-pages"
 run_endpoint "promote-seo-pages"        "/api/cron/promote-seo-pages"
 run_endpoint "ping-google"              "/api/cron/ping-google"
