@@ -19,9 +19,11 @@ app.prepare().then(() => {
   // Create Express app for middleware support
   const expressApp = express();
   
-  // Configure body parser for large file uploads (500MB limit)
-  expressApp.use(express.json({ limit: '500mb' }));
-  expressApp.use(express.urlencoded({ limit: '500mb', extended: true }));
+  // FIX: body parsers removed — Express was consuming POST body before
+  // Next.js App Router could read it via request.json(), causing all POST
+  // handlers (auth/login, signup, etc.) to hang waiting for a drained stream.
+  // Next.js parses bodies natively; large-upload routes set their own limit
+  // via route config or next.config.js.
   
   // Create HTTP server from Express app
   const httpServer = createServer(expressApp);
