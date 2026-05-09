@@ -70,6 +70,17 @@ export interface IUser extends Document {
   twoFactorSecret?: string;
   onboardingCompleted?: boolean;
   onboardingStep?: number;
+  // "Notebook" — extra onboarding answers the owner reads to understand
+  // who the user is and what they want from VidYT. All fields optional.
+  notebook?: {
+    goal?: string;
+    niche?: string;
+    channelUrl?: string;
+    experienceLevel?: 'beginner' | 'intermediate' | 'pro';
+    postingFrequency?: 'daily' | 'weekly' | 'monthly' | 'rarely';
+    note?: string;
+    updatedAt?: Date;
+  };
   youtube?: {
     access_token?: string;
     refresh_token?: string;
@@ -160,6 +171,15 @@ const UserSchema = new Schema<IUser>({
   twoFactorSecret: { type: String },
   onboardingCompleted: { type: Boolean, default: false, index: true },
   onboardingStep: { type: Number, default: 0 },
+  notebook: {
+    goal: { type: String, maxlength: 240 },
+    niche: { type: String, maxlength: 80 },
+    channelUrl: { type: String, maxlength: 240 },
+    experienceLevel: { type: String, enum: ['beginner', 'intermediate', 'pro'] },
+    postingFrequency: { type: String, enum: ['daily', 'weekly', 'monthly', 'rarely'] },
+    note: { type: String, maxlength: 2000 },
+    updatedAt: { type: Date },
+  },
   youtube: {
     access_token: { type: String },
     refresh_token: { type: String },

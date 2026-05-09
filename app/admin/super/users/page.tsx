@@ -4,12 +4,14 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import UserTable from '@/components/admin/UserTable';
 import UserDetailModal from '@/components/admin/UserDetailModal';
 import { getAuthHeaders } from '@/utils/auth';
 import axios from 'axios';
 
 export default function UsersPage() {
+  const router = useRouter();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -66,7 +68,7 @@ export default function UsersPage() {
         users={users}
         onSearch={handleSearch}
         onPlanFilter={handlePlanFilter}
-        onRowClick={id => setSelectedUserId(id)}
+        onRowClick={id => router.push(`/admin/super/users/${id}`)}
         page={page}
         pages={pages}
         total={total}

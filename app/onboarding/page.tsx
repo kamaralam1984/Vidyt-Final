@@ -7,10 +7,19 @@ import { motion } from 'framer-motion';
 import {
   User as UserIcon, Building, Phone, FileText, ShieldCheck, Bell, Mail, Moon,
   Loader2, ArrowRight, ArrowLeft, Check, AlertCircle,
+  Target, Compass, Youtube, Calendar, Sparkles,
 } from 'lucide-react';
 
 type Profile = { name: string; companyName: string; phone: string; bio: string };
 type Prefs = { notifications: boolean; emailUpdates: boolean; darkMode: boolean };
+type Notebook = {
+  goal: string;
+  niche: string;
+  channelUrl: string;
+  experienceLevel: '' | 'beginner' | 'intermediate' | 'pro';
+  postingFrequency: '' | 'daily' | 'weekly' | 'monthly' | 'rarely';
+  note: string;
+};
 
 function authHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -19,7 +28,7 @@ function authHeaders(): HeadersInit {
     : { 'Content-Type': 'application/json' };
 }
 
-const STEPS = ['Profile', 'Security', 'Preferences'] as const;
+const STEPS = ['Profile', 'Notebook', 'Security', 'Preferences'] as const;
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
@@ -30,6 +39,10 @@ export default function OnboardingPage() {
   const [userRole, setUserRole] = useState('user');
   const [userUniqueId, setUserUniqueId] = useState('');
   const [profile, setProfile] = useState<Profile>({ name: '', companyName: '', phone: '', bio: '' });
+  const [notebook, setNotebook] = useState<Notebook>({
+    goal: '', niche: '', channelUrl: '',
+    experienceLevel: '', postingFrequency: '', note: '',
+  });
   const [prefs, setPrefs] = useState<Prefs>({ notifications: true, emailUpdates: true, darkMode: false });
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
@@ -74,6 +87,16 @@ export default function OnboardingPage() {
         setStep(Math.min(d.step || 0, STEPS.length - 1));
         if (d.profile) setProfile(d.profile);
         if (d.preferences) setPrefs(d.preferences);
+        if (d.notebook) {
+          setNotebook({
+            goal: d.notebook.goal || '',
+            niche: d.notebook.niche || '',
+            channelUrl: d.notebook.channelUrl || '',
+            experienceLevel: d.notebook.experienceLevel || '',
+            postingFrequency: d.notebook.postingFrequency || '',
+            note: d.notebook.note || '',
+          });
+        }
         setTwoFactorEnabled(!!d.twoFactorEnabled);
       } catch (e: any) {
         setError('Failed to load. Please refresh the page.');
@@ -150,11 +173,23 @@ export default function OnboardingPage() {
       setSaving(false);
       setStep(1);
     } else if (step === 1) {
+      // Notebook — every field optional. Persist only set fields so the
+      // owner sees actual user-supplied values, not blanks.
+      const payload: Record<string, string> = {};
+      (['goal', 'niche', 'channelUrl', 'experienceLevel', 'postingFrequency', 'note'] as const).forEach((k) => {
+        const v = (notebook[k] || '').trim();
+        if (v) payload[k] = v;
+      });
       setSaving(true);
-      try { await saveProgress({ step: 2 }); } catch { /* continue */ }
+      try { await saveProgress({ step: 2, notebook: payload }); } catch { /* continue */ }
       setSaving(false);
       setStep(2);
     } else if (step === 2) {
+      setSaving(true);
+      try { await saveProgress({ step: 3 }); } catch { /* continue */ }
+      setSaving(false);
+      setStep(3);
+    } else if (step === 3) {
       setSaving(true);
       try { await saveProgress({ preferences: prefs, completed: true }); } catch { /* continue */ }
       setSaving(false);
@@ -280,6 +315,100 @@ export default function OnboardingPage() {
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#FF0000]" />
+                Your notebook
+              </h2>
+              <p className="text-sm text-[#AAAAAA]">
+                Help us understand what you&apos;re working on. This is private — only you and the VidYT
+                owner can see it. Skip any field you&apos;re not sure about.
+              </p>
+              <div>
+                <label className="text-sm text-[#AAAAAA]">Main goal</label>
+                <div className="relative mt-1">
+                  <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AAAAAA]" />
+                  <input
+                    value={notebook.goal}
+                    onChange={(e) => setNotebook({ ...notebook, goal: e.target.value.slice(0, 240) })}
+                    className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    placeholder="e.g. Reach 100k subs in 6 months"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-[#AAAAAA]">Niche / topic</label>
+                <div className="relative mt-1">
+                  <Compass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AAAAAA]" />
+                  <input
+                    value={notebook.niche}
+                    onChange={(e) => setNotebook({ ...notebook, niche: e.target.value.slice(0, 80) })}
+                    className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    placeholder="e.g. Tech reviews, gaming, finance"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-[#AAAAAA]">Primary channel URL</label>
+                <div className="relative mt-1">
+                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AAAAAA]" />
+                  <input
+                    value={notebook.channelUrl}
+                    onChange={(e) => setNotebook({ ...notebook, channelUrl: e.target.value.slice(0, 240) })}
+                    className="w-full pl-10 pr-4 py-3 bg-[#212121] border border-[#333] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    placeholder="https://youtube.com/@yourchannel"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm text-[#AAAAAA]">Experience level</label>
+                  <div className="relative mt-1">
+                    <select
+                      value={notebook.experienceLevel}
+                      onChange={(e) => setNotebook({ ...notebook, experienceLevel: e.target.value as Notebook['experienceLevel'] })}
+                      className="w-full px-3 py-3 bg-[#212121] border border-[#333] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    >
+                      <option value="">Select…</option>
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="pro">Pro</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-[#AAAAAA]">Posting frequency</label>
+                  <div className="relative mt-1">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AAAAAA] pointer-events-none" />
+                    <select
+                      value={notebook.postingFrequency}
+                      onChange={(e) => setNotebook({ ...notebook, postingFrequency: e.target.value as Notebook['postingFrequency'] })}
+                      className="w-full pl-10 pr-3 py-3 bg-[#212121] border border-[#333] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                    >
+                      <option value="">Select…</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="rarely">Rarely</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm text-[#AAAAAA]">Note for the team (optional)</label>
+                <textarea
+                  value={notebook.note}
+                  onChange={(e) => setNotebook({ ...notebook, note: e.target.value.slice(0, 2000) })}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-[#212121] border border-[#333] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                  placeholder="Anything we should know — feedback, special requests, questions…"
+                />
+                <p className="text-[11px] text-[#666] mt-1">{notebook.note.length}/2000</p>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-[#FF0000]" />
                 Secure your account
               </h2>
@@ -310,7 +439,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold mb-2">Your preferences</h2>
               {[

@@ -24,6 +24,16 @@ const schema = z.object({
       darkMode: z.boolean().optional(),
     })
     .optional(),
+  notebook: z
+    .object({
+      goal: z.string().max(240).optional(),
+      niche: z.string().max(80).optional(),
+      channelUrl: z.string().max(240).optional(),
+      experienceLevel: z.enum(['beginner', 'intermediate', 'pro']).optional(),
+      postingFrequency: z.enum(['daily', 'weekly', 'monthly', 'rarely']).optional(),
+      note: z.string().max(2000).optional(),
+    })
+    .optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -31,7 +41,7 @@ export async function GET(request: NextRequest) {
   if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   await connectDB();
   const user = await User.findById(authUser.id)
-    .select('onboardingCompleted onboardingStep name companyName phone bio preferences twoFactorEnabled')
+    .select('onboardingCompleted onboardingStep name companyName phone bio preferences notebook twoFactorEnabled')
     .lean<any>();
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
   return NextResponse.json({
@@ -44,6 +54,10 @@ export async function GET(request: NextRequest) {
       bio: user.bio || '',
     },
     preferences: user.preferences || { notifications: true, emailUpdates: true, darkMode: false },
+    notebook: user.notebook || {
+      goal: '', niche: '', channelUrl: '',
+      experienceLevel: '', postingFrequency: '', note: '',
+    },
     twoFactorEnabled: !!user.twoFactorEnabled,
   });
 }
@@ -62,7 +76,7 @@ export async function POST(request: NextRequest) {
   const user = await User.findById(authUser.id);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-  const { profile, preferences, step, completed } = parsed.data;
+  const { profile, preferences, notebook, step, completed } = parsed.data;
   if (profile) {
     if (profile.name !== undefined) user.name = profile.name;
     if (profile.companyName !== undefined) user.companyName = profile.companyName;
@@ -71,6 +85,13 @@ export async function POST(request: NextRequest) {
   }
   if (preferences) {
     user.preferences = { ...(user.preferences || {}), ...preferences } as any;
+  }
+  if (notebook) {
+    (user as any).notebook = {
+      ...((user as any).notebook || {}),
+      ...notebook,
+      updatedAt: new Date(),
+    };
   }
   if (typeof step === 'number') (user as any).onboardingStep = step;
   if (completed === true) {

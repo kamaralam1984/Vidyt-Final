@@ -54,6 +54,14 @@ export async function GET(
         createdAt: (user as any).createdAt,
         lastLogin: (user as any).lastLogin,
         revenue: revenueEstimate,
+        // Profile + onboarding answers — surfaces the user's notebook to
+        // the owner without exposing auth/internal fields.
+        companyName: (user as any).companyName || '',
+        phone: (user as any).phone || '',
+        bio: (user as any).bio || '',
+        notebook: (user as any).notebook || null,
+        usageStats: (user as any).usageStats || null,
+        onboardingCompleted: !!(user as any).onboardingCompleted,
       },
       payments: payments.map((p: any) => ({
         id: p._id,
