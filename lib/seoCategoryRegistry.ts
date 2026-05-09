@@ -32,8 +32,8 @@ export interface SeoCategory {
 /** Per-category daily creation cap. Owner-locked at 3. */
 export const PER_CATEGORY_DAILY = 3;
 
-/** Global daily creation cap. Owner-locked at 60 (anti-spam ceiling). */
-export const GLOBAL_DAILY_CAP = 60;
+/** Global daily creation cap. Owner-locked at 100 (anti-spam ceiling). */
+export const GLOBAL_DAILY_CAP = 100;
 
 /**
  * Active categories. Add/remove freely — rotation engine adapts.

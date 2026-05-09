@@ -13,6 +13,7 @@ import {
   GLOBAL_DAILY_CAP,
   getDayIndex,
 } from '@/lib/seoCategoryRegistry';
+import { themeByIndex, themeFromSlug } from '@/lib/seoTheme';
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
@@ -146,8 +147,10 @@ export async function GET(_request: NextRequest) {
         continue;
       }
 
-      // 70+ → publish immediately. Daily creation cap (60) provides the
+      // 70+ → publish immediately. Daily creation cap (100) provides the
       // staggering, so we don't need a separate un-indexable holding pool.
+      // Theme cycles by (dayIndex + created) so each day's batch splits
+      // evenly across the five layouts.
       await SeoPage.create({
         slug: job.slug,
         keyword: job.keyword,
@@ -162,6 +165,7 @@ export async function GET(_request: NextRequest) {
         category: built.category || job.category,
         wordCount: built.wordCount,
         qualityScore,
+        theme: themeByIndex(dayIndex + created),
         source: 'auto_daily',
         isIndexable: true,
         publishedAt: new Date(),
@@ -213,6 +217,8 @@ export async function GET(_request: NextRequest) {
           category: built.category,
           wordCount: built.wordCount,
           qualityScore: upgradeScore,
+          // Hash slug for stable theme assignment on upgraded pages.
+          theme: p.theme || themeFromSlug(p.slug),
           source: p.source || 'auto_daily',
         };
         // If the upgrade lifts the page above the 70 floor, promote it in

@@ -14,6 +14,17 @@ const SeoPageSchema = new mongoose.Schema({
   source: { type: String, enum: ['user_search', 'auto_daily', 'trending'], default: 'user_search' },
   views: { type: Number, default: 0 },
 
+  // Visual layout variant for /k/[slug] rendering. Cycled across creations so
+  // adjacent pages render visually distinct designs (anti-duplication signal
+  // for Google + better UX). Five fixed themes; older pages without a value
+  // fall back to a deterministic hash of the slug at render time.
+  theme: {
+    type: String,
+    enum: ['modern', 'magazine', 'viral', 'longform', 'cards'],
+    default: 'modern',
+    index: true,
+  },
+
   // ── Quality gate fields ───────────────────────────────────────────────────
   // Content size — used by qualityScorer. Google penalises thin pages, so we
   // refuse to sitemap anything below a word-count threshold.

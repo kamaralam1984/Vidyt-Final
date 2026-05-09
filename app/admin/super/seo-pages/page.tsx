@@ -411,6 +411,38 @@ export default function SeoPagesAdmin() {
     }
   }
 
+  async function backfillThemes() {
+    if (!confirm(
+      'Theme assign + content rebuild for existing pages?\n\n' +
+      '• Distributes 5 themes (modern/magazine/viral/longform/cards) evenly\n' +
+      '• Rebuilds thin/low-quality pages so avg score lifts\n' +
+      '• Idempotent — safe to re-run.'
+    )) return;
+    setCronBusy('backfill-themes');
+    try {
+      const res = await axios.post(
+        '/api/admin/super/seo-pages/backfill-themes',
+        { rebuildContent: true, limit: 1000 },
+        { headers: getAuthHeaders() }
+      );
+      const d = res.data || {};
+      const tc = d.themeCounts || {};
+      alert(
+        `Themed: ${d.themed} · Rebuilt: ${d.rebuilt} of ${d.scanned}\n\n` +
+        `modern: ${tc.modern || 0}\n` +
+        `magazine: ${tc.magazine || 0}\n` +
+        `viral: ${tc.viral || 0}\n` +
+        `longform: ${tc.longform || 0}\n` +
+        `cards: ${tc.cards || 0}`
+      );
+      await Promise.all([loadStats(), loadList()]);
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Backfill failed');
+    } finally {
+      setCronBusy(null);
+    }
+  }
+
   async function promoteAll() {
     if (!confirm(
       'Promote ALL non-indexable pages to sitemap?\n\n' +
@@ -628,6 +660,15 @@ export default function SeoPagesAdmin() {
           >
             {cronBusy === '/api/cron/seo-rerank-weekly' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
             Run SEO Rerank
+          </button>
+          <button
+            onClick={backfillThemes}
+            disabled={cronBusy !== null}
+            className="px-3 py-2 bg-fuchsia-500/20 hover:bg-fuchsia-500/30 border border-fuchsia-500/30 text-fuchsia-300 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            title="Assign 5 themes evenly + rebuild thin content so avg quality lifts off the 60s. Idempotent."
+          >
+            {cronBusy === 'backfill-themes' ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+            Rebuild Themes
           </button>
         </div>
       </div>

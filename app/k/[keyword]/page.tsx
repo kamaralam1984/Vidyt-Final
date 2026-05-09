@@ -7,6 +7,7 @@ import MarketingNavbar from '@/components/MarketingNavbar';
 import MarketingFooter from '@/components/MarketingFooter';
 import { buildSeoContent, categorize } from '@/lib/seoContentBuilder';
 import { computeQualityScore } from '@/lib/qualityScorer';
+import { resolveTheme, themeFromSlug, type SeoTheme } from '@/lib/seoTheme';
 
 // Matches crawlers, link-preview scrapers, and headless/CLI tooling so bot
 // traffic doesn't inflate the views counter on admin SEO dashboards.
@@ -86,6 +87,7 @@ async function getOrCreatePage(keyword: string): Promise<any> {
             wordCount: built.wordCount,
             qualityScore,
             trendingRank: 0,
+            theme: themeFromSlug(slug),
             // Start un-indexable. The promote-seo-pages cron will flip this
             // to true for the top 100 qualityScore pages per day.
             isIndexable: false,
@@ -161,6 +163,70 @@ function renderMarkdown(md: string): string {
     .join('\n');
 }
 
+// Visual style table — five themes, applied as additional classes on the
+// page shell + hero + article. Same content, distinct DOM signatures.
+const THEME_STYLES: Record<SeoTheme, {
+  shell: string;
+  main: string;
+  heroAlign: string;
+  heroBg: string;
+  titleSize: string;
+  badgeColor: string;
+  articleAccent: string;
+  ctaGradient: string;
+}> = {
+  modern: {
+    shell: 'bg-[#050712]',
+    main: 'max-w-4xl mx-auto px-4 py-12 md:py-16',
+    heroAlign: 'text-center mb-10',
+    heroBg: '',
+    titleSize: 'text-3xl md:text-5xl',
+    badgeColor: 'bg-red-500/10 text-red-400 border-red-500/20',
+    articleAccent: '[&_h2]:text-white [&_a]:text-red-400',
+    ctaGradient: 'from-red-500/10 via-purple-500/10 to-blue-500/10',
+  },
+  magazine: {
+    shell: 'bg-gradient-to-br from-[#06091a] to-[#0a0d20]',
+    main: 'max-w-3xl mx-auto px-4 py-10 md:py-14',
+    heroAlign: 'text-left mb-10 border-l-4 border-amber-500/40 pl-6',
+    heroBg: '',
+    titleSize: 'text-3xl md:text-4xl',
+    badgeColor: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
+    articleAccent: '[&_h2]:text-amber-200 [&_a]:text-amber-400 [&_h2]:border-b [&_h2]:border-amber-500/20 [&_h2]:pb-2',
+    ctaGradient: 'from-amber-500/10 via-orange-500/10 to-red-500/10',
+  },
+  viral: {
+    shell: 'bg-[#070319]',
+    main: 'max-w-4xl mx-auto px-4 py-12 md:py-16',
+    heroAlign: 'text-center mb-12',
+    heroBg: 'rounded-3xl bg-gradient-to-br from-pink-500/15 via-purple-500/10 to-blue-500/10 border border-pink-500/20 py-12 px-6',
+    titleSize: 'text-4xl md:text-6xl',
+    badgeColor: 'bg-pink-500/15 text-pink-300 border-pink-500/30',
+    articleAccent: '[&_h2]:text-pink-200 [&_a]:text-pink-400',
+    ctaGradient: 'from-pink-500/15 via-fuchsia-500/15 to-purple-500/15',
+  },
+  longform: {
+    shell: 'bg-[#0a0a12]',
+    main: 'max-w-2xl mx-auto px-4 py-12 md:py-20',
+    heroAlign: 'text-left mb-14',
+    heroBg: '',
+    titleSize: 'text-3xl md:text-4xl',
+    badgeColor: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
+    articleAccent: 'prose-xl [&_h2]:text-emerald-100 [&_a]:text-emerald-400 [&_p]:leading-loose',
+    ctaGradient: 'from-emerald-500/10 via-teal-500/10 to-cyan-500/10',
+  },
+  cards: {
+    shell: 'bg-[#040810]',
+    main: 'max-w-6xl mx-auto px-4 py-10 md:py-14',
+    heroAlign: 'text-center mb-10',
+    heroBg: '',
+    titleSize: 'text-3xl md:text-5xl',
+    badgeColor: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20',
+    articleAccent: '[&_h2]:text-cyan-100 [&_h2]:bg-white/5 [&_h2]:rounded-xl [&_h2]:p-4 [&_h2]:border [&_h2]:border-white/10 [&_a]:text-cyan-400',
+    ctaGradient: 'from-cyan-500/10 via-blue-500/10 to-indigo-500/10',
+  },
+};
+
 // Parse FAQs out of content (### numbered blocks under "Frequently Asked Questions")
 function extractFaqs(content: string): { q: string; a: string }[] {
   const faqBlock = content.split(/^## Frequently Asked Questions/m)[1] || '';
@@ -185,6 +251,10 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
   const kwCap = (kw || '').split(' ').map((w: string) => (w[0] || '').toUpperCase() + (w || '').slice(1)).join(' ');
   const canonical = `${BASE_URL}/k/${page.slug}`;
   const faqs = extractFaqs(page.content || '');
+
+  // Resolve visual theme — stored value if valid, else hash of slug.
+  const theme = resolveTheme(page);
+  const tx = THEME_STYLES[theme];
 
   // Related pages — same category, most-viewed
   let relatedPages: any[] = [];
@@ -240,7 +310,7 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
   };
 
   return (
-    <div className="min-h-screen bg-[#050712] text-white/80 font-sans">
+    <div className={`min-h-screen ${tx.shell} text-white/80 font-sans`} data-theme={theme}>
       <MarketingNavbar />
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }} />
@@ -249,7 +319,8 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
       )}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
-      <main className="max-w-4xl mx-auto px-4 py-12 md:py-16">
+      <main className={tx.main}>
+       <div className="contents">
         {/* Breadcrumb */}
         <nav className="text-xs text-white/40 mb-6 flex gap-2 items-center">
           <Link href="/" className="hover:text-white/70">Home</Link>
@@ -260,9 +331,9 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
         </nav>
 
         {/* Hero */}
-        <header className="text-center mb-10">
-          <div className="inline-flex gap-2 mb-4">
-            <span className="px-3 py-1 bg-red-500/10 text-red-400 text-xs font-bold rounded-full border border-red-500/20">
+        <header className={`${tx.heroAlign} ${tx.heroBg}`}>
+          <div className={`inline-flex gap-2 mb-4 ${tx.heroAlign.includes('text-left') ? '' : 'justify-center'}`}>
+            <span className={`px-3 py-1 ${tx.badgeColor} text-xs font-bold rounded-full border`}>
               {page.category}
             </span>
             <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">
@@ -274,13 +345,13 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
               </span>
             )}
           </div>
-          <h1 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
+          <h1 className={`${tx.titleSize} font-black text-white mb-4 leading-tight tracking-tight`}>
             {page.title}
           </h1>
-          <p className="text-base md:text-lg text-white/60 max-w-2xl mx-auto">
+          <p className={`text-base md:text-lg text-white/60 ${tx.heroAlign.includes('text-left') ? '' : 'max-w-2xl mx-auto'}`}>
             {page.metaDescription}
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className={`mt-8 flex flex-wrap gap-3 ${tx.heroAlign.includes('text-left') ? '' : 'justify-center'}`}>
             <Link
               href="/signup"
               className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-lg shadow-red-500/20"
@@ -302,31 +373,37 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
           </div>
         </header>
 
-        {/* Stats strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
+        {/* Stats strip — `cards` theme uses larger tiles, `longform` hides them */}
+        {theme !== 'longform' && (
+        <div className={`grid ${theme === 'cards' ? 'grid-cols-2 md:grid-cols-4 gap-4' : 'grid-cols-2 md:grid-cols-4 gap-3'} mb-12`}>
           {[
             { label: 'Viral Score', value: `${page.viralScore}%` },
             { label: 'Category', value: page.category },
             { label: 'Hashtags', value: page.hashtags?.length || 0 },
             { label: 'Word Guide', value: `${page.wordCount || 1200}+` },
           ].map((s, i) => (
-            <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-xl text-center">
+            <div
+              key={i}
+              className={`${theme === 'cards' ? 'p-5 bg-gradient-to-br from-white/10 to-white/5 border border-cyan-500/20' : 'p-4 bg-white/5 border border-white/10'} rounded-xl text-center`}
+            >
               <p className="text-xs text-white/40 uppercase tracking-wider">{s.label}</p>
               <p className="text-lg font-bold text-white mt-1">{s.value}</p>
             </div>
           ))}
         </div>
+        )}
 
-        {/* Content */}
+        {/* Content — theme-specific accent classes overlay the base prose */}
         <article
-          className="prose prose-invert prose-lg max-w-none mb-12
-            [&_h2]:text-2xl [&_h2]:md:text-3xl [&_h2]:font-black [&_h2]:text-white [&_h2]:mt-12 [&_h2]:mb-4
+          className={`prose prose-invert prose-lg max-w-none mb-12
+            [&_h2]:text-2xl [&_h2]:md:text-3xl [&_h2]:font-black [&_h2]:mt-12 [&_h2]:mb-4
             [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-white/90 [&_h3]:mt-8 [&_h3]:mb-3
             [&_p]:text-white/70 [&_p]:leading-relaxed [&_p]:mb-4
             [&_strong]:text-white [&_strong]:font-semibold
             [&_ol]:text-white/70 [&_ol]:space-y-2 [&_ol]:my-4 [&_ol]:pl-6
             [&_li]:text-white/70
-            [&_a]:text-red-400 [&_a]:no-underline hover:[&_a]:underline"
+            [&_a]:no-underline hover:[&_a]:underline
+            ${tx.articleAccent}`}
           dangerouslySetInnerHTML={{ __html: renderMarkdown(page.content || '') }}
         />
 
@@ -360,7 +437,7 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
             rendered identically on every /k/ page and triggered Google's
             near-duplicate detection. The markdown content now handles plan
             details per-variant; this strip is just a brand anchor + link. */}
-        <section className="mb-12 p-6 bg-gradient-to-r from-red-500/10 via-purple-500/10 to-blue-500/10 rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+        <section className={`mb-12 p-6 bg-gradient-to-r ${tx.ctaGradient} rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4`}>
           <div className="text-center md:text-left">
             <p className="text-lg font-bold text-white">Free forever plan · no card required</p>
             <p className="text-sm text-white/60 mt-1">VidYT works on YouTube, Shorts, Reels, TikTok &amp; Facebook.</p>
@@ -419,7 +496,7 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
         )}
 
         {/* Final CTA */}
-        <section className="text-center p-8 md:p-12 bg-gradient-to-r from-red-500/10 to-purple-500/10 border border-red-500/20 rounded-2xl">
+        <section className={`text-center p-8 md:p-12 bg-gradient-to-r ${tx.ctaGradient} border border-white/15 rounded-2xl`}>
           <h2 className="text-2xl md:text-3xl font-black text-white mb-3">
             Ready to Go Viral with {kwCap}?
           </h2>
@@ -442,6 +519,7 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
             </Link>
           </div>
         </section>
+       </div>
       </main>
 
       <MarketingFooter />

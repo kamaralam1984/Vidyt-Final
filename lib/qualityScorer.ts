@@ -26,9 +26,9 @@ export interface ScoreInputs {
 // Threshold at 20: enough to block truly empty pages while letting
 // content-rich pages with imperfect slugs through.
 export const INDEXABLE_THRESHOLD = 20;
-// Owner spec: stagger publishing — never flood the sitemap. 60/day matches
+// Owner spec: stagger publishing — never flood the sitemap. 100/day matches
 // the global creation cap so creation and promotion velocities stay paired.
-export const DAILY_PROMOTION_CAP = 60;
+export const DAILY_PROMOTION_CAP = 100;
 
 export function computeQualityScore(i: ScoreInputs): number {
   // 1) Word-count gate (max 35 pts). Google wants substance.

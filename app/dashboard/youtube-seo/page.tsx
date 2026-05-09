@@ -410,6 +410,12 @@ function YouTubeLiveSEOContent() {
 
   const hasAnyInput = Boolean(title.trim() || description.trim() || keywords.trim());
 
+  // Owner spec: results must NOT show until the user clicks Go. The 6
+  // debounced auto-fetch effects below all gate on `hasAnalyzed`, and
+  // `clearAll()` flips it back to false so the panel returns to its
+  // empty state.
+  const [hasAnalyzed, setHasAnalyzed] = useState(false);
+
   const fetchSeo = useCallback(async () => {
     if (!hasAnyInput) {
       setSeoData(null);
@@ -595,63 +601,90 @@ function YouTubeLiveSEOContent() {
 
   useEffect(() => {
     if (!allowed) return;
-    if (!hasAnyInput) {
+    if (!hasAnalyzed) {
       setSeoData(null);
       return;
     }
     const t = setTimeout(fetchSeo, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, hasAnyInput, title, description, keywords, category, thumbnailScore?.score, fetchSeo]);
+  }, [allowed, hasAnalyzed, title, description, keywords, category, thumbnailScore?.score, fetchSeo]);
 
   useEffect(() => {
     if (!allowed) return;
-    if (!hasAnyInput) {
+    if (!hasAnalyzed) {
       setKeywordData(null);
       return;
     }
     const t = setTimeout(fetchKeywords, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, hasAnyInput, keywords, title, fetchKeywords]);
+  }, [allowed, hasAnalyzed, keywords, title, fetchKeywords]);
 
   useEffect(() => {
     if (!allowed) return;
-    if (!hasAnyInput) {
+    if (!hasAnalyzed) {
       setTitleScoreData(null);
       return;
     }
     const t = setTimeout(fetchTitleScore, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, hasAnyInput, title, keywords, fetchTitleScore]);
+  }, [allowed, hasAnalyzed, title, keywords, fetchTitleScore]);
 
   useEffect(() => {
     if (!allowed) return;
-    if (!hasAnyInput) {
+    if (!hasAnalyzed) {
       setDescriptions([]);
       return;
     }
     const t = setTimeout(fetchDescriptions, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, hasAnyInput, title, keywords, category, fetchDescriptions]);
+  }, [allowed, hasAnalyzed, title, keywords, category, fetchDescriptions]);
 
   useEffect(() => {
     if (!allowed) return;
-    if (!hasAnyInput) {
+    if (!hasAnalyzed) {
       setHashtags([]);
       return;
     }
     const t = setTimeout(fetchHashtags, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, hasAnyInput, keywords, title, fetchHashtags]);
+  }, [allowed, hasAnalyzed, keywords, title, fetchHashtags]);
 
   useEffect(() => {
     if (!allowed) return;
-    if (!hasAnyInput) {
+    if (!hasAnalyzed) {
       setCtrData(null);
       return;
     }
     const t = setTimeout(fetchCtr, DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [allowed, hasAnyInput, title, keywords, thumbnailScore?.score, thumbnailScore?.colorContrast, thumbnailScore?.faceDetection, thumbnailScore?.textReadability, fetchCtr]);
+  }, [allowed, hasAnalyzed, title, keywords, thumbnailScore?.score, thumbnailScore?.colorContrast, thumbnailScore?.faceDetection, thumbnailScore?.textReadability, fetchCtr]);
+
+  // Go button — flips hasAnalyzed and lets the debounced effects above fire.
+  // Required: at least a non-empty title (results would be meaningless without).
+  const runAnalyze = useCallback(() => {
+    if (!title.trim()) return;
+    setHasAnalyzed(true);
+  }, [title]);
+
+  // Clear button — wipes the form fields AND every result panel, then resets
+  // hasAnalyzed so the right column returns to its empty state.
+  const clearAll = useCallback(() => {
+    setTitle('');
+    setDescription('');
+    setKeywords('');
+    setCategory('');
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+    setSeoData(null);
+    setKeywordData(null);
+    setTitleScoreData(null);
+    setThumbnailScore(null);
+    setDescriptions([]);
+    setHashtags([]);
+    setCtrData(null);
+    setVideoSuggestions(null);
+    setHasAnalyzed(false);
+  }, []);
 
   const addKeywordToField = (kw: string) => {
     const current = keywords.trim() ? keywords.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean) : [];
@@ -1067,7 +1100,7 @@ function YouTubeLiveSEOContent() {
     ? Object.entries(seoData.breakdown).map(([name, v]) => ({ name: name.replace(/([A-Z])/g, ' $1').trim(), score: v.score }))
     : [];
 
-  const viralProbability = !hasAnyInput
+  const viralProbability = !hasAnalyzed
     ? 0
     : (() => {
       const s = seoData?.seoScore ?? 50;
@@ -1146,7 +1179,7 @@ function YouTubeLiveSEOContent() {
                 </div>
                 <motion.button
                   onClick={ultraOptimize}
-                  disabled={ultraOptimizing || !hasAnyInput}
+                  disabled={ultraOptimizing || !hasAnalyzed}
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   className="relative group px-6 py-3 rounded-xl font-bold text-white text-sm overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1164,7 +1197,7 @@ function YouTubeLiveSEOContent() {
               </div>
 
               {/* Live Stats Bar */}
-              {hasAnyInput && (
+              {hasAnalyzed && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -1325,6 +1358,30 @@ function YouTubeLiveSEOContent() {
                       className="w-full px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-[#FF0000] resize-none"
                     />
                   </div>
+
+                  {/* Go / Clear — analysis only runs after Go is clicked.
+                      Clear wipes form state + every result panel. */}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={runAnalyze}
+                      disabled={!title.trim()}
+                      className="flex-1 px-4 py-2.5 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold flex items-center justify-center gap-2 transition shadow-lg shadow-[#FF0000]/20"
+                      title={title.trim() ? 'Run SEO analysis' : 'Enter a title first'}
+                    >
+                      <Sparkles className="w-4 h-4" /> Go
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAll}
+                      disabled={!hasAnalyzed && !title.trim() && !description.trim() && !keywords.trim()}
+                      className="px-4 py-2.5 bg-[#212121] hover:bg-[#333] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center gap-2 transition border border-[#333]"
+                      title="Clear all fields and results"
+                    >
+                      <X className="w-4 h-4" /> Clear
+                    </button>
+                  </div>
+
                   <div>
                     <label className="block text-sm text-[#AAAAAA] mb-1">Thumbnail</label>
                     <div className="flex items-center gap-3">
