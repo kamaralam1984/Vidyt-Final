@@ -32,21 +32,26 @@
 
 /* ── Light Mode ────────────────────────────────────────── */
 [data-theme="light"] {
-  --bg-primary: #FFFFFF;
-  --bg-secondary: #F4F6FB;
-  --bg-tertiary: #E8ECF5;
-  --bg-hover: #DCE2EE;
-  --bg-elevated: #FAFAFA;
-  --text-primary: #0B1F4A;
-  --text-secondary: #4A5878;
-  --text-muted: #7A85A0;
+  /* Premium light palette — off-white with subtle navy undertone, never pure white */
+  --bg-primary: #F7F8FC;       /* page bg — soft pearl, slight cool tone */
+  --bg-secondary: #EEF1F8;     /* card bg — barely-there navy tint */
+  --bg-tertiary: #E2E8F4;      /* hover bg — clearly distinguishable */
+  --bg-hover: #D6DEEC;
+  --bg-elevated: #FFFFFFCC;    /* glass white for raised cards */
+  --text-primary: #0B1F4A;     /* deep navy ink */
+  --text-secondary: #3F4E70;
+  --text-muted: #6F7B96;
   --text-inverse: #FFFFFF;
-  --border-primary: #D8DEEB;
-  --border-secondary: #BCC4D6;
-  --accent: #1E3A8A;
+  --border-primary: #D2DAE9;
+  --border-secondary: #B4BFD3;
+  --accent: #1E3A8A;            /* primary navy */
   --accent-hover: #1E40AF;
   --accent-soft: rgba(30, 58, 138, 0.08);
   --accent-text: #1E3A8A;
+  --accent-gold: #C9A961;       /* premium gold for highlights */
+  --accent-gold-soft: rgba(201, 169, 97, 0.12);
+  --shadow-elevated: 0 1px 2px rgba(11, 31, 74, 0.04), 0 8px 24px rgba(11, 31, 74, 0.06);
+  --shadow-glow-navy: 0 0 0 1px rgba(30, 58, 138, 0.08), 0 12px 32px rgba(30, 58, 138, 0.10);
   --scrollbar-track: #F2F2F2;
   --scrollbar-thumb: #CCCCCC;
   --scrollbar-thumb-hover: #AAAAAA;
@@ -519,4 +524,100 @@ html[dir="rtl"] aside {
 }
 .animate-hero-fade {
   animation: hero-fade-in 0.7s ease-out both;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LIGHT MODE — PREMIUM POLISH
+   Subtle ambient gradient on body, glass-morphism on cards,
+   gold accent flourish on key gradient text. Keeps the navy +
+   white palette but stops looking flat.
+   ═══════════════════════════════════════════════════════════ */
+[data-theme="light"] body {
+  background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(at 18% 12%, rgba(30, 58, 138, 0.06) 0px, transparent 45%),
+    radial-gradient(at 82% 8%,  rgba(201, 169, 97, 0.05) 0px, transparent 50%),
+    radial-gradient(at 50% 95%, rgba(30, 58, 138, 0.05) 0px, transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Glass effect for elevated cards (admin panels, dashboards). Targets the most
+   common card backgrounds; backdrop-blur falls back gracefully if unsupported. */
+[data-theme="light"] .bg-\[\#181818\],
+[data-theme="light"] .bg-\[\#1a1a1a\],
+[data-theme="light"] .bg-\[\#1A1A1A\],
+[data-theme="light"] .bg-\[\#1E1E1E\],
+[data-theme="light"] .bg-\[\#1D1D1D\],
+[data-theme="light"] .bg-\[\#1d1d1d\] {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--border-primary);
+}
+
+/* Premium dark→light gradient remap: was a flat white→navy in the previous
+   pass. Now keeps depth via a tri-stop pearl gradient with a faint gold wash. */
+[data-theme="light"] [class*="from-\[#0F0F0F\]"],
+[data-theme="light"] [class*="from-\[#000\]"],
+[data-theme="light"] [class*="from-\[#0A0A0A\]"],
+[data-theme="light"] [class*="from-\[#181818\]"],
+[data-theme="light"] [class*="to-\[#0F0F0F\]"],
+[data-theme="light"] [class*="to-\[#000\]"],
+[data-theme="light"] [class*="to-\[#0A0A0A\]"],
+[data-theme="light"] [class*="to-\[#181818\]"] {
+  background-image: linear-gradient(135deg, #FFFFFF 0%, #F1F4FB 55%, #E5EBF5 100%) !important;
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Red-to-orange/red-to-pink hero gradients: re-tone to navy + gold so the
+   "premium" feel comes through without losing the original visual rhythm. */
+[data-theme="light"] [class*="from-red-500"][class*="to-pink-500"],
+[data-theme="light"] [class*="from-\[#FF0000\]"][class*="to-\[#CC0000\]"],
+[data-theme="light"] [class*="from-red-500"][class*="to-orange-500"] {
+  background-image: linear-gradient(135deg, var(--accent) 0%, var(--accent-gold) 100%) !important;
+}
+
+/* Solid red CTAs: keep them bold but in navy; on hover, lean toward gold. */
+[data-theme="light"] .bg-red-500,
+[data-theme="light"] .bg-red-600,
+[data-theme="light"] .bg-\[\#FF0000\],
+[data-theme="light"] .bg-\[\#CC0000\] {
+  background-color: var(--accent) !important;
+  color: var(--text-inverse) !important;
+}
+
+[data-theme="light"] .bg-red-500:hover,
+[data-theme="light"] .bg-red-600:hover,
+[data-theme="light"] .hover\:bg-red-700:hover,
+[data-theme="light"] .hover\:bg-\[\#CC0000\]:hover {
+  background-color: var(--accent-hover) !important;
+  box-shadow: var(--shadow-glow-navy);
+}
+
+/* Headings with red gradient text → navy + gold */
+[data-theme="light"] [class*="from-red-400"][class*="to-pink-500"],
+[data-theme="light"] [class*="from-red-400"][class*="to-orange-400"],
+[data-theme="light"] [class*="from-pink-500"][class*="to-rose-500"] {
+  background-image: linear-gradient(90deg, var(--accent) 0%, var(--accent-gold) 100%) !important;
+}
+
+/* Borders + dividers in light mode pick up a slight cool tone */
+[data-theme="light"] hr {
+  border-color: var(--border-primary) !important;
+}
+
+/* Default white text on red buttons should become white on navy in light mode
+   (already covered by .text-white override) — but inputs and chips that used
+   placeholder-white/30 etc. need a softer navy fallback. */
+[data-theme="light"] [class*="placeholder-white"]::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1;
+}
+
+/* Subtle hover lift for clickable cards/buttons in light mode */
+[data-theme="light"] button:hover,
+[data-theme="light"] a:hover {
+  transition: transform 180ms ease, box-shadow 180ms ease;
 }
