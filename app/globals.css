@@ -815,3 +815,118 @@ html[dir="rtl"] aside {
 [data-theme="light"] [class*="to-fuchsia-300"] {
   --tw-gradient-to: var(--accent-gold) var(--tw-gradient-to-position);
 }
+
+/* ───────────────────────────────────────────────────────────
+   /k/[keyword] SEO landing pages
+   They have 5 themes with unique shell/hero hex values that the previous
+   sweeps didn't cover. Overrides below give those pages full light +
+   colorblind support without touching the page component.
+   ─────────────────────────────────────────────────────────── */
+
+/* Per-theme shell tri-stop dark gradients → light/colorblind equivalents */
+[data-theme="light"] .from-\[\#0d0f24\],
+[data-theme="light"] .from-\[\#1c0e04\],
+[data-theme="light"] .from-\[\#2a0a3a\],
+[data-theme="light"] .from-\[\#04140d\],
+[data-theme="light"] .from-\[\#04081a\] {
+  --tw-gradient-from: #FFFFFF var(--tw-gradient-from-position) !important;
+}
+[data-theme="light"] .via-\[\#080a1a\],
+[data-theme="light"] .via-\[\#100805\],
+[data-theme="light"] .via-\[\#0f0420\],
+[data-theme="light"] .via-\[\#08110d\],
+[data-theme="light"] .via-\[\#06091a\] {
+  --tw-gradient-via: #F1F4FB var(--tw-gradient-via-position) !important;
+}
+[data-theme="light"] .to-\[\#0d0f24\],
+[data-theme="light"] .to-\[\#1c0e04\],
+[data-theme="light"] .to-\[\#2a0a3a\],
+[data-theme="light"] .to-\[\#04140d\],
+[data-theme="light"] .to-\[\#04081a\] {
+  --tw-gradient-to: #FFFFFF var(--tw-gradient-to-position) !important;
+}
+
+[data-theme="colorblind"] .from-\[\#0d0f24\],
+[data-theme="colorblind"] .from-\[\#1c0e04\],
+[data-theme="colorblind"] .from-\[\#2a0a3a\],
+[data-theme="colorblind"] .from-\[\#04140d\],
+[data-theme="colorblind"] .from-\[\#04081a\] {
+  --tw-gradient-from: #0A0A14 var(--tw-gradient-from-position) !important;
+}
+[data-theme="colorblind"] .via-\[\#080a1a\],
+[data-theme="colorblind"] .via-\[\#100805\],
+[data-theme="colorblind"] .via-\[\#0f0420\],
+[data-theme="colorblind"] .via-\[\#08110d\],
+[data-theme="colorblind"] .via-\[\#06091a\] {
+  --tw-gradient-via: #141428 var(--tw-gradient-via-position) !important;
+}
+[data-theme="colorblind"] .to-\[\#0d0f24\],
+[data-theme="colorblind"] .to-\[\#1c0e04\],
+[data-theme="colorblind"] .to-\[\#2a0a3a\],
+[data-theme="colorblind"] .to-\[\#04140d\],
+[data-theme="colorblind"] .to-\[\#04081a\] {
+  --tw-gradient-to: #0A0A14 var(--tw-gradient-to-position) !important;
+}
+
+/* Pastel text accents used in /k/ themes — invisible on white bg */
+[data-theme="light"] .text-rose-50,
+[data-theme="light"] .text-rose-100,
+[data-theme="light"] .text-rose-200,
+[data-theme="light"] .text-pink-50,
+[data-theme="light"] .text-pink-100,
+[data-theme="light"] .text-pink-200,
+[data-theme="light"] .text-amber-50,
+[data-theme="light"] .text-amber-100,
+[data-theme="light"] .text-amber-200,
+[data-theme="light"] .text-orange-50,
+[data-theme="light"] .text-orange-100,
+[data-theme="light"] .text-emerald-50,
+[data-theme="light"] .text-emerald-100,
+[data-theme="light"] .text-emerald-200,
+[data-theme="light"] .text-teal-100,
+[data-theme="light"] .text-cyan-50,
+[data-theme="light"] .text-cyan-100,
+[data-theme="light"] .text-cyan-200,
+[data-theme="light"] .text-sky-100,
+[data-theme="light"] .text-blue-100,
+[data-theme="light"] .text-indigo-100,
+[data-theme="light"] .text-violet-100,
+[data-theme="light"] .text-purple-100,
+[data-theme="light"] .text-fuchsia-100 {
+  color: var(--accent) !important;
+}
+
+/* Same pastels at /85, /90 opacity (used like text-amber-50/90) */
+[data-theme="light"] [class*="text-rose-50/"],
+[data-theme="light"] [class*="text-rose-100/"],
+[data-theme="light"] [class*="text-pink-50/"],
+[data-theme="light"] [class*="text-pink-100/"],
+[data-theme="light"] [class*="text-amber-50/"],
+[data-theme="light"] [class*="text-amber-100/"],
+[data-theme="light"] [class*="text-emerald-50/"],
+[data-theme="light"] [class*="text-emerald-100/"],
+[data-theme="light"] [class*="text-cyan-50/"],
+[data-theme="light"] [class*="text-cyan-100/"] {
+  color: var(--text-secondary) !important;
+}
+
+/* Hero gradient on /k/ pages — saturated dark-mode pink/cyan etc. is too
+   harsh on white in light mode. Soften to a navy → gold premium gradient. */
+[data-theme="light"] .from-rose-600\/30,
+[data-theme="light"] .from-pink-500\/35,
+[data-theme="light"] .from-cyan-500\/30,
+[data-theme="light"] .from-rose-500\/30,
+[data-theme="light"] .from-pink-500\/30 {
+  --tw-gradient-from: rgba(30, 58, 138, 0.10) var(--tw-gradient-from-position) !important;
+}
+[data-theme="light"] .via-purple-600\/25,
+[data-theme="light"] .via-fuchsia-500\/30,
+[data-theme="light"] .via-sky-500\/25,
+[data-theme="light"] .via-purple-500\/25 {
+  --tw-gradient-via: rgba(201, 169, 97, 0.10) var(--tw-gradient-via-position) !important;
+}
+[data-theme="light"] .to-indigo-600\/25,
+[data-theme="light"] .to-purple-500\/30,
+[data-theme="light"] .to-indigo-500\/25 {
+  --tw-gradient-to: rgba(30, 58, 138, 0.10) var(--tw-gradient-to-position) !important;
+}
