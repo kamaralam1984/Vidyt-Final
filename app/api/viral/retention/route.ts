@@ -88,11 +88,11 @@ Return JSON:
     const dropPoints = detectDropPoints(script);
 
     const suggestions: string[] = [
-      ‘Add a stronger hook in the first 3–5 seconds.’,
-      ‘Increase visual or scene transitions every 30–60 seconds.’,
-      ‘Add storytelling or “what\’s next” teases to hold attention.’,
+      “Add a stronger hook in the first 3-5 seconds.”,
+      “Increase visual or scene transitions every 30-60 seconds.”,
+      “Add storytelling or ‘what’s next’ teases to hold attention.”,
     ];
-    if (!script) suggestions.unshift(‘Add a video script or outline to get retention and drop-point suggestions.’);
+    if (!script) suggestions.unshift(“Add a video script or outline to get retention and drop-point suggestions.”);
 
     return NextResponse.json({
       predictedRetention: Math.min(99, Math.max(10, predictedRetention)),
