@@ -267,7 +267,8 @@ export async function middleware(request: NextRequest) {
     // rate limit here to avoid double-counting and false positives.
     const isLoginEndpoint = pathname === '/api/auth/login' || pathname === '/api/auth/login-pin' ||
       pathname === '/api/auth/password-reset' || pathname === '/api/auth/prepare-signup' ||
-      pathname === '/api/auth/verify-and-pay';
+      pathname === '/api/auth/verify-and-pay' ||
+      pathname === '/api/auth/2fa/challenge' || pathname === '/api/auth/2fa/recover';
 
     // Google OAuth endpoints — generous limit (user can refresh/retry OAuth flow)
     const isGoogleOAuth = pathname.startsWith('/api/auth/google') || pathname.startsWith('/api/auth/callback/google');
@@ -316,6 +317,10 @@ export async function middleware(request: NextRequest) {
     '/api/auth/password-reset',
     '/api/auth/prepare-signup',
     '/api/auth/verify-and-pay',
+    // 2FA challenge + backup-code recovery: take a preToken in the body, not a session.
+    // Must reach the handler so it can verify the preToken and issue the real session.
+    '/api/auth/2fa/challenge',
+    '/api/auth/2fa/recover',
     '/api/payments/verify-signup-payment',
     '/api/auth/me',
     '/api/auth/refresh',
