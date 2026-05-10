@@ -1071,7 +1071,7 @@ function AuditReport({ audit, expandedIssue, setExpandedIssue }: {
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: 'Performance', score: audit.performance.score, icon: Zap, details: [`Desktop: ${audit.performance.score}`, audit.mobile ? `Mobile: ${audit.mobile.score}` : 'Mobile: —', `LCP: ${(audit.performance.lcp / 1000).toFixed(1)}s`] },
-            { label: 'SEO', score: audit.seo.score, icon: Search, details: [audit.seo.isHttps ? 'HTTPS ✓' : 'No HTTPS ✗', `H1: ${audit.seo.h1Count}`, audit.seo.sitemapXml ? 'Sitemap ✓' : 'No sitemap'] },
+            { label: 'SEO', score: audit.seo.score, icon: Search, details: [audit.seo.isHttps ? 'HTTPS ✓' : 'No HTTPS ✗', audit.seo.h1Count === 1 ? 'H1 ✓' : audit.seo.h1Count === 0 ? 'No H1 ✗' : `H1: ${audit.seo.h1Count} ✗`, audit.seo.sitemapXml ? 'Sitemap ✓' : 'No sitemap'] },
             { label: 'Security', score: audit.security.score, icon: Shield, details: [audit.security.hasCSP ? 'CSP ✓' : 'No CSP ✗', audit.security.hasHSTS ? 'HSTS ✓' : 'No HSTS ✗', audit.security.hasXFrame ? 'X-Frame ✓' : 'No X-Frame ✗'] },
           ].map(({ label, score, icon: Icon, details }) => (
             <div key={label} className={`p-3 rounded-lg border ${scoreBg(score)}`}>
