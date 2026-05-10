@@ -32,10 +32,10 @@ function generateAudienceQuestion(description: string, keywords: string[]): stri
 function generateCTA(description: string): string {
   const hasSubscribe = /subscrib|follow|channel/i.test(description);
   const hasLike = /like|thumbs/i.test(description);
-  if (hasSubscribe && hasLike) return 'Subscribe and hit the bell for more. Like if this helped.';
-  if (hasSubscribe) return 'Subscribe and turn on notifications so you don't miss the next one.';
-  if (hasLike) return 'Like this video if you found it useful.';
-  return 'Subscribe for more. Like and comment—it helps the channel.';
+  if (hasSubscribe && hasLike) return "Subscribe and hit the bell for more. Like if this helped.";
+  if (hasSubscribe) return "Subscribe and turn on notifications so you don't miss the next one.";
+  if (hasLike) return "Like this video if you found it useful.";
+  return "Subscribe for more. Like and comment - it helps the channel.";
 }
 
 function predictEngagementRate(description: string, keywords: string[]): number {
