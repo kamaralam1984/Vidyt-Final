@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const keywordsStr = (body.keywords as string) || '';
     const keywords = keywordsStr.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean);
 
-    // ── Layer 1: AI (Paid → Free → fallback) ──
+    // -- Layer 1: AI (Paid -> Free -> fallback) --
     if (title) {
       try {
         const year = new Date().getFullYear();
@@ -91,7 +91,7 @@ Rules: use numbers, power words, curiosity gaps, brackets. Best CTR title gets r
       } catch { /* fall through */ }
     }
 
-    // ── Layer 2: Backend heuristics ──
+    // -- Layer 2: Backend heuristics --
     const titles = generateTitles(title, keywords);
     const recommendedIndex = 0;
 

@@ -33,7 +33,7 @@ function generateCTA(description: string): string {
   const hasSubscribe = /subscrib|follow|channel/i.test(description);
   const hasLike = /like|thumbs/i.test(description);
   if (hasSubscribe && hasLike) return 'Subscribe and hit the bell for more. Like if this helped.';
-  if (hasSubscribe) return 'Subscribe and turn on notifications so you don’t miss the next one.';
+  if (hasSubscribe) return 'Subscribe and turn on notifications so you don't miss the next one.';
   if (hasLike) return 'Like this video if you found it useful.';
   return 'Subscribe for more. Like and comment—it helps the channel.';
 }
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const keywordsStr = (body.keywords as string) || '';
     const keywords = keywordsStr.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean);
 
-    // ── Layer 1: AI (Paid → Free → fallback) ──
+    // -- Layer 1: AI (Paid -> Free -> fallback) --
     if (description || keywords.length) {
       try {
         const aiRes = await routeAI({
@@ -92,7 +92,7 @@ Return JSON:
       } catch { /* fall through */ }
     }
 
-    // ── Layer 2: Backend heuristics ──
+    // -- Layer 2: Backend heuristics --
     const commentHook = generateCommentHook(description, keywords);
     const audienceQuestion = generateAudienceQuestion(description, keywords);
     const callToAction = generateCTA(description);

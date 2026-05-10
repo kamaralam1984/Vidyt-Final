@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoAnyFeature } from '@/lib/assertUserFeature';
 import { routeAI } from '@/lib/ai-router';
 
-// ─── Scoring helpers ───
+// --- Scoring helpers ---
 
 function scoreTitleCuriosity(title: string): number {
   if (!title?.trim()) return 30;
@@ -26,7 +26,7 @@ function scoreTitleCuriosity(title: string): number {
   if (/202[4-9]|203\d/.test(t)) s += 4;
   // Title length scoring — YouTube allows up to 100 chars; 70 is optimal for CTR
   const len = t.length;
-  if (len >= 55 && len <= 70) s += 10;        // sweet spot → best CTR
+  if (len >= 55 && len <= 70) s += 10;        // sweet spot -> best CTR
   else if (len >= 40 && len <= 100) s += 6;   // good range (includes 70-100)
   else if (len >= 20 && len <= 110) s += 2;   // acceptable
   // >110 chars: no bonus (very unlikely on YouTube)
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     const faceDetection = typeof body.faceDetection === 'number' ? body.faceDetection : 0;
     const textReadability = typeof body.textReadability === 'number' ? body.textReadability : 70;
 
-    // ── Layer 1: AI (Paid → Free → fallback) ──
+    // -- Layer 1: AI (Paid -> Free -> fallback) --
     if (title || keywords.length) {
       try {
         const aiRes = await routeAI({
@@ -182,7 +182,7 @@ Return JSON with exactly these fields:
       } catch { /* fall through to heuristics */ }
     }
 
-    // ── Layer 2: Backend heuristics ──
+    // -- Layer 2: Backend heuristics --
     const titleCuriosity = scoreTitleCuriosity(title);
     const keywordRelevance = scoreKeywordRelevance(title, keywords);
     const descriptionQuality = scoreDescriptionQuality(title, keywords, description);
@@ -220,7 +220,7 @@ Return JSON with exactly these fields:
       factors.hashtagStrategy * weights.hashtagStrategy
     );
 
-    // CTR mapping: score 0-100 → CTR 3%-16%
+    // CTR mapping: score 0-100 -> CTR 3%-16%
     // Minimum floor 3% — even an unoptimized title with content gets some CTR
     // High-quality content can reach 11.8%+ with score >= 82
     const ctrPercent = Math.min(16, Math.max(3, 3 + (ctrScore / 100) * 13)).toFixed(1);
