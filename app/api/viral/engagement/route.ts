@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
+import { routeAI } from '@/lib/ai-router';
 
 function generateCommentHook(description: string, keywords: string[]): string {
   const kw = keywords[0]?.trim() || 'your niche';
@@ -56,6 +57,42 @@ export async function POST(request: NextRequest) {
     const keywordsStr = (body.keywords as string) || '';
     const keywords = keywordsStr.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean);
 
+    // ── Layer 1: AI (Paid → Free → fallback) ──
+    if (description || keywords.length) {
+      try {
+        const aiRes = await routeAI({
+          prompt: `You are a YouTube engagement expert. Analyze and return ONLY valid JSON.
+Keywords: ${keywords.slice(0, 8).join(', ')}
+Description (first 300 chars): "${description.slice(0, 300)}"
+
+Return JSON:
+{
+  "commentHook": "<a short engaging comment prompt for viewers>",
+  "audienceQuestion": "<one specific question to spark discussion>",
+  "callToAction": "<subscribe/like/comment CTA>",
+  "engagementRate": <integer 5-95>
+}`,
+          cacheKey: `engagement:${keywords.join(',')}:${description.slice(0, 60)}`.slice(0, 120),
+          cacheTtlSec: 600,
+          timeoutMs: 15000,
+          fallbackText: '',
+        });
+        if (aiRes.provider !== 'fallback' && aiRes.text) {
+          const d = aiRes.parseJson() as any;
+          if (d?.commentHook && d?.engagementRate) {
+            return NextResponse.json({
+              commentHook: d.commentHook,
+              audienceQuestion: d.audienceQuestion || '',
+              callToAction: d.callToAction || '',
+              engagementRate: Math.min(99, Math.max(5, Number(d.engagementRate))),
+              _provider: aiRes.provider,
+            });
+          }
+        }
+      } catch { /* fall through */ }
+    }
+
+    // ── Layer 2: Backend heuristics ──
     const commentHook = generateCommentHook(description, keywords);
     const audienceQuestion = generateAudienceQuestion(description, keywords);
     const callToAction = generateCTA(description);

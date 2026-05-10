@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoFeature } from '@/lib/assertUserFeature';
+import { routeAI } from '@/lib/ai-router';
 
 function scoreTitleForCtr(t: string): number {
   if (!t?.trim()) return 5;
@@ -48,6 +49,49 @@ export async function POST(request: NextRequest) {
     const keywordsStr = (body.keywords as string) || '';
     const keywords = keywordsStr.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean);
 
+    // ── Layer 1: AI (Paid → Free → fallback) ──
+    if (title) {
+      try {
+        const year = new Date().getFullYear();
+        const aiRes = await routeAI({
+          prompt: `You are a YouTube title optimization expert. Generate 5 high-CTR title variants. Return ONLY valid JSON.
+Original title: "${title}"
+Keywords: ${keywords.slice(0, 5).join(', ')}
+Year: ${year}
+
+Return JSON:
+{
+  "titles": [
+    {"title": "<variant1>", "predictedCtr": <4.0-14.0>, "recommended": true},
+    {"title": "<variant2>", "predictedCtr": <4.0-14.0>, "recommended": false},
+    {"title": "<variant3>", "predictedCtr": <4.0-14.0>, "recommended": false},
+    {"title": "<variant4>", "predictedCtr": <4.0-14.0>, "recommended": false},
+    {"title": "<variant5>", "predictedCtr": <4.0-14.0>, "recommended": false}
+  ]
+}
+Rules: use numbers, power words, curiosity gaps, brackets. Best CTR title gets recommended:true.`,
+          cacheKey: `titles:${title}:${keywords.join(',')}`.slice(0, 120),
+          cacheTtlSec: 600,
+          timeoutMs: 20000,
+          fallbackText: '',
+        });
+        if (aiRes.provider !== 'fallback' && aiRes.text) {
+          const d = aiRes.parseJson() as any;
+          if (Array.isArray(d?.titles) && d.titles.length >= 2) {
+            return NextResponse.json({
+              titles: d.titles.slice(0, 5).map((t: any, i: number) => ({
+                title: String(t.title || '').slice(0, 100),
+                predictedCtr: Math.min(14, Math.max(3, Number(t.predictedCtr) || 7)),
+                recommended: t.recommended === true || i === 0,
+              })),
+              _provider: aiRes.provider,
+            });
+          }
+        }
+      } catch { /* fall through */ }
+    }
+
+    // ── Layer 2: Backend heuristics ──
     const titles = generateTitles(title, keywords);
     const recommendedIndex = 0;
 
