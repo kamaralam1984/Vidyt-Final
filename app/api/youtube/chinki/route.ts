@@ -42,19 +42,24 @@ RULES:
 4. RESPONSE FORMAT: Match the user's selected country language (see LANGUAGE DIRECTIVE below). Keep replies under 250 words, direct and actionable.
 5. Video Gap Analysis: Missing hook, weak CTR, no retention points, no value proposition, missing trends`;
 
-// Language directive injected per-request based on the user's locale.lang.
-// Overrides any default language assumption in the system prompt.
-const LANGUAGE_DIRECTIVES: Record<string, string> = {
-  en: 'Respond in clear, natural English. Do not mix in Hindi or any other language unless the user explicitly asks.',
-  hi: 'Respond in Hindi-English mix (Hinglish in Roman script). Use everyday Hindi words with English technical terms.',
-  ur: 'Respond in Urdu (Roman script preferred unless the user writes in Urdu script). Keep technical terms in English.',
-  ar: 'Respond in Modern Standard Arabic. Keep technical terms in English when natural.',
-  es: 'Respond in clear, natural Spanish (neutral Latin American Spanish).',
-  de: 'Respond in clear, natural German.',
-  fr: 'Respond in clear, natural French.',
-  pt: 'Respond in clear, natural Portuguese (Brazilian).',
-  id: 'Respond in clear, natural Indonesian (Bahasa Indonesia).',
+// Country-language hint. Used as a FALLBACK only when the user's message is
+// too short/ambiguous for the LLM to detect language confidently (e.g. emoji-only,
+// numbers, single-word). The LLM is otherwise told to mirror the user's language.
+const COUNTRY_LANG_HINT: Record<string, string> = {
+  en: 'English',
+  hi: 'Hindi-English mix (Hinglish in Roman script)',
+  ur: 'Urdu (Roman script unless user writes in Urdu script)',
+  ar: 'Modern Standard Arabic',
+  es: 'Neutral Latin American Spanish',
+  de: 'German',
+  fr: 'French',
+  pt: 'Brazilian Portuguese',
+  id: 'Bahasa Indonesia',
 };
+
+// Used only to validate `lang` body param (still returned to the client and used
+// for fallback replies + TTS hints).
+const LANGUAGE_DIRECTIVES = COUNTRY_LANG_HINT;
 
 const FALLBACK_REPLY: Record<string, string> = {
   en: "I'm having a small issue right now. Please try again — type something like \"check my title and keywords on this page\" and I'll analyze it in real time.",
@@ -110,10 +115,21 @@ export async function POST(request: NextRequest) {
       ? `Current upload context:\n${contextStr}\n\nUser message: ${message}`
       : message;
 
-    // Append per-request language directive so it overrides the in-prompt default.
-    // LLMs typically weight the most recent instruction highest — placing this at
-    // the end of behaviourPrompt is the simplest reliable override.
-    const behaviorPrompt = `${CHINKI_SYSTEM}\n\nLANGUAGE DIRECTIVE (overrides any prior language rule):\n${LANGUAGE_DIRECTIVES[lang]}`;
+    // Auto-detect-and-mirror language directive. LLMs are excellent at language
+    // detection from short text — far more reliable than client-side regex. The
+    // country hint is only used when the user's message is too short to detect
+    // (emoji, numbers, single non-word).
+    const behaviorPrompt = `${CHINKI_SYSTEM}
+
+LANGUAGE BEHAVIOR (HIGHEST PRIORITY — overrides any prior language rule):
+1. DETECT the language and script the user is writing in from their message.
+2. REPLY in the EXACT same language AND same script the user used. Never switch language unless the user does.
+3. If the user writes Hinglish (Hindi words in Roman script mixed with English), reply in Hinglish — same mix ratio.
+4. If the user writes pure English, reply in pure English (no Hindi words).
+5. If the user writes pure Devanagari Hindi, reply in pure Devanagari Hindi.
+6. The same auto-mirror rule applies for Urdu, Arabic, Spanish, German, French, Portuguese, Indonesian, and any other language.
+7. FALLBACK ONLY (if the user's message is empty / single emoji / numbers / cannot be detected): default to ${COUNTRY_LANG_HINT[lang]}.
+8. Technical terms (CTR, SEO, hashtag, thumbnail) may stay in English even when replying in another language — that's natural.`;
 
     const auth = await getUserFromRequest(request);
     const secured = await askSecureChatbot({

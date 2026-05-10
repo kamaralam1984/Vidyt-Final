@@ -1097,7 +1097,14 @@ function YouTubeLiveSEOContent() {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(last.text);
-      u.lang = TTS_LANG[locale.lang] || 'en-US';
+      // Auto-detect script of the reply for TTS — falls back to locale when
+      // detection is inconclusive (Latin script could be many languages).
+      const text = last.text;
+      let ttsLang = TTS_LANG[locale.lang] || 'en-US';
+      if (/[ऀ-ॿ]/.test(text)) ttsLang = 'hi-IN';                 // Devanagari
+      else if (/[؀-ۿ]/.test(text)) ttsLang = locale.lang === 'ur' ? 'ur-PK' : 'ar-SA';
+      else if (/[一-鿿]/.test(text)) ttsLang = 'zh-CN';            // CJK
+      u.lang = ttsLang;
       u.rate = 0.9;
       window.speechSynthesis.speak(u);
     }
