@@ -155,7 +155,9 @@ Return ONLY valid minified JSON (no markdown, no commentary) with EXACT keys:
   try {
     const res = await routeAI({
       prompt: seoPrompt,
-      timeoutMs: 20000,
+      // 5-min scripts produce ~850 output tokens which takes 30-50s on most
+      // providers; 20s would frequently TIMEOUT even when the API was healthy.
+      timeoutMs: 90000,
       cacheKey: `script:${params.topic}:${params.platform}:${params.duration}:${lang}`,
     });
     const json = res.parseJson() as any;
