@@ -314,6 +314,30 @@ export function startTrackingWorker({ concurrency = 20 }: { concurrency?: number
   }, backlogIntervalMs);
   backlogIntervalHandle.unref?.();
 
+  // Inactive-session sweeper. Without this UserSession.isActive stays true
+  // forever (the live dashboard then shows "5h online" ghosts for tabs that
+  // closed without firing /api/tracking/session-end). Cheaper to ride this
+  // worker than to spin a separate cron — same Mongo connection, same proc.
+  const sweeperIntervalMs = Number(process.env.SESSION_SWEEPER_INTERVAL_MS ?? 60_000);
+  const sweeperIdleMs = Number(process.env.SESSION_SWEEPER_IDLE_MS ?? 30 * 60_000);
+  const sweeperIntervalHandle = setInterval(async () => {
+    try {
+      await connectDB();
+      const cutoff = new Date(Date.now() - sweeperIdleMs);
+      const res = await UserSession.updateMany(
+        { isActive: true, lastSeen: { $lt: cutoff } },
+        { $set: { isActive: false, logoutTime: new Date() } }
+      );
+      const modified = (res as any).modifiedCount ?? 0;
+      if (modified > 0) {
+        logInfo('tracking:session_sweeper', { modified, cutoff: cutoff.toISOString() });
+      }
+    } catch (err) {
+      logError('tracking:session_sweeper_failed', err);
+    }
+  }, sweeperIntervalMs);
+  sweeperIntervalHandle.unref?.();
+
   // Ensure unit tests and controlled shutdowns don't keep the event loop alive.
   // BullMQ's `worker.close()` should close its connections, but we also clear
   // our local interval + pending flush timers.
@@ -321,6 +345,7 @@ export function startTrackingWorker({ concurrency = 20 }: { concurrency?: number
   worker.close = (async () => {
     try {
       clearInterval(backlogIntervalHandle);
+      clearInterval(sweeperIntervalHandle);
     } catch {
       // ignore
     }

@@ -15,7 +15,18 @@ export default function OnboardingGuard() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (pathname?.startsWith('/onboarding')) return;
+    // Skip the onboarding redirect for paths where it would interrupt a
+    // critical flow. Razorpay return URLs land on /subscription or /payment
+    // — bouncing the user to /onboarding mid-checkout breaks attribution
+    // and can strand a charged payment without a successful upgrade write.
+    const SKIP_PREFIXES = [
+      '/onboarding',
+      '/subscription',
+      '/upgrade',
+      '/checkout',
+      '/payment',
+    ];
+    if (pathname && SKIP_PREFIXES.some(p => pathname.startsWith(p))) return;
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
