@@ -1,67 +1,75 @@
-# Vidyt — Missing Features & Improvement Audit (v2)
-_Date: 2026-04-22 — Refreshed after v1 implementation pass_
+# Vidyt — Missing Features & Improvement Audit (v3)
+_Date: 2026-05-10 — Refreshed after v2 implementation pass_
 
-Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low · ✅ Done in v1
+Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low · ✅ Done
 
 ---
 
-## ✅ Shipped in the Last Pass
+## ✅ Shipped Since v2 (2026-04-22 → 2026-05-10)
 
-- Public pages: `/faq`, `/help`, `/security` (expanded)
-- Governance: `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`
-- `.env.example` listing every required secret
-- `public/.well-known/security.txt`, `public/humans.txt`
-- `.github/workflows/ci.yml` upgraded → lint, typecheck, test (mongo+redis), build, e2e
-- Playwright harness: `playwright.config.ts`, `tests/e2e/smoke.spec.ts`
-- 2FA/TOTP **backend**: `/api/auth/2fa/{enroll,verify,disable,status}` + `lib/totp.ts` (AES-GCM encrypted secrets, 10 backup codes)
-- Repo cleanup: 67 `.md` → `docs/`, helper scripts → `scripts/` with READMEs
-- Confirmed already present: Sentry, Razorpay, Google OAuth, RBAC, rate limiting, Cloudflare WAF, `/api/user/{export-data,delete-account}`, legal pages, sitemap + JSON-LD (Organization + SoftwareApplication)
+**Done in this pass (today):**
+- **2FA user-facing UI** — `app/dashboard/security/page.tsx` rebuilt with status badge, enroll (QR + manual secret + copy), 6-digit verify, backup-code display + `.txt` download + copy-all, password-gated disable form (with optional defense-in-depth code).
+- **Turnstile CAPTCHA on forgot-password** — `TurnstileWidget` rendered on email step in `app/forgot-password/page.tsx`, token sent to `/api/auth/password-reset`, server-side `verifyTurnstile()` added to the POST handler (matches the login + prepare-signup pattern).
+
+**Confirmed already shipped between v2 and now (audit was stale on these):**
+- **Turnstile on login + signup** — `lib/turnstile.ts` + `components/TurnstileWidget.tsx`; widget rendered in both forms in `app/auth/page.tsx`; `verifyTurnstile()` wired in `/api/auth/login` and `/api/auth/prepare-signup`.
+- **Onboarding wizard** — `app/onboarding/page.tsx` (3 steps: Profile / Notebook / Preferences) + `app/api/user/onboarding/route.ts`. Notebook captures goal, niche, channelUrl, experienceLevel, postingFrequency for the owner.
+- **Dockerfile + docker-compose.yml** at repo root (runnable, not just docs).
+- **`.github/dependabot.yml`** present.
+
+---
+
+## ⚠️ Broken / Risky — Verify Before Anything Else
+
+### A. Login challenge bypasses 2FA
+`/api/auth/login/route.ts` calls `loginUser(email, password)` and issues tokens directly. Nothing in that path consults `user.twoFactorEnabled` or asks for a TOTP code. If true, **enabling 2FA gives the user a false sense of security** — login still succeeds with email + password alone.
+- **Verify:** read `lib/auth.ts → loginUser` for any 2FA branch.
+- **Fix if confirmed:** when `twoFactorEnabled`, return a `requires2FA: true` response with a short-lived challenge token; add `/api/auth/2fa/challenge` that accepts that token + a 6-digit code (or a backup code, marked as consumed) before issuing the real session.
+
+### B. `vidyt/` vs `vidytx/` onboarding drift
+`vidytx/onboarding/page.tsx` has a 4-step flow (Profile / Notebook / **Security** / Preferences); `vidyt/onboarding/page.tsx` shipped a 3-step flow with an explicit comment that the Security step was shelved. Either canonicalize on one shape or the next deploy will reintroduce the Security step that was removed on purpose.
+- **Decide:** keep dedicated `/dashboard/security` page (recommended now that it's built) and delete the Security step from `vidytx/`, OR re-enable in `vidyt/`. Don't leave them divergent.
+
+### C. `recovery` codes path
+2FA backup codes are hashed at issuance, but I didn't see a route that **consumes** one at login time. Without that, backup codes are decorative. Audit needs a `/api/auth/2fa/recover` (or equivalent) that accepts `{ email, code }`, bcrypt-compares against `twoFactorBackupCodes`, removes the matched hash, and issues the session.
 
 ---
 
 ## 🔴 Critical — Ship Next
 
-### 1. 2FA User-Facing Page
-Endpoints exist but there is no `/dashboard/security` page for enroll / view backup codes / disable. Users can't turn 2FA on.
-- **Fix:** `app/dashboard/security/page.tsx` with QR render, 6-digit verify input, backup-code display + download.
+### 1. 2FA login challenge + backup-code consumption
+See Risky §A and §C above. The new dashboard UI is wasted if login doesn't enforce the second factor.
 
-### 2. CAPTCHA on Signup / Login / Password-Reset
-Brute-force + credential-stuffing protection. Env vars (`TURNSTILE_*`) are in `.env.example` but nothing is wired.
-- **Fix:** Cloudflare Turnstile widget in `app/auth/page.tsx`, `app/signup/page.tsx`, `app/forgot-password/page.tsx` + server-side verification in the three auth routes.
+### 2. Password strength + breached-password check
+On signup + password-reset flows: zxcvbn meter for visible feedback, plus a haveibeenpwned k-anonymity range check on submit. Free, ~30 min of work, blocks the most common credential-stuffing wins.
 
-### 3. Onboarding Wizard
-New users land on an empty dashboard with no guidance.
-- **Fix:** `app/onboarding/page.tsx` — 3 steps (connect channel, set niche/goal, pick a starter tool). Route there on first login when `user.onboardedAt` is unset.
+### 3. User-facing session list
+`UserSession` collection is already populated. Build `app/dashboard/settings/sessions/page.tsx` (or similar) showing device/IP/last-used and a per-row "Sign out" button + a "Sign out everywhere" action. Without this, a stolen JWT cannot be revoked by the user.
 
-### 4. Dockerfile + docker-compose.yml
-`DOCKER_DELIVERY_REPORT.md` exists, but no runnable `Dockerfile` or compose file at root. Blocks reproducible local + staging bring-up.
-
-### 5. Dependabot / Renovate Config
-No automated vulnerability alerts. Add `.github/dependabot.yml` for npm + github-actions weekly updates.
+### 4. Email verification resend UI
+`emailVerified`, `emailVerificationToken`, `emailOtp` fields exist on the User model; `/api/auth/verify-email` exists. There is no in-app UI to resend the verification email after signup, so users with typo'd inboxes stay stuck.
 
 ---
 
 ## 🟠 High — Plan for Current Sprint
 
 ### Product / Growth
-- **`/status`** public system-status page (incidents + uptime) — even a static "All systems operational" is better than nothing.
-- **`/changelog`** public page (render `CHANGELOG.md` from the repo).
-- **`/compare`** vs VidIQ + TubeBuddy landing (direct-conversion SEO).
-- **Testimonials / social-proof section** on homepage (creator logos + quotes).
-- **Newsletter signup** on homepage — waitlist API exists, frontend doesn't use it.
-- **Exit-intent modal** on pricing for trial/free users.
+- **`/status`** public system-status page (start static; upgrade to BetterStack/UptimeRobot embed later).
+- **`/changelog`** public page rendering `CHANGELOG.md`.
+- **`/compare`** vs VidIQ + TubeBuddy (head-to-head SEO landing).
+- **Testimonials / social-proof section** on homepage.
+- **Newsletter signup** on homepage (waitlist API exists, frontend doesn't use it).
+- **Exit-intent modal** on `/pricing` for trial/free users.
 
 ### Auth / Security
-- **Password strength meter** on signup and password-reset.
-- **Breached-password check** (haveibeenpwned k-anonymity API) at set/change password.
 - **CSP violation reporter** endpoint `/api/security/csp-report` + wire `report-to` in CSP header.
-- **User-facing session list** in `/dashboard/settings/sessions` (API already populates `UserSession`).
-- **Email verification resend** UI in `/auth`.
+- **Account-deletion grace period** review — `deletionRequestCode/Expiry/RequestedAt/deletedAt/isDeleted` fields exist; verify the cron actually purges and that grace-period UX is exposed.
+- **Refresh-token rotation audit** — confirm `generateRefreshToken` invalidates the prior token on rotate, not just issues a new one.
 
 ### Dev Experience
 - **Husky + lint-staged** for pre-commit `eslint --fix` + `prettier --write`.
-- **Commitlint** enforcing Conventional Commits.
-- **`@next/bundle-analyzer`** wired into `next.config.js` behind `ANALYZE=true`.
+- **Commitlint** enforcing Conventional Commits (commitlint config already at root — wire it to a hook).
+- **`@next/bundle-analyzer`** behind `ANALYZE=true`.
 - **Lighthouse CI** GitHub Action — fail PRs that regress LCP/CLS.
 
 ---
@@ -69,12 +77,12 @@ No automated vulnerability alerts. Add `.github/dependabot.yml` for npm + github
 ## 🟡 Medium — Near-Term
 
 ### UX / Design
-- **Command palette** (Cmd/Ctrl+K) for power users.
-- **Dark/light theme toggle** (ThemeContext exists, toggle UI missing).
-- **Skeleton loader standardization** across dashboards.
-- **Empty-state illustrations** for first-run dashboards.
-- **Keyboard navigation + focus-ring audit**.
-- **Reduced-motion respect** (`prefers-reduced-motion`).
+- Command palette (Cmd/Ctrl+K).
+- Dark/light theme toggle (ThemeContext exists, toggle UI missing).
+- Skeleton loader standardization across dashboards.
+- Empty-state illustrations for first-run dashboards.
+- Keyboard navigation + focus-ring audit.
+- `prefers-reduced-motion` respect.
 
 ### Internationalization
 - `next-intl` wiring. LocaleProvider exists; no translated strings yet.
@@ -82,32 +90,32 @@ No automated vulnerability alerts. Add `.github/dependabot.yml` for npm + github
 - Currency + timezone auto-detect audit.
 
 ### Billing
-- **Annual/monthly toggle** visibility on `/pricing`.
-- **Coupon/promo code** input at checkout.
-- **Lifetime deal** offer (AppSumo-ready).
-- **Billing portal** — user-facing invoice download + payment-method update.
-- **Abandoned-cart email** flow.
+- Annual/monthly toggle visibility on `/pricing`.
+- Coupon / promo code input at checkout.
+- Lifetime deal offer (AppSumo-ready).
+- Billing portal — invoice download + payment-method update.
+- Abandoned-cart email flow.
 
 ### Content
 - `/roadmap` public page (Canny/Frill or self-hosted).
 - Video demo on landing.
-- Interactive product tour (driver.js / shepherd).
+- Interactive product tour (driver.js / shepherd) gated to first-login.
 
 ### Observability
-- **PostHog or Mixpanel** client-side product analytics (funnels, retention).
-- **Conversion tracking** events (signup, first analysis, payment) wired through GA4 + PostHog.
-- **Session replay** (LogRocket or PostHog).
-- **Uptime monitoring** config committed (BetterStack/UptimeRobot).
+- PostHog or Mixpanel client-side product analytics (funnels, retention).
+- Conversion tracking events (signup, first analysis, payment) wired through GA4 + PostHog.
+- Session replay (LogRocket or PostHog).
+- Uptime monitoring config committed (BetterStack/UptimeRobot).
 
 ### Accessibility
-- **axe-core** automated checks in Playwright.
-- **Contrast audit** of red-on-dark palette against WCAG AA.
-- **Screen-reader pass** on dashboard + modals.
+- axe-core automated checks in Playwright.
+- Contrast audit of red-on-dark palette against WCAG AA.
+- Screen-reader pass on dashboard + modals.
 
 ### SEO
-- **Dynamic OG images** per page using `next/og` — currently a single static `/og-image.png`.
-- **More JSON-LD**: BreadcrumbList on blog, Product on pricing, Review when testimonials land.
-- **RSS feed** for `/blog`.
+- Dynamic OG images per page using `next/og` (currently single static `/og-image.png`).
+- More JSON-LD: BreadcrumbList on blog, Product on pricing, Review when testimonials land.
+- RSS feed for `/blog`.
 
 ---
 
@@ -122,12 +130,13 @@ No automated vulnerability alerts. Add `.github/dependabot.yml` for npm + github
 
 ---
 
-## 🧹 Tech Debt (Post-Cleanup)
+## 🧹 Tech Debt
 
 - **Database migrations** — no `migrate-mongo` / equivalent. Schema changes rely on `Schema.models.X || model(...)` idempotency only.
 - **Test coverage gaps** — no `.ts` unit tests; only `.cjs`. Add `vitest` or `tsx --test`.
 - **No visual regression** (Chromatic / Percy).
 - **No load testing** (k6 / artillery).
+- **`vidyt/` vs `vidytx/` drift** — laptop has two trees with diverged onboarding (and historically middleware/auth/SW). Pick a canonical source-of-truth and add a sync check.
 - **`patch_script.js`** in `scripts/` — origin unclear, inspect + delete if stale.
 - **Remove `Logo_original_backup.png`** from `public/` — stale asset.
 - **Audit `utils/` vs `lib/`** — two directories for shared helpers; pick one.
@@ -136,17 +145,17 @@ No automated vulnerability alerts. Add `.github/dependabot.yml` for npm + github
 
 ## 🎯 Top 10 This Sprint
 
-1. 2FA dashboard UI — the backend is wasted without it.
-2. Turnstile CAPTCHA on auth forms.
-3. Onboarding wizard for first-login UX.
-4. `Dockerfile` + `docker-compose.yml` for reproducible env.
-5. `dependabot.yml` for supply-chain safety.
-6. Session-list + email-resend UI for existing APIs.
-7. Password strength + breached-password check.
-8. `@next/bundle-analyzer` + first Lighthouse CI run.
-9. PostHog wiring + 5 core funnel events.
-10. `/status` + `/changelog` + `/compare` public pages.
+1. **Verify + fix 2FA login challenge** — without it, today's UI is theatre.
+2. **Backup-code consumption route** — pair with #1.
+3. **Password strength + breached-password check** on signup + reset.
+4. **Sessions list UI** for `UserSession` collection.
+5. **Email-verification resend** UI in `/auth`.
+6. **`/status` + `/changelog` + `/compare`** public pages (one PR).
+7. **PostHog wiring + 5 core funnel events** (signup, onboarding-complete, first analysis, payment-attempt, payment-success).
+8. **Husky + commitlint + lint-staged** wired to pre-commit.
+9. **`@next/bundle-analyzer` + first Lighthouse CI run**.
+10. **Resolve `vidyt/` ↔ `vidytx/` drift** (start with onboarding decision).
 
 ---
 
-_This audit reflects the repo at commit-time on 2026-04-22. Re-run against the latest tree before planning — files can move quickly._
+_This audit reflects the repo at 2026-05-10. Re-run against the latest tree before planning — files can move quickly. Items in the "Broken / Risky" block are unverified claims that need a code read before implementation; do not skip._

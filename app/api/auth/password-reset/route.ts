@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { hashPassword } from '@/lib/auth';
 import { sendPasswordResetOTP } from '@/services/email';
 import { getClientIP, rateLimit, isIPBlocked, RATE_LIMITS } from '@/lib/rateLimiter';
+import { verifyTurnstile } from '@/lib/turnstile';
 
 /**
  * Request password reset
@@ -30,11 +31,19 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { email } = body;
+    const { email, turnstileToken } = body;
 
     if (!email) {
       return NextResponse.json(
         { success: false, message: 'Email is required' },
+        { status: 400 }
+      );
+    }
+
+    const captcha = await verifyTurnstile(turnstileToken, ip);
+    if (!captcha.ok) {
+      return NextResponse.json(
+        { success: false, message: 'CAPTCHA verification failed. Please try again.' },
         { status: 400 }
       );
     }

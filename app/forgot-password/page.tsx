@@ -7,6 +7,7 @@ import Link from 'next/link';
 import NextImage from 'next/image';
 import axios from 'axios';
 import { Mail, Loader2, AlertCircle, Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -19,6 +20,8 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRequired = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
   useEffect(() => {
     const checkDbStatus = async () => {
@@ -54,16 +57,21 @@ export default function ForgotPasswordPage() {
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (turnstileRequired && !turnstileToken) {
+      setError('Please complete the CAPTCHA before continuing.');
+      return;
+    }
     setLoading(true);
     setError('');
-    
+
     try {
-      const response = await axios.post('/api/auth/password-reset', { email });
+      const response = await axios.post('/api/auth/password-reset', { email, turnstileToken });
       if (response.data.success) {
         setStep('OTP');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+      setTurnstileToken('');
     } finally {
       setLoading(false);
     }
@@ -146,7 +154,16 @@ export default function ForgotPasswordPage() {
                       />
                     </div>
                   </div>
-                  <button type="submit" disabled={loading} className="w-full py-3 px-6 bg-[#FF0000] text-white rounded-lg font-semibold flex items-center justify-center gap-2">
+                  <TurnstileWidget
+                    onToken={setTurnstileToken}
+                    onError={() => setTurnstileToken('')}
+                    action="password-reset"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || (turnstileRequired && !turnstileToken)}
+                    className="w-full py-3 px-6 bg-[#FF0000] disabled:opacity-60 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+                  >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send OTP'}
                     <ArrowRight className="w-5 h-5" />
                   </button>
