@@ -39,17 +39,47 @@ RULES:
 1. Answer ANY question — about the platform, SEO, or general knowledge
 2. When analyzing uploads: check transcript, suggest title/keywords/hashtags, rate viral potential
 3. When analyzing channels: state stats, what's working, what's missing
-4. RESPONSE FORMAT: Hindi-English mix, under 250 words, direct and actionable
+4. RESPONSE FORMAT: Match the user's selected country language (see LANGUAGE DIRECTIVE below). Keep replies under 250 words, direct and actionable.
 5. Video Gap Analysis: Missing hook, weak CTR, no retention points, no value proposition, missing trends`;
+
+// Language directive injected per-request based on the user's locale.lang.
+// Overrides any default language assumption in the system prompt.
+const LANGUAGE_DIRECTIVES: Record<string, string> = {
+  en: 'Respond in clear, natural English. Do not mix in Hindi or any other language unless the user explicitly asks.',
+  hi: 'Respond in Hindi-English mix (Hinglish in Roman script). Use everyday Hindi words with English technical terms.',
+  ur: 'Respond in Urdu (Roman script preferred unless the user writes in Urdu script). Keep technical terms in English.',
+  ar: 'Respond in Modern Standard Arabic. Keep technical terms in English when natural.',
+  es: 'Respond in clear, natural Spanish (neutral Latin American Spanish).',
+  de: 'Respond in clear, natural German.',
+  fr: 'Respond in clear, natural French.',
+  pt: 'Respond in clear, natural Portuguese (Brazilian).',
+  id: 'Respond in clear, natural Indonesian (Bahasa Indonesia).',
+};
+
+const FALLBACK_REPLY: Record<string, string> = {
+  en: "I'm having a small issue right now. Please try again — type something like \"check my title and keywords on this page\" and I'll analyze it in real time.",
+  hi: 'Abhi thoda issue aa raha hai. Phir se try karein — "is page me jo title keyword dale hai dekh kr batao thik hai ya nahi" likh kar bhejein, main real time me analyze kar ke bataungi.',
+  ur: 'Abhi thoda masla aa raha hai. Dobara try karein — "is page ka title aur keyword check karein" likh kar bhejein.',
+  ar: 'هناك مشكلة بسيطة الآن. حاول مرة أخرى — اكتب "تحقق من العنوان والكلمات الرئيسية" وسأحللها فوراً.',
+  es: 'Hay un pequeño problema ahora mismo. Inténtalo de nuevo — escribe "revisa mi título y palabras clave" y lo analizaré al instante.',
+  de: 'Gerade gibt es ein kleines Problem. Bitte erneut versuchen — schreib z. B. „Prüfe meinen Titel und Keywords" und ich analysiere es sofort.',
+  fr: "Il y a un petit souci en ce moment. Réessayez — écrivez par exemple « vérifie mon titre et mes mots-clés » et je l'analyserai aussitôt.",
+  pt: 'Estou com um pequeno problema agora. Tente novamente — escreva algo como "verifique meu título e palavras-chave" e analiso na hora.',
+  id: 'Ada sedikit masalah sekarang. Coba lagi — ketik misalnya "cek judul dan kata kunci saya" dan saya akan menganalisisnya seketika.',
+};
 
 export async function POST(request: NextRequest) {
   const denied = await denyIfNoFeature(request, 'youtube_seo');
   if (denied) return denied;
 
+  // Hoisted so the catch block can localise the fallback reply.
+  let lang = 'en';
   try {
     const body = await request.json().catch(() => ({}));
     const message = (body.message || '').trim();
     const context = body.context || {};
+    const langRaw = (body.lang || 'en').toString().toLowerCase();
+    lang = LANGUAGE_DIRECTIVES[langRaw] ? langRaw : 'en';
     if (!message) return NextResponse.json({ error: 'Message required' }, { status: 400 });
 
     const summary = context.channelSummary as Record<string, unknown> | undefined;
@@ -80,13 +110,18 @@ export async function POST(request: NextRequest) {
       ? `Current upload context:\n${contextStr}\n\nUser message: ${message}`
       : message;
 
+    // Append per-request language directive so it overrides the in-prompt default.
+    // LLMs typically weight the most recent instruction highest — placing this at
+    // the end of behaviourPrompt is the simplest reliable override.
+    const behaviorPrompt = `${CHINKI_SYSTEM}\n\nLANGUAGE DIRECTIVE (overrides any prior language rule):\n${LANGUAGE_DIRECTIVES[lang]}`;
+
     const auth = await getUserFromRequest(request);
     const secured = await askSecureChatbot({
       botName: 'Chinki',
       question: message,
       plan: auth?.subscription || 'free',
       functions: ['youtube_seo', 'title_optimization', 'keyword_intelligence', 'thumbnail_feedback'],
-      behaviorPrompt: CHINKI_SYSTEM,
+      behaviorPrompt,
       context: userContent,
       localFallback: getFallbackReply(message, context),
     });
@@ -95,7 +130,7 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     console.error('Chinki API error:', e);
     return NextResponse.json({
-      reply: 'Abhi thoda issue aa raha hai. Phir se try karein — "is page me jo title keyword dale hai dekh kr batao thik hai ya nahi" likh kar bhejein, main real time me analyze kar ke bataungi.',
+      reply: FALLBACK_REPLY[lang] || FALLBACK_REPLY.en,
     });
   }
 }

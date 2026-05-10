@@ -51,6 +51,20 @@ import {
 } from 'recharts';
 
 import { useTranslations } from '@/context/translations';
+import { useLocale } from '@/context/LocaleContext';
+
+// Map our LocaleContext lang codes to BCP-47 tags used by the Web Speech API.
+const TTS_LANG: Record<string, string> = {
+  en: 'en-US',
+  hi: 'hi-IN',
+  ur: 'ur-PK',
+  ar: 'ar-SA',
+  es: 'es-ES',
+  de: 'de-DE',
+  fr: 'fr-FR',
+  pt: 'pt-BR',
+  id: 'id-ID',
+};
 
 const CATEGORIES = [
   'Education', 'Entertainment', 'Howto & Style', 'People & Blogs', 'Science & Technology',
@@ -61,6 +75,7 @@ const DEBOUNCE_MS = 500;
 
 function YouTubeLiveSEOContent() {
   const { t } = useTranslations();
+  const { locale } = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -1041,6 +1056,8 @@ function YouTubeLiveSEOContent() {
         '/api/youtube/chinki',
         {
           message: msg,
+          lang: locale.lang,
+          countryCode: locale.countryCode,
           context: {
             title,
             description,
@@ -1080,7 +1097,7 @@ function YouTubeLiveSEOContent() {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(last.text);
-      u.lang = 'hi-IN';
+      u.lang = TTS_LANG[locale.lang] || 'en-US';
       u.rate = 0.9;
       window.speechSynthesis.speak(u);
     }
