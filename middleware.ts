@@ -346,6 +346,7 @@ export async function middleware(request: NextRequest) {
     // CRON_SECRET check can run; otherwise middleware 401s it before the
     // secret query param is ever evaluated.
     '/api/cron/marketing-emails',
+    '/api/cron/daily-owner-scripts',
     '/api/cron/cleanup-low-quality',
     '/api/cron/freshness-rotation',
     '/api/cron/seo-rerank-weekly',

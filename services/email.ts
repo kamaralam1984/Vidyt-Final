@@ -928,3 +928,136 @@ export async function sendLimitReachedMarketingEmail(
     return false;
   }
 }
+
+/**
+ * Daily Owner Scripts Email — sent every morning by /api/cron/daily-owner-scripts.
+ * Contains 1 Hindi + 1 English Vid YT-tool tutorial script (5 min each) so the
+ * owner can record + post videos that grow Vid YT.
+ */
+export interface DailyScriptPayload {
+  topic: string;
+  hooks: string[];
+  script: string;
+  titles: string[];
+  hashtags: string[];
+  cta: string;
+}
+
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderScriptCard(label: string, color: string, p: DailyScriptPayload): string {
+  const hooks = (p.hooks || [])
+    .map((h, i) => `<li style="margin-bottom:8px;color:#222;font-size:14px;line-height:1.5;">${escapeHtml(h)}</li>`)
+    .join('');
+  const titles = (p.titles || [])
+    .map((t) => `<li style="margin-bottom:6px;color:#222;font-size:13px;line-height:1.5;">${escapeHtml(t)}</li>`)
+    .join('');
+  const hashtags = (p.hashtags || []).map(escapeHtml).join(' ');
+  const scriptHtml = escapeHtml(p.script || '').replace(/\n/g, '<br>');
+  return `
+    <div style="border:1px solid #e5e5e5;border-radius:12px;padding:24px;margin:0 0 24px;background:#ffffff;">
+      <div style="display:inline-block;background:${color};color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;">${escapeHtml(label)}</div>
+      <h2 style="font-size:20px;color:#0f0f0f;margin:0 0 16px;line-height:1.35;">${escapeHtml(p.topic)}</h2>
+
+      <h3 style="font-size:13px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;">Hooks (pick the strongest)</h3>
+      <ul style="padding-left:20px;margin:0 0 16px;">${hooks || '<li>—</li>'}</ul>
+
+      <h3 style="font-size:13px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;">Full 5-min Script</h3>
+      <div style="background:#fafafa;border-radius:8px;padding:18px;font-size:14px;line-height:1.7;color:#1a1a1a;white-space:pre-wrap;">${scriptHtml || '—'}</div>
+
+      <h3 style="font-size:13px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;">Title options</h3>
+      <ul style="padding-left:20px;margin:0 0 16px;">${titles || '<li>—</li>'}</ul>
+
+      <h3 style="font-size:13px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;">Hashtags</h3>
+      <p style="font-size:13px;color:#0066cc;margin:0 0 16px;line-height:1.5;">${hashtags || '—'}</p>
+
+      <h3 style="font-size:13px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;">CTA</h3>
+      <p style="font-size:14px;color:#1a1a1a;margin:0;background:#fff7ed;border-left:3px solid ${color};padding:10px 14px;border-radius:4px;">${escapeHtml(p.cta || 'Try it free at vidyt.com')}</p>
+    </div>`;
+}
+
+function renderScriptText(label: string, p: DailyScriptPayload): string {
+  return [
+    `==== ${label} ====`,
+    `Topic: ${p.topic}`,
+    '',
+    'HOOKS:',
+    ...(p.hooks || []).map((h, i) => `  ${i + 1}. ${h}`),
+    '',
+    'SCRIPT:',
+    p.script || '—',
+    '',
+    'TITLES:',
+    ...(p.titles || []).map((t) => `  • ${t}`),
+    '',
+    `HASHTAGS: ${(p.hashtags || []).join(' ')}`,
+    '',
+    `CTA: ${p.cta || 'Try it free at vidyt.com'}`,
+    '',
+  ].join('\n');
+}
+
+export async function sendDailyOwnerScriptsEmail(
+  to: string,
+  scripts: { hindi: DailyScriptPayload; english: DailyScriptPayload },
+): Promise<boolean> {
+  try {
+    const today = new Date().toLocaleDateString('en-IN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Kolkata',
+    });
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<div style="max-width:720px;margin:0 auto;padding:24px 12px;">
+  <div style="background:linear-gradient(135deg,#FF0000 0%,#7c3aed 100%);color:#fff;padding:28px 24px;border-radius:14px 14px 0 0;text-align:center;">
+    ${getEmailLogoHtml()}
+    <h1 style="margin:14px 0 4px;font-size:24px;font-weight:800;">Today's Vid YT Growth Scripts</h1>
+    <p style="margin:0;font-size:13px;opacity:.9;">${escapeHtml(today)}</p>
+  </div>
+  <div style="background:#ffffff;padding:24px;border-radius:0 0 14px 14px;border:1px solid #e5e5e5;border-top:none;">
+    <p style="margin:0 0 18px;color:#444;font-size:14px;line-height:1.55;">
+      Dono scripts Vid YT ke specific tools ke around bani hain — record karke YouTube pe post karenge to Vid YT ki visibility, sign-ups aur SEO ranking sab grow hogi.
+    </p>
+    ${renderScriptCard('Hindi · 5 min', '#FF0000', scripts.hindi)}
+    ${renderScriptCard('English · 5 min', '#7c3aed', scripts.english)}
+    <div style="text-align:center;margin-top:8px;">
+      <a href="${getEmailBaseUrl()}/dashboard" style="display:inline-block;background:#0f0f0f;color:#fff;text-decoration:none;font-weight:600;font-size:13px;padding:10px 20px;border-radius:8px;">Open Vid YT Dashboard</a>
+    </div>
+    <p style="margin:24px 0 0;color:#888;font-size:11px;text-align:center;line-height:1.5;">
+      Generated by Vid YT's own Script Writer · Topics rotate daily ·
+      Edit the topic pool in <code>app/api/cron/daily-owner-scripts/route.ts</code>
+    </p>
+  </div>
+</div>
+</body></html>`;
+
+    const text = [
+      `TODAY'S VID YT GROWTH SCRIPTS — ${today}`,
+      '',
+      renderScriptText('HINDI · 5 MIN', scripts.hindi),
+      renderScriptText('ENGLISH · 5 MIN', scripts.english),
+      '— Vid YT Daily Scripts',
+    ].join('\n');
+
+    return await sendMail({
+      to,
+      subject: `Vid YT Daily Scripts · ${scripts.hindi.topic.slice(0, 40)}…`,
+      html,
+      text,
+    });
+  } catch (e) {
+    console.error('❌ Daily owner scripts email error:', e);
+    return false;
+  }
+}
