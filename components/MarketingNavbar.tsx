@@ -125,35 +125,34 @@ const MAIN_LINKS = [
 export default function MarketingNavbar() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const { locale, setLocale } = useLocale();
   const { t } = useTranslations();
   const [localeMenuOpen, setLocaleMenuOpen] = useState(false);
   const { authenticated, loading } = useUser();
 
-  const openFeatures = () => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-    setFeaturesOpen(true);
-  };
-
-  const scheduleCloseFeatures = () => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-    }
-    closeTimer.current = setTimeout(() => {
-      setFeaturesOpen(false);
-      closeTimer.current = null;
-    }, 700);
-  };
-
+  // Click-only dropdown: opens on click, closes on outside click, scroll, or Escape.
+  // Hover is intentionally not used so the menu doesn't open accidentally.
   useEffect(() => {
-    const close = () => setFeaturesOpen(false);
-    window.addEventListener('scroll', close);
-    return () => window.removeEventListener('scroll', close);
-  }, []);
+    if (!featuresOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (featuresRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      setFeaturesOpen(false);
+    };
+    const onScroll = () => setFeaturesOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFeaturesOpen(false); };
+    document.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('scroll', onScroll);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [featuresOpen]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-[#050712]/70 backdrop-blur-xl">
@@ -177,9 +176,11 @@ export default function MarketingNavbar() {
           {/* Features with mega dropdown trigger */}
           <button
             type="button"
+            ref={triggerRef}
+            aria-expanded={featuresOpen}
+            aria-haspopup="true"
             className="group flex items-center gap-1 text-sm font-medium text-white/80 transition hover:text-white"
-            onMouseEnter={openFeatures}
-            onMouseLeave={scheduleCloseFeatures}
+            onClick={() => setFeaturesOpen((v) => !v)}
           >
             <span>{t('navbar.features')}</span>
             <ChevronDown
@@ -287,16 +288,11 @@ export default function MarketingNavbar() {
         </button>
       </nav>
 
-      {/* Desktop mega dropdown (Features) */}
+      {/* Desktop mega dropdown (Features) — click-only, not hover */}
       <div
+        ref={featuresRef}
         className="relative hidden lg:block"
-        onMouseEnter={openFeatures}
-        onMouseLeave={scheduleCloseFeatures}
       >
-        {/* invisible bridge — fills the pixel gap between nav and dropdown so mouse doesn't escape */}
-        {featuresOpen && (
-          <div className="absolute -top-12 left-0 right-0 h-12" />
-        )}
         {featuresOpen && (
           <div className="mx-auto flex max-w-6xl justify-center">
             <div
