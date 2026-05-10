@@ -36,7 +36,7 @@ interface AuditIssue {
   fix: string;
 }
 
-interface PerfData { score: number; responseTime: number; lcp: number; fcp: number; cls: number; tbt: number; ttfb: number; pageSize: number; }
+interface PerfData { score: number; responseTime: number; lcp: number; fcp: number; cls: number; tbt: number; ttfb: number; pageSize: number; pagespeedData?: { audited?: boolean; error?: string } | null; }
 
 interface Audit {
   _id: string;
@@ -1125,21 +1125,29 @@ function AuditReport({ audit, expandedIssue, setExpandedIssue }: {
               <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Desktop</span>
               <span className={`ml-auto text-base font-black ${scoreColor(audit.performance.score)}`}>{audit.performance.score}/100</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                { label: 'LCP',           value: `${(audit.performance.lcp / 1000).toFixed(1)}s`,   good: audit.performance.lcp < 2500 && audit.performance.lcp > 0 },
-                { label: 'FCP',           value: `${(audit.performance.fcp / 1000).toFixed(1)}s`,   good: audit.performance.fcp < 1800 && audit.performance.fcp > 0 },
-                { label: 'TBT',           value: `${audit.performance.tbt}ms`,                       good: audit.performance.tbt < 200  },
-                { label: 'CLS',           value: String(audit.performance.cls),                      good: audit.performance.cls < 0.1  },
-                { label: 'TTFB',          value: `${audit.performance.ttfb}ms`,                      good: audit.performance.ttfb < 600 && audit.performance.ttfb > 0 },
-                { label: 'Response Time', value: `${audit.performance.responseTime}ms`,              good: audit.performance.responseTime < 1000 && audit.performance.responseTime > 0 },
-              ] as {label:string;value:string;good:boolean}[]).map(({ label, value, good }) => (
-                <div key={label} className="bg-white/3 rounded-lg p-2.5 text-center">
-                  <div className={`text-sm font-bold ${good ? 'text-emerald-400' : 'text-red-400'}`}>{value}</div>
-                  <div className="text-[10px] text-white/30 mt-0.5">{label}</div>
+            {(() => {
+              const failed = audit.performance.pagespeedData?.audited === false;
+              const sec = (n: number) => failed && n === 0 ? '—' : `${(n / 1000).toFixed(1)}s`;
+              const ms = (n: number) => failed && n === 0 ? '—' : `${n}ms`;
+              const cls = (n: number) => failed && n === 0 ? '—' : String(n);
+              return (
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { label: 'LCP',           value: sec(audit.performance.lcp),  good: audit.performance.lcp < 2500 && audit.performance.lcp > 0, na: failed && audit.performance.lcp === 0 },
+                    { label: 'FCP',           value: sec(audit.performance.fcp),  good: audit.performance.fcp < 1800 && audit.performance.fcp > 0, na: failed && audit.performance.fcp === 0 },
+                    { label: 'TBT',           value: ms(audit.performance.tbt),   good: audit.performance.tbt < 200,                                na: failed && audit.performance.tbt === 0 },
+                    { label: 'CLS',           value: cls(audit.performance.cls),  good: audit.performance.cls < 0.1,                                na: failed && audit.performance.cls === 0 },
+                    { label: 'TTFB',          value: ms(audit.performance.ttfb),  good: audit.performance.ttfb < 600 && audit.performance.ttfb > 0, na: failed && audit.performance.ttfb === 0 },
+                    { label: 'Response Time', value: `${audit.performance.responseTime}ms`, good: audit.performance.responseTime < 1000 && audit.performance.responseTime > 0, na: false },
+                  ] as {label:string;value:string;good:boolean;na:boolean}[]).map(({ label, value, good, na }) => (
+                    <div key={label} className="bg-white/3 rounded-lg p-2.5 text-center">
+                      <div className={`text-sm font-bold ${na ? 'text-white/40' : good ? 'text-emerald-400' : 'text-red-400'}`}>{value}</div>
+                      <div className="text-[10px] text-white/30 mt-0.5">{label}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
 
           {/* Mobile */}
@@ -1151,23 +1159,30 @@ function AuditReport({ audit, expandedIssue, setExpandedIssue }: {
                 {audit.mobile ? `${audit.mobile.score}/100` : '—'}
               </span>
             </div>
-            {audit.mobile ? (
-              <div className="grid grid-cols-2 gap-2">
-                {([
-                  { label: 'LCP',  value: `${(audit.mobile.lcp / 1000).toFixed(1)}s`,  good: audit.mobile.lcp < 2500 && audit.mobile.lcp > 0 },
-                  { label: 'FCP',  value: `${(audit.mobile.fcp / 1000).toFixed(1)}s`,  good: audit.mobile.fcp < 1800 && audit.mobile.fcp > 0 },
-                  { label: 'TBT',  value: `${audit.mobile.tbt}ms`,                      good: audit.mobile.tbt < 200  },
-                  { label: 'CLS',  value: String(audit.mobile.cls),                     good: audit.mobile.cls < 0.1  },
-                  { label: 'TTFB', value: `${audit.mobile.ttfb}ms`,                     good: audit.mobile.ttfb < 600 && audit.mobile.ttfb > 0 },
-                  { label: 'Page Size', value: formatBytes(audit.mobile.pageSize || 0), good: (audit.mobile.pageSize || 0) < 2_000_000 && (audit.mobile.pageSize || 0) > 0 },
-                ] as {label:string;value:string;good:boolean}[]).map(({ label, value, good }) => (
-                  <div key={label} className="bg-white/3 rounded-lg p-2.5 text-center">
-                    <div className={`text-sm font-bold ${good ? 'text-emerald-400' : 'text-red-400'}`}>{value}</div>
-                    <div className="text-[10px] text-white/30 mt-0.5">{label}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
+            {audit.mobile ? (() => {
+              const failed = audit.mobile.pagespeedData?.audited === false;
+              const sec = (n: number) => failed && n === 0 ? '—' : `${(n / 1000).toFixed(1)}s`;
+              const ms = (n: number) => failed && n === 0 ? '—' : `${n}ms`;
+              const cls = (n: number) => failed && n === 0 ? '—' : String(n);
+              const bytes = (n: number) => failed && n === 0 ? '—' : formatBytes(n);
+              return (
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { label: 'LCP',       value: sec(audit.mobile.lcp),                  good: audit.mobile.lcp < 2500 && audit.mobile.lcp > 0,    na: failed && audit.mobile.lcp === 0 },
+                    { label: 'FCP',       value: sec(audit.mobile.fcp),                  good: audit.mobile.fcp < 1800 && audit.mobile.fcp > 0,    na: failed && audit.mobile.fcp === 0 },
+                    { label: 'TBT',       value: ms(audit.mobile.tbt),                   good: audit.mobile.tbt < 200,                              na: failed && audit.mobile.tbt === 0 },
+                    { label: 'CLS',       value: cls(audit.mobile.cls),                  good: audit.mobile.cls < 0.1,                              na: failed && audit.mobile.cls === 0 },
+                    { label: 'TTFB',      value: ms(audit.mobile.ttfb),                  good: audit.mobile.ttfb < 600 && audit.mobile.ttfb > 0,   na: failed && audit.mobile.ttfb === 0 },
+                    { label: 'Page Size', value: bytes(audit.mobile.pageSize || 0),      good: (audit.mobile.pageSize || 0) < 2_000_000 && (audit.mobile.pageSize || 0) > 0, na: failed && (audit.mobile.pageSize || 0) === 0 },
+                  ] as {label:string;value:string;good:boolean;na:boolean}[]).map(({ label, value, good, na }) => (
+                    <div key={label} className="bg-white/3 rounded-lg p-2.5 text-center">
+                      <div className={`text-sm font-bold ${na ? 'text-white/40' : good ? 'text-emerald-400' : 'text-red-400'}`}>{value}</div>
+                      <div className="text-[10px] text-white/30 mt-0.5">{label}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })() : (
               <div className="bg-white/3 rounded-lg p-4 text-center text-xs text-white/40 border border-dashed border-white/10">
                 Mobile metrics not available for this audit.<br />
                 <span className="text-white/25">Re-run the audit to collect both desktop and mobile.</span>

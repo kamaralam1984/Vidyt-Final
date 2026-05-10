@@ -17,6 +17,7 @@ import {
 
 type MonitorData = {
   model?: { version?: string; trainedAt?: string; status?: string; epochs?: number } | null;
+  modelFallback?: boolean;
   totalPredictions: number;
   labeledPredictions?: number;
   support: { autoReplied: number; escalated: number; avgConfidence: number };
@@ -201,7 +202,12 @@ export default function AiMonitoringPage() {
         <div className="space-y-6">
           {/* Top Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <StatCard title="Active Model" value={data?.model?.version || 'N/A'} icon={<Brain className="w-4 h-4 text-red-400" />} />
+            <StatCard
+              title="Active Model"
+              value={data?.model?.version || 'N/A'}
+              icon={<Brain className="w-4 h-4 text-red-400" />}
+              sub={!data?.model ? 'No model trained yet' : data?.modelFallback ? 'Latest ready (no active flag)' : undefined}
+            />
             <StatCard title="Total Predictions" value={String(data?.totalPredictions || 0)} icon={<Activity className="w-4 h-4 text-blue-400" />} />
             <StatCard title="Ground-truth" value={String(data?.labeledPredictions || metrics?.labeledForMetrics || 0)} icon={<CheckCircle2 className="w-4 h-4 text-cyan-400" />} />
             <StatCard
@@ -394,26 +400,36 @@ export default function AiMonitoringPage() {
           {/* Active Model Details */}
           <Panel title="Active Model" icon={<Brain className="w-4 h-4 text-red-400" />}>
             {data?.model ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-[10px] text-[#555] uppercase tracking-wider">Version</p>
-                  <p className="text-lg font-bold text-white mt-1">{data.model.version || 'N/A'}</p>
+              <>
+                {data.modelFallback && (
+                  <div className="mb-4 flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-300">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                      No model is flagged <code className="px-1 bg-amber-500/10 rounded">isActive</code>. Showing the latest <strong>ready</strong> model as a fallback. Use Rollback in the model history to mark one active.
+                    </span>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase tracking-wider">Version</p>
+                    <p className="text-lg font-bold text-white mt-1">{data.model.version || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase tracking-wider">Status</p>
+                    <p className="text-lg font-bold text-emerald-400 mt-1">{data.model.status || 'ready'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase tracking-wider">Epochs</p>
+                    <p className="text-lg font-bold text-white mt-1">{data.model.epochs || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase tracking-wider">Trained At</p>
+                    <p className="text-sm font-medium text-white mt-1">{data.model.trainedAt ? new Date(data.model.trainedAt).toLocaleDateString() : '—'}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] text-[#555] uppercase tracking-wider">Status</p>
-                  <p className="text-lg font-bold text-emerald-400 mt-1">{data.model.status || 'ready'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-[#555] uppercase tracking-wider">Epochs</p>
-                  <p className="text-lg font-bold text-white mt-1">{data.model.epochs || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-[#555] uppercase tracking-wider">Trained At</p>
-                  <p className="text-sm font-medium text-white mt-1">{data.model.trainedAt ? new Date(data.model.trainedAt).toLocaleDateString() : '—'}</p>
-                </div>
-              </div>
+              </>
             ) : (
-              <p className="text-[#666] text-sm">No active model found.</p>
+              <p className="text-[#666] text-sm">No model trained yet. Train a model from the AI training endpoint to see it here.</p>
             )}
           </Panel>
 

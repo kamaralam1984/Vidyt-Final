@@ -172,17 +172,24 @@ async function runPerformanceAudit(url: string, preset: 'desktop' | 'mobile' = '
     const pageBytes = audits?.['total-byte-weight']?.numericValue;
     if (pageBytes) result.pageSize = Math.round(pageBytes);
     result.pagespeedData = {
+      audited: true,
       categories: cats,
       lhr: { fetchTime: lhr.fetchTime, finalUrl: lhr.finalUrl },
     };
-  } catch {
-    // Lighthouse failed — derive score from response time only
-    if (result.responseTime < 200) result.score = 100;
-    else if (result.responseTime < 500) result.score = 92;
-    else if (result.responseTime < 1000) result.score = 78;
-    else if (result.responseTime < 2000) result.score = 55;
-    else if (result.responseTime < 4000) result.score = 35;
-    else result.score = 15;
+  } catch (err: any) {
+    const msg = err?.message ? String(err.message).slice(0, 500) : String(err).slice(0, 500);
+    console.error(`[audit] Lighthouse ${preset} failed for ${url}: ${msg}`);
+    result.pagespeedData = { audited: false, error: msg, preset };
+    // Fallback score is only meaningful for desktop where we measured responseTime.
+    // Mobile has no response-time signal — leaving score at 0 instead of faking 100.
+    if (preset === 'desktop' && result.responseTime > 0) {
+      if (result.responseTime < 200) result.score = 100;
+      else if (result.responseTime < 500) result.score = 92;
+      else if (result.responseTime < 1000) result.score = 78;
+      else if (result.responseTime < 2000) result.score = 55;
+      else if (result.responseTime < 4000) result.score = 35;
+      else result.score = 15;
+    }
   }
 
   return result;
@@ -719,6 +726,26 @@ export async function runAudit(rawUrl: string, includeServer = false): Promise<A
   ]);
 
   const issues = generateIssues(performance, seo, security, server);
+  // Surface Lighthouse failures explicitly — otherwise the dashboard shows 0/N/A
+  // for Core Web Vitals with no explanation.
+  if (performance.pagespeedData?.audited === false) {
+    issues.unshift({
+      category: 'performance',
+      severity: 'critical',
+      title: 'Performance audit could not run (Lighthouse failed)',
+      description: `Lighthouse desktop audit failed: ${performance.pagespeedData.error || 'unknown error'}. Core Web Vitals are unavailable.`,
+      fix: 'On the VPS, install Chrome/Chromium (apt install -y chromium-browser) and verify node_modules/.bin/lighthouse runs. Check pm2 logs for the full error.',
+    });
+  }
+  if (mobile.pagespeedData?.audited === false) {
+    issues.unshift({
+      category: 'performance',
+      severity: 'critical',
+      title: 'Mobile performance audit could not run',
+      description: `Lighthouse mobile audit failed: ${mobile.pagespeedData.error || 'unknown error'}. Mobile metrics are unavailable.`,
+      fix: 'Same root cause as the desktop failure — fix Chrome/Chromium availability on the VPS.',
+    });
+  }
   // Overall score uses desktop perf (primary), seo, security
   const overallScore = Math.round((performance.score + seo.score + security.score) / 3);
 

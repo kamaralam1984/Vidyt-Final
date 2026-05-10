@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const cached = await getCacheJSON<any>(cacheKey);
     if (cached) return NextResponse.json(cached);
 
-    const [activeModel, totalPredictions, labeledPredictions, supportStats, queueStats, recentModels] =
+    let [activeModel, totalPredictions, labeledPredictions, supportStats, queueStats, recentModels] =
       await Promise.all([
       AIModelVersion.findOne({ isActive: true }).sort({ createdAt: -1 }).lean(),
       ViralPrediction.countDocuments({}),
@@ -45,6 +45,19 @@ export async function GET(request: Request) {
       AIModelVersion.find({}).sort({ createdAt: -1 }).limit(10).lean(),
     ]);
 
+    // Fallback: if no model is flagged isActive (training race / manual reset),
+    // show the most recent ready model so the dashboard isn't blank.
+    let modelFallback = false;
+    if (!activeModel) {
+      const latestReady = await AIModelVersion.findOne({ status: 'ready' })
+        .sort({ createdAt: -1 })
+        .lean();
+      if (latestReady) {
+        activeModel = latestReady;
+        modelFallback = true;
+      }
+    }
+
     const confidenceDistribution = await Ticket.aggregate([
       {
         $bucket: {
@@ -59,6 +72,7 @@ export async function GET(request: Request) {
     const payload = {
       success: true,
       model: activeModel || null,
+      modelFallback,
       totalPredictions,
       labeledPredictions,
       support: supportStats[0] || { autoReplied: 0, escalated: 0, avgConfidence: 0 },
