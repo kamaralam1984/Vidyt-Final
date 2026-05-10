@@ -621,3 +621,89 @@ html[dir="rtl"] aside {
 [data-theme="light"] a:hover {
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
+
+/* ───────────────────────────────────────────────────────────
+   Opacity-modified Tailwind classes (text-white/60, bg-white/5,
+   border-white/10 …) render fine in dark mode but become invisible
+   in light mode (white-on-white). Map them to navy-tinted neutrals.
+   ─────────────────────────────────────────────────────────── */
+[data-theme="light"] .text-white\/30,
+[data-theme="light"] .text-white\/40,
+[data-theme="light"] .text-white\/45,
+[data-theme="light"] .text-white\/50 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="light"] .text-white\/55,
+[data-theme="light"] .text-white\/60,
+[data-theme="light"] .text-white\/65,
+[data-theme="light"] .text-white\/70,
+[data-theme="light"] .text-white\/75,
+[data-theme="light"] .text-white\/80,
+[data-theme="light"] .text-white\/85,
+[data-theme="light"] .text-white\/90,
+[data-theme="light"] .text-white\/95 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .bg-white\/3,
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/8,
+[data-theme="light"] .bg-white\/10,
+[data-theme="light"] .bg-white\/12,
+[data-theme="light"] .bg-white\/15,
+[data-theme="light"] .bg-white\/20 {
+  background-color: rgba(11, 31, 74, 0.04) !important;
+}
+
+[data-theme="light"] .bg-white\/\[0\.03\],
+[data-theme="light"] .bg-white\/\[0\.04\],
+[data-theme="light"] .bg-white\/\[0\.05\],
+[data-theme="light"] .bg-white\/\[0\.06\],
+[data-theme="light"] .bg-white\/\[0\.08\] {
+  background-color: rgba(11, 31, 74, 0.04) !important;
+}
+
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/8,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/12,
+[data-theme="light"] .border-white\/15,
+[data-theme="light"] .border-white\/20,
+[data-theme="light"] .border-white\/\[0\.06\],
+[data-theme="light"] .border-white\/\[0\.08\],
+[data-theme="light"] .border-white\/\[0\.1\] {
+  border-color: var(--border-primary) !important;
+}
+
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="light"] .hover\:bg-white\/10:hover,
+[data-theme="light"] .hover\:bg-white\/15:hover,
+[data-theme="light"] .hover\:bg-white\/20:hover {
+  background-color: rgba(30, 58, 138, 0.06) !important;
+}
+
+[data-theme="light"] .hover\:text-white:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Light/medium red text (used as accent labels) → navy in light mode so the
+   white + navy rule holds. */
+[data-theme="light"] .text-red-300,
+[data-theme="light"] .text-red-400,
+[data-theme="light"] .text-red-500 {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] .text-pink-300,
+[data-theme="light"] .text-pink-400,
+[data-theme="light"] .text-rose-300,
+[data-theme="light"] .text-rose-400 {
+  color: var(--accent) !important;
+}
+
+/* Hover red → navy hover */
+[data-theme="light"] .group:hover .group-hover\:text-red-400,
+[data-theme="light"] .hover\:text-red-400:hover {
+  color: var(--accent-hover) !important;
+}
