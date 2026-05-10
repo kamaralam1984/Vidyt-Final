@@ -32,8 +32,10 @@ export interface SeoCategory {
 /** Per-category daily creation cap. Owner-locked at 3. */
 export const PER_CATEGORY_DAILY = 3;
 
-/** Global daily creation cap. Owner-locked at 100 (anti-spam ceiling). */
-export const GLOBAL_DAILY_CAP = 100;
+/** Global daily creation cap. Bumped to 200 — quality gate (qualityScorer
+ *  ≥ MIN_AUTO_CREATE_QUALITY) still rejects thin pages, so the ceiling is
+ *  bandwidth, not quality. 200/day → ~73k pages/year compounding. */
+export const GLOBAL_DAILY_CAP = 200;
 
 /**
  * Active categories. Add/remove freely — rotation engine adapts.
