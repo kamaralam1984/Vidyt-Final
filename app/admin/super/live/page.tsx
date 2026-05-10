@@ -940,31 +940,8 @@ export default function LivePage() {
       </div>
 
       {/* ══════════════════ MARKETING EMAILS ══════════════════ */}
-      <div className="bg-[#0e0e0e] border border-white/[0.07] rounded-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Mail className="w-4 h-4 text-amber-400" />
-          <h3 className="text-sm font-semibold text-white">Automated Marketing Emails</h3>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: 'Welcome Emails', desc: 'Sent to new users within 24h', color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: CheckCircle },
-            { label: 'Feature Drips', desc: '5-email sequence for free users', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: Layers },
-            { label: 'Upgrade Nudges', desc: 'Free users → paid plan', color: 'text-amber-400', bg: 'bg-amber-500/10', icon: ArrowUp },
-            { label: 'Premium Upgrades', desc: 'Starter/Pro → higher tier', color: 'text-violet-400', bg: 'bg-violet-500/10', icon: Target },
-          ].map(({ label, desc, color, bg, icon: Icon }, i) => (
-            <div key={i} className="bg-white/[0.02] border border-white/5 rounded-xl p-4 hover:border-white/10 transition-colors">
-              <div className={`w-7 h-7 rounded-lg ${bg} flex items-center justify-center mb-3`}>
-                <Icon className={`w-3.5 h-3.5 ${color}`} />
-              </div>
-              <p className={`text-xs font-semibold ${color}`}>{label}</p>
-              <p className="text-[10px] text-white/30 mt-1 leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-[11px] text-white/15 mt-4">
-          Triggered via <code className="text-white/25">/api/cron/marketing-emails</code> · Free users receive drip emails every 2 days · Paid users get upgrade prompts after 14 days
-        </p>
-      </div>
+      <MarketingEmailsPanel />
+
 
       {/* ══════════════════ LIVE TRACKER TABLE ══════════════════ */}
       <LiveTracker
@@ -973,6 +950,132 @@ export default function LivePage() {
         loading={loading}
         isLive={isSocketLive}
       />
+    </div>
+  );
+}
+
+// ─── Marketing Emails Panel ───────────────────────────────────────
+// Fetches /api/admin/super/analytics/marketing-emails-stats every 60s and
+// renders the four buckets with real counts + last-sent timestamps. The
+// panel doubles as a health check: if "Last cron run" is older than a few
+// hours, the cron job has stopped firing.
+type EmailBucketKey = 'welcome' | 'drip' | 'upgradeNudge' | 'upgradePremium';
+interface BucketStat { total: number; last7d: number; last24h: number; failed: number; lastSentAt: string | null }
+interface EmailStats {
+  stats: Record<EmailBucketKey, BucketStat>;
+  totals: { total: number; last7d: number; last24h: number; failed: number };
+  lastRunAt: string | null;
+  cronConfigured: boolean;
+}
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return 'Never';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60_000) return 'Just now';
+  if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
+  return `${Math.round(diff / 86_400_000)}d ago`;
+}
+
+function MarketingEmailsPanel() {
+  const [data, setData] = useState<EmailStats | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await axios.get('/api/admin/super/analytics/marketing-emails-stats', { headers: getAuthHeaders() });
+        if (alive) { setData(res.data); setError(''); }
+      } catch (e: any) {
+        if (alive) setError(e?.response?.data?.error || e.message || 'Failed to load');
+      }
+    };
+    load();
+    const t = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+
+  const buckets: { key: EmailBucketKey; label: string; desc: string; color: string; bg: string; icon: any }[] = [
+    { key: 'welcome',         label: 'Welcome Emails',    desc: 'Sent within 24h of signup',      color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: CheckCircle },
+    { key: 'drip',            label: 'Feature Drips',     desc: '5-email sequence · every 2 days', color: 'text-blue-400',    bg: 'bg-blue-500/10',    icon: Layers },
+    { key: 'upgradeNudge',    label: 'Upgrade Nudges',    desc: 'Free → paid plan',                color: 'text-amber-400',   bg: 'bg-amber-500/10',   icon: ArrowUp },
+    { key: 'upgradePremium',  label: 'Premium Upgrades',  desc: 'Starter/Pro → higher tier',       color: 'text-violet-400',  bg: 'bg-violet-500/10',  icon: Target },
+  ];
+
+  // "Stale" if last run was over 12h ago (cron ought to fire every 6h).
+  const lastRunMs = data?.lastRunAt ? Date.now() - new Date(data.lastRunAt).getTime() : null;
+  const cronStale = lastRunMs !== null && lastRunMs > 12 * 3_600_000;
+  const cronHealthLabel = !data
+    ? 'Loading…'
+    : !data.lastRunAt
+      ? 'No emails sent yet'
+      : cronStale
+        ? `Stale · last run ${timeAgo(data.lastRunAt)}`
+        : `Healthy · last run ${timeAgo(data.lastRunAt)}`;
+  const cronHealthTone = !data?.lastRunAt
+    ? 'text-white/40 border-white/10 bg-white/[0.02]'
+    : cronStale
+      ? 'text-red-300 border-red-500/30 bg-red-500/10'
+      : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10';
+
+  return (
+    <div className="bg-[#0e0e0e] border border-white/[0.07] rounded-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] p-6">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Mail className="w-4 h-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-white">Automated Marketing Emails</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          {data && (
+            <span className="text-[10px] text-white/40 font-mono">
+              7d: <span className="text-white">{data.totals.last7d}</span> · 24h: <span className="text-white">{data.totals.last24h}</span>
+              {data.totals.failed > 0 && <> · failed: <span className="text-red-400">{data.totals.failed}</span></>}
+            </span>
+          )}
+          <span className={`text-[10px] px-2 py-1 rounded-full border ${cronHealthTone}`}>
+            {cronHealthLabel}
+          </span>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-3 p-2 bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {buckets.map(({ key, label, desc, color, bg, icon: Icon }) => {
+          const s = data?.stats?.[key];
+          return (
+            <div key={key} className="bg-white/[0.02] border border-white/5 rounded-xl p-4 hover:border-white/10 transition-colors">
+              <div className="flex items-start justify-between mb-3">
+                <div className={`w-7 h-7 rounded-lg ${bg} flex items-center justify-center`}>
+                  <Icon className={`w-3.5 h-3.5 ${color}`} />
+                </div>
+                <span className={`text-2xl font-black ${color}`}>{s?.total ?? '—'}</span>
+              </div>
+              <p className={`text-xs font-semibold ${color}`}>{label}</p>
+              <p className="text-[10px] text-white/30 mt-1 leading-relaxed">{desc}</p>
+              <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-white/40 font-mono">
+                <span>7d: <span className="text-white/70">{s?.last7d ?? 0}</span></span>
+                <span title={s?.lastSentAt || ''}>{timeAgo(s?.lastSentAt ?? null)}</span>
+              </div>
+              {(s?.failed ?? 0) > 0 && (
+                <p className="mt-1 text-[10px] text-red-400 font-mono">{s?.failed} failed</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[11px] text-white/15 mt-4">
+        Triggered via <code className="text-white/25">/api/cron/marketing-emails?secret=$CRON_SECRET</code>
+        {data && !data.cronConfigured && (
+          <span className="text-amber-400 ml-2">⚠ CRON_SECRET not set in env</span>
+        )}
+      </p>
     </div>
   );
 }
