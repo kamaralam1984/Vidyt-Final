@@ -64,7 +64,10 @@ function makeDefaultIdempotencyKey(queueName: string, payload: EnqueuePayload): 
       })
     )
     .digest('hex');
-  return `${queueName}:${payload.jobType}:${payload.userId ?? 'anon'}:${hash}`;
+  // BullMQ rejects custom jobIds containing ':' (collides with internal Redis
+  // key separators). Use '_' so the key stays stable across the existing
+  // queueName / jobType / userId triple without changing dedupe semantics.
+  return `${queueName}_${payload.jobType}_${payload.userId ?? 'anon'}_${hash}`;
 }
 
 /**
