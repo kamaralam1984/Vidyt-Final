@@ -91,7 +91,10 @@ function YouTubeLiveSEOContent() {
   const [chinkiMessages, setChinkiMessages] = useState<{ role: 'user' | 'chinki'; text: string }[]>([]);
   const [chinkiInput, setChinkiInput] = useState('');
   const [chinkiLoading, setChinkiLoading] = useState(false);
-  const [chinkiPanelOpen, setChinkiPanelOpen] = useState(true);
+  // Default closed so the form below isn't covered. Last user choice restored from localStorage.
+  const [chinkiPanelOpen, setChinkiPanelOpen] = useState(false);
+  const [chinkiCopiedIdx, setChinkiCopiedIdx] = useState<number | null>(null);
+  const chinkiScrollRef = useRef<HTMLDivElement | null>(null);
   const [videoAnalyzing, setVideoAnalyzing] = useState(false);
   const [videoSuggestions, setVideoSuggestions] = useState<{ title: string; description: string; keywords: string[]; hashtags: string[] } | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -1083,18 +1086,29 @@ function YouTubeLiveSEOContent() {
     }
   };
 
-  const chinkiWelcomed = useRef(false);
+  // Restore panel-open preference once on mount (per-browser, persists across visits)
   useEffect(() => {
-    if (allowed && !chinkiWelcomed.current) {
-      chinkiWelcomed.current = true;
-      setChinkiMessages([
-        {
-          role: 'chinki',
-          text: t('yt.seo.chinki.welcome'),
-        },
-      ]);
-    }
-  }, [allowed]);
+    try {
+      if (window.localStorage.getItem('chinki_panel_open') === '1') {
+        setChinkiPanelOpen(true);
+      }
+    } catch { /* storage may be blocked — ignore */ }
+  }, []);
+
+  // Persist panel state on every toggle
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('chinki_panel_open', chinkiPanelOpen ? '1' : '0');
+    } catch { /* ignore */ }
+  }, [chinkiPanelOpen]);
+
+  // Auto-scroll to bottom when new messages arrive or thinking starts
+  useEffect(() => {
+    chinkiScrollRef.current?.scrollTo({
+      top: chinkiScrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, [chinkiMessages, chinkiLoading]);
 
   const breakdownChartData = seoData?.breakdown
     ? Object.entries(seoData.breakdown).map(([name, v]) => ({ name: name.replace(/([A-Z])/g, ' $1').trim(), score: v.score }))
@@ -2401,82 +2415,156 @@ function YouTubeLiveSEOContent() {
             </motion.div>
           </div>
 
-          {/* Chinki AI — minimize/slide + live guidance */}
+          {/* Chinki AI — click-only chat assistant. Defaults closed; remembers user preference. */}
           {(!loadingFlags && sectionFlags.yt_seo_chinki !== false) && (
             <AnimatePresence>
               {chinkiPanelOpen ? (
                 <motion.div
                   key="chinki-panel"
-                  initial={{ opacity: 0, x: 80 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 80 }}
-                  transition={{ type: 'tween', duration: 0.25 }}
-                  className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-2rem)] bg-[#181818] border border-[#212121] rounded-xl shadow-xl flex flex-col max-h-[420px] z-50"
+                  initial={{ opacity: 0, x: 60, y: 20 }}
+                  animate={{ opacity: 1, x: 0, y: 0 }}
+                  exit={{ opacity: 0, x: 60, y: 20 }}
+                  transition={{ type: 'tween', duration: 0.22 }}
+                  className="fixed bottom-6 right-6 w-[420px] max-w-[calc(100vw-1.5rem)] bg-gradient-to-br from-[#181818] to-[#0F0F0F] border border-white/10 rounded-2xl shadow-2xl shadow-black/60 flex flex-col h-[min(560px,calc(100vh-3rem))] z-50"
+                  role="dialog"
+                  aria-label="Chinki AI assistant"
                 >
-                  <div className="p-3 border-b border-[#212121] flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-10 h-10 rounded-full bg-[#FF0000]/20 flex items-center justify-center flex-shrink-0">
-                        <MessageCircle className="w-5 h-5 text-[#FF0000]" />
+                  {/* Header */}
+                  <div className="p-3 border-b border-white/10 flex items-center justify-between gap-2 bg-gradient-to-r from-red-500/10 via-pink-500/5 to-transparent rounded-t-2xl">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-500/30">
+                        <Sparkles className="w-5 h-5 text-white" />
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#181818]" aria-hidden />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-white">Chinki</p>
-                        <p className="text-xs text-[#888]">{t('yt.seo.chinki.subtitle')}</p>
+                        <p className="font-semibold text-white text-sm leading-tight">Chinki AI</p>
+                        <p className="text-[11px] text-white/50 leading-tight truncate">{t('yt.seo.chinki.subtitle')}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setChinkiPanelOpen(false)}
-                      className="p-2 rounded-lg hover:bg-[#212121] text-[#888] hover:text-white transition flex-shrink-0"
-                      title="Minimize / hide panel"
-                    >
-                      <ChevronDown className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {chinkiMessages.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => { setChinkiMessages([]); setChinkiCopiedIdx(null); }}
+                          className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
+                          title="Clear chat"
+                          aria-label="Clear chat"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setChinkiPanelOpen(false)}
+                        className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
+                        title="Minimize"
+                        aria-label="Minimize Chinki"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[180px]">
+
+                  {/* Messages */}
+                  <div ref={chinkiScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    {chinkiMessages.length === 0 && !chinkiLoading && (
+                      <div className="space-y-3">
+                        <div className="flex justify-start">
+                          <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-white/[0.06] border border-white/10 px-3 py-2.5 text-sm text-white/85 leading-relaxed">
+                            {t('yt.seo.chinki.welcome')}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {[
+                            'Suggest a viral title',
+                            'Improve my description',
+                            'Best hashtags for my niche',
+                            'How to score 10/10 thumbnail',
+                          ].map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setChinkiInput(s)}
+                              className="text-[11px] px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-white/70 hover:text-white hover:bg-white/[0.08] hover:border-white/20 transition"
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {chinkiMessages.map((m, i) => (
                       <div
                         key={i}
-                        className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        className={`flex group ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div
-                          className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${m.role === 'user'
-                            ? 'bg-[#FF0000] text-white'
-                            : 'bg-[#212121] text-[#CCC]'
-                            }`}
-                        >
+                        <div className={`relative max-w-[85%] ${m.role === 'user'
+                          ? 'rounded-2xl rounded-tr-sm bg-gradient-to-br from-red-500 to-red-600 text-white'
+                          : 'rounded-2xl rounded-tl-sm bg-white/[0.06] border border-white/10 text-white/90'
+                        } px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words`}>
                           {m.text}
+                          {m.role === 'chinki' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(m.text).then(() => {
+                                  setChinkiCopiedIdx(i);
+                                  setTimeout(() => setChinkiCopiedIdx((cur) => (cur === i ? null : cur)), 1500);
+                                });
+                              }}
+                              className="absolute -top-2 -right-2 p-1 rounded-md bg-[#181818] border border-white/15 text-white/60 hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
+                              title="Copy"
+                              aria-label="Copy message"
+                            >
+                              {chinkiCopiedIdx === i ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
+
                     {chinkiLoading && (
-                      <div className="flex justify-start">
-                        <div className="bg-[#212121] rounded-lg px-3 py-2 text-sm text-[#888]">{t('yt.seo.chinki.thinking')}</div>
+                      <div className="flex justify-start" aria-live="polite" aria-label={t('yt.seo.chinki.thinking')}>
+                        <div className="rounded-2xl rounded-tl-sm bg-white/[0.06] border border-white/10 px-3 py-2.5">
+                          <div className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:-0.3s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:-0.15s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-                  <div className="p-3 border-t border-[#212121] flex gap-2">
+
+                  {/* Input */}
+                  <div className="p-3 border-t border-white/10 flex gap-2 items-end bg-black/20 rounded-b-2xl">
                     <input
                       value={chinkiInput}
                       onChange={(e) => setChinkiInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendChinkiMessage()}
                       placeholder={t('yt.seo.chinki.placeholder')}
-                      className="flex-1 px-3 py-2 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] text-sm focus:ring-2 focus:ring-[#FF0000]"
+                      disabled={chinkiLoading}
+                      aria-label="Ask Chinki"
+                      className="flex-1 px-3 py-2.5 bg-[#0F0F0F] border border-white/10 rounded-xl text-white placeholder-white/30 text-sm focus:outline-none focus:border-red-500/60 focus:ring-2 focus:ring-red-500/20 disabled:opacity-50 transition"
                     />
                     <button
                       type="button"
                       onClick={speakChinki}
-                      className="p-2 rounded-lg bg-[#212121] hover:bg-[#333] text-[#AAA]"
+                      className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/70 hover:text-white transition flex-shrink-0"
                       title={t('yt.seo.chinki.speakTitle')}
+                      aria-label={t('yt.seo.chinki.speakTitle')}
                     >
-                      <Volume2 className="w-5 h-5" />
+                      <Volume2 className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={sendChinkiMessage}
                       disabled={chinkiLoading || !chinkiInput.trim()}
-                      className="p-2 rounded-lg bg-[#FF0000] hover:bg-[#CC0000] text-white disabled:opacity-50"
+                      className="p-2.5 rounded-xl bg-gradient-to-br from-red-500 to-pink-500 hover:from-red-400 hover:to-pink-400 text-white disabled:opacity-40 disabled:cursor-not-allowed transition flex-shrink-0 shadow-lg shadow-red-500/30"
+                      aria-label="Send"
                     >
-                      <Send className="w-5 h-5" />
+                      <Send className="w-4 h-4" />
                     </button>
                   </div>
                 </motion.div>
@@ -2484,16 +2572,19 @@ function YouTubeLiveSEOContent() {
                 <motion.button
                   key="chinki-fab"
                   type="button"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ type: 'tween', duration: 0.2 }}
+                  initial={{ opacity: 0, scale: 0.85, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.85, y: 20 }}
+                  transition={{ type: 'spring', stiffness: 280, damping: 20 }}
                   onClick={() => setChinkiPanelOpen(true)}
-                  className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-[#FF0000] hover:bg-[#CC0000] text-white rounded-full shadow-lg font-medium"
+                  className="fixed bottom-6 right-6 z-50 group flex items-center gap-2 pl-2 pr-4 py-2 bg-gradient-to-br from-red-500 to-pink-500 hover:from-red-400 hover:to-pink-400 text-white rounded-full shadow-2xl shadow-red-500/40 hover:shadow-red-500/60 hover:scale-105 transition-all font-medium"
+                  aria-label="Open Chinki AI assistant"
                 >
-                  <MessageCircle className="w-5 h-5" />
-                  <span>Chinki</span>
-                  <ChevronUp className="w-4 h-4 opacity-80" />
+                  <span className="relative flex w-9 h-9 rounded-full bg-white/20 items-center justify-center">
+                    <Sparkles className="w-4 h-4" />
+                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-red-500 animate-pulse" aria-hidden />
+                  </span>
+                  <span className="text-sm">Ask Chinki</span>
                 </motion.button>
               )}
             </AnimatePresence>
