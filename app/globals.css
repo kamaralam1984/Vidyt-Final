@@ -707,3 +707,111 @@ html[dir="rtl"] aside {
 [data-theme="light"] .hover\:text-red-400:hover {
   color: var(--accent-hover) !important;
 }
+
+/* ───────────────────────────────────────────────────────────
+   Missed light-tone text classes (full audit pass).
+   Caught earlier: #AAAAAA, #888, #666, #555, #444, #333, #CCC, #717171.
+   Adds: short-form #AAA, full-form #CCCCCC/#B0B0B0/#DDD/#999/#777,
+   text-gray-{100,200,300} that previously had no override.
+   ─────────────────────────────────────────────────────────── */
+[data-theme="light"] .text-\[\#AAA\],
+[data-theme="light"] .text-\[\#aaa\],
+[data-theme="light"] .text-\[\#A0A0A0\],
+[data-theme="light"] .text-\[\#a0a0a0\],
+[data-theme="light"] .text-\[\#B0B0B0\],
+[data-theme="light"] .text-\[\#b0b0b0\],
+[data-theme="light"] .text-\[\#CCCCCC\],
+[data-theme="light"] .text-\[\#cccccc\],
+[data-theme="light"] .text-\[\#DDDDDD\],
+[data-theme="light"] .text-\[\#dddddd\],
+[data-theme="light"] .text-\[\#DDD\],
+[data-theme="light"] .text-\[\#ddd\],
+[data-theme="light"] .text-\[\#D0D0D0\],
+[data-theme="light"] .text-\[\#d0d0d0\],
+[data-theme="light"] .text-\[\#EEE\],
+[data-theme="light"] .text-\[\#eee\],
+[data-theme="light"] .text-\[\#EEEEEE\],
+[data-theme="light"] .text-\[\#eeeeee\] {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .text-\[\#999\],
+[data-theme="light"] .text-\[\#999999\],
+[data-theme="light"] .text-\[\#777\],
+[data-theme="light"] .text-\[\#777777\],
+[data-theme="light"] .text-\[\#909090\],
+[data-theme="light"] .text-\[\#A8A8A8\],
+[data-theme="light"] .text-\[\#a8a8a8\] {
+  color: var(--text-muted) !important;
+}
+
+/* Tailwind theme grays — light shades */
+[data-theme="light"] .text-gray-100,
+[data-theme="light"] .text-gray-200,
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200,
+[data-theme="light"] .text-zinc-100,
+[data-theme="light"] .text-zinc-200,
+[data-theme="light"] .text-neutral-100,
+[data-theme="light"] .text-neutral-200 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .text-gray-300,
+[data-theme="light"] .text-slate-300,
+[data-theme="light"] .text-zinc-300,
+[data-theme="light"] .text-neutral-300 {
+  color: var(--text-muted) !important;
+}
+
+/* Black-with-opacity (mirror image of white-with-opacity) — these stay black
+   on dark mode but on light bg they become very subtle; that's actually fine,
+   but if a designer used text-black/X for emphasis it'll be unreadable on the
+   navy tinted text. Bump to primary text. */
+[data-theme="light"] .text-black\/30,
+[data-theme="light"] .text-black\/40,
+[data-theme="light"] .text-black\/50,
+[data-theme="light"] .text-black\/60,
+[data-theme="light"] .text-black\/70,
+[data-theme="light"] .text-black\/80,
+[data-theme="light"] .text-black\/90 {
+  color: var(--text-primary) !important;
+}
+
+/* Gradient text stops on tailwind theme colors that go too pale on white.
+   These are commonly used in `bg-gradient-to-r from-X-300 via-Y-300 to-Z-300
+   bg-clip-text text-transparent` patterns. Override the from/to stops to
+   navy-friendly equivalents so the gradient still pops. */
+[data-theme="light"] [class*="from-red-300"],
+[data-theme="light"] [class*="from-pink-300"],
+[data-theme="light"] [class*="from-rose-300"],
+[data-theme="light"] [class*="from-orange-300"],
+[data-theme="light"] [class*="from-amber-300"],
+[data-theme="light"] [class*="from-yellow-300"],
+[data-theme="light"] [class*="from-emerald-300"],
+[data-theme="light"] [class*="from-teal-300"],
+[data-theme="light"] [class*="from-cyan-300"],
+[data-theme="light"] [class*="from-blue-300"],
+[data-theme="light"] [class*="from-indigo-300"],
+[data-theme="light"] [class*="from-violet-300"],
+[data-theme="light"] [class*="from-purple-300"],
+[data-theme="light"] [class*="from-fuchsia-300"] {
+  --tw-gradient-from: var(--accent) var(--tw-gradient-from-position);
+}
+
+[data-theme="light"] [class*="to-red-300"],
+[data-theme="light"] [class*="to-pink-300"],
+[data-theme="light"] [class*="to-rose-300"],
+[data-theme="light"] [class*="to-orange-300"],
+[data-theme="light"] [class*="to-amber-300"],
+[data-theme="light"] [class*="to-yellow-300"],
+[data-theme="light"] [class*="to-emerald-300"],
+[data-theme="light"] [class*="to-teal-300"],
+[data-theme="light"] [class*="to-cyan-300"],
+[data-theme="light"] [class*="to-blue-300"],
+[data-theme="light"] [class*="to-indigo-300"],
+[data-theme="light"] [class*="to-violet-300"],
+[data-theme="light"] [class*="to-purple-300"],
+[data-theme="light"] [class*="to-fuchsia-300"] {
+  --tw-gradient-to: var(--accent-gold) var(--tw-gradient-to-position);
+}
