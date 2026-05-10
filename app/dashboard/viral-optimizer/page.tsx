@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import NextImage from 'next/image';
 import AuthGuard from '@/components/AuthGuard';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -26,8 +26,12 @@ import {
   TrendingUp,
   Target,
   Sparkles,
+  Dna,
+  Flame,
+  Rocket,
 } from 'lucide-react';
 import { useTranslations } from '@/context/translations';
+import { ARCHETYPES, classifyTitle, computeOutlierIndex, analyzeHook } from '@/lib/viralHeuristics';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -102,6 +106,8 @@ export default function ViralOptimizerPage() {
   }, []);
 
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [ctrData, setCtrData] = useState<{
     ctrScore: number;
     ctrPercent: string;
@@ -145,62 +151,76 @@ export default function ViralOptimizerPage() {
   }, []);
 
   const runAnalysis = async () => {
+    if (!title.trim() && !description.trim() && !keywords.trim() && !script.trim() && !thumbnailFile && !thumbnailPreview) {
+      setAnalyzeError('Add at least a title, script, or thumbnail before analyzing.');
+      return;
+    }
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     setAnalyzing(true);
+    setAnalyzeError(null);
     setCtrData(null);
     setRetentionData(null);
     setEngagementData(null);
     setTitleOptimizerData(null);
     setThumbnailData(null);
-    try {
-      let thumbScore = 70,
-        thumbContrast = 70,
-        faceDetection = 0,
-        textReadability = 70;
+    const headers = getAuthHeaders();
+    const cfg = { headers, signal: ctrl.signal };
 
-      if (thumbnailFile || thumbnailPreview) {
+    let thumbScore = 70, thumbContrast = 70, faceDetection = 0, textReadability = 70;
+    let thumbFailed = false;
+    if (thumbnailFile || thumbnailPreview) {
+      try {
         const fd = new FormData();
         if (thumbnailFile) fd.append('thumbnail', thumbnailFile);
         else if (thumbnailPreview) {
           const blob = await (await fetch(thumbnailPreview)).blob();
           fd.append('thumbnail', blob, 'thumb.jpg');
         }
-        const thumbRes = await axios.post('/api/viral/thumbnail-score', fd, { headers: getAuthHeaders() });
-        const t = thumbRes.data;
-        setThumbnailData(t);
-        thumbScore = t.score ?? 70;
-        thumbContrast = t.colorContrast ?? 70;
-        faceDetection = t.facePresence ?? 0;
-        textReadability = t.textReadability ?? 70;
+        const thumbRes = await axios.post('/api/viral/thumbnail-score', fd, cfg);
+        const tData = thumbRes.data;
+        setThumbnailData(tData);
+        thumbScore = tData.score ?? 70;
+        thumbContrast = tData.colorContrast ?? 70;
+        faceDetection = tData.facePresence ?? 0;
+        textReadability = tData.textReadability ?? 70;
+      } catch (e: any) {
+        if (e?.name !== 'CanceledError' && e?.name !== 'AbortError') thumbFailed = true;
       }
-
-      const [ctrRes, retRes, engRes, titleRes] = await Promise.all([
-        axios.post(
-          '/api/viral/ctr',
-          {
-            title,
-            keywords,
-            description,
-            thumbnailScore: thumbScore,
-            thumbnailContrast: thumbContrast,
-            faceDetection,
-            textReadability,
-          },
-          { headers: getAuthHeaders() }
-        ),
-        axios.post('/api/viral/retention', { script, title }, { headers: getAuthHeaders() }),
-        axios.post('/api/viral/engagement', { description, keywords }, { headers: getAuthHeaders() }),
-        axios.post('/api/viral/title-optimizer', { title, keywords }, { headers: getAuthHeaders() }),
-      ]);
-
-      setCtrData(ctrRes.data);
-      setRetentionData(retRes.data);
-      setEngagementData(engRes.data);
-      setTitleOptimizerData(titleRes.data);
-    } catch (e) {
-      console.error('Analysis error:', e);
-    } finally {
-      setAnalyzing(false);
     }
+
+    const calls = [
+      { key: 'ctr', label: 'CTR', p: axios.post('/api/viral/ctr', { title, keywords, description, thumbnailScore: thumbScore, thumbnailContrast: thumbContrast, faceDetection, textReadability }, cfg) },
+      { key: 'retention', label: 'Retention', p: axios.post('/api/viral/retention', { script, title }, cfg) },
+      { key: 'engagement', label: 'Engagement', p: axios.post('/api/viral/engagement', { description, keywords }, cfg) },
+      { key: 'title', label: 'Title A/B', p: axios.post('/api/viral/title-optimizer', { title, keywords }, cfg) },
+    ];
+
+    const results = await Promise.allSettled(calls.map((c) => c.p));
+    if (ctrl.signal.aborted) { setAnalyzing(false); return; }
+
+    const failed: string[] = [];
+    results.forEach((r, i) => {
+      const { key, label } = calls[i];
+      if (r.status === 'fulfilled') {
+        if (key === 'ctr') setCtrData(r.value.data);
+        else if (key === 'retention') setRetentionData(r.value.data);
+        else if (key === 'engagement') setEngagementData(r.value.data);
+        else if (key === 'title') setTitleOptimizerData(r.value.data);
+      } else if (r.reason?.name !== 'CanceledError' && r.reason?.name !== 'AbortError') {
+        failed.push(label);
+      }
+    });
+    if (thumbFailed) failed.unshift('Thumbnail');
+
+    if (failed.length === calls.length + (thumbFailed ? 1 : 0)) {
+      setAnalyzeError('All predictions failed — check your connection and try again.');
+    } else if (failed.length) {
+      setAnalyzeError(`Partial result — ${failed.join(', ')} unavailable. Other cards updated.`);
+    }
+
+    setAnalyzing(false);
   };
 
   const handleUpdateYoutube = async () => {
@@ -249,7 +269,20 @@ export default function ViralOptimizerPage() {
 
   const viralColor = viralScore != null ? (viralScore >= 70 ? '#22c55e' : viralScore >= 40 ? '#eab308' : '#ef4444') : '#666';
 
+  const titleDna = useMemo(() => classifyTitle(title), [title]);
+  const outlier = useMemo(() => computeOutlierIndex(title), [title]);
+  const hook = useMemo(() => analyzeHook(script), [script]);
+
+  const outlierColor = outlier.overall >= 70 ? '#22c55e' : outlier.overall >= 45 ? '#eab308' : '#ef4444';
+  const hookColor = hook.score >= 70 ? '#22c55e' : hook.score >= 45 ? '#eab308' : '#ef4444';
+
   const [thumbError, setThumbError] = useState<string | null>(null);
+
+  const objectUrlRef = useRef<string | null>(null);
+  useEffect(() => () => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    abortRef.current?.abort();
+  }, []);
 
   const onThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -263,11 +296,18 @@ export default function ViralOptimizerPage() {
       setThumbError('Image must be under 5MB.');
       return;
     }
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    const url = URL.createObjectURL(file);
+    objectUrlRef.current = url;
     setThumbnailFile(file);
-    setThumbnailPreview(URL.createObjectURL(file));
+    setThumbnailPreview(url);
   };
 
   const removeThumbnail = () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
     setThumbnailFile(null);
     setThumbnailPreview(null);
     setThumbError(null);
@@ -328,20 +368,27 @@ export default function ViralOptimizerPage() {
                     <p className="text-sm text-[#888] mt-0.5">Boost CTR, watch time, and engagement — YouTube Studio style</p>
                   </div>
                 </div>
-                {/* Live Score Badges */}
-                {viralScore != null && (
-                  <div className="flex gap-3">
-                    <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${meetsCtrTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
-                      CTR: {ctrData?.ctrPercent ?? '0'}%
+                {/* Live Score Badges — outlier always live, others after analysis */}
+                <div className="flex flex-wrap gap-2">
+                  {title.trim() && (
+                    <div className="px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5" style={{ backgroundColor: `${outlierColor}1a`, color: outlierColor, borderColor: `${outlierColor}4d` }} title="Live Outlier Index — updates as you type">
+                      <Rocket className="w-3 h-3" /> Outlier: {outlier.overall}
                     </div>
-                    <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${meetsRetentionTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
-                      Retention: {retentionData?.predictedRetention ?? 0}%
-                    </div>
-                    <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${meetsViralTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
-                      Viral: {viralScore}%
-                    </div>
-                  </div>
-                )}
+                  )}
+                  {viralScore != null && (
+                    <>
+                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${meetsCtrTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                        CTR: {ctrData?.ctrPercent ?? '0'}%
+                      </div>
+                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${meetsRetentionTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
+                        Retention: {retentionData?.predictedRetention ?? 0}%
+                      </div>
+                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${meetsViralTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                        Viral: {viralScore}%
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -438,7 +485,14 @@ export default function ViralOptimizerPage() {
                     {thumbError && <p className="text-xs text-red-400 mt-1">⚠ {thumbError}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm text-[#AAAAAA] mb-1">{t('viral.engine.scriptOptional')}</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm text-[#AAAAAA]">{t('viral.engine.scriptOptional')}</label>
+                      {script.trim() && (
+                        <span className="text-xs font-mono" style={{ color: hookColor }}>
+                          🎣 Hook {hook.score}/100
+                        </span>
+                      )}
+                    </div>
                     <textarea
                       value={script}
                       onChange={(e) => setScript(e.target.value)}
@@ -446,6 +500,25 @@ export default function ViralOptimizerPage() {
                       rows={4}
                       className="w-full px-4 py-2.5 bg-[#0F0F0F] border border-[#333] rounded-lg text-white placeholder-[#666] focus:ring-2 focus:ring-[#FF0000] resize-none"
                     />
+                    {script.trim() && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-[#0F0F0F] border border-[#222]">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-[#AAA]">First 15s analysis</span>
+                          <span className="text-xs font-bold" style={{ color: hookColor }}>{hook.verdict}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-[#222] rounded-full overflow-hidden mb-2">
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${hook.score}%`, backgroundColor: hookColor }} />
+                        </div>
+                        <ul className="space-y-0.5">
+                          {hook.signals.map((s) => (
+                            <li key={s.label} className="text-[11px] flex items-start gap-1.5">
+                              <span className={s.ok ? 'text-emerald-400' : 'text-[#666]'}>{s.ok ? '✓' : '○'}</span>
+                              <span className={s.ok ? 'text-[#AAA]' : 'text-[#666]'}>{s.label}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-3">
                     <button
@@ -466,15 +539,32 @@ export default function ViralOptimizerPage() {
                     {!title.trim() && !analyzing && (
                       <p className="text-xs text-amber-400 text-center">⚠ Add a title for accurate analysis</p>
                     )}
-                    <button
-                      type="button"
-                      onClick={runAnalysis}
-                      disabled={analyzing}
-                      className="w-full py-3 px-4 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 text-white font-semibold rounded-lg flex items-center justify-center gap-2"
-                    >
-                      {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <TrendingUp className="w-5 h-5" />}
-                      {analyzing ? 'Analyzing…' : 'Analyze Viral Potential'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={runAnalysis}
+                        disabled={analyzing}
+                        className="flex-1 py-3 px-4 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 text-white font-semibold rounded-lg flex items-center justify-center gap-2"
+                      >
+                        {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <TrendingUp className="w-5 h-5" />}
+                        {analyzing ? 'Analyzing…' : 'Analyze Viral Potential'}
+                      </button>
+                      {analyzing && (
+                        <button
+                          type="button"
+                          onClick={() => abortRef.current?.abort()}
+                          className="px-4 py-3 bg-[#222] hover:bg-[#333] border border-[#444] text-[#AAA] rounded-lg text-sm font-semibold"
+                          title="Cancel analysis"
+                        >Cancel</button>
+                      )}
+                    </div>
+
+                    {analyzeError && (
+                      <div className="text-xs px-3 py-2 rounded-lg border bg-red-500/10 text-red-400 border-red-500/30 flex items-start gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                        <span>{analyzeError}</span>
+                      </div>
+                    )}
 
                     {videoId && (
                       <button
@@ -531,11 +621,123 @@ export default function ViralOptimizerPage() {
                   ✓ Real analysis from your title, description, keywords, thumbnail & script. Change inputs and run again to see updated results.
                 </motion.p>
               )}
+
+              {/* LIVE: Outlier Index — pure client-side, updates as you type */}
+              <AnimatePresence>
+                {title.trim() && (
+                  <motion.div
+                    key="outlier"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="bg-gradient-to-br from-[#181818] to-[#0F0F0F] border border-[#FF0000]/20 rounded-xl p-6 relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ backgroundColor: outlierColor }} />
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                          <Rocket className="w-5 h-5 text-[#FF0000]" />
+                          Viral Outlier Index
+                          <span className="text-[10px] font-mono text-[#FF4444] bg-[#FF0000]/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Live</span>
+                        </h2>
+                        <div className="text-right">
+                          <div className="text-3xl font-black tabular-nums" style={{ color: outlierColor }}>{outlier.overall}</div>
+                          <div className="text-[10px] text-[#666] uppercase tracking-wider">/ 100</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        {[
+                          { label: 'Novelty', value: outlier.novelty, hint: 'Length, brackets, numbers, emoji' },
+                          { label: 'Emotional Power', value: outlier.emotional, hint: 'Power words, caps, intensity' },
+                          { label: 'Curiosity Gap', value: outlier.curiosity, hint: 'Open loops, hidden, questions' },
+                          { label: 'Pattern Interrupt', value: outlier.interrupt, hint: 'Contradictions, brackets' },
+                        ].map((p) => {
+                          const c = p.value >= 70 ? '#22c55e' : p.value >= 45 ? '#eab308' : '#ef4444';
+                          return (
+                            <div key={p.label} className="bg-[#0F0F0F] rounded-lg p-2.5 border border-[#222]">
+                              <div className="flex items-baseline justify-between mb-1">
+                                <span className="text-[11px] text-[#AAA] font-medium">{p.label}</span>
+                                <span className="text-sm font-bold tabular-nums" style={{ color: c }}>{p.value}</span>
+                              </div>
+                              <div className="w-full h-1 bg-[#222] rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${p.value}%`, backgroundColor: c }} />
+                              </div>
+                              <div className="text-[9px] text-[#555] mt-1 leading-tight">{p.hint}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {outlier.notes.length > 0 && (
+                        <div className="pt-2 border-t border-[#222]">
+                          <ul className="text-xs text-[#AAA] space-y-1">
+                            {outlier.notes.slice(0, 3).map((n, i) => (
+                              <li key={i} className="flex items-start gap-2"><Flame className="w-3 h-3 text-[#FF4444] mt-0.5 shrink-0" /><span>{n}</span></li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* LIVE: Title DNA — archetype classifier */}
+              <AnimatePresence>
+                {title.trim() && (
+                  <motion.div
+                    key="dna"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ delay: 0.05 }}
+                    className="bg-[#181818] border border-[#212121] rounded-xl p-6"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Dna className="w-5 h-5 text-purple-400" />
+                        Title DNA
+                        <span className="text-[10px] font-mono text-purple-300 bg-purple-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Live</span>
+                      </h2>
+                      {titleDna.primaryDef ? (
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-white">{titleDna.primaryDef.emoji} {titleDna.primaryDef.label}</div>
+                          <div className="text-[10px] text-[#888]">primary archetype</div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-[#666]">No archetype detected</div>
+                      )}
+                    </div>
+                    {titleDna.primaryDef && (
+                      <p className="text-xs text-[#AAA] mb-3 italic">"{titleDna.primaryDef.blurb}"</p>
+                    )}
+                    <div className="space-y-1.5">
+                      {ARCHETYPES.map((a) => {
+                        const v = titleDna.scores[a.id];
+                        const isPrimary = titleDna.primary === a.id;
+                        return (
+                          <div key={a.id} className="flex items-center gap-2">
+                            <span className="text-sm w-5 text-center">{a.emoji}</span>
+                            <span className={`text-xs flex-1 ${isPrimary ? 'text-white font-semibold' : 'text-[#888]'}`}>{a.label}</span>
+                            <div className="w-24 h-1.5 bg-[#222] rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-500 ${isPrimary ? 'bg-purple-400' : 'bg-[#444]'}`} style={{ width: `${v}%` }} />
+                            </div>
+                            <span className={`text-[10px] tabular-nums w-8 text-right ${isPrimary ? 'text-purple-300' : 'text-[#666]'}`}>{v}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {titleDna.totalHits === 0 && (
+                      <p className="text-xs text-amber-400 mt-3">No strong archetype signals — your title may read as generic. Try a curiosity hook, list, or contrarian angle.</p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* 1. {t('viral.engine.ctrPredictor')} */}
               <motion.div
                 variants={cardVariants}
                 initial="hidden"
-                animate={ctrData ? 'visible' : 'hidden'}
+                animate="visible"
                 custom={0}
                 className="bg-[#181818] border border-[#212121] rounded-xl p-6"
               >
@@ -593,7 +795,7 @@ export default function ViralOptimizerPage() {
               <motion.div
                 variants={cardVariants}
                 initial="hidden"
-                animate={retentionData ? 'visible' : 'hidden'}
+                animate="visible"
                 custom={1}
                 className="bg-[#181818] border border-[#212121] rounded-xl p-6"
               >
@@ -617,8 +819,8 @@ export default function ViralOptimizerPage() {
                     )}
                     <p className="text-xs text-[#AAA] mb-2">Detected drop points:</p>
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {retentionData.dropPoints.map((t, i) => (
-                        <span key={i} className="px-2 py-1 bg-[#333] rounded text-sm text-white">{t}</span>
+                      {retentionData.dropPoints.map((dp, i) => (
+                        <span key={i} className="px-2 py-1 bg-[#333] rounded text-sm text-white">{dp}</span>
                       ))}
                     </div>
                     <ul className="text-sm text-[#AAA] list-disc list-inside space-y-1">
@@ -636,7 +838,7 @@ export default function ViralOptimizerPage() {
               <motion.div
                 variants={cardVariants}
                 initial="hidden"
-                animate={engagementData ? 'visible' : 'hidden'}
+                animate="visible"
                 custom={2}
                 className="bg-[#181818] border border-[#212121] rounded-xl p-6"
               >
@@ -661,7 +863,7 @@ export default function ViralOptimizerPage() {
               <motion.div
                 variants={cardVariants}
                 initial="hidden"
-                animate={viralScore != null ? 'visible' : 'hidden'}
+                animate="visible"
                 custom={3}
                 className="bg-[#181818] border border-[#212121] rounded-xl p-6"
               >
@@ -700,7 +902,7 @@ export default function ViralOptimizerPage() {
               <motion.div
                 variants={cardVariants}
                 initial="hidden"
-                animate={titleOptimizerData ? 'visible' : 'hidden'}
+                animate="visible"
                 custom={4}
                 className="bg-[#181818] border border-[#212121] rounded-xl p-6"
               >
@@ -709,12 +911,12 @@ export default function ViralOptimizerPage() {
                 </h2>
                 {titleOptimizerData?.titles?.length ? (
                   <ul className="space-y-2">
-                    {titleOptimizerData.titles.map((t, i) => (
-                      <li key={i} onClick={() => setTitle(t.title)}
+                    {titleOptimizerData.titles.map((variant, i) => (
+                      <li key={i} onClick={() => setTitle(variant.title)}
                         className="flex items-center justify-between gap-2 p-3 rounded-lg bg-[#111] border border-[#222] hover:border-[#FF0000]/40 cursor-pointer transition group">
-                        <span className="text-white text-sm flex-1 min-w-0 truncate group-hover:text-[#FF4444] transition">{t.title}</span>
-                        <span className={`text-xs font-bold shrink-0 ${t.predictedCtr >= 10 ? 'text-emerald-400' : t.predictedCtr >= 7 ? 'text-amber-400' : 'text-red-400'}`}>CTR {t.predictedCtr}%</span>
-                        {t.recommended && (
+                        <span className="text-white text-sm flex-1 min-w-0 truncate group-hover:text-[#FF4444] transition">{variant.title}</span>
+                        <span className={`text-xs font-bold shrink-0 ${variant.predictedCtr >= 10 ? 'text-emerald-400' : variant.predictedCtr >= 7 ? 'text-amber-400' : 'text-red-400'}`}>CTR {variant.predictedCtr}%</span>
+                        {variant.recommended && (
                           <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Best</span>
                         )}
                       </li>
@@ -729,7 +931,7 @@ export default function ViralOptimizerPage() {
               <motion.div
                 variants={cardVariants}
                 initial="hidden"
-                animate={thumbnailData ? 'visible' : 'hidden'}
+                animate="visible"
                 custom={5}
                 className="bg-[#181818] border border-[#212121] rounded-xl p-6"
               >
