@@ -32,10 +32,13 @@ if [ -z "${CRON_SECRET:-}" ]; then
 fi
 
 echo "[$TS] → marketing-emails"
-# -L follows the http→https redirect Next.js middleware enforces, so the
-# secret-bearing request actually reaches the API route.
+# Secret is passed as ?secret= query param (not a custom x-* header) because
+# Cloudflare / nginx commonly strip non-standard request headers in front of
+# the Next.js app, which previously caused 401s. -L follows the http→https
+# redirect Next.js middleware enforces.
 code=$(curl -sSL -o /tmp/vidyt-marketing-cron.json -w '%{http_code}' --max-time 300 \
-  -H "x-cron-secret: $CRON_SECRET" \
+  --get \
+  --data-urlencode "secret=$CRON_SECRET" \
   "$BASE_URL/api/cron/marketing-emails") || code="000"
 echo "[$TS] ← HTTP $code"
 head -c 2000 /tmp/vidyt-marketing-cron.json 2>/dev/null
