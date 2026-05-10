@@ -220,6 +220,16 @@ export default async function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
+        {/* No-flash theme bootstrap — must run before paint so the correct
+            data-theme is on <html> before any CSS evaluates. Without this we
+            get a brief flash of dark theme on light/colorblind users' page
+            loads. ThemeContext.tsx then takes over and keeps it in sync. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('vidyt_theme');if(t!=='light'&&t!=='dark'&&t!=='colorblind')t='dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=(t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();",
+          }}
+        />
         {/* Early SW reconciliation + ChunkLoadError recovery — runs before any
             JS chunk loads. Forces registration.update() so users upgrading from
             an older sw.js drop that controller (one reload on controllerchange
