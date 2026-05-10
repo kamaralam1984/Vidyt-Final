@@ -32,7 +32,12 @@ import { useLocale } from '@/context/LocaleContext';
 import { useTranslations } from '@/context/translations';
 import { useUser } from '@/hooks/useUser';
 import dynamic from 'next/dynamic';
-import LiveStatsBar from '@/components/LiveStatsBar';
+// LiveStatsBar is purely interactive (framer-motion count-up animations) and
+// sits below the hero — defer its JS so the hero LCP/TBT on mobile improves.
+const LiveStatsBar = dynamic(() => import('@/components/LiveStatsBar'), {
+  loading: () => <div className="h-24 max-w-5xl mx-auto my-6 bg-[#181818] rounded-2xl animate-pulse" />,
+  ssr: false,
+});
 const PricingSection = dynamic(() => import('@/components/PricingSection'), {
   loading: () => <div className="animate-pulse bg-[#181818] rounded-2xl h-64 w-full mx-auto max-w-5xl" />,
   ssr: false,
