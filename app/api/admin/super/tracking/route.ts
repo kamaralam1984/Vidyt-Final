@@ -91,9 +91,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // Compute geo only when we believe the session is new (avoids IP API on every event).
+    // Compute geo when (a) the session is new, OR (b) the existing session
+    // has no country yet (was created before cf-connecting-ip support, or the
+    // first heartbeat hit before headers landed). Otherwise old sessions stay
+    // pinned to "Unknown"/"Local" forever and the live map degrades.
+    const sessionMissingGeo = !!existingSession && !((existingSession as any).country);
     let geo: any = null;
-    if (!existingSession && (normalizedAction === 'start' || normalizedAction === 'page' || normalizedAction === 'heartbeat')) {
+    if (
+      (!existingSession || sessionMissingGeo) &&
+      (normalizedAction === 'start' || normalizedAction === 'page' || normalizedAction === 'heartbeat')
+    ) {
       const geoCacheKey = `ip:${ip}`;
       const ttlMs = Number(process.env.TRACKING_GEO_CACHE_TTL_MS ?? 60 * 60 * 1000); // 1h
       const gcache = (globalThis as any).__VB_GEO_CACHE__ || ((globalThis as any).__VB_GEO_CACHE__ = new Map());

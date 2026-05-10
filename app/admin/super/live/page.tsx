@@ -285,14 +285,20 @@ export default function LivePage() {
           <div className="flex items-center gap-2.5 flex-wrap">
             <AdminAlertPanel />
 
-            {/* Socket / polling status */}
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] border font-medium ${
-              isSocketLive
-                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
-                : 'bg-white/[0.04] border-white/[0.08] text-white/30'
-            }`}>
-              {isSocketLive ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              {isSocketLive ? 'Socket' : 'Polling'}
+            {/* Refresh status — green when socket-realtime is connected,
+                amber+pulse when falling back to 2s polling. Both states
+                are healthy; the badge just tells the operator which path
+                is feeding the dashboard. */}
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] border font-medium ${
+                isSocketLive
+                  ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+                  : 'bg-amber-500/10 border-amber-500/25 text-amber-300'
+              }`}
+              title={isSocketLive ? 'Real-time socket stream connected' : 'Socket unavailable — refreshing every 2 seconds'}
+            >
+              {isSocketLive ? <Wifi className="w-3 h-3" /> : <RefreshCw className="w-3 h-3 animate-spin" />}
+              {isSocketLive ? 'Live · socket' : 'Live · 2s'}
             </div>
 
             {/* Countdown */}

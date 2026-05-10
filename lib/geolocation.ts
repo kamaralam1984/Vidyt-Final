@@ -64,6 +64,13 @@ export async function getGeoFromIP(ip: string): Promise<GeoInfo | null> {
 }
 
 export function getClientIP(request: Request): string {
+  // Cloudflare tunnel / proxy sets cf-connecting-ip with the true client IP.
+  // Check it first so users behind Cloudflare don't all collapse to "Local".
+  const cf = request.headers.get('cf-connecting-ip');
+  if (cf) return cf.trim();
+  // True-Client-IP is sometimes set by enterprise CDNs (Akamai, Cloudfront).
+  const trueClient = request.headers.get('true-client-ip');
+  if (trueClient) return trueClient.trim();
   const xff = request.headers.get('x-forwarded-for');
   const realIp = request.headers.get('x-real-ip');
   if (xff) return xff.split(',')[0].trim();
