@@ -22,6 +22,7 @@ import {
 import { useLocale, SUPPORTED_LOCALES } from '@/context/LocaleContext';
 import { useTranslations } from '@/context/translations';
 import { useUser } from '@/hooks/useUser';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const FEATURES = [
   // Column 1
@@ -206,6 +207,8 @@ export default function MarketingNavbar() {
 
         {/* Right actions */}
         <div className="hidden items-center gap-3 lg:flex">
+          {/* Theme toggle — cycles dark / light / colorblind */}
+          <ThemeToggle />
           {/* Locale selector */}
           <div className="relative">
             <button
@@ -278,14 +281,18 @@ export default function MarketingNavbar() {
           )}
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded-lg border border-white/10 p-2 text-white lg:hidden"
-          onClick={() => setMobileOpen((v) => !v)}
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        {/* Mobile actions — theme toggle stays visible without opening the drawer */}
+        <div className="flex items-center gap-2 lg:hidden">
+          <ThemeToggle />
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-lg border border-white/10 p-2 text-white"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </nav>
 
       {/* Desktop mega dropdown (Features) — click-only, not hover */}
