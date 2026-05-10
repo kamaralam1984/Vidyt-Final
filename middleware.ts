@@ -337,6 +337,13 @@ export async function middleware(request: NextRequest) {
     '/api/cron/generate-trending-pages',
     '/api/cron/promote-seo-pages',
     '/api/cron/ping-google',
+    // Marketing-email cron must reach the route handler so its own
+    // CRON_SECRET check can run; otherwise middleware 401s it before the
+    // secret query param is ever evaluated.
+    '/api/cron/marketing-emails',
+    '/api/cron/cleanup-low-quality',
+    '/api/cron/freshness-rotation',
+    '/api/cron/seo-rerank-weekly',
   ].includes(pathname);
 
   if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/') || pathname === '/api/auth/me') {
