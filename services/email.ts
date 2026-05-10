@@ -943,15 +943,6 @@ export interface DailyScriptPayload {
   cta: string;
 }
 
-function escapeHtml(s: string): string {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function renderScriptCard(label: string, color: string, p: DailyScriptPayload): string {
   const hooks = (p.hooks || [])
     .map((h, i) => `<li style="margin-bottom:8px;color:#222;font-size:14px;line-height:1.5;">${escapeHtml(h)}</li>`)
