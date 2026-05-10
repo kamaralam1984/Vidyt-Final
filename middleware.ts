@@ -349,6 +349,7 @@ export async function middleware(request: NextRequest) {
     '/api/cron/cleanup-low-quality',
     '/api/cron/freshness-rotation',
     '/api/cron/seo-rerank-weekly',
+    '/api/cron/website-audit',
   ].includes(pathname);
 
   if (isPublicRoute || isPublicCron || pathname.startsWith('/api/public/') || pathname === '/api/auth/me') {

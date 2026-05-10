@@ -7,18 +7,16 @@
 # endpoint never blocks the others. Order is intentional — cleanup before
 # rotation, rotation before re-rank, re-rank before AI work.
 #
-# Endpoints called:
-#   1. /api/cron/cleanup-low-quality      — drop sub-70 quality SeoPages
-#   2. /api/cron/freshness-rotation       — re-publish stale SeoPages
-#   3. /api/cron/seo-rerank-weekly        — re-score + re-prioritize sitemap
-#   4. /api/cron/ai-retrain               — refresh AI scoring models
-#   5. /api/cron/sync-prediction-outcomes — reconcile predicted vs actual
-#   6. /api/cron/daily                    — misc daily housekeeping
-#   7. /api/cron/website-audit            — automated audit run
+# Endpoints called (with their auth/method conventions):
+#   1. /api/cron/cleanup-low-quality      — GET ?secret=          | drop sub-70 quality SeoPages
+#   2. /api/cron/freshness-rotation       — GET ?secret=          | re-publish stale SeoPages
+#   3. /api/cron/seo-rerank-weekly        — GET ?secret=          | re-score + re-prioritize sitemap
+#   4. /api/cron/ai-retrain               — POST Bearer token     | refresh AI scoring models
+#   5. /api/cron/sync-prediction-outcomes — POST Bearer token     | reconcile predicted vs actual
+#   6. /api/cron/daily                    — GET  Bearer token     | misc daily housekeeping
+#   7. /api/cron/website-audit            — GET  Bearer token     | automated audit run
 #
 # CRON_SECRET is read from /var/www/vidyt/.env (or override via env var).
-# Secret is passed as ?secret= query param (not a header) — Cloudflare/nginx
-# strip non-standard request headers in front of the Next.js app.
 #
 # Recommended cadence (single line in crontab):
 #   crontab -e
@@ -43,27 +41,43 @@ if [ -z "${CRON_SECRET:-}" ]; then
   exit 1
 fi
 
+# Each row: "endpoint|METHOD|AUTH"
+#   AUTH=query  → secret as ?secret=… query param
+#   AUTH=bearer → secret as Authorization: Bearer … header
 ENDPOINTS=(
-  "cleanup-low-quality"
-  "freshness-rotation"
-  "seo-rerank-weekly"
-  "ai-retrain"
-  "sync-prediction-outcomes"
-  "daily"
-  "website-audit"
+  "cleanup-low-quality|GET|query"
+  "freshness-rotation|GET|query"
+  "seo-rerank-weekly|GET|query"
+  "ai-retrain|POST|bearer"
+  "sync-prediction-outcomes|POST|bearer"
+  "daily|GET|bearer"
+  "website-audit|GET|bearer"
 )
 
 OVERALL_FAILED=0
 
-for endpoint in "${ENDPOINTS[@]}"; do
+for row in "${ENDPOINTS[@]}"; do
+  IFS='|' read -r endpoint method auth <<< "$row"
   start=$(date +%s)
-  echo "[$(TS)] → $endpoint"
+  echo "[$(TS)] → $endpoint  ($method/$auth)"
 
-  http_code=$(curl -sSL -o "/tmp/vidyt-cron-${endpoint}.json" -w '%{http_code}' \
-    --max-time 300 \
-    --get \
-    --data-urlencode "secret=$CRON_SECRET" \
-    "$BASE_URL/api/cron/$endpoint" 2>/dev/null) || http_code="000"
+  out_file="/tmp/vidyt-cron-${endpoint}.json"
+
+  if [ "$auth" = "bearer" ]; then
+    http_code=$(curl -sSL -o "$out_file" -w '%{http_code}' \
+      --max-time 300 \
+      -X "$method" \
+      -H "Authorization: Bearer $CRON_SECRET" \
+      -H "Content-Type: application/json" \
+      "$BASE_URL/api/cron/$endpoint" 2>/dev/null) || http_code="000"
+  else
+    # query-param secret (GET only)
+    http_code=$(curl -sSL -o "$out_file" -w '%{http_code}' \
+      --max-time 300 \
+      --get \
+      --data-urlencode "secret=$CRON_SECRET" \
+      "$BASE_URL/api/cron/$endpoint" 2>/dev/null) || http_code="000"
+  fi
 
   elapsed=$(( $(date +%s) - start ))
 
@@ -72,14 +86,12 @@ for endpoint in "${ENDPOINTS[@]}"; do
   else
     echo "[$(TS)] ✗ $endpoint — HTTP $http_code (${elapsed}s)"
     OVERALL_FAILED=$((OVERALL_FAILED + 1))
-    # Tail of the response body helps diagnose 401/500/timeout.
-    head -c 500 "/tmp/vidyt-cron-${endpoint}.json" 2>/dev/null
+    head -c 500 "$out_file" 2>/dev/null
     echo
   fi
 done
 
 echo "[$(TS)] DONE — failed: $OVERALL_FAILED / ${#ENDPOINTS[@]}"
-# Non-zero exit only if every endpoint failed — partial success is still success.
 if [ "$OVERALL_FAILED" -eq "${#ENDPOINTS[@]}" ]; then
   exit 1
 fi
