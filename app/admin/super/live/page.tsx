@@ -220,15 +220,34 @@ export default function LivePage() {
     return entries[0] ? { country: String(entries[0][0]), count: entries[0][1] as number } : null;
   })();
 
+  // Cap each session's contribution at 24h. Long-lived heartbeat sessions
+  // (e.g. an admin tab left open for days) otherwise dominate the average
+  // and produce nonsense like "66867m". 24h is a reasonable upper bound on
+  // what a single sitting "session" can mean.
+  const SESSION_AVG_CAP_MINUTES = 24 * 60;
   const avgSessionMinutes = liveData?.liveUsers?.length
-    ? Math.round(liveData.liveUsers.reduce((s: number, u: any) => s + u.sessionDurationMinutes, 0) / liveData.liveUsers.length)
+    ? Math.round(liveData.liveUsers.reduce(
+        (s: number, u: any) => s + Math.min(u.sessionDurationMinutes || 0, SESSION_AVG_CAP_MINUTES),
+        0,
+      ) / liveData.liveUsers.length)
     : null;
+
+  // Compact human-friendly minutes formatter — collapses huge values into
+  // d/h/m so a 46-day stale session doesn't render as "66867m".
+  const formatMinutes = (mins: number) => {
+    if (!mins || mins < 1) return '<1m';
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
+    const d = Math.floor(h / 24);
+    const rh = h % 24;
+    return rh ? `${d}d ${rh}h` : `${d}d`;
+  };
 
   const formatDuration = (seconds: number) => {
     if (!seconds) return '0m';
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+    return formatMinutes(Math.round(seconds / 60));
   };
 
   const formatLastUpdated = (secs: number) => {
@@ -349,7 +368,7 @@ export default function LivePage() {
           {
             icon: Clock, color: 'text-violet-400', glow: '#8b5cf6', bg: 'from-violet-500/10 to-transparent',
             label: 'Avg Session',
-            value: avgSessionMinutes !== null ? `${avgSessionMinutes}m` : overview ? formatDuration(overview.avgSessionSeconds) : '—',
+            value: avgSessionMinutes !== null ? formatMinutes(avgSessionMinutes) : overview ? formatDuration(overview.avgSessionSeconds) : '—',
             sub: 'Active users', subColor: 'text-white/30', delay: 0.15,
           },
           {
@@ -399,7 +418,7 @@ export default function LivePage() {
           { label: 'Online Now', value: liveData?.count ?? '—', icon: Activity, glow: '#22c55e', textColor: 'text-emerald-400', live: true },
           {
             label: 'Avg Session',
-            value: avgSessionMinutes !== null ? `${avgSessionMinutes}m` : overview ? formatDuration(overview.avgSessionSeconds) : '—',
+            value: avgSessionMinutes !== null ? formatMinutes(avgSessionMinutes) : overview ? formatDuration(overview.avgSessionSeconds) : '—',
             icon: Clock, glow: '#3b82f6', textColor: 'text-blue-400',
           },
           {
@@ -713,7 +732,7 @@ export default function LivePage() {
                             </span>
                           )}
                           <span className={`text-[9px] ml-auto ${user.status === 'online' ? 'text-emerald-400' : 'text-white/20'}`}>
-                            {user.status === 'online' ? `${user.sessionDurationMinutes}m` : 'Recent'}
+                            {user.status === 'online' ? formatMinutes(user.sessionDurationMinutes) : 'Recent'}
                           </span>
                         </div>
                       </div>
@@ -900,7 +919,7 @@ export default function LivePage() {
                           {u.distance !== undefined && (
                             <span className="text-[9px] text-white/25">{Math.round(u.distance)} km</span>
                           )}
-                          <span className="text-[9px] text-emerald-400 font-medium">{u.duration}m</span>
+                          <span className="text-[9px] text-emerald-400 font-medium">{formatMinutes(u.duration)}</span>
                         </div>
                       </div>
                     ))}
