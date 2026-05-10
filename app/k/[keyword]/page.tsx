@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
+import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import SeoPage from '@/models/SeoPage';
 import Link from 'next/link';
@@ -30,7 +32,10 @@ function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100);
 }
 
-async function getOrCreatePage(keyword: string): Promise<any> {
+// React cache() dedupes the call within a single request — generateMetadata
+// and the page renderer both look up the same slug, so without dedup we hit
+// SeoPage.findOne twice per request.
+const getOrCreatePage = cache(async (keyword: string): Promise<any> => {
   await connectDB();
   const slug = slugify(keyword);
   if (!slug || slug.length < 3) return null;
@@ -102,7 +107,30 @@ async function getOrCreatePage(keyword: string): Promise<any> {
   }
 
   return page;
-}
+});
+
+// Related pages query is hot — cache it per (category, currentSlug) for 1h.
+const getRelatedPages = unstable_cache(
+  async (category: string, excludeSlug: string): Promise<any[]> => {
+    try {
+      await connectDB();
+      const docs = await SeoPage.find({
+        category,
+        slug: { $ne: excludeSlug },
+        isIndexable: true,
+      })
+        .sort({ qualityScore: -1, views: -1 })
+        .limit(6)
+        .select('slug keyword views qualityScore')
+        .lean();
+      return docs as any[];
+    } catch {
+      return [];
+    }
+  },
+  ['k-related-pages-v1'],
+  { revalidate: 3600, tags: ['k-pages'] },
+);
 
 export async function generateMetadata({ params }: { params: { keyword: string } }) {
   const page = await getOrCreatePage(params.keyword);
@@ -256,19 +284,8 @@ export default async function KeywordPage({ params }: { params: { keyword: strin
   const theme = resolveTheme(page);
   const tx = THEME_STYLES[theme];
 
-  // Related pages — same category, most-viewed
-  let relatedPages: any[] = [];
-  try {
-    relatedPages = await SeoPage.find({
-      category: page.category,
-      slug: { $ne: page.slug },
-      isIndexable: true,
-    })
-      .sort({ qualityScore: -1, views: -1 })
-      .limit(6)
-      .select('slug keyword views qualityScore')
-      .lean();
-  } catch {}
+  // Related pages — cached for 1h per (category, slug)
+  const relatedPages = await getRelatedPages(page.category, page.slug);
 
   const webPageSchema = {
     '@context': 'https://schema.org',
