@@ -139,6 +139,12 @@ export function AuthPageContent({ defaultIsLogin = false }: { defaultIsLogin?: b
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [preToken, setPreToken] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [backupCode, setBackupCode] = useState('');
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
 
   useEffect(() => {
     // /login route shows login; /auth uses ?mode= param.
@@ -392,6 +398,14 @@ export function AuthPageContent({ defaultIsLogin = false }: { defaultIsLogin?: b
             loginPin: formData.loginPin,
           });
 
+          if (response.data.requires2FA && response.data.preToken) {
+            console.log('[Auth] 2FA required for PIN login.');
+            setPreToken(response.data.preToken);
+            setRequires2FA(true);
+            setLoading(false);
+            return;
+          }
+
           if (response.data.token && response.data.user.uniqueId) {
             console.log('[Auth] PIN login successful. Redirecting...');
             localStorage.setItem('token', response.data.token);
@@ -418,6 +432,14 @@ export function AuthPageContent({ defaultIsLogin = false }: { defaultIsLogin?: b
             password: formData.password,
             turnstileToken,
           });
+
+          if (response.data.requires2FA && response.data.preToken) {
+            console.log('[Auth] 2FA required for email login.');
+            setPreToken(response.data.preToken);
+            setRequires2FA(true);
+            setLoading(false);
+            return;
+          }
 
           if (response.data.token) {
             console.log('[Auth] Email login successful. Redirecting...');
@@ -486,6 +508,60 @@ export function AuthPageContent({ defaultIsLogin = false }: { defaultIsLogin?: b
       setTimeout(() => {
         setLoading(false);
       }, 10000);
+    }
+  };
+
+  const submitTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!preToken) {
+      setError('Challenge expired. Please log in again.');
+      setRequires2FA(false);
+      return;
+    }
+    setTwoFactorLoading(true);
+    try {
+      let response;
+      if (useBackupCode) {
+        if (!backupCode.trim()) {
+          setError('Enter a backup code.');
+          setTwoFactorLoading(false);
+          return;
+        }
+        response = await axios.post('/api/auth/2fa/recover', {
+          preToken,
+          backupCode: backupCode.trim(),
+        });
+      } else {
+        if (!/^\d{6}$/.test(twoFactorCode)) {
+          setError('Enter the 6-digit code from your authenticator.');
+          setTwoFactorLoading(false);
+          return;
+        }
+        response = await axios.post('/api/auth/2fa/challenge', {
+          preToken,
+          code: twoFactorCode,
+        });
+      }
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        if (response.data.user?.uniqueId) {
+          localStorage.setItem('uniqueId', response.data.user.uniqueId);
+        }
+        let target = '/dashboard';
+        if (response.data.user?.role === 'super-admin') {
+          target = '/admin/super';
+        } else if (response.data.user?.uniqueId) {
+          target = `/user/${response.data.user.uniqueId}`;
+        }
+        window.location.href = target;
+      } else {
+        setError('Verification failed. Please try again.');
+        setTwoFactorLoading(false);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Verification failed. Please try again.');
+      setTwoFactorLoading(false);
     }
   };
 
@@ -1207,6 +1283,92 @@ export function AuthPageContent({ defaultIsLogin = false }: { defaultIsLogin?: b
       {/* Razorpay Script */}
       {!isLogin && subscriptionType === 'paid' && (
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      )}
+
+      {/* 2FA challenge modal — shown after password/PIN is verified for users with 2FA enabled */}
+      {requires2FA && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="w-full max-w-md bg-[#181818] border border-[#212121] rounded-2xl p-6 md:p-8 shadow-2xl"
+          >
+            <h2 className="text-xl font-bold text-white mb-1">Two-factor authentication</h2>
+            <p className="text-sm text-[#AAAAAA] mb-5">
+              {useBackupCode
+                ? 'Enter one of your saved backup codes. Each code works only once.'
+                : 'Enter the 6-digit code from your authenticator app to finish signing in.'}
+            </p>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/15 border border-red-500/40 rounded-lg text-red-200 text-sm">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={submitTwoFactor} className="space-y-4">
+              {useBackupCode ? (
+                <input
+                  type="text"
+                  value={backupCode}
+                  onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                  className="w-full px-4 py-3 bg-[#212121] border border-[#333] rounded-lg text-white font-mono tracking-[0.2em] text-center focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                  placeholder="XXXXX-XXXXX"
+                  autoFocus
+                />
+              ) : (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                  className="w-full px-4 py-3 bg-[#212121] border border-[#333] rounded-lg text-white text-2xl tracking-[0.5em] text-center font-bold focus:outline-none focus:ring-2 focus:ring-[#FF0000]"
+                  placeholder="000000"
+                  autoFocus
+                />
+              )}
+
+              <button
+                type="submit"
+                disabled={twoFactorLoading}
+                className="w-full py-3 px-6 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-60 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+              >
+                {twoFactorLoading ? 'Verifying…' : 'Verify and continue'}
+              </button>
+            </form>
+
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  setError('');
+                  setTwoFactorCode('');
+                  setBackupCode('');
+                  setUseBackupCode((v) => !v);
+                }}
+                className="text-[#AAAAAA] hover:text-white"
+              >
+                {useBackupCode ? 'Use authenticator app instead' : 'Use a backup code'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRequires2FA(false);
+                  setPreToken('');
+                  setTwoFactorCode('');
+                  setBackupCode('');
+                  setUseBackupCode(false);
+                  setError('');
+                }}
+                className="text-[#666] hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

@@ -16,6 +16,8 @@ const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET 
 const ACCESS_TOKEN_TTL = '15m';
 // Refresh token: 30 days (stored httpOnly, rotated on each refresh)
 const REFRESH_TOKEN_TTL = '30d';
+// 2FA challenge token: 5 min — issued after password verification, exchanged for a real session
+const PRE_2FA_TOKEN_TTL = '5m';
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
   console.warn('⚠️  JWT_SECRET is using default value. Set a secure secret in .env.local');
@@ -72,6 +74,8 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
     if (!token || token.trim() === '') return null;
     const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ['HS256'] });
     if (!payload?.id) return null;
+    // Reject anything that isn't a real access token (refresh / pre_2fa / unknown all share the secret)
+    if (payload.type && payload.type !== 'access') return null;
     return {
       id: payload.id as string,
       email: payload.email as string,
@@ -79,6 +83,32 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
       role: (payload.role as UserRole) || 'user',
       subscription: (payload.subscription as 'free' | 'pro' | 'enterprise') || 'free',
     };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Generate a short-lived (5 min) 2FA challenge token issued after password verification.
+ * Holds only the userId + a distinct `type` claim so verifyToken cannot accept it as a session.
+ */
+export async function generatePre2FAToken(userId: string): Promise<string> {
+  return new SignJWT({ id: userId, type: 'pre_2fa' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(PRE_2FA_TOKEN_TTL)
+    .sign(getSecretKey());
+}
+
+/**
+ * Verify a 2FA challenge token. Returns the userId if valid, else null.
+ */
+export async function verifyPre2FAToken(token: string): Promise<string | null> {
+  try {
+    if (!token?.trim()) return null;
+    const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ['HS256'] });
+    if (payload?.type !== 'pre_2fa' || !payload.id) return null;
+    return payload.id as string;
   } catch {
     return null;
   }

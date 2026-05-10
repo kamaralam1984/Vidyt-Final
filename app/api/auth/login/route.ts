@@ -5,7 +5,7 @@ import { loginUser } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import { z } from 'zod';
 import { getClientIP, trackFailure, rateLimit, isIPBlocked, RATE_LIMITS } from '@/lib/rateLimiter';
-import { generateRefreshToken } from '@/lib/auth-jwt';
+import { generateRefreshToken, generatePre2FAToken } from '@/lib/auth-jwt';
 import { verifyTurnstile } from '@/lib/turnstile';
 
 const loginSchema = z.object({
@@ -65,6 +65,19 @@ async function handleLogin(request: NextRequest) {
       if (!userDoc) {
         console.error(`[API:Login] User document not found in DB after auth for member: ${email}`);
         return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+      }
+
+      // 2FA gate: password is correct, but a second factor is required.
+      // Issue a short-lived challenge token instead of a session.
+      if (userDoc.twoFactorEnabled) {
+        const preToken = await generatePre2FAToken(user.id);
+        console.log(`[API:Login] 2FA required for ${email}`);
+        return NextResponse.json({
+          success: true,
+          requires2FA: true,
+          preToken,
+          email: user.email,
+        });
       }
 
       console.log(`[API:Login] Success: ${email} (Role: ${user.role}, UniqueId: ${userDoc.uniqueId})`);

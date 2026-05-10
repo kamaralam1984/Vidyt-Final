@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { loginUserWithPin } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import { z } from 'zod';
+import { generatePre2FAToken } from '@/lib/auth-jwt';
 
 const loginPinSchema = z.object({
   uniqueId: z
@@ -43,7 +44,18 @@ export async function POST(request: NextRequest) {
     // Get user from database to get full details (already connected above)
     const User = (await import('@/models/User')).default;
     const userDoc = await User.findById(user.id);
-    
+
+    // 2FA gate: PIN was correct, but a second factor is required.
+    if (userDoc?.twoFactorEnabled) {
+      const preToken = await generatePre2FAToken(user.id);
+      return NextResponse.json({
+        success: true,
+        requires2FA: true,
+        preToken,
+        email: user.email,
+      });
+    }
+
     const response = NextResponse.json({
       success: true,
       user: {
