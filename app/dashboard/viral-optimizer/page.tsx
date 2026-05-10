@@ -10,6 +10,7 @@ import QuickReferenceBanner from '@/components/quick-reference-banner';
 import StepByStepGuide from '@/components/step-by-step-guide';
 import SEOGenerator from '@/components/seo-generator';
 import ExistingVideoUpdater from '@/components/existing-video-updater';
+import ChannelVideosBrowser from '@/components/ChannelVideosBrowser';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import {
@@ -401,6 +402,19 @@ export default function ViralOptimizerPage() {
           {/* Step-by-Step Guide */}
           <div className="mb-8">
             <StepByStepGuide />
+          </div>
+
+          {/* Channel Videos Browser */}
+          <div className="mb-8">
+            <ChannelVideosBrowser
+              onLoadToOptimizer={(video) => {
+                setVideoId(video.videoId);
+                setTitle(video.title);
+                setDescription(video.description);
+                setKeywords(video.tags);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
