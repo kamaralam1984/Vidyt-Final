@@ -930,3 +930,101 @@ html[dir="rtl"] aside {
 [data-theme="light"] .to-indigo-500\/25 {
   --tw-gradient-to: rgba(30, 58, 138, 0.10) var(--tw-gradient-to-position) !important;
 }
+
+/* Mid-tone accent text (X-400 shades used widely as chip labels, badges,
+   small accents) — on white in light mode they blend/look washed. Map to
+   navy so the white + navy rule holds. */
+[data-theme="light"] .text-purple-400,
+[data-theme="light"] .text-violet-400,
+[data-theme="light"] .text-fuchsia-400,
+[data-theme="light"] .text-indigo-400,
+[data-theme="light"] .text-blue-400,
+[data-theme="light"] .text-sky-400,
+[data-theme="light"] .text-cyan-400,
+[data-theme="light"] .text-teal-400,
+[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-green-400,
+[data-theme="light"] .text-yellow-400,
+[data-theme="light"] .text-amber-400,
+[data-theme="light"] .text-orange-400 {
+  color: var(--accent) !important;
+}
+
+/* Same family at hover variant */
+[data-theme="light"] .hover\:text-purple-400:hover,
+[data-theme="light"] .hover\:text-violet-400:hover,
+[data-theme="light"] .hover\:text-cyan-400:hover,
+[data-theme="light"] .hover\:text-blue-400:hover,
+[data-theme="light"] .hover\:text-emerald-400:hover,
+[data-theme="light"] .hover\:text-amber-400:hover,
+[data-theme="light"] .hover\:text-orange-400:hover {
+  color: var(--accent-hover) !important;
+}
+
+/* Translucent accent-500 backgrounds (chips: bg-purple-500/10 etc.) —
+   barely visible on white pearl. Bump to navy-soft so chips read clearly. */
+[data-theme="light"] .bg-purple-500\/10,
+[data-theme="light"] .bg-purple-500\/15,
+[data-theme="light"] .bg-purple-500\/20,
+[data-theme="light"] .bg-violet-500\/10,
+[data-theme="light"] .bg-violet-500\/15,
+[data-theme="light"] .bg-violet-500\/20,
+[data-theme="light"] .bg-fuchsia-500\/10,
+[data-theme="light"] .bg-fuchsia-500\/15,
+[data-theme="light"] .bg-indigo-500\/10,
+[data-theme="light"] .bg-indigo-500\/15,
+[data-theme="light"] .bg-blue-500\/10,
+[data-theme="light"] .bg-blue-500\/15,
+[data-theme="light"] .bg-sky-500\/10,
+[data-theme="light"] .bg-cyan-500\/10,
+[data-theme="light"] .bg-cyan-500\/15,
+[data-theme="light"] .bg-teal-500\/10,
+[data-theme="light"] .bg-emerald-500\/10,
+[data-theme="light"] .bg-emerald-500\/15,
+[data-theme="light"] .bg-green-500\/10,
+[data-theme="light"] .bg-yellow-500\/10,
+[data-theme="light"] .bg-amber-500\/10,
+[data-theme="light"] .bg-amber-500\/15,
+[data-theme="light"] .bg-orange-500\/10,
+[data-theme="light"] .bg-pink-500\/10,
+[data-theme="light"] .bg-pink-500\/15,
+[data-theme="light"] .bg-rose-500\/10,
+[data-theme="light"] .bg-red-500\/10,
+[data-theme="light"] .bg-red-500\/15 {
+  background-color: var(--accent-soft) !important;
+}
+
+/* Hover accent backgrounds → slightly darker navy-soft */
+[data-theme="light"] [class*="hover\:bg-purple-500\/"]:hover,
+[data-theme="light"] [class*="hover\:bg-violet-500\/"]:hover,
+[data-theme="light"] [class*="hover\:bg-cyan-500\/"]:hover,
+[data-theme="light"] [class*="hover\:bg-blue-500\/"]:hover,
+[data-theme="light"] [class*="hover\:bg-emerald-500\/"]:hover,
+[data-theme="light"] [class*="hover\:bg-amber-500\/"]:hover,
+[data-theme="light"] [class*="hover\:bg-pink-500\/"]:hover,
+[data-theme="light"] [class*="hover\:bg-red-500\/"]:hover {
+  background-color: rgba(30, 58, 138, 0.14) !important;
+}
+
+/* Translucent accent-500 borders → border-secondary so chips have a clear edge */
+[data-theme="light"] .border-purple-500\/20,
+[data-theme="light"] .border-purple-500\/30,
+[data-theme="light"] .border-violet-500\/20,
+[data-theme="light"] .border-fuchsia-500\/20,
+[data-theme="light"] .border-indigo-500\/20,
+[data-theme="light"] .border-blue-500\/20,
+[data-theme="light"] .border-sky-500\/20,
+[data-theme="light"] .border-cyan-500\/20,
+[data-theme="light"] .border-cyan-500\/30,
+[data-theme="light"] .border-teal-500\/20,
+[data-theme="light"] .border-emerald-500\/20,
+[data-theme="light"] .border-green-500\/20,
+[data-theme="light"] .border-amber-500\/20,
+[data-theme="light"] .border-orange-500\/20,
+[data-theme="light"] .border-pink-500\/20,
+[data-theme="light"] .border-pink-500\/30,
+[data-theme="light"] .border-rose-500\/20,
+[data-theme="light"] .border-red-500\/20,
+[data-theme="light"] .border-red-500\/30 {
+  border-color: rgba(30, 58, 138, 0.20) !important;
+}
