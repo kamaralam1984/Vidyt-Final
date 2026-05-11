@@ -71,13 +71,19 @@ export default function ViralOptimizerPage() {
       const res = await axios.post('/api/youtube/video-analyze', fd, { headers: getAuthHeaders() });
       const sug = res.data?.suggestions;
       if (sug) {
-        setTitle((prev) => prev || sug.title);
-        setDescription((prev) => prev || sug.description);
-        setKeywords((prev) => prev || sug.keywords?.join(', '));
+        const newTitle = sug.title || '';
         const hashStr = sug.hashtags?.length ? sug.hashtags.join(' ') : '';
-        if (hashStr && !sug.description?.includes('#')) {
-          setDescription((prev) => (prev ? `${prev}\n\n${hashStr}` : hashStr));
-        }
+        const newDesc = sug.description
+          ? (hashStr && !sug.description.includes('#') ? `${sug.description}\n\n${hashStr}` : sug.description)
+          : (hashStr || '');
+        const newKeywords = sug.keywords?.join(', ') || '';
+        // Always replace — generate fresh high-CTR content
+        if (newTitle) setTitle(newTitle);
+        if (newDesc) setDescription(newDesc);
+        if (newKeywords) setKeywords(newKeywords);
+        setSeoStatus({ type: 'success', message: 'SEO generated! Running CTR analysis...' });
+        // Auto-trigger CTR analysis with the new values
+        await runAnalysis({ title: newTitle || promptHint, description: newDesc, keywords: newKeywords });
         setSeoStatus({ type: 'success', message: 'SEO generated successfully!' });
       } else {
         setSeoStatus({ type: 'error', message: 'No suggestions returned. Try a different topic.' });
@@ -602,7 +608,7 @@ export default function ViralOptimizerPage() {
                       className="w-full py-2.5 px-4 bg-[#222] hover:bg-[#333] border border-[#444] disabled:opacity-50 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors focus:ring-2 focus:ring-[#FF0000]"
                     >
                       {generatingSEO ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-purple-400" />}
-                      {generatingSEO ? 'AI is generating high-ranking SEO...' : 'Auto-Generate SEO ✨'}
+                      {generatingSEO ? 'Generating high-CTR SEO...' : '⚡ AI High-CTR SEO (Auto-Fill)'}
                     </button>
                     {seoStatus && (
                       <div className={`text-xs px-3 py-2 rounded-lg border ${seoStatus.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
