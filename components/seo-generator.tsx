@@ -14,6 +14,60 @@ interface SEOGeneratorProps {
   currentTopic: string;
   currentTitle?: string;
   currentDescription?: string;
+  currentKeywords?: string;
+}
+
+interface Tip {
+  field: string;
+  level: 'error' | 'warn' | 'ok';
+  msg: string;
+  fix: string;
+}
+
+function auditContent(title: string, description: string, keywords: string): Tip[] {
+  const tips: Tip[] = [];
+  const t = title.trim();
+  const d = description.trim();
+  const kwList = keywords.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean);
+
+  // Title checks
+  if (!t) {
+    tips.push({ field: 'Title', level: 'error', msg: 'Title is empty', fix: 'Add a title — it is the #1 CTR driver on YouTube.' });
+  } else {
+    if (t.length < 40) tips.push({ field: 'Title', level: 'warn', msg: `Too short (${t.length} chars)`, fix: 'Aim for 55-70 characters for best CTR. Add more detail.' });
+    if (t.length > 100) tips.push({ field: 'Title', level: 'warn', msg: `Too long (${t.length} chars)`, fix: 'Keep under 100 chars. YouTube truncates long titles in search.' });
+    if (!/\d/.test(t)) tips.push({ field: 'Title', level: 'warn', msg: 'No numbers', fix: 'Add a number (e.g. "5 Tips", "Top 10") — numbers boost CTR by up to 36%.' });
+    if (!/\?|how|what|why|when|which|who/i.test(t)) tips.push({ field: 'Title', level: 'warn', msg: 'No question or curiosity gap', fix: 'Start with "How to", "Why", "What" or end with "?" to trigger curiosity.' });
+    if (!/[\[\(]/.test(t)) tips.push({ field: 'Title', level: 'warn', msg: 'No brackets [ ] or ( )', fix: 'Add [PROVEN] or (2026 Guide) — brackets alone boost CTR by ~38%.' });
+    if (!/secret|amazing|shocking|incredible|insane|best|worst|ultimate|proven|hack|trick|mistake|never|always|must|viral|free|instant|breaking|exclusive/i.test(t)) {
+      tips.push({ field: 'Title', level: 'warn', msg: 'No power words', fix: 'Add power words: Secret, Ultimate, Proven, Shocking, Best, Must-See.' });
+    }
+  }
+
+  // Keywords checks
+  if (kwList.length === 0) {
+    tips.push({ field: 'Keywords', level: 'error', msg: 'No keywords added', fix: 'Add 10-20 keywords mixing short-tail (1 word) and long-tail (3+ words).' });
+  } else {
+    if (kwList.length < 5) tips.push({ field: 'Keywords', level: 'warn', msg: `Only ${kwList.length} keyword(s)`, fix: 'Add at least 10-15 keywords for broader search reach.' });
+    const longTail = kwList.filter((k) => k.split(/\s+/).length >= 3).length;
+    if (longTail === 0) tips.push({ field: 'Keywords', level: 'warn', msg: 'No long-tail keywords', fix: 'Add 3-5 long-tail phrases (e.g. "how to grow youtube channel fast") — they rank easier.' });
+  }
+
+  // Description checks
+  if (!d) {
+    tips.push({ field: 'Description', level: 'error', msg: 'Description is empty', fix: 'Write 200+ chars. Descriptions with keywords rank higher in YouTube search.' });
+  } else {
+    if (d.length < 100) tips.push({ field: 'Description', level: 'error', msg: `Too short (${d.length} chars)`, fix: 'Expand to 200-500 chars. Include 3-5 keywords naturally in the first 2 lines.' });
+    else if (d.length < 200) tips.push({ field: 'Description', level: 'warn', msg: `Short description (${d.length} chars)`, fix: 'Aim for 200+ chars. Add context, keyword-rich sentences, and a CTA.' });
+    if (!/subscrib|like|comment|share|follow|turn on/i.test(d)) tips.push({ field: 'Description', level: 'warn', msg: 'No CTA (Call To Action)', fix: 'End with: "Subscribe for more. Like if this helped. Comment your question below."' });
+    const hashCount = (d.match(/#\w+/g) || []).length;
+    if (hashCount === 0) tips.push({ field: 'Hashtags', level: 'error', msg: 'No hashtags in description', fix: 'Add 15-20 hashtags at the end of description (e.g. #viral #youtube #tutorial).' });
+    else if (hashCount < 5) tips.push({ field: 'Hashtags', level: 'warn', msg: `Only ${hashCount} hashtag(s)`, fix: 'Add 10-20 hashtags mixing topic-specific and trending tags.' });
+    if (!/\d{1,2}:\d{2}/.test(d)) tips.push({ field: 'Description', level: 'warn', msg: 'No timestamps', fix: 'Add chapter timestamps (0:00 Intro, 1:30 Main Topic) — boosts watch time and CTR.' });
+    if (!/https?:\/\//.test(d)) tips.push({ field: 'Description', level: 'warn', msg: 'No links', fix: 'Add social links or related video links in description for more engagement.' });
+  }
+
+  return tips;
 }
 
 export default function SEOGenerator({
@@ -24,6 +78,7 @@ export default function SEOGenerator({
   currentTopic,
   currentTitle,
   currentDescription,
+  currentKeywords,
 }: SEOGeneratorProps) {
   const [seoData, setSeoData] = useState<{
     keywords: string[];
@@ -265,13 +320,8 @@ export default function SEOGenerator({
     >
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-white">
             ✨ SEO Trending Generator
-            {seoData?._provider && (
-              <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-900/50 text-emerald-400 border border-emerald-800">
-                AI: {seoData._provider}
-              </span>
-            )}
           </h2>
           <p className="text-xs text-[#888]">
             {seoData?.topic ? `Topic: "${seoData.topic}"` : 'Enter a title or keywords to generate topic-matched SEO'}
@@ -285,6 +335,49 @@ export default function SEOGenerator({
           {loading ? 'Generating...' : 'Re-Generate'}
         </button>
       </div>
+
+      {/* CTR Improvement Audit Panel */}
+      {(currentTitle || currentDescription || currentKeywords) && (() => {
+        const tips = auditContent(currentTitle || '', currentDescription || '', currentKeywords || '');
+        const errors = tips.filter((t) => t.level === 'error');
+        const warns = tips.filter((t) => t.level === 'warn');
+        if (tips.length === 0) return null;
+        return (
+          <div className="bg-[#0F0F0F] border border-[#2a2a2a] rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                📊 CTR Improvement Guide
+              </h3>
+              <div className="flex gap-2 text-xs">
+                {errors.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-red-900/40 text-red-400 border border-red-800 font-medium">
+                    {errors.length} critical
+                  </span>
+                )}
+                {warns.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400 border border-yellow-800 font-medium">
+                    {warns.length} warning
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              {tips.map((tip, i) => (
+                <div key={i} className={`flex gap-3 p-2.5 rounded-lg border ${tip.level === 'error' ? 'bg-red-950/20 border-red-900/50' : 'bg-yellow-950/20 border-yellow-900/40'}`}>
+                  <span className="text-base mt-0.5 shrink-0">{tip.level === 'error' ? '🔴' : '🟡'}</span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-white/80">
+                      <span className={`mr-1 ${tip.level === 'error' ? 'text-red-400' : 'text-yellow-400'}`}>[{tip.field}]</span>
+                      {tip.msg}
+                    </p>
+                    <p className="text-[11px] text-[#888] mt-0.5 leading-relaxed">{tip.fix}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {seoData ? (
         <div className="space-y-3">

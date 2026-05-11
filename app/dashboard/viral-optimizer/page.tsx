@@ -607,6 +607,7 @@ export default function ViralOptimizerPage() {
                 currentTopic={title || keywords || description || 'viral content'}
                 currentTitle={title}
                 currentDescription={description}
+                currentKeywords={keywords}
                 onSelectKeyword={(kw) => setKeywords((prev) => (prev ? `${prev}, ${kw}` : kw))}
                 onSelectTitle={(t) => setTitle(t)}
                 onSelectDescription={(d) => setDescription(d)}
