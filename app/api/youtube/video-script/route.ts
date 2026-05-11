@@ -2,8 +2,53 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
-import { YoutubeTranscript } from 'youtube-transcript';
 import { routeAI } from '@/lib/ai-router';
+
+async function fetchYouTubeTranscript(videoId: string): Promise<string | null> {
+  try {
+    // Fetch the YouTube watch page to extract caption track URL
+    const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        'Accept-Language': 'en-US,en;q=0.9',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+      },
+    });
+    const html = await pageRes.text();
+
+    // Extract ytInitialPlayerResponse JSON
+    const match = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
+    if (!match) return null;
+
+    let playerData: any;
+    try { playerData = JSON.parse(match[1]); } catch { return null; }
+
+    const tracks: any[] = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+    if (!tracks.length) return null;
+
+    // Prefer Hindi, then English, then first available
+    const track =
+      tracks.find((t) => t.languageCode === 'hi') ||
+      tracks.find((t) => t.languageCode === 'en') ||
+      tracks[0];
+
+    if (!track?.baseUrl) return null;
+
+    // Fetch the caption XML
+    const captionRes = await fetch(track.baseUrl + '&fmt=json3');
+    if (!captionRes.ok) return null;
+    const captionData = await captionRes.json();
+
+    const lines: string[] = (captionData?.events || [])
+      .filter((e: any) => e.segs)
+      .map((e: any) => e.segs.map((s: any) => s.utf8 || '').join(''))
+      .filter((t: string) => t.trim() && t !== '\n');
+
+    const transcript = lines.join(' ').replace(/\s+/g, ' ').trim();
+    return transcript.length > 20 ? transcript : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,38 +62,32 @@ export async function GET(request: NextRequest) {
 
     if (!videoId) return NextResponse.json({ error: 'videoId required' }, { status: 400 });
 
-    // Layer 1: Fetch real transcript from YouTube captions
-    try {
-      const items = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'hi' })
-        .catch(() => YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' }))
-        .catch(() => YoutubeTranscript.fetchTranscript(videoId));
-
-      if (items && items.length > 0) {
-        const transcript = items.map((i) => i.text).join(' ').replace(/\s+/g, ' ').trim();
-        return NextResponse.json({
-          script: transcript,
-          source: 'transcript',
-          wordCount: transcript.split(/\s+/).length,
-        });
-      }
-    } catch { /* no captions, fall through */ }
+    // Layer 1: Real YouTube transcript (no package, direct fetch)
+    const transcript = await fetchYouTubeTranscript(videoId);
+    if (transcript) {
+      return NextResponse.json({
+        script: transcript,
+        source: 'transcript',
+        wordCount: transcript.split(/\s+/).length,
+      });
+    }
 
     // Layer 2: AI-generated script from title + description
     if (title || description) {
       try {
         const aiRes = await routeAI({
-          prompt: `You are a YouTube content expert. Based on this video's metadata, write the likely script/content outline in detail.
+          prompt: `You are a YouTube content expert. Based on this video's metadata, write the likely script content in detail.
 
 Title: "${title}"
 Description: "${description.slice(0, 400)}"
 
-Write a detailed script/content breakdown (400-600 words) covering:
-1. Likely hook/intro (first 30 seconds)
-2. Main content points covered
-3. Key talking points and transitions
-4. Likely outro/CTA
+Write a detailed script/content (400-600 words) covering what this video likely contains:
+- The hook/intro (first 30 seconds)
+- Main content points
+- Key talking points and transitions
+- Outro/CTA
 
-Write in a natural, conversational tone matching the video topic. Do NOT include section labels like "1." or "Hook:" — write flowing prose as if it's the actual script.`,
+Write in natural conversational tone as if it is the actual script. No section headers.`,
           cacheKey: `script:${videoId}`,
           cacheTtlSec: 3600,
           timeoutMs: 20000,
@@ -66,7 +105,7 @@ Write in a natural, conversational tone matching the video topic. Do NOT include
     }
 
     return NextResponse.json({
-      script: 'No transcript or captions available for this video. Enable auto-captions on YouTube or add manual captions to see the script here.',
+      script: 'No transcript available for this video. Enable auto-captions on YouTube or add manual captions to see the script here.',
       source: 'none',
       wordCount: 0,
     });
