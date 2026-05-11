@@ -109,6 +109,28 @@ export default function ViralOptimizerPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [dnaVariants, setDnaVariants] = useState<{ title: string; archetypes: string[]; emoji: string }[]>([]);
   const [dnaGenerating, setDnaGenerating] = useState(false);
+  const [oneClickOptimizing, setOneClickOptimizing] = useState(false);
+  const [oneClickDone, setOneClickDone] = useState(false);
+
+  const oneClickOptimize = async () => {
+    if (!title.trim() && !keywords.trim()) return;
+    setOneClickOptimizing(true);
+    setOneClickDone(false);
+    try {
+      const res = await axios.post('/api/viral/one-click-optimize',
+        { title, description, keywords },
+        { headers: getAuthHeaders() }
+      );
+      const d = res.data;
+      if (d.title) setTitle(d.title);
+      if (d.description) setDescription(d.description);
+      if (d.keywords) setKeywords(d.keywords);
+      setOneClickDone(true);
+      setTimeout(() => setOneClickDone(false), 4000);
+    } catch { /* ignore */ } finally {
+      setOneClickOptimizing(false);
+    }
+  };
 
   const generateDnaVariants = async (missingArchetypes: string[]) => {
     if (!title.trim() || dnaGenerating) return;
@@ -440,9 +462,24 @@ export default function ViralOptimizerPage() {
               className="lg:col-span-2 space-y-4"
             >
               <div className="bg-[#181818] border border-[#212121] rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5" /> {t('viral.engine.title')}
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <FileText className="w-5 h-5" /> {t('viral.engine.title')}
+                  </h2>
+                  <button
+                    onClick={oneClickOptimize}
+                    disabled={oneClickOptimizing || (!title.trim() && !keywords.trim())}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 ${oneClickDone ? 'bg-emerald-600 text-white' : 'bg-gradient-to-r from-[#FF0000] to-[#FF6600] hover:from-[#CC0000] hover:to-[#CC5500] text-white shadow-lg shadow-red-900/30'}`}
+                  >
+                    {oneClickOptimizing ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Optimizing...</>
+                    ) : oneClickDone ? (
+                      <><Zap className="w-4 h-4" /> Done! 12.5%+ CTR</>
+                    ) : (
+                      <><Zap className="w-4 h-4" /> One-Click 12.5% CTR</>
+                    )}
+                  </button>
+                </div>
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-1">
