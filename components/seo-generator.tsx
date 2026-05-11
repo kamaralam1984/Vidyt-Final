@@ -12,6 +12,8 @@ interface SEOGeneratorProps {
   onSelectDescription: (desc: string) => void;
   onSelectHashtags: (hashtags: string) => void;
   currentTopic: string;
+  currentTitle?: string;
+  currentDescription?: string;
 }
 
 export default function SEOGenerator({
@@ -20,6 +22,8 @@ export default function SEOGenerator({
   onSelectDescription,
   onSelectHashtags,
   currentTopic,
+  currentTitle,
+  currentDescription,
 }: SEOGeneratorProps) {
   const [seoData, setSeoData] = useState<{
     keywords: string[];
@@ -27,6 +31,7 @@ export default function SEOGenerator({
     descriptions: string[];
     hashtags: string[];
     topic: string;
+    _provider?: string;
   } | null>(null);
 
   const [loading, setLoading] = useState(false);
@@ -52,7 +57,11 @@ export default function SEOGenerator({
     try {
       const res = await axios.post(
         '/api/seo/trending-generator',
-        { topic: currentTopic || 'viral content' },
+        {
+          topic: currentTopic || 'viral content',
+          title: currentTitle || '',
+          description: currentDescription || '',
+        },
         { headers: getAuthHeaders() }
       );
       setSeoData(res.data);
@@ -258,9 +267,14 @@ export default function SEOGenerator({
         <div>
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             ✨ SEO Trending Generator
+            {seoData?._provider && (
+              <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-900/50 text-emerald-400 border border-emerald-800">
+                AI: {seoData._provider}
+              </span>
+            )}
           </h2>
           <p className="text-xs text-[#888]">
-            {seoData?.topic && `Generating for: "${seoData.topic}"`}
+            {seoData?.topic ? `Topic: "${seoData.topic}"` : 'Enter a title or keywords to generate topic-matched SEO'}
           </p>
         </div>
         <button
