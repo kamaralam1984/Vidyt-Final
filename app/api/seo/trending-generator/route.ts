@@ -92,25 +92,28 @@ export async function POST(request: NextRequest) {
     // Layer 1: AI-powered generation
     try {
       const aiRes = await routeAI({
-        prompt: `You are a YouTube SEO expert. Generate highly specific, topic-matched SEO content for a YouTube video. Return ONLY valid JSON with no markdown.
+        prompt: `You are a YouTube SEO expert targeting 12.5%+ CTR. Generate highly specific, topic-matched SEO content. Return ONLY valid JSON with no markdown.
 
 Video Topic: "${context}"
 ${description ? `Description context: "${description.slice(0, 200)}"` : ''}
 Year: ${year}
+CTR Target: 12.5%+
 
 Return JSON:
 {
-  "keywords": [<20 specific keywords/phrases directly related to the topic, mix of short and long-tail>],
-  "titles": [<10 high-CTR YouTube title variants using numbers, power words, curiosity gaps, brackets - all directly about the topic>],
-  "descriptions": [<5 SEO-optimized YouTube descriptions, each 150-300 chars, specific to the topic with keywords, CTA, and hashtags>],
-  "hashtags": [<50 relevant hashtags starting with # - topic-specific first, then niche, then general trending>]
+  "keywords": [<20 specific keywords/phrases directly related to the topic, mix of short and long-tail, ordered by search volume>],
+  "titles": [<10 YouTube title variants ALL targeting 12.5%+ CTR - MUST use: numbers, power words (Secret/Ultimate/Proven/Shocking/Best), brackets [like this] or (like this), question words OR curiosity gaps, 55-70 chars each>],
+  "descriptions": [<5 SEO-optimized YouTube descriptions, each 200-400 chars, topic-specific, include 3-5 keywords naturally, end with CTA (Subscribe/Like/Comment), add 5 relevant hashtags at end>],
+  "hashtags": [<50 relevant hashtags starting with # - topic-specific first, then niche, then trending: #viral #youtube #trending>]
 }
 
-Rules:
-- ALL content must directly relate to "${context}" - no generic unrelated keywords
-- Titles: use numbers, ALL CAPS 1-2 words, brackets [], questions, power words
-- Keywords: mix exact match + long-tail, no duplicates
-- Hashtags: topic-specific ones first, then broader niche, camelCase format`,
+CRITICAL title rules for 12.5%+ CTR:
+- MUST include a number (5, 10, 7, etc.)
+- MUST include brackets [PROVEN] or (2026 Guide)
+- MUST have power word: Secret/Ultimate/Proven/Shocking/Best/Never/Must/Viral/Exposed/Revealed
+- 55-70 character sweet spot
+- 1-2 ALL CAPS words for emphasis
+- ALL content must directly relate to "${context}" only`,
         cacheKey: `seo-gen:${context}:${description.slice(0, 40)}`.slice(0, 120),
         cacheTtlSec: 600,
         timeoutMs: 25000,

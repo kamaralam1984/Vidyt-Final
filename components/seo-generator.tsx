@@ -24,6 +24,34 @@ interface Tip {
   fix: string;
 }
 
+function scoreTitleCtr(title: string): number {
+  if (!title?.trim()) return 3.0;
+  const t = title.trim();
+  let s = 40;
+  if (/\d+/.test(t)) s += 12;
+  if (/\?|how|what|why|when|which|who/i.test(t)) s += 10;
+  if (/[\[\(]/.test(t)) s += 8;
+  if (/secret|amazing|shocking|incredible|insane|best|worst|ultimate|proven|hack|trick|mistake|never|always|must|watch|stop|urgent|breaking|exclusive|viral|free|instant|guaranteed/i.test(t)) s += 10;
+  if (/now|today|hurry|limited|last/i.test(t)) s += 5;
+  if (/202[4-9]|203\d/.test(t)) s += 4;
+  const len = t.length;
+  if (len >= 55 && len <= 70) s += 10;
+  else if (len >= 40 && len <= 100) s += 6;
+  else if (len >= 20 && len <= 110) s += 2;
+  const caps = (t.match(/\b[A-Z]{3,}\b/g) || []).length;
+  if (caps >= 1 && caps <= 3) s += 4;
+  if (/[|]/.test(t)) s += 3;
+  s = Math.min(100, Math.round(s));
+  return Math.min(16, Math.max(3, parseFloat((3 + (s / 100) * 13).toFixed(1))));
+}
+
+function ctrBadgeClass(ctr: number): string {
+  if (ctr >= 12.5) return 'text-yellow-300 bg-yellow-900/40 border-yellow-600';
+  if (ctr >= 10.5) return 'text-green-400 bg-green-900/30 border-green-700';
+  if (ctr >= 8.0) return 'text-blue-400 bg-blue-900/30 border-blue-700';
+  return 'text-[#666] bg-[#1a1a1a] border-[#333]';
+}
+
 function auditContent(title: string, description: string, keywords: string): Tip[] {
   const tips: Tip[] = [];
   const t = title.trim();
@@ -151,6 +179,7 @@ export default function SEOGenerator({
     section,
     total,
     onSelect,
+    showCtr,
   }: {
     title: string;
     items: string[];
@@ -158,6 +187,7 @@ export default function SEOGenerator({
     section: keyof typeof expandedSections;
     total: number;
     onSelect: (item: string) => void;
+    showCtr?: boolean;
   }) => {
     const progress = ((items?.length || 0) / total) * 100;
 
@@ -278,7 +308,18 @@ export default function SEOGenerator({
                         className="mt-1 w-4 h-4 rounded border-[#444] bg-[#222] text-[#FF0000] focus:ring-[#FF0000] cursor-pointer"
                       />
                       <div className="flex-1 flex flex-col items-start min-w-0">
-                        <span className={`text-sm transition-colors ${selectedItems.has(item) ? 'text-white' : 'text-[#AAA] group-hover:text-white'}`}>{item}</span>
+                        <div className="flex items-start gap-2 w-full">
+                          <span className={`text-sm transition-colors flex-1 ${selectedItems.has(item) ? 'text-white' : 'text-[#AAA] group-hover:text-white'}`}>{item}</span>
+                          {showCtr && (() => {
+                            const ctr = scoreTitleCtr(item);
+                            return (
+                              <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border ${ctrBadgeClass(ctr)} flex items-center gap-0.5`}>
+                                {ctr >= 12.5 && <span>⭐</span>}
+                                {ctr.toFixed(1)}% CTR
+                              </span>
+                            );
+                          })()}
+                        </div>
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); onSelect(item); }}
@@ -335,6 +376,58 @@ export default function SEOGenerator({
           {loading ? 'Generating...' : 'Re-Generate'}
         </button>
       </div>
+
+      {/* CTR Target Meter */}
+      {currentTitle && (() => {
+        const ctr = scoreTitleCtr(currentTitle);
+        const target = 12.5;
+        const pct = Math.min(100, (ctr / 16) * 100);
+        const targetPct = (target / 16) * 100;
+        const gap = Math.max(0, target - ctr);
+        const missing: string[] = [];
+        const t = currentTitle.trim();
+        if (!/\d/.test(t)) missing.push('add a number');
+        if (!/[\[\(]/.test(t)) missing.push('add [brackets]');
+        if (!/secret|amazing|shocking|incredible|insane|best|worst|ultimate|proven|hack|trick|mistake|never|always|must|viral|breaking|exclusive/i.test(t)) missing.push('add power word');
+        if (!/\?|how|what|why|when|which|who/i.test(t)) missing.push('add question word');
+        if (t.length < 55 || t.length > 70) missing.push('aim 55-70 chars');
+        return (
+          <div className="bg-[#0F0F0F] border border-[#2a2a2a] rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-white">Current Title CTR Prediction</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold ${ctr >= 12.5 ? 'text-yellow-300' : ctr >= 10 ? 'text-green-400' : ctr >= 8 ? 'text-blue-400' : 'text-red-400'}`}>
+                  {ctr.toFixed(1)}%
+                </span>
+                <span className="text-xs text-[#666]">/ Target: {target}%</span>
+              </div>
+            </div>
+            <div className="relative h-3 bg-[#222] rounded-full overflow-visible mb-2">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${pct}%` }}
+                transition={{ duration: 0.6 }}
+                className={`h-full rounded-full ${ctr >= 12.5 ? 'bg-gradient-to-r from-yellow-600 to-yellow-400' : ctr >= 10 ? 'bg-gradient-to-r from-green-700 to-green-400' : ctr >= 8 ? 'bg-gradient-to-r from-blue-700 to-blue-400' : 'bg-gradient-to-r from-red-800 to-red-500'}`}
+              />
+              {/* Target marker at 12.5% */}
+              <div
+                className="absolute top-0 h-full w-0.5 bg-yellow-400/80"
+                style={{ left: `${targetPct}%` }}
+              >
+                <span className="absolute -top-5 -translate-x-1/2 text-[9px] text-yellow-400 font-bold whitespace-nowrap">12.5%</span>
+              </div>
+            </div>
+            {gap > 0 ? (
+              <p className="text-[11px] text-[#888] mt-1">
+                <span className="text-yellow-400 font-semibold">+{gap.toFixed(1)}% needed</span>
+                {missing.length > 0 && <span> — {missing.slice(0, 3).join(', ')}</span>}
+              </p>
+            ) : (
+              <p className="text-[11px] text-yellow-400 font-semibold mt-1">Target reached! This title is optimized for 12.5%+ CTR.</p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* CTR Improvement Audit Panel */}
       {(currentTitle || currentDescription || currentKeywords) && (() => {
@@ -396,6 +489,7 @@ export default function SEOGenerator({
             section="titles"
             total={10}
             onSelect={onSelectTitle}
+            showCtr
           />
           <SEOSection
             title="Descriptions"
