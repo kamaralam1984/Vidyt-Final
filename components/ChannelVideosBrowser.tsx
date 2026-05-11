@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Search, Loader2, AlertCircle, Youtube, Play, Radio, Zap,
   ChevronRight, Edit3, Check, RefreshCw, TrendingUp, Rocket,
-  Sparkles, Tag, Hash, Upload,
+  Sparkles, Tag, Hash, Upload, FileText, ChevronDown,
 } from 'lucide-react';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
@@ -97,6 +97,13 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
   // SEO generate
   const [genSeo, setGenSeo] = useState(false);
 
+  // Script
+  const [showScript, setShowScript] = useState(false);
+  const [script, setScript] = useState<string | null>(null);
+  const [scriptSource, setScriptSource] = useState<'transcript' | 'ai' | 'none' | null>(null);
+  const [scriptLoading, setScriptLoading] = useState(false);
+  const [scriptCopied, setScriptCopied] = useState(false);
+
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -168,6 +175,27 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
     setAnalysis(null);
     setAnalyzeError(null);
     setUpdateMsg(null);
+    setShowScript(false);
+    setScript(null);
+    setScriptSource(null);
+  };
+
+  const fetchScript = async () => {
+    if (!selectedVideo) return;
+    setScriptLoading(true);
+    try {
+      const res = await axios.get('/api/youtube/video-script', {
+        params: { videoId: selectedVideo.videoId, title: editTitle, description: editDesc },
+        headers: getAuthHeaders(),
+      });
+      setScript(res.data.script);
+      setScriptSource(res.data.source);
+    } catch {
+      setScript('Failed to load script. Please try again.');
+      setScriptSource('none');
+    } finally {
+      setScriptLoading(false);
+    }
   };
 
   const runAnalysis = async () => {
@@ -473,6 +501,18 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                 {/* Action buttons */}
                 <div className="flex flex-wrap gap-2 pt-2">
                   <button
+                    onClick={() => {
+                      const next = !showScript;
+                      setShowScript(next);
+                      if (next && !script) fetchScript();
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-2 border text-xs font-semibold rounded-lg transition-colors ${showScript ? 'bg-amber-600/20 border-amber-600/50 text-amber-400' : 'bg-[#222] hover:bg-[#2a2a2a] border-[#333] text-white'}`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {showScript ? 'Hide Script' : 'Show Script'}
+                    <ChevronDown className={`w-3 h-3 transition-transform ${showScript ? 'rotate-180' : ''}`} />
+                  </button>
+                  <button
                     onClick={generateSeo}
                     disabled={genSeo}
                     className="flex items-center gap-1.5 px-3 py-2 bg-[#222] hover:bg-[#2a2a2a] border border-[#333] text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
@@ -513,6 +553,57 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                   }`}>
                     {updateMsg.type === 'success' ? <Check className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
                     {updateMsg.text}
+                  </div>
+                )}
+
+                {/* Script Panel */}
+                {showScript && (
+                  <div className="bg-[#0F0F0F] border border-[#2a2a2a] rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-[#2a2a2a] bg-[#141414]">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-xs font-semibold text-white">Video Script</span>
+                        {scriptSource && scriptSource !== 'none' && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${scriptSource === 'transcript' ? 'text-green-400 bg-green-900/30 border-green-800' : 'text-blue-400 bg-blue-900/30 border-blue-800'}`}>
+                            {scriptSource === 'transcript' ? 'Live Transcript' : 'AI Generated'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {script && scriptSource !== 'none' && (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(script);
+                              setScriptCopied(true);
+                              setTimeout(() => setScriptCopied(false), 2000);
+                            }}
+                            className="flex items-center gap-1 text-[10px] px-2 py-1 bg-[#222] hover:bg-[#333] border border-[#333] text-[#AAA] hover:text-white rounded transition-colors"
+                          >
+                            {scriptCopied ? <Check className="w-3 h-3 text-green-400" /> : null}
+                            {scriptCopied ? 'Copied!' : 'Copy'}
+                          </button>
+                        )}
+                        <button
+                          onClick={fetchScript}
+                          disabled={scriptLoading}
+                          className="flex items-center gap-1 text-[10px] px-2 py-1 bg-[#222] hover:bg-[#333] border border-[#333] text-[#AAA] hover:text-white rounded transition-colors disabled:opacity-50"
+                        >
+                          {scriptLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                          {scriptLoading ? 'Loading...' : 'Refresh'}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-3 max-h-64 overflow-y-auto">
+                      {scriptLoading ? (
+                        <div className="flex items-center justify-center py-8 gap-2 text-[#666] text-xs">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Fetching transcript...
+                        </div>
+                      ) : script ? (
+                        <p className="text-[#BBB] text-xs leading-relaxed whitespace-pre-wrap">{script}</p>
+                      ) : (
+                        <p className="text-[#555] text-xs text-center py-4">Click Refresh to load the script.</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
