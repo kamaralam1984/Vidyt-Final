@@ -122,11 +122,16 @@ export default function ViralOptimizerPage() {
         { headers: getAuthHeaders() }
       );
       const d = res.data;
-      if (d.title) setTitle(d.title);
-      if (d.description) setDescription(d.description);
-      if (d.keywords) setKeywords(d.keywords);
+      const newTitle = d.title || title;
+      const newDescription = d.description || description;
+      const newKeywords = d.keywords || keywords;
+      if (d.title) setTitle(newTitle);
+      if (d.description) setDescription(newDescription);
+      if (d.keywords) setKeywords(newKeywords);
       setOneClickDone(true);
       setTimeout(() => setOneClickDone(false), 4000);
+      // Auto-trigger analysis with new values (state may not have flushed yet)
+      await runAnalysis({ title: newTitle, description: newDescription, keywords: newKeywords });
     } catch { /* ignore */ } finally {
       setOneClickOptimizing(false);
     }
@@ -187,8 +192,11 @@ export default function ViralOptimizerPage() {
     check();
   }, []);
 
-  const runAnalysis = async () => {
-    if (!title.trim() && !description.trim() && !keywords.trim() && !script.trim() && !thumbnailFile && !thumbnailPreview) {
+  const runAnalysis = async (overrides?: { title?: string; description?: string; keywords?: string }) => {
+    const t = overrides?.title ?? title;
+    const d = overrides?.description ?? description;
+    const k = overrides?.keywords ?? keywords;
+    if (!t.trim() && !d.trim() && !k.trim() && !script.trim() && !thumbnailFile && !thumbnailPreview) {
       setAnalyzeError('Add at least a title, script, or thumbnail before analyzing.');
       return;
     }
@@ -205,9 +213,10 @@ export default function ViralOptimizerPage() {
     const headers = getAuthHeaders();
     const cfg = { headers, signal: ctrl.signal };
 
+    const hasThumbnail = !!(thumbnailFile || thumbnailPreview);
     let thumbScore = 70, thumbContrast = 70, faceDetection = 0, textReadability = 70;
     let thumbFailed = false;
-    if (thumbnailFile || thumbnailPreview) {
+    if (hasThumbnail) {
       try {
         const fd = new FormData();
         if (thumbnailFile) fd.append('thumbnail', thumbnailFile);
@@ -228,10 +237,10 @@ export default function ViralOptimizerPage() {
     }
 
     const calls = [
-      { key: 'ctr', label: 'CTR', p: axios.post('/api/viral/ctr', { title, keywords, description, thumbnailScore: thumbScore, thumbnailContrast: thumbContrast, faceDetection, textReadability }, cfg) },
-      { key: 'retention', label: 'Retention', p: axios.post('/api/viral/retention', { script, title }, cfg) },
-      { key: 'engagement', label: 'Engagement', p: axios.post('/api/viral/engagement', { description, keywords }, cfg) },
-      { key: 'title', label: 'Title A/B', p: axios.post('/api/viral/title-optimizer', { title, keywords }, cfg) },
+      { key: 'ctr', label: 'CTR', p: axios.post('/api/viral/ctr', { title: t, keywords: k, description: d, hasThumbnail, thumbnailScore: thumbScore, thumbnailContrast: thumbContrast, faceDetection, textReadability }, cfg) },
+      { key: 'retention', label: 'Retention', p: axios.post('/api/viral/retention', { script, title: t }, cfg) },
+      { key: 'engagement', label: 'Engagement', p: axios.post('/api/viral/engagement', { description: d, keywords: k }, cfg) },
+      { key: 'title', label: 'Title A/B', p: axios.post('/api/viral/title-optimizer', { title: t, keywords: k }, cfg) },
     ];
 
     const results = await Promise.allSettled(calls.map((c) => c.p));

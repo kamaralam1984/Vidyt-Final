@@ -2,7 +2,6 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { denyIfNoAnyFeature } from '@/lib/assertUserFeature';
-import { routeAI } from '@/lib/ai-router';
 
 // --- Scoring helpers ---
 
@@ -132,62 +131,21 @@ export async function POST(request: NextRequest) {
     const keywordsStr = (body.keywords as string) || '';
     const keywords = keywordsStr.split(/[,;\n]/).map((k) => k.trim()).filter(Boolean);
     const description = (body.description as string) || '';
-    const thumbnailScore = typeof body.thumbnailScore === 'number' ? body.thumbnailScore : 70;
     const thumbnailContrast = typeof body.thumbnailContrast === 'number' ? body.thumbnailContrast : 70;
     const faceDetection = typeof body.faceDetection === 'number' ? body.faceDetection : 0;
     const textReadability = typeof body.textReadability === 'number' ? body.textReadability : 70;
+    // hasThumbnail=false means no thumbnail uploaded; skip face penalty in that case
+    const hasThumbnail = body.hasThumbnail === true;
 
-    // -- Layer 1: AI (Paid -> Free -> fallback) --
-    if (title || keywords.length) {
-      try {
-        const aiRes = await routeAI({
-          prompt: `You are a YouTube CTR expert. Analyze this video metadata and return ONLY valid JSON.
-Title: "${title}"
-Keywords: ${keywords.slice(0, 10).join(', ')}
-Description length: ${description.length} chars
-Thumbnail score: ${thumbnailScore}/100
-
-Return JSON with exactly these fields:
-{
-  "ctrScore": <integer 0-100>,
-  "ctrPercent": "<decimal like 8.5>",
-  "factors": {
-    "titleCuriosity": <0-100>,
-    "keywordRelevance": <0-100>,
-    "thumbnailContrast": <0-100>,
-    "faceDetection": <0-100>,
-    "textReadability": <0-100>,
-    "descriptionQuality": <0-100>,
-    "hashtagStrategy": <0-100>
-  },
-  "suggestions": ["tip1", "tip2", "tip3"]
-}`,
-          cacheKey: `ctr:${title}:${keywords.join(',')}`.slice(0, 120),
-          cacheTtlSec: 600,
-          timeoutMs: 20000,
-          fallbackText: '',
-        });
-        if (aiRes.provider !== 'fallback' && aiRes.text) {
-          const d = aiRes.parseJson() as any;
-          if (d?.ctrScore && d?.factors && d?.suggestions) {
-            return NextResponse.json({
-              ctrScore: Math.min(100, Math.max(0, Number(d.ctrScore))),
-              ctrPercent: String(d.ctrPercent || '7.0'),
-              factors: d.factors,
-              suggestions: d.suggestions,
-              _provider: aiRes.provider,
-            });
-          }
-        }
-      } catch { /* fall through to heuristics */ }
-    }
-
-    // -- Layer 2: Backend heuristics --
+    // -- Heuristic scoring (consistent, research-backed) --
     const titleCuriosity = scoreTitleCuriosity(title);
     const keywordRelevance = scoreKeywordRelevance(title, keywords);
     const descriptionQuality = scoreDescriptionQuality(title, keywords, description);
     const hashtagStrategy = scoreHashtagStrategy(keywords);
-    const faceScore = faceDetection > 0 ? Math.min(100, 55 + faceDetection * 18) : 40;
+    // When no thumbnail: neutral 70 (no penalty); when thumbnail present, score based on actual face data
+    const faceScore = hasThumbnail
+      ? (faceDetection > 0 ? Math.min(100, 55 + faceDetection * 18) : 40)
+      : 70;
 
     const factors = {
       titleCuriosity,
