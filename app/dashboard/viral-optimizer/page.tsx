@@ -107,6 +107,20 @@ export default function ViralOptimizerPage() {
   }, []);
 
   const [analyzing, setAnalyzing] = useState(false);
+  const [dnaVariants, setDnaVariants] = useState<{ title: string; archetypes: string[]; emoji: string }[]>([]);
+  const [dnaGenerating, setDnaGenerating] = useState(false);
+
+  const generateDnaVariants = async (missingArchetypes: string[]) => {
+    if (!title.trim() || dnaGenerating) return;
+    setDnaGenerating(true);
+    setDnaVariants([]);
+    try {
+      const res = await axios.post('/api/viral/title-dna-improve', { title, missingArchetypes }, { headers: getAuthHeaders() });
+      setDnaVariants(res.data.variants || []);
+    } catch { /* ignore */ } finally {
+      setDnaGenerating(false);
+    }
+  };
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [ctrData, setCtrData] = useState<{
@@ -746,6 +760,84 @@ export default function ViralOptimizerPage() {
                     {titleDna.totalHits === 0 && (
                       <p className="text-xs text-amber-400 mt-3">No strong archetype signals — your title may read as generic. Try a curiosity hook, list, or contrarian angle.</p>
                     )}
+
+                    {/* DNA Improvement Panel */}
+                    {(() => {
+                      const missing = ARCHETYPES.filter((a) => (titleDna.scores[a.id] ?? 0) === 0);
+                      const weak = ARCHETYPES.filter((a) => (titleDna.scores[a.id] ?? 0) > 0 && (titleDna.scores[a.id] ?? 0) < 30);
+                      const FIXES: Record<string, { words: string[]; hint: string }> = {
+                        curiosity: { words: ['Secret', 'Hidden', 'Nobody Tells You', 'Truth Behind', 'Exposed'], hint: 'Add: "The Secret Behind [topic]" or "Nobody Tells You About [topic]"' },
+                        list: { words: ['5 Ways', 'Top 10', '7 Tips', '3 Mistakes'], hint: 'Add a number: "5 [topic] Tips" or "Top 10 [topic] Tricks"' },
+                        authority: { words: ['Proven', 'Expert', 'After 5 Years', 'Real Results'], hint: 'Add proof: "Proven [topic] Method" or "[topic] After Years of Testing"' },
+                        transformation: { words: ['From X to Y', 'Before & After', 'Changed', 'Turned Into'], hint: 'Add journey: "From [X] to [Y]" or "How [topic] Changed Everything"' },
+                        urgency: { words: ['Now', '2026', 'Today', 'Breaking', 'Before It\'s Too Late'], hint: 'Add urgency: "[topic] (Watch NOW)" or "Before It\'s Too Late"' },
+                        question: { words: ['How to', 'Why Is', 'What If', 'Should You'], hint: 'Ask directly: "Why Is [topic] Different?" or "How to [topic]?"' },
+                        contrarian: { words: ['Stop', 'Wrong', 'Never', 'The Myth', 'Don\'t'], hint: 'Interrupt: "Stop [topic] Wrong" or "The [topic] Myth EXPOSED"' },
+                      };
+                      if (missing.length === 0 && weak.length === 0) return null;
+                      return (
+                        <div className="mt-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-white">DNA Improvement Guide</p>
+                            <button
+                              onClick={() => generateDnaVariants(missing.map((a) => a.id))}
+                              disabled={dnaGenerating || !title.trim()}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/40 text-purple-300 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              {dnaGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                              {dnaGenerating ? 'Generating...' : 'Generate Balanced Titles'}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-1.5">
+                            {missing.slice(0, 4).map((a) => {
+                              const fix = FIXES[a.id];
+                              if (!fix) return null;
+                              return (
+                                <div key={a.id} className="flex gap-2 p-2 bg-[#111] border border-[#2a2a2a] rounded-lg">
+                                  <span className="text-base shrink-0">{a.emoji}</span>
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-semibold text-red-400">{a.label} missing</p>
+                                    <p className="text-[10px] text-[#888] mt-0.5 leading-relaxed">{fix.hint}</p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {fix.words.slice(0, 3).map((w) => (
+                                        <span key={w} className="text-[10px] px-1.5 py-0.5 bg-[#1a1a1a] border border-[#333] text-purple-300 rounded cursor-pointer hover:border-purple-500"
+                                          onClick={() => setTitle((prev) => prev ? `${w} ${prev}` : w)}>
+                                          +{w}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Generated Variants */}
+                          {dnaVariants.length > 0 && (
+                            <div className="space-y-2 pt-1">
+                              <p className="text-[10px] text-[#666] uppercase tracking-wider font-semibold">AI Balanced Variants</p>
+                              {dnaVariants.map((v, i) => (
+                                <div key={i} className="flex items-start gap-2 p-2.5 bg-[#111] border border-purple-900/40 rounded-lg hover:border-purple-600/50 transition-colors group">
+                                  <span className="text-sm shrink-0">{v.emoji || '✨'}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-white leading-snug">{v.title}</p>
+                                    {v.archetypes?.length > 0 && (
+                                      <p className="text-[10px] text-purple-400 mt-0.5">{v.archetypes.join(' + ')}</p>
+                                    )}
+                                  </div>
+                                  <button
+                                    onClick={() => setTitle(v.title)}
+                                    className="shrink-0 text-[10px] px-2 py-1 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-700 text-purple-300 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                  >
+                                    Use
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </motion.div>
                 )}
               </AnimatePresence>
