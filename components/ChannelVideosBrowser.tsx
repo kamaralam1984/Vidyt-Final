@@ -1,14 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
   Search, Loader2, AlertCircle, Youtube, Play, Radio, Zap,
-  ChevronRight, X, Edit3, Check, RefreshCw, TrendingUp, Rocket,
-  Target, Clock, BarChart3, Sparkles, Tag, Hash, Image as ImageIcon,
-  Upload,
+  ChevronRight, Edit3, Check, RefreshCw, TrendingUp, Rocket,
+  Sparkles, Tag, Hash, Upload,
 } from 'lucide-react';
-import NextImage from 'next/image';
 import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import { computeOutlierIndex } from '@/lib/viralHeuristics';
@@ -71,9 +69,12 @@ function ScoreBadge({ label, value, color }: { label: string; value: number | st
 export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
   const [channelUrl, setChannelUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [channelName, setChannelName] = useState('');
   const [videos, setVideos] = useState<ChannelVideo[]>([]);
+  const [nextPageToken, setNextPageToken] = useState('');
+  const [uploadsPlaylistId, setUploadsPlaylistId] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'short' | 'live' | 'long'>('all');
   const [selectedVideo, setSelectedVideo] = useState<ChannelVideo | null>(null);
 
@@ -82,7 +83,6 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
   const [editDesc, setEditDesc] = useState('');
   const [editTags, setEditTags] = useState('');
   const [editHashtags, setEditHashtags] = useState('');
-  const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [thumbPreview, setThumbPreview] = useState<string | null>(null);
 
   // Analysis
@@ -97,12 +97,18 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
   // SEO generate
   const [genSeo, setGenSeo] = useState(false);
 
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
   const fetchVideos = async () => {
     if (!channelUrl.trim()) return;
     setLoading(true);
     setError(null);
     setSelectedVideo(null);
     setVideos([]);
+    setNextPageToken('');
+    setUploadsPlaylistId('');
     try {
       const res = await axios.get('/api/youtube/channel-videos', {
         params: { channelUrl: channelUrl.trim() },
@@ -110,6 +116,8 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
       });
       setChannelName(res.data.channel || '');
       setVideos(res.data.videos || []);
+      setNextPageToken(res.data.nextPageToken || '');
+      setUploadsPlaylistId(res.data.uploadsPlaylistId || '');
     } catch (e: any) {
       setError(e.response?.data?.error || 'Failed to fetch channel videos');
     } finally {
@@ -117,13 +125,45 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
     }
   };
 
+  const loadMore = useCallback(async () => {
+    if (!nextPageToken || !uploadsPlaylistId || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await axios.get('/api/youtube/channel-videos', {
+        params: { uploadsPlaylistId, pageToken: nextPageToken },
+        headers: getAuthHeaders(),
+      });
+      setVideos((prev) => [...prev, ...(res.data.videos || [])]);
+      setNextPageToken(res.data.nextPageToken || '');
+    } catch {
+      // silently fail — user can scroll again
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [nextPageToken, uploadsPlaylistId, loadingMore]);
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && nextPageToken && !loadingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore, nextPageToken, loadingMore]);
+
   const selectVideo = (v: ChannelVideo) => {
     setSelectedVideo(v);
     setEditTitle(v.title);
     setEditDesc(v.description);
     setEditTags(v.tags.join(', '));
     setEditHashtags(v.hashtags);
-    setThumbFile(null);
     setThumbPreview(v.thumbnail);
     setAnalysis(null);
     setAnalyzeError(null);
@@ -186,7 +226,6 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
         ...editTags.split(',').map((t) => t.trim()).filter(Boolean),
         ...editHashtags.split(/\s+/).map((t) => t.trim()).filter(Boolean),
       ].join(', ');
-
       const res = await axios.post(
         '/api/youtube/update-video-metadata',
         { videoId: selectedVideo.videoId, title: editTitle, description: editDesc, tags: allTags },
@@ -206,7 +245,6 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
   };
 
   const filtered = activeTab === 'all' ? videos : videos.filter((v) => v.type === activeTab);
-
   const outlierColor = (v: number) => v >= 70 ? '#22c55e' : v >= 45 ? '#eab308' : '#ef4444';
 
   return (
@@ -219,7 +257,7 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
           </div>
           <div>
             <h2 className="text-base font-bold text-white">Channel Video Analyzer</h2>
-            <p className="text-xs text-[#666]">Paste any YouTube channel URL to browse, analyze & optimize old videos</p>
+            <p className="text-xs text-[#666]">Paste any YouTube channel URL to browse, analyze and optimize old videos</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -236,7 +274,7 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
             className="px-4 py-2.5 bg-[#FF0000] hover:bg-[#CC0000] disabled:opacity-50 text-white rounded-lg flex items-center gap-2 text-sm font-semibold transition-colors"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            {loading ? 'Loading…' : 'Search'}
+            {loading ? 'Loading...' : 'Search'}
           </button>
         </div>
         {error && (
@@ -248,21 +286,24 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
 
       {/* Body */}
       {videos.length > 0 && (
-        <div className="flex" style={{ minHeight: 480 }}>
+        <div className="flex" style={{ minHeight: 520 }}>
           {/* Video list panel */}
           <div className="w-72 shrink-0 border-r border-[#222] flex flex-col">
             {/* Channel name + tabs */}
             <div className="px-4 py-3 border-b border-[#222]">
-              {channelName && <p className="text-xs font-semibold text-white mb-2 truncate">{channelName}</p>}
+              {channelName && (
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-white truncate">{channelName}</p>
+                  <span className="text-[10px] text-[#555] shrink-0 ml-2">{videos.length} loaded</span>
+                </div>
+              )}
               <div className="flex gap-1">
                 {TYPE_TABS.map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
                     onClick={() => setActiveTab(key as any)}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors ${
-                      activeTab === key
-                        ? 'bg-[#FF0000] text-white'
-                        : 'text-[#888] hover:text-white hover:bg-[#222]'
+                      activeTab === key ? 'bg-[#FF0000] text-white' : 'text-[#888] hover:text-white hover:bg-[#222]'
                     }`}
                   >
                     <Icon className="w-3 h-3" />
@@ -275,37 +316,60 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
               </div>
             </div>
 
-            {/* Video list */}
-            <div className="flex-1 overflow-y-auto">
+            {/* Scrollable video list */}
+            <div ref={listRef} className="flex-1 overflow-y-auto" style={{ maxHeight: 460 }}>
               {filtered.length === 0 ? (
                 <p className="text-center text-[#555] text-xs p-6">No {activeTab} videos found</p>
               ) : (
-                filtered.map((v) => (
-                  <button
-                    key={v.videoId}
-                    onClick={() => selectVideo(v)}
-                    className={`w-full text-left px-3 py-2.5 border-b border-[#1a1a1a] hover:bg-[#212121] transition-colors flex gap-2.5 ${
-                      selectedVideo?.videoId === v.videoId ? 'bg-[#212121] border-l-2 border-l-[#FF0000]' : ''
-                    }`}
-                  >
-                    <div className="relative shrink-0">
-                      <img src={v.thumbnail} alt="" className="w-16 h-9 rounded object-cover bg-[#111]" />
-                      {v.duration > 0 && (
-                        <span className="absolute bottom-0.5 right-0.5 text-[9px] bg-black/80 text-white px-1 rounded">
-                          {formatDuration(v.duration)}
-                        </span>
-                      )}
-                      {v.type === 'live' && (
-                        <span className="absolute top-0.5 left-0.5 text-[8px] bg-red-600 text-white px-1 rounded font-bold">LIVE</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs font-medium line-clamp-2 leading-tight">{v.title}</p>
-                      <p className="text-[#555] text-[10px] mt-0.5">{new Date(v.publishedAt).toLocaleDateString()}</p>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-[#444] shrink-0 self-center" />
-                  </button>
-                ))
+                <>
+                  {filtered.map((v) => (
+                    <button
+                      key={v.videoId}
+                      onClick={() => selectVideo(v)}
+                      className={`w-full text-left px-3 py-2.5 border-b border-[#1a1a1a] hover:bg-[#212121] transition-colors flex gap-2.5 ${
+                        selectedVideo?.videoId === v.videoId ? 'bg-[#212121] border-l-2 border-l-[#FF0000]' : ''
+                      }`}
+                    >
+                      <div className="relative shrink-0">
+                        <img src={v.thumbnail} alt="" className="w-16 h-9 rounded object-cover bg-[#111]" />
+                        {v.duration > 0 && (
+                          <span className="absolute bottom-0.5 right-0.5 text-[9px] bg-black/80 text-white px-1 rounded">
+                            {formatDuration(v.duration)}
+                          </span>
+                        )}
+                        {v.type === 'live' && (
+                          <span className="absolute top-0.5 left-0.5 text-[8px] bg-red-600 text-white px-1 rounded font-bold">LIVE</span>
+                        )}
+                        {v.type === 'short' && (
+                          <span className="absolute top-0.5 left-0.5 text-[8px] bg-purple-600 text-white px-1 rounded font-bold">#S</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-xs font-medium line-clamp-2 leading-tight">{v.title}</p>
+                        <p className="text-[#555] text-[10px] mt-0.5">{new Date(v.publishedAt).toLocaleDateString()}</p>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-[#444] shrink-0 self-center" />
+                    </button>
+                  ))}
+
+                  {/* Infinite scroll sentinel */}
+                  <div ref={sentinelRef} className="py-3 flex items-center justify-center">
+                    {loadingMore ? (
+                      <div className="flex items-center gap-2 text-xs text-[#555]">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading more...
+                      </div>
+                    ) : nextPageToken ? (
+                      <button
+                        onClick={loadMore}
+                        className="text-xs text-[#FF4444] hover:text-[#FF0000] flex items-center gap-1 transition-colors"
+                      >
+                        Load more videos
+                      </button>
+                    ) : (
+                      <p className="text-[10px] text-[#444]">All videos loaded</p>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -330,7 +394,7 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
-                          if (f) { setThumbFile(f); setThumbPreview(URL.createObjectURL(f)); }
+                          if (f) setThumbPreview(URL.createObjectURL(f));
                         }}
                       />
                       <div className="text-white text-xs flex flex-col items-center gap-1">
@@ -339,9 +403,8 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                     </label>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[#888] text-xs mb-1">{new Date(selectedVideo.publishedAt).toLocaleDateString()} · {selectedVideo.type.toUpperCase()}</p>
+                    <p className="text-[#888] text-xs mb-1">{new Date(selectedVideo.publishedAt).toLocaleDateString()} &middot; {selectedVideo.type.toUpperCase()}</p>
                     <p className="text-white text-sm font-semibold line-clamp-2 mb-2">{selectedVideo.title}</p>
-                    {/* Score badges */}
                     {analysis ? (
                       <div className="flex flex-wrap gap-2">
                         <ScoreBadge label="Outlier" value={analysis.outlier ?? 0} color={outlierColor(analysis.outlier ?? 0)} />
@@ -356,7 +419,7 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                         className="flex items-center gap-2 px-3 py-1.5 bg-[#FF0000]/10 border border-[#FF0000]/30 text-[#FF4444] text-xs font-semibold rounded-lg hover:bg-[#FF0000]/20 transition-colors disabled:opacity-50"
                       >
                         {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                        {analyzing ? 'Analyzing…' : 'Analyze Viral Potential'}
+                        {analyzing ? 'Analyzing...' : 'Analyze Viral Potential'}
                       </button>
                     )}
                     {analyzeError && <p className="text-xs text-red-400 mt-1">{analyzeError}</p>}
@@ -378,7 +441,6 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                       className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#2a2a2a] rounded-lg text-white text-sm focus:ring-2 focus:ring-[#FF0000] focus:border-transparent"
                     />
                   </div>
-
                   <div>
                     <label className="text-xs text-[#888] flex items-center gap-1 mb-1"><Edit3 className="w-3 h-3" /> Description</label>
                     <textarea
@@ -388,7 +450,6 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                       className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#2a2a2a] rounded-lg text-white text-sm focus:ring-2 focus:ring-[#FF0000] resize-none"
                     />
                   </div>
-
                   <div>
                     <label className="text-xs text-[#888] flex items-center gap-1 mb-1"><Tag className="w-3 h-3" /> Tags <span className="text-[#555]">(comma separated)</span></label>
                     <input
@@ -398,7 +459,6 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                       className="w-full px-3 py-2 bg-[#0F0F0F] border border-[#2a2a2a] rounded-lg text-white text-sm focus:ring-2 focus:ring-[#FF0000]"
                     />
                   </div>
-
                   <div>
                     <label className="text-xs text-[#888] flex items-center gap-1 mb-1"><Hash className="w-3 h-3" /> Hashtags</label>
                     <input
@@ -420,7 +480,6 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                     {genSeo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-purple-400" />}
                     AI High-CTR SEO
                   </button>
-
                   {analysis && (
                     <button
                       onClick={runAnalysis}
@@ -430,21 +489,19 @@ export default function ChannelVideosBrowser({ onLoadToOptimizer }: Props) {
                       <RefreshCw className="w-3.5 h-3.5 text-blue-400" /> Re-analyze
                     </button>
                   )}
-
                   <button
                     onClick={() => onLoadToOptimizer({ videoId: selectedVideo.videoId, title: editTitle, description: editDesc, tags: editTags })}
                     className="flex items-center gap-1.5 px-3 py-2 bg-[#333] hover:bg-[#444] border border-[#444] text-white text-xs font-semibold rounded-lg transition-colors"
                   >
                     <Rocket className="w-3.5 h-3.5 text-amber-400" /> Full Optimizer
                   </button>
-
                   <button
                     onClick={handleUpdate}
                     disabled={updating}
                     className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors ml-auto"
                   >
                     {updating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                    {updating ? 'Updating…' : 'Update on YouTube'}
+                    {updating ? 'Updating...' : 'Update on YouTube'}
                   </button>
                 </div>
 

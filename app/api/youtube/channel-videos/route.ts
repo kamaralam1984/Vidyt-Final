@@ -55,6 +55,30 @@ async function resolveChannelId(input: string, apiKey: string): Promise<string |
   return null;
 }
 
+function mapVideo(v: any) {
+  const duration = parseDuration(v.contentDetails?.duration || 'PT0S');
+  const isLive = v.snippet?.liveBroadcastContent === 'live' || v.snippet?.liveBroadcastContent === 'upcoming' || !!v.liveStreamingDetails;
+  const isShort = !isLive && duration > 0 && duration <= 60;
+  const type: 'short' | 'live' | 'long' = isLive ? 'live' : isShort ? 'short' : 'long';
+  const tags: string[] = v.snippet?.tags || [];
+  const description: string = v.snippet?.description || '';
+  const hashtags = tags.filter((t: string) => t.startsWith('#')).join(' ') ||
+    (description.match(/#\w+/g) || []).join(' ');
+  return {
+    videoId: v.id,
+    title: v.snippet?.title || '',
+    description,
+    tags: tags.filter((t: string) => !t.startsWith('#')),
+    hashtags,
+    thumbnail: v.snippet?.thumbnails?.maxres?.url || v.snippet?.thumbnails?.high?.url || v.snippet?.thumbnails?.default?.url || '',
+    publishedAt: v.snippet?.publishedAt || '',
+    duration,
+    type,
+    viewCount: v.statistics?.viewCount,
+    likeCount: v.statistics?.likeCount,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest(request);
@@ -62,68 +86,59 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const channelUrl = searchParams.get('channelUrl')?.trim();
-    if (!channelUrl) return NextResponse.json({ error: 'channelUrl required' }, { status: 400 });
+    const pageToken = searchParams.get('pageToken') || '';
+    const uploadsPlaylistIdParam = searchParams.get('uploadsPlaylistId') || '';
 
     const apiKey = process.env.YOUTUBE_API_KEY!;
-    const channelId = await resolveChannelId(channelUrl, apiKey);
-    if (!channelId) return NextResponse.json({ error: 'Could not resolve channel. Check the URL.' }, { status: 400 });
 
-    // Get uploads playlist ID
-    const chanRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?part=contentDetails,snippet&id=${channelId}&key=${apiKey}`
-    );
-    const chanData = await chanRes.json();
-    const channelInfo = chanData.items?.[0];
-    if (!channelInfo) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
+    let uploadsPlaylistId = uploadsPlaylistIdParam;
+    let channelName = '';
+    let channelThumbnail = '';
 
-    const uploadsPlaylistId = channelInfo.contentDetails?.relatedPlaylists?.uploads;
-    if (!uploadsPlaylistId) return NextResponse.json({ error: 'No uploads found' }, { status: 404 });
+    // Only resolve channel on first page (no uploadsPlaylistId yet)
+    if (!uploadsPlaylistId) {
+      if (!channelUrl) return NextResponse.json({ error: 'channelUrl required' }, { status: 400 });
+      const channelId = await resolveChannelId(channelUrl, apiKey);
+      if (!channelId) return NextResponse.json({ error: 'Could not resolve channel. Check the URL.' }, { status: 400 });
 
-    // Fetch up to 50 videos from uploads playlist
-    const plRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50&key=${apiKey}`
-    );
+      const chanRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/channels?part=contentDetails,snippet&id=${channelId}&key=${apiKey}`
+      );
+      const chanData = await chanRes.json();
+      const channelInfo = chanData.items?.[0];
+      if (!channelInfo) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
+
+      uploadsPlaylistId = channelInfo.contentDetails?.relatedPlaylists?.uploads || '';
+      if (!uploadsPlaylistId) return NextResponse.json({ error: 'No uploads found' }, { status: 404 });
+      channelName = channelInfo.snippet?.title || '';
+      channelThumbnail = channelInfo.snippet?.thumbnails?.default?.url || '';
+    }
+
+    // Build playlist URL with optional pageToken
+    let plUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50&key=${apiKey}`;
+    if (pageToken) plUrl += `&pageToken=${encodeURIComponent(pageToken)}`;
+
+    const plRes = await fetch(plUrl);
     const plData = await plRes.json();
     const items = plData.items || [];
+    const nextPageToken: string = plData.nextPageToken || '';
 
     const videoIds = items.map((i: any) => i.contentDetails.videoId).join(',');
-    if (!videoIds) return NextResponse.json({ videos: [], channel: channelInfo.snippet?.title });
+    if (!videoIds) {
+      return NextResponse.json({ videos: [], channel: channelName, channelThumbnail, uploadsPlaylistId, nextPageToken: '' });
+    }
 
-    // Get video details (duration, live status, tags)
     const detailRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails&id=${videoIds}&key=${apiKey}`
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,liveStreamingDetails,statistics&id=${videoIds}&key=${apiKey}`
     );
     const detailData = await detailRes.json();
-
-    const videos = (detailData.items || []).map((v: any) => {
-      const duration = parseDuration(v.contentDetails?.duration || 'PT0S');
-      const isLive = v.snippet?.liveBroadcastContent === 'live' || v.snippet?.liveBroadcastContent === 'upcoming' || !!v.liveStreamingDetails;
-      const isShort = !isLive && duration > 0 && duration <= 60;
-      const type: 'short' | 'live' | 'long' = isLive ? 'live' : isShort ? 'short' : 'long';
-
-      const tags: string[] = v.snippet?.tags || [];
-      const description: string = v.snippet?.description || '';
-      const hashtags = tags.filter((t: string) => t.startsWith('#')).join(' ') ||
-        (description.match(/#\w+/g) || []).join(' ');
-
-      return {
-        videoId: v.id,
-        title: v.snippet?.title || '',
-        description,
-        tags: tags.filter((t: string) => !t.startsWith('#')),
-        hashtags,
-        thumbnail: v.snippet?.thumbnails?.maxres?.url || v.snippet?.thumbnails?.high?.url || v.snippet?.thumbnails?.default?.url || '',
-        publishedAt: v.snippet?.publishedAt || '',
-        duration,
-        type,
-        viewCount: v.statistics?.viewCount,
-        likeCount: v.statistics?.likeCount,
-      };
-    });
+    const videos = (detailData.items || []).map(mapVideo);
 
     return NextResponse.json({
-      channel: channelInfo.snippet?.title,
-      channelThumbnail: channelInfo.snippet?.thumbnails?.default?.url,
+      channel: channelName,
+      channelThumbnail,
+      uploadsPlaylistId,
+      nextPageToken,
       videos,
     });
   } catch (e: any) {
