@@ -26,6 +26,11 @@ export const ALL_FEATURES: Feature[] = [
   { id: 'hook_generator', label: 'Hook Generator', group: 'sidebar', defaultRoles: ['user', 'pro', 'enterprise', 'enterprise', 'super-admin'] },
   { id: 'shorts_creator', label: 'Shorts Creator', group: 'sidebar', defaultRoles: ['user', 'pro', 'enterprise', 'enterprise', 'super-admin'] },
   { id: 'youtube_growth', label: 'YouTube Growth', group: 'sidebar', defaultRoles: ['user', 'pro', 'enterprise', 'enterprise', 'super-admin'] },
+  { id: 'retention_ai', label: 'Retention AI', group: 'sidebar', defaultRoles: ['user', 'pro', 'enterprise', 'owner', 'super-admin'] },
+  { id: 'hook_analyzer', label: 'Hook Analyzer', group: 'sidebar', defaultRoles: ['user', 'pro', 'enterprise', 'owner', 'super-admin'] },
+  { id: 'thumbnail_analyzer', label: 'Thumbnail Intelligence', group: 'sidebar', defaultRoles: ['user', 'pro', 'enterprise', 'owner', 'super-admin'] },
+  { id: 'competitor_spy', label: 'Competitor Spy', group: 'sidebar', defaultRoles: ['user', 'pro', 'enterprise', 'owner', 'super-admin'] },
+  { id: 'content_workflow', label: 'Content Workflow', group: 'sidebar', defaultRoles: ['user', 'pro', 'enterprise', 'owner', 'super-admin'] },
 
   // Dashboard widgets
   { id: 'video_upload', label: 'Video Upload', group: 'dashboard', defaultRoles: ['user', 'pro', 'enterprise', 'enterprise', 'super-admin'] },
