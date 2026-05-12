@@ -85,7 +85,7 @@ async function callGroq(prompt: string, key: string): Promise<string> {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'llama3-8b-8192',
+      model: 'llama-3.1-8b-instant',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.8,
       max_tokens: 2000,
@@ -107,7 +107,7 @@ async function callOpenRouter(prompt: string, key: string): Promise<string> {
       'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     },
     body: JSON.stringify({
-      model: 'mistralai/mistral-7b-instruct:free',
+      model: 'meta-llama/llama-3.2-3b-instruct:free',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 2000,
     }),
@@ -240,15 +240,14 @@ export async function routeAI(options: AIRouterOptions): Promise<AIRouterResult>
   const { getApiConfig } = await import('./apiConfig');
   const config = await getApiConfig();
 
-  // Priority list: name → caller function (all keys from getApiConfig which checks DB first, then env)
+  // Priority list: OpenAI first, Gemini removed (quota issues)
   const providers: Array<{ name: string; key: string; call: (p: string, k: string) => Promise<string> }> = [
     { name: 'openai', key: config.openaiApiKey, call: (p, k) => callOpenAI(p, k, systemPrompt) },
-    { name: 'gemini', key: config.googleGeminiApiKey, call: callGemini },
     { name: 'groq', key: config.groqApiKey || process.env.GROQ_API_KEY || '', call: callGroq },
-    { name: 'openrouter', key: config.openrouterApiKey || process.env.OPENROUTER_API_KEY || '', call: callOpenRouter },
     { name: 'mistral', key: config.mistralApiKey || process.env.MISTRAL_API_KEY || '', call: callMistral },
-    { name: 'cohere', key: config.cohereApiKey || process.env.COHERE_API_KEY || '', call: callCohere },
+    { name: 'openrouter', key: config.openrouterApiKey || process.env.OPENROUTER_API_KEY || '', call: callOpenRouter },
     { name: 'deepseek', key: config.deepseekApiKey || process.env.DEEPSEEK_API_KEY || '', call: callDeepSeek },
+    { name: 'cohere', key: config.cohereApiKey || process.env.COHERE_API_KEY || '', call: callCohere },
     { name: 'together', key: config.togetherApiKey || process.env.TOGETHER_API_KEY || '', call: callTogetherAI },
     { name: 'huggingface', key: config.huggingfaceApiKey || process.env.HUGGINGFACE_API_KEY || '', call: callHuggingFace },
   ];
