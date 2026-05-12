@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import {
   Search, Hash, TrendingUp, BarChart2, Zap, Download, Copy, Loader2,
@@ -53,7 +53,6 @@ export default function KeywordIntelligencePage() {
   const [error, setError] = useState<string | null>(null);
   const [limitInfo, setLimitInfo] = useState<LimitReachedInfo | null>(null);
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const [normalizedKeywords, setNormalizedKeywords] = useState<any[]>([]);
   const [appliedKeyword, setAppliedKeyword] = useState<string | null>(null);
@@ -111,7 +110,6 @@ export default function KeywordIntelligencePage() {
   const viralPotentialColor = avgViralScore >= 80 ? 'text-emerald-400' : avgViralScore >= 65 ? 'text-amber-400' : avgViralScore >= 50 ? 'text-yellow-400' : 'text-red-400';
   const estimatedCtr = focusedKeywords.length > 0 ? Math.min(15, 3 + (avgSeoScore / 100) * 12).toFixed(1) : '0';
   const totalKeywords = focusedKeywords.length;
-  const lockedCount = displayedKeywords.length - focusedKeywords.length;
   const highViralCount = focusedKeywords.filter(k => k.viralScore >= 70).length;
 
   const normalizeData = (data: any) => {
@@ -181,15 +179,11 @@ export default function KeywordIntelligencePage() {
   }, [platform, contentType]);
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (globalSearch.trim().length > 2) {
-      debounceRef.current = setTimeout(() => fetchKeywordIntelligence(globalSearch), 500);
-    } else if (globalSearch.trim() === '') {
+    if (globalSearch.trim() === '') {
       setKeywordData(null);
       setNormalizedKeywords([]);
     }
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [globalSearch, fetchKeywordIntelligence]);
+  }, [globalSearch]);
 
   const tabs = [
     { id: 'keywords' as TabType, label: 'Keywords Data', icon: Search },
@@ -249,15 +243,19 @@ export default function KeywordIntelligencePage() {
               <div className="relative flex items-center bg-[#1A1A1A] border border-[#333] rounded-2xl overflow-hidden">
                 <div className="pl-4"><Search className="h-5 w-5 text-[#666]" /></div>
                 <input type="text" value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)} autoFocus
+                  onKeyDown={(e) => { if (e.key === 'Enter' && globalSearch.trim().length > 2) fetchKeywordIntelligence(globalSearch); }}
                   placeholder={t('keyword.searchPlaceholder')}
                   className="flex-1 px-4 py-4 bg-transparent text-lg text-white font-medium placeholder-[#555] focus:outline-none" />
-                {isSearching && <Loader2 className="h-5 w-5 animate-spin text-red-500 mr-4" />}
-                {globalSearch.trim().length > 2 && !isSearching && (
-                  <button onClick={() => fetchKeywordIntelligence(globalSearch)}
-                    className="mr-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold flex items-center gap-1.5 transition">
-                    <RefreshCw className="w-4 h-4" /> Refresh
-                  </button>
-                )}
+                {isSearching
+                  ? <Loader2 className="h-5 w-5 animate-spin text-red-500 mr-4" />
+                  : (
+                    <button onClick={() => { if (globalSearch.trim().length > 2) fetchKeywordIntelligence(globalSearch); }}
+                      disabled={globalSearch.trim().length <= 2}
+                      className="mr-2 px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold flex items-center gap-1.5 transition">
+                      Go
+                    </button>
+                  )
+                }
               </div>
             </div>
 
