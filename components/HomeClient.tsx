@@ -233,27 +233,27 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             <div className="flex justify-center mb-5">
               <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#FF0000]/10 border border-[#FF0000]/25 rounded-full text-[#FF0000] text-sm font-semibold">
                 <Sparkles className="w-4 h-4" />
-                AI-Powered Video Creation Platform
+                AI Growth Engine for YouTube Creators
               </span>
             </div>
             <h1 className="text-3xl sm:text-5xl md:text-8xl font-bold text-white mt-0 mb-4 md:mb-6 leading-tight">
-              Make Your Videos{' '}
+              The AI Co-Pilot That Helps You{' '}
               <span className="text-[#FF0000] bg-gradient-to-r from-[#FF0000] to-[#CC0000] bg-clip-text text-transparent">
-                Go Viral
+                Get More Views
               </span>
             </h1>
             <p className="text-base sm:text-xl md:text-2xl text-[#AAAAAA] mb-3 max-w-3xl mx-auto px-2">
               {t('hero.subtitle')}
             </p>
             <p className="text-sm sm:text-base text-[#888888] mb-8 max-w-2xl mx-auto px-2">
-              Vidyt helps creators generate video ideas, write full scripts, and optimize their content for maximum reach — all powered by AI.
+              The only tool that tells you if your video will go viral — before you upload it.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/register"
                 className="group px-8 py-4 bg-[#FF0000] text-white rounded-lg hover:bg-[#CC0000] transition-all font-semibold text-lg flex items-center gap-2 shadow-lg shadow-[#FF0000]/30"
               >
-                Get Started Free
+                Analyze My Channel Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
@@ -287,11 +287,11 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
           verification accepts any visible heading with the app name. */}
       <section className="px-6 pb-0 pt-8 bg-[#0F0F0F]">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">AI Tools for Content Creators</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">The Creator OS Built to Beat vidIQ</h2>
           <p className="text-[#AAAAAA] text-lg leading-relaxed">
-            Vidyt is an AI-powered platform that helps creators generate video ideas,
-            analyze trends, and grow their audience faster. Users can sign in with Google
-            to securely access personalized insights and tools.
+            VidYT is the AI growth engine serious YouTube creators use to predict viral potential,
+            optimize thumbnails and hooks, discover trending topics, and outperform competitors —
+            all before hitting publish. Sign in with Google to get your free channel analysis.
           </p>
         </div>
       </section>
@@ -307,8 +307,8 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               What is <span className="text-[#FF0000]">Vidyt</span>?
             </h2>
             <p className="text-xl text-[#AAAAAA] max-w-3xl mx-auto leading-relaxed">
-              Vidyt is an AI-powered platform that helps video creators save time, grow faster, and create
-              better content — without needing to be an expert.
+              VidYT is the AI growth operating system for YouTube creators. Predict performance, fix weak spots,
+              discover viral topics — all before you hit publish.
             </p>
           </div>
 
@@ -316,20 +316,20 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             {[
               {
                 icon: Lightbulb,
-                title: 'Generate Video Ideas',
-                desc: 'Never run out of content ideas. Vidyt\'s AI analyzes trending topics in your niche and delivers ready-to-use video ideas with viral potential scores.',
+                title: 'Predict Before You Publish',
+                desc: 'Get a Viral Score before uploading. Know your expected CTR, retention risk, and topic momentum — so every upload has a real shot at blowing up.',
                 color: '#FF0000',
               },
               {
                 icon: FileText,
-                title: 'Write Full Scripts',
-                desc: 'From topic to finished script in seconds. Vidyt writes engaging YouTube scripts with hooks, storytelling structure, and call-to-actions built in.',
+                title: 'Fix What\'s Killing Your CTR',
+                desc: 'AI scans your title, thumbnail, and hook. Tells you exactly what\'s weak and rewrites it — so you stop losing clicks to creators who know less than you.',
                 color: '#3EA6FF',
               },
               {
                 icon: Target,
-                title: 'Optimize for More Views',
-                desc: 'AI-powered SEO for titles, descriptions, thumbnails, and hashtags. Designed to improve click-through rates and help your videos reach more people.',
+                title: 'Find Viral Topics First',
+                desc: 'Trend Radar surfaces rising topics in your niche before they peak. Upload before the wave — not after everyone else already has.',
                 color: '#2BA640',
               },
             ].map((item, i) => {
@@ -529,22 +529,21 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
             className="text-center mb-12"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Grow on YouTube with Free AI Tools
+              Your Full Creator Toolkit. <span className="text-[#FF0000]">Free to Start.</span>
             </h2>
             <p className="text-lg text-[#AAAAAA] max-w-3xl mx-auto">
-              Use Vid YT&apos;s free YouTube tools to get ideas, scripts, thumbnails, titles and hashtags
-              in one place — without any complicated setup.
+              Every tool a serious YouTube creator needs — titles, scripts, thumbnails, hooks, keywords, and Shorts — in one place.
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { href: '/ai/script-generator', title: 'YouTube Script Writer', desc: 'Turn any topic into a ready-to-record YouTube script with viral hooks, sections, CTAs, and SEO optimization. Powered by AI with 9 provider failover.', icon: Brain },
-              { href: '/ai/hook-generator', title: 'Video Ideas & Hooks Generator', desc: 'Get daily viral video ideas with viral score %, best posting time, and trending analysis. AI analyzes YouTube trends for your niche.', icon: Sparkles },
-              { href: '/tools/youtube-hashtag-generator', title: 'YouTube Keyword Research', desc: 'Discover high-intent YouTube keywords with search volume, competition, and viral scores. AI-powered keyword intelligence for ranking #1.', icon: TrendingUp },
-              { href: '/tools/youtube-title-generator', title: 'Title & CTR Optimization', desc: 'Boost your CTR to 11.8%+ with AI title scoring, A/B testing, power word suggestions, and 7-factor CTR prediction analysis.', icon: Zap },
-              { href: '/ai/thumbnail-generator', title: 'AI Thumbnail Generator', desc: 'Create film-poster quality thumbnails in 8 art styles. Upload your photo — AI adds VFX, 3D text overlay, and cinematic effects.', icon: Globe },
-              { href: '/ai/shorts-creator', title: 'Shorts & Clip Generator', desc: 'Auto-clip long videos into viral Shorts. AI detects key moments, adds text overlay, music, voiceover, and exports in 9:16 format.', icon: Play },
+              { href: '/ai/script-generator', title: 'Script Generator', desc: 'Go from blank page to ready-to-record script in seconds. AI builds your hook, structure, and CTA — optimized for watch time.', icon: Brain },
+              { href: '/ai/hook-generator', title: 'Hook Optimizer', desc: 'Stop losing viewers in the first 30 seconds. AI scores your opening, detects dead moments, and rewrites your hook for maximum retention.', icon: Sparkles },
+              { href: '/tools/youtube-hashtag-generator', title: 'Keyword Research', desc: 'Find high-intent keywords your competitors are missing. See search volume, competition level, and viral score — before you write your title.', icon: TrendingUp },
+              { href: '/tools/youtube-title-generator', title: 'Title CTR Optimizer', desc: 'Write titles that actually get clicked. AI scores 7 CTR factors and rewrites your title until it\'s impossible to scroll past.', icon: Zap },
+              { href: '/ai/thumbnail-generator', title: 'AI Thumbnail Maker', desc: 'Design thumbnails that look like a top creator made them. AI adds text, VFX, and cinematic effects — no design skills needed.', icon: Globe },
+              { href: '/ai/shorts-creator', title: 'Shorts Clipping AI', desc: 'Turn one long video into a week of viral Shorts. AI finds the best moments, adds hooks and captions, exports in 9:16 format.', icon: Play },
             ].map((tool, index) => {
               const Icon = tool.icon;
               return (
@@ -587,9 +586,9 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               </p>
               <div className="space-y-4">
                 {[
-                  'YouTube SEO & channel insights',
-                  'AI-Driven Content Strategy',
-                  'Retention & Watch Time Optimization',
+                  'Personalized channel growth roadmap',
+                  'Hook, title & thumbnail fixes on demand',
+                  'Retention & watch time improvement plans',
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-3 text-white/80">
                     <div className="w-6 h-6 rounded-full bg-[#FF0000]/20 flex items-center justify-center">
@@ -845,9 +844,9 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
               { value: '50,000+', label: 'Videos Analyzed', color: '#FF0000' },
-              { value: '10,000+', label: 'Active Creators', color: '#3EA6FF' },
-              { value: '95%', label: 'SEO Accuracy', color: '#2BA640' },
-              { value: '3x', label: 'Avg. View Increase', color: '#FFD700' },
+              { value: '10,000+', label: 'Creators Growing', color: '#3EA6FF' },
+              { value: '2.4×', label: 'Avg. CTR Improvement', color: '#2BA640' },
+              { value: '3×', label: 'Avg. View Increase', color: '#FFD700' },
             ].map((stat, i) => (
               <motion.div key={i} initial={{ opacity: 1, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                 <p className="text-3xl md:text-4xl font-black mb-1" style={{ color: stat.color }}>{stat.value}</p>

@@ -173,12 +173,12 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
   const navReady = !loadingSystems && !loadingControls;
 
   const aiStudioItems = [
-    { id: 'viral_intelligence', icon: Sparkles, label: 'Ultra AI Engine', href: '/dashboard/viral-intelligence' },
+    { id: 'viral_intelligence', icon: Sparkles, label: 'Viral Intelligence', href: '/dashboard/viral-intelligence' },
     { id: 'script_generator', icon: FileText, label: 'Script Generator', href: '/ai/script-generator' },
-    { id: 'ai_coach', icon: Zap, label: 'AI Coach', href: '/ai/script-generator?mode=coach' },
-    { id: 'thumbnail_generator', icon: Image, label: 'Thumbnail Generator', href: '/ai/thumbnail-generator' },
-    { id: 'hook_generator', icon: Zap, label: 'Hook Generator', href: '/ai/hook-generator' },
-    { id: 'shorts_creator', icon: Film, label: 'Shorts Creator', href: '/ai/shorts-creator' },
+    { id: 'ai_coach', icon: Zap, label: 'AI Growth Coach', href: '/ai/script-generator?mode=coach' },
+    { id: 'thumbnail_generator', icon: Image, label: 'AI Thumbnail Maker', href: '/ai/thumbnail-generator' },
+    { id: 'hook_generator', icon: Zap, label: 'Hook Optimizer', href: '/ai/hook-generator' },
+    { id: 'shorts_creator', icon: Film, label: 'Shorts Clipping AI', href: '/ai/shorts-creator' },
     { id: 'youtube_growth', icon: TrendingUp, label: 'YouTube Growth', href: '/tools/youtube-growth' },
   ].filter((item) => navReady && allowedSystems[item.id] === true);
 
@@ -190,16 +190,16 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
 
   const featureMenuItems = [
     { id: 'videos', icon: Video, label: 'My Videos', href: '/videos', platform: 'youtube' },
-    { id: 'youtube_seo', icon: Search, label: 'YouTube Live SEO Analyzer', href: '/dashboard/youtube-seo', platform: 'youtube' },
-    { id: 'keyword_intelligence', icon: Zap, label: 'Keyword Intelligence Engine', href: '/dashboard/keyword-intelligence', platform: 'youtube' },
-    { id: 'facebook_seo', icon: Facebook, label: 'Facebook SEO Analyzer', href: '/dashboard/facebook-seo', platform: 'facebook' },
-    { id: 'instagram_seo', icon: Instagram, label: 'Instagram SEO Analyzer', href: '/dashboard/instagram-seo', platform: 'instagram' },
-    { id: 'viral_optimizer', icon: Zap, label: 'AI Viral Optimization Engine', href: '/dashboard/viral-optimizer', platform: 'youtube' },
+    { id: 'youtube_seo', icon: Search, label: 'Viral Optimizer', href: '/dashboard/youtube-seo', platform: 'youtube' },
+    { id: 'keyword_intelligence', icon: Zap, label: 'Keyword Research', href: '/dashboard/keyword-intelligence', platform: 'youtube' },
+    { id: 'facebook_seo', icon: Facebook, label: 'Facebook SEO', href: '/dashboard/facebook-seo', platform: 'facebook' },
+    { id: 'instagram_seo', icon: Instagram, label: 'Instagram SEO', href: '/dashboard/instagram-seo', platform: 'instagram' },
+    { id: 'viral_optimizer', icon: Zap, label: 'Viral Score AI', href: '/dashboard/viral-optimizer', platform: 'youtube' },
     { id: 'facebook_audit', icon: Facebook, label: 'Facebook Audit', href: '/facebook-audit', platform: 'facebook' },
-    { id: 'trending', icon: TrendingUp, label: 'Trending', href: '/trending' },
-    { id: 'hashtags', icon: Hash, label: 'Hashtags', href: '/hashtags' },
-    { id: 'posting_time', icon: Clock, label: 'Posting Time', href: '/posting-time' },
-    { id: 'analytics', icon: BarChart3, label: 'Analytics', href: '/analytics' },
+    { id: 'trending', icon: TrendingUp, label: 'Trend Radar', href: '/trending' },
+    { id: 'hashtags', icon: Hash, label: 'Hashtag Engine', href: '/hashtags' },
+    { id: 'posting_time', icon: Clock, label: 'Best Upload Time', href: '/posting-time' },
+    { id: 'analytics', icon: BarChart3, label: 'Performance Insights', href: '/analytics' },
     { id: 'calendar', icon: Calendar, label: 'Content Calendar', href: '/calendar' },
   ]
     .filter((item) => navReady && allowedSystems[item.id] === true)
