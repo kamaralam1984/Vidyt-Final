@@ -63,6 +63,7 @@ const SEVERITY_COLORS = {
 };
 
 function RetentionCurveChart({ curve }: { curve: RetentionPoint[] }) {
+  if (!curve || curve.length < 2) return <p className="text-sm text-[#555]">Curve data unavailable.</p>;
   const width = 600;
   const height = 200;
   const pad = { top: 12, right: 12, bottom: 30, left: 40 };
@@ -153,7 +154,14 @@ export default function RetentionAIPage() {
     setRealVideo(null);
     try {
       const res = await axios.post('/api/retention-ai', { videoTitle, videoDescription, videoDuration, youtubeUrl }, { headers: getAuthHeaders() });
-      setData(res.data.analysis);
+      const analysis = res.data.analysis;
+      if (analysis) {
+        analysis.retentionCurve = analysis.retentionCurve || [];
+        analysis.dropOffPoints = analysis.dropOffPoints || [];
+        analysis.boringSegments = analysis.boringSegments || [];
+        analysis.fixes = analysis.fixes || [];
+      }
+      setData(analysis);
       setRealVideo(res.data.realVideoData || null);
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Analysis failed. Please try again.');
