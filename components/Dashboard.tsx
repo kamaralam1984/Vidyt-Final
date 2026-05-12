@@ -10,6 +10,7 @@ import TitleSuggestions from './TitleSuggestions';
 import HashtagRecommendations from './HashtagRecommendations';
 import TrendingTopics from './TrendingTopics';
 import EngagementGraph from './EngagementGraph';
+import PsychologyEngine from './PsychologyEngine';
 import PostingTimeHeatmap from './PostingTimeHeatmap';
 import dynamic from 'next/dynamic';
 const ReferralCard = dynamic(() => import('./ReferralCard'), { ssr: false });
@@ -777,7 +778,24 @@ export default function Dashboard() {
                           <p className="text-white font-bold animate-pulse text-sm">Calculating Viral Probability...</p>
                         </div>
                       ) : (
-                        <ViralScoreMeter score={analysis.viralProbability} confidence={analysis.confidenceLevel} />
+                        <>
+                          <ViralScoreMeter score={analysis.viralProbability} confidence={analysis.confidenceLevel} />
+                          <div className="px-6 pb-5 grid grid-cols-3 gap-2">
+                            {[
+                              { label: 'Trend Velocity', value: Math.min(100, Math.round(analysis.viralProbability * 1.05)), color: '#22c55e' },
+                              { label: 'Competition', value: Math.round(Math.max(20, 85 - analysis.confidenceLevel * 0.35)), color: '#ef4444' },
+                              { label: 'Expected CTR', value: Math.round((analysis.titleScore * 0.5 + analysis.thumbnailScore * 0.5)), color: '#f59e0b' },
+                              { label: 'Topic Momentum', value: Math.round((analysis.viralProbability * 0.6 + analysis.hookScore * 0.4)), color: '#8b5cf6' },
+                              { label: 'Niche Saturation', value: Math.round(Math.max(15, 75 - analysis.confidenceLevel * 0.3)), color: '#3b82f6' },
+                              { label: 'Upload Timing', value: Math.round(analysis.confidenceLevel * 0.85), color: '#06b6d4' },
+                            ].map((m) => (
+                              <div key={m.label} className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-3 text-center">
+                                <p className="text-[9px] text-[#555] mb-1 leading-tight">{m.label}</p>
+                                <p className="text-base font-black" style={{ color: m.color }}>{m.value}%</p>
+                              </div>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -915,6 +933,18 @@ export default function Dashboard() {
                     <div className="absolute top-0 left-0 right-0 h-[1px]"
                       style={{ background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.5), transparent)' }} />
                     <EngagementGraph viralProbability={analysis.viralProbability} />
+                  </motion.div>
+                )}
+
+                {/* Audience Psychology Engine */}
+                {!lazyLoading.predict && !lazyLoading.hook && !lazyLoading.title && (
+                  <motion.div variants={itemVariants}>
+                    <PsychologyEngine
+                      viralScore={analysis.viralProbability}
+                      hookScore={analysis.hookScore}
+                      titleScore={analysis.titleScore}
+                      confidenceLevel={analysis.confidenceLevel}
+                    />
                   </motion.div>
                 )}
               </motion.div>
