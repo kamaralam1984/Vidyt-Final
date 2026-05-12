@@ -154,16 +154,26 @@ export default function RetentionAIPage() {
     setRealVideo(null);
     try {
       const res = await axios.post('/api/retention-ai', { videoTitle, videoDescription, videoDuration, youtubeUrl }, { headers: getAuthHeaders() });
-      const analysis = res.data.analysis;
-      if (analysis) {
-        analysis.retentionCurve = analysis.retentionCurve || [];
-        analysis.dropOffPoints = analysis.dropOffPoints || [];
-        analysis.boringSegments = analysis.boringSegments || [];
-        analysis.fixes = analysis.fixes || [];
-        analysis.attentionPrediction = analysis.attentionPrediction || 'medium';
-        analysis.bestClipMoment = analysis.bestClipMoment || 'N/A';
-        analysis.avgViewDuration = analysis.avgViewDuration || 'N/A';
+      const raw = res.data.analysis;
+      if (!raw) {
+        setError('No analysis data received. Please retry.');
+        return;
       }
+      const analysis: RetentionData = {
+        overallRetentionScore: Number(raw.overallRetentionScore) || 0,
+        avgViewDuration: raw.avgViewDuration || 'N/A',
+        hookStrength: Number(raw.hookStrength) || 0,
+        midVideoEngagement: Number(raw.midVideoEngagement) || 0,
+        endScreenCTR: Number(raw.endScreenCTR) || 0,
+        bestClipMoment: raw.bestClipMoment || 'N/A',
+        retentionCurve: Array.isArray(raw.retentionCurve) ? raw.retentionCurve : [],
+        dropOffPoints: Array.isArray(raw.dropOffPoints) ? raw.dropOffPoints : [],
+        boringSegments: Array.isArray(raw.boringSegments) ? raw.boringSegments : [],
+        pacingScore: Number(raw.pacingScore) || 0,
+        emotionalEngagementScore: Number(raw.emotionalEngagementScore) || 0,
+        attentionPrediction: (['high', 'medium', 'low'].includes(raw.attentionPrediction) ? raw.attentionPrediction : 'medium') as 'high' | 'medium' | 'low',
+        fixes: Array.isArray(raw.fixes) ? raw.fixes : [],
+      };
       setData(analysis);
       setRealVideo(res.data.realVideoData || null);
     } catch (err: any) {
