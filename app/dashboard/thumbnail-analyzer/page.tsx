@@ -7,44 +7,34 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
 import { Image as ImageIcon, AlertCircle, Loader2, CheckCircle2, Zap, Copy, TrendingUp } from 'lucide-react';
 
-interface ThumbnailScores {
-  readability: number;
-  emotionalImpact: number;
-  colorContrast: number;
-  clutterScore: number;
-  curiosityGap: number;
-}
-
-interface ThumbnailIssue {
-  area: string;
-  severity: 'high' | 'medium' | 'low';
-  description: string;
-}
-
 interface ThumbnailData {
   overallScore: number;
   ctrPrediction: string;
-  scores: ThumbnailScores;
-  issues: ThumbnailIssue[];
+  nicheBenchmark?: string;
+  titleThumbnailSynergy?: number;
+  imageUrl?: string | null;
+  scores: {
+    readability: number;
+    emotionalImpact: number;
+    colorContrast: number;
+    clutterScore: number;
+    curiosityGap: number;
+    faceVisibility?: number;
+    textToImageRatio?: number;
+    brandConsistency?: number;
+  };
+  issues: { area: string; severity: string; description: string }[];
   strengths: string[];
   suggestions: string[];
   improvedVersionIdeas: string[];
   competitorBenchmark: string;
 }
 
-const SEVERITY_COLORS = {
+const SEVERITY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   high: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
   medium: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
   low: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400' },
 };
-
-const SCORE_META: { key: keyof ThumbnailScores; label: string; color: string }[] = [
-  { key: 'readability', label: 'Text Readability', color: '#3b82f6' },
-  { key: 'emotionalImpact', label: 'Emotional Impact', color: '#f43f5e' },
-  { key: 'colorContrast', label: 'Color Contrast', color: '#f59e0b' },
-  { key: 'clutterScore', label: 'Clean Layout', color: '#8b5cf6' },
-  { key: 'curiosityGap', label: 'Curiosity Gap', color: '#22c55e' },
-];
 
 function ScoreBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
@@ -67,6 +57,7 @@ function ScoreBar({ label, value, color }: { label: string; value: number; color
 }
 
 export default function ThumbnailAnalyzerPage() {
+  const [imageUrl, setImageUrl] = useState('');
   const [thumbnailDescription, setThumbnailDescription] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [niche, setNiche] = useState('');
@@ -76,15 +67,19 @@ export default function ThumbnailAnalyzerPage() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
-    if (!thumbnailDescription.trim() && !videoTitle.trim()) {
-      setError('Describe your thumbnail or enter a video title.');
+    if (!imageUrl.trim() && !thumbnailDescription.trim() && !videoTitle.trim()) {
+      setError('Provide a thumbnail URL, description, or video title.');
       return;
     }
     setError('');
     setLoading(true);
     setData(null);
     try {
-      const res = await axios.post('/api/thumbnail-analyzer', { thumbnailDescription, videoTitle, niche }, { headers: getAuthHeaders() });
+      const res = await axios.post(
+        '/api/thumbnail-analyzer',
+        { imageUrl, thumbnailDescription, videoTitle, niche },
+        { headers: getAuthHeaders() }
+      );
       setData(res.data.data);
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Analysis failed. Please try again.');
@@ -99,7 +94,9 @@ export default function ThumbnailAnalyzerPage() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const scoreColor = data ? (data.overallScore >= 70 ? '#22c55e' : data.overallScore >= 45 ? '#f59e0b' : '#ef4444') : '#888';
+  const scoreColor = data
+    ? data.overallScore >= 70 ? '#22c55e' : data.overallScore >= 45 ? '#f59e0b' : '#ef4444'
+    : '#888';
 
   return (
     <DashboardLayout>
@@ -116,6 +113,31 @@ export default function ThumbnailAnalyzerPage() {
 
         <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6 mb-6">
           <div className="space-y-4">
+            {/* Thumbnail URL input */}
+            <div>
+              <label className="block text-xs font-semibold text-[#888] uppercase tracking-wider mb-2">
+                Thumbnail URL <span className="text-[#444] font-normal normal-case">(optional)</span>
+              </label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                placeholder="https://i.ytimg.com/vi/..."
+                className="w-full bg-[#181818] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm placeholder-[#444] focus:outline-none focus:border-amber-500/40 transition-colors"
+              />
+              {imageUrl.trim() && (
+                <div className="mt-3 rounded-xl border border-white/[0.06] overflow-hidden bg-[#181818] flex items-center justify-center" style={{ maxHeight: '12rem' }}>
+                  <img
+                    src={imageUrl}
+                    alt="Thumbnail preview"
+                    className="object-contain max-h-48 w-full rounded-xl"
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
             <div>
               <label className="block text-xs font-semibold text-[#888] uppercase tracking-wider mb-2">
                 Describe Your Thumbnail <span className="text-[#FF0000]">*</span>
@@ -128,6 +150,7 @@ export default function ThumbnailAnalyzerPage() {
                 className="w-full bg-[#181818] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm placeholder-[#444] focus:outline-none focus:border-amber-500/40 transition-colors resize-none"
               />
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[#888] uppercase tracking-wider mb-2">
@@ -154,23 +177,43 @@ export default function ThumbnailAnalyzerPage() {
                 />
               </div>
             </div>
+
             {error && (
               <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {error}
               </div>
             )}
+
             <button
               onClick={handleAnalyze}
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing thumbnail...</> : <><ImageIcon className="w-4 h-4" /> Analyze Thumbnail CTR</>}
+              {loading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing thumbnail...</>
+                : <><ImageIcon className="w-4 h-4" /> Analyze Thumbnail CTR</>
+              }
             </button>
           </div>
         </div>
 
         {data && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+
+            {/* Analyzed thumbnail image */}
+            {data.imageUrl && (
+              <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-4">
+                <p className="text-xs font-semibold text-[#666] uppercase tracking-wider mb-3">Analyzed Thumbnail</p>
+                <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-[#181818] flex items-center justify-center">
+                  <img
+                    src={data.imageUrl}
+                    alt="Analyzed thumbnail"
+                    className="object-contain max-h-56 w-full"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Score overview */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6 flex flex-col items-center justify-center gap-2">
@@ -181,7 +224,10 @@ export default function ThumbnailAnalyzerPage() {
               <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6 flex flex-col items-center justify-center gap-2">
                 <p className="text-[10px] text-[#555] uppercase tracking-wider">Predicted CTR</p>
                 <p className="text-4xl font-black text-amber-400">{data.ctrPrediction}</p>
-                <p className="text-xs text-[#666]">click-through rate</p>
+                {data.nicheBenchmark
+                  ? <p className="text-xs text-[#555] text-center">Your: <span className="text-amber-300">{data.ctrPrediction}</span> vs Avg: <span className="text-[#888]">{data.nicheBenchmark.split(' for ')[0]}</span></p>
+                  : <p className="text-xs text-[#666]">click-through rate</p>
+                }
               </div>
             </div>
 
@@ -191,9 +237,23 @@ export default function ThumbnailAnalyzerPage() {
                 <TrendingUp className="w-4 h-4 text-amber-400" /> Performance Breakdown
               </h2>
               <div className="space-y-4">
-                {SCORE_META.map((m) => (
-                  <ScoreBar key={m.key} label={m.label} value={data.scores[m.key]} color={m.color} />
-                ))}
+                <ScoreBar label="Text Readability" value={data.scores.readability} color="#3b82f6" />
+                <ScoreBar label="Emotional Impact" value={data.scores.emotionalImpact} color="#f43f5e" />
+                <ScoreBar label="Color Contrast" value={data.scores.colorContrast} color="#f59e0b" />
+                <ScoreBar label="Clean Layout" value={data.scores.clutterScore} color="#8b5cf6" />
+                <ScoreBar label="Curiosity Gap" value={data.scores.curiosityGap} color="#22c55e" />
+                {data.titleThumbnailSynergy != null && (
+                  <ScoreBar label="Title–Thumbnail Synergy" value={data.titleThumbnailSynergy} color="#06b6d4" />
+                )}
+                {data.scores.faceVisibility != null && (
+                  <ScoreBar label="Face Visibility" value={data.scores.faceVisibility} color="#ec4899" />
+                )}
+                {data.scores.textToImageRatio != null && (
+                  <ScoreBar label="Text-to-Image Ratio" value={data.scores.textToImageRatio} color="#f97316" />
+                )}
+                {data.scores.brandConsistency != null && (
+                  <ScoreBar label="Brand Consistency" value={data.scores.brandConsistency} color="#6366f1" />
+                )}
               </div>
             </div>
 
@@ -274,6 +334,7 @@ export default function ThumbnailAnalyzerPage() {
               <p className="text-xs text-[#555] mb-1">Competitor Benchmark</p>
               <p className="text-sm text-[#888]">{data.competitorBenchmark}</p>
             </div>
+
           </motion.div>
         )}
       </div>

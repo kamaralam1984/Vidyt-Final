@@ -5,7 +5,23 @@ import axios from 'axios';
 import { getAuthHeaders } from '@/utils/auth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
-import { Sparkles, AlertCircle, Loader2, Copy, CheckCircle2, FileText, Hash, Image as ImageIcon, Film, Target, Clock } from 'lucide-react';
+import {
+  Sparkles, AlertCircle, Loader2, Copy, CheckCircle2, FileText,
+  Hash, Image as ImageIcon, Film, Target, Clock, Search, MessageSquare,
+  Calendar, FlaskConical, ChevronDown
+} from 'lucide-react';
+
+interface ABTitle {
+  variantA: string;
+  variantB: string;
+  hypothesis: string;
+}
+
+interface PublishingStrategy {
+  bestDayToPost: string;
+  bestTimeToPost: string;
+  crossPlatformPlan: string;
+}
 
 interface ContentData {
   titles: string[];
@@ -17,6 +33,10 @@ interface ContentData {
   chapterTimestamps: string[];
   communityPost: string;
   shortsAngle: string;
+  seoKeywords?: string[];
+  commentBait?: string;
+  publishingStrategy?: PublishingStrategy;
+  abTitles?: ABTitle[];
 }
 
 function CopyBlock({ label, icon: Icon, content, color, onCopy, copiedKey, itemKey }: {
@@ -46,10 +66,22 @@ function CopyBlock({ label, icon: Icon, content, color, onCopy, copiedKey, itemK
   );
 }
 
+const VIDEO_TYPES = [
+  'Tutorial / How-To',
+  'Vlog / Story',
+  'Review / Unboxing',
+  'Listicle / Top 10',
+  'Case Study / Experiment',
+  'Shorts / Reels',
+  'Documentary',
+  'Interview / Podcast',
+];
+
 export default function ContentWorkflowPage() {
   const [videoTitle, setVideoTitle] = useState('');
   const [niche, setNiche] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
+  const [videoType, setVideoType] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState<ContentData | null>(null);
@@ -61,7 +93,7 @@ export default function ContentWorkflowPage() {
     setLoading(true);
     setData(null);
     try {
-      const res = await axios.post('/api/content-workflow', { videoTitle, niche, targetAudience }, { headers: getAuthHeaders() });
+      const res = await axios.post('/api/content-workflow', { videoTitle, niche, targetAudience, videoType }, { headers: getAuthHeaders() });
       setData(res.data.data);
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Generation failed. Please try again.');
@@ -104,7 +136,7 @@ export default function ContentWorkflowPage() {
                 className="w-full bg-[#181818] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm placeholder-[#444] focus:outline-none focus:border-[#FF0000]/40 transition-colors"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[#888] uppercase tracking-wider mb-2">
                   Niche <span className="text-[#444] font-normal normal-case">(optional)</span>
@@ -113,7 +145,7 @@ export default function ContentWorkflowPage() {
                   type="text"
                   value={niche}
                   onChange={e => setNiche(e.target.value)}
-                  placeholder="e.g. AI Tools, Finance, Gaming..."
+                  placeholder="e.g. AI Tools, Finance..."
                   className="w-full bg-[#181818] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm placeholder-[#444] focus:outline-none focus:border-[#FF0000]/40 transition-colors"
                 />
               </div>
@@ -125,9 +157,25 @@ export default function ContentWorkflowPage() {
                   type="text"
                   value={targetAudience}
                   onChange={e => setTargetAudience(e.target.value)}
-                  placeholder="e.g. Beginner content creators..."
+                  placeholder="e.g. Beginner creators..."
                   className="w-full bg-[#181818] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm placeholder-[#444] focus:outline-none focus:border-[#FF0000]/40 transition-colors"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#888] uppercase tracking-wider mb-2">
+                  Video Type <span className="text-[#444] font-normal normal-case">(optional)</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={videoType}
+                    onChange={e => setVideoType(e.target.value)}
+                    className="w-full bg-[#181818] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FF0000]/40 transition-colors appearance-none pr-8"
+                  >
+                    <option value="">Select type...</option>
+                    {VIDEO_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-[#555] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
               </div>
             </div>
             {error && (
@@ -166,11 +214,56 @@ export default function ContentWorkflowPage() {
               </div>
             </div>
 
+            {/* A/B Title Tests */}
+            {data.abTitles && data.abTitles.length > 0 && (
+              <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6">
+                <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                  <FlaskConical className="w-4 h-4 text-violet-400" /> A/B Title Tests
+                </h2>
+                <div className="space-y-4">
+                  {data.abTitles.map((ab, i) => (
+                    <div key={i} className="bg-[#181818] border border-white/[0.04] rounded-xl p-4 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex items-start gap-2">
+                          <span className="shrink-0 text-xs font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">A</span>
+                          <p className="text-sm text-white">{ab.variantA}</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="shrink-0 text-xs font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">B</span>
+                          <p className="text-sm text-white">{ab.variantB}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-[#666] border-t border-white/[0.04] pt-3">{ab.hypothesis}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Hook */}
             <CopyBlock label="Opening Hook" icon={Film} content={data.hook} color="#3b82f6" onCopy={copy} copiedKey={copied} itemKey="hook" />
 
             {/* Description */}
             <CopyBlock label="SEO Description" icon={FileText} content={data.description} color="#22c55e" onCopy={copy} copiedKey={copied} itemKey="desc" />
+
+            {/* SEO Keywords */}
+            {data.seoKeywords && data.seoKeywords.length > 0 && (
+              <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <Search className="w-4 h-4 text-cyan-400" /> SEO Keywords
+                  </h2>
+                  <button onClick={() => copy(data.seoKeywords!.join(', '), 'seo-kw')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-white/10 text-[#888] hover:text-white transition-colors">
+                    {copied === 'seo-kw' ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy All</>}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {data.seoKeywords.map((kw, i) => (
+                    <span key={i} className="text-xs px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">{kw}</span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Tags + Chapters */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -225,6 +318,34 @@ export default function ContentWorkflowPage() {
 
             {/* CTA */}
             <CopyBlock label="End-Screen CTA" icon={Target} content={data.cta} color="#f43f5e" onCopy={copy} copiedKey={copied} itemKey="cta" />
+
+            {/* Comment Bait */}
+            {data.commentBait && (
+              <CopyBlock label="Comment Bait Question" icon={MessageSquare} content={data.commentBait} color="#f59e0b" onCopy={copy} copiedKey={copied} itemKey="commentbait" />
+            )}
+
+            {/* Publishing Strategy */}
+            {data.publishingStrategy && (
+              <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6">
+                <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-emerald-400" /> Publishing Strategy
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                  <div className="bg-[#181818] border border-white/[0.04] rounded-xl px-4 py-3">
+                    <p className="text-xs text-[#666] mb-1">Best Day to Post</p>
+                    <p className="text-sm text-white font-semibold">{data.publishingStrategy.bestDayToPost}</p>
+                  </div>
+                  <div className="bg-[#181818] border border-white/[0.04] rounded-xl px-4 py-3">
+                    <p className="text-xs text-[#666] mb-1">Best Time to Post</p>
+                    <p className="text-sm text-white font-semibold">{data.publishingStrategy.bestTimeToPost}</p>
+                  </div>
+                </div>
+                <div className="bg-[#181818] border border-white/[0.04] rounded-xl px-4 py-3">
+                  <p className="text-xs text-[#666] mb-1">Cross-Platform Plan</p>
+                  <p className="text-sm text-[#AAAAAA] leading-relaxed">{data.publishingStrategy.crossPlatformPlan}</p>
+                </div>
+              </div>
+            )}
 
             {/* Community post */}
             <CopyBlock label="Community Post" icon={Sparkles} content={data.communityPost} color="#8b5cf6" onCopy={copy} copiedKey={copied} itemKey="community" />

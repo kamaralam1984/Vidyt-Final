@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { motion } from 'framer-motion';
 import {
   Activity, AlertCircle, Loader2, TrendingDown, Clock,
-  Zap, BarChart3, Target,
+  Zap, BarChart3, Target, Link, Eye, ThumbsUp, MessageCircle, Calendar, Scissors,
 } from 'lucide-react';
 
 interface RetentionPoint {
@@ -30,6 +30,10 @@ interface BoringSegment {
 interface RetentionData {
   overallRetentionScore: number;
   avgViewDuration: string;
+  hookStrength: number;
+  midVideoEngagement: number;
+  endScreenCTR: number;
+  bestClipMoment: string;
   retentionCurve: RetentionPoint[];
   dropOffPoints: DropOffPoint[];
   boringSegments: BoringSegment[];
@@ -37,6 +41,19 @@ interface RetentionData {
   emotionalEngagementScore: number;
   attentionPrediction: 'high' | 'medium' | 'low';
   fixes: string[];
+}
+
+interface RealVideoData {
+  videoId: string;
+  title: string;
+  channelTitle: string;
+  publishedAt: string;
+  description: string;
+  duration: string;
+  viewCount: string;
+  likeCount: string;
+  commentCount: string;
+  thumbnail: string;
 }
 
 const SEVERITY_COLORS = {
@@ -106,22 +123,38 @@ function ScorePill({ label, value, color }: { label: string; value: number; colo
   );
 }
 
+function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-4 text-center">
+      <p className="text-[10px] text-[#555] mb-1">{label}</p>
+      <p className="text-xl font-black" style={{ color }}>{value}</p>
+    </div>
+  );
+}
+
 export default function RetentionAIPage() {
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDescription, setVideoDescription] = useState('');
   const [videoDuration, setVideoDuration] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState<RetentionData | null>(null);
+  const [realVideo, setRealVideo] = useState<RealVideoData | null>(null);
 
   const handleAnalyze = async () => {
-    if (!videoTitle.trim()) { setError('Video title is required.'); return; }
+    if (!videoTitle.trim() && !youtubeUrl.trim()) {
+      setError('Video title or YouTube URL is required.');
+      return;
+    }
     setError('');
     setLoading(true);
     setData(null);
+    setRealVideo(null);
     try {
-      const res = await axios.post('/api/retention-ai', { videoTitle, videoDescription, videoDuration }, { headers: getAuthHeaders() });
-      setData(res.data.data);
+      const res = await axios.post('/api/retention-ai', { videoTitle, videoDescription, videoDuration, youtubeUrl }, { headers: getAuthHeaders() });
+      setData(res.data.analysis);
+      setRealVideo(res.data.realVideoData || null);
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Analysis failed. Please try again.');
     } finally {
@@ -148,9 +181,27 @@ export default function RetentionAIPage() {
 
         <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6 mb-6">
           <div className="space-y-4">
+            {/* YouTube URL — primary input */}
             <div>
               <label className="block text-xs font-semibold text-[#888] uppercase tracking-wider mb-2">
-                Video Title <span className="text-[#FF0000]">*</span>
+                YouTube Video URL <span className="text-[#444] font-normal normal-case">(optional — gets real stats)</span>
+              </label>
+              <div className="relative">
+                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" />
+                <input
+                  type="url"
+                  value={youtubeUrl}
+                  onChange={e => setYoutubeUrl(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAnalyze()}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className="w-full bg-[#181818] border border-white/[0.06] rounded-xl pl-9 pr-4 py-3 text-white text-sm placeholder-[#444] focus:outline-none focus:border-blue-500/40 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#888] uppercase tracking-wider mb-2">
+                Video Title <span className="text-[#444] font-normal normal-case">(required if no URL)</span>
               </label>
               <input
                 type="text"
@@ -206,19 +257,68 @@ export default function RetentionAIPage() {
 
         {data && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
-            {/* Stats row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: 'Retention Score', value: `${data.overallRetentionScore}%`, color: data.overallRetentionScore >= 60 ? '#22c55e' : data.overallRetentionScore >= 40 ? '#f59e0b' : '#ef4444' },
-                { label: 'Avg View Duration', value: data.avgViewDuration, color: '#3b82f6' },
-                { label: 'Attention Level', value: data.attentionPrediction.charAt(0).toUpperCase() + data.attentionPrediction.slice(1), color: attentionColor },
-                { label: 'Drop-off Points', value: String(data.dropOffPoints.length), color: '#f59e0b' },
-              ].map((stat) => (
-                <div key={stat.label} className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-4 text-center">
-                  <p className="text-[10px] text-[#555] mb-1">{stat.label}</p>
-                  <p className="text-xl font-black" style={{ color: stat.color }}>{stat.value}</p>
+
+            {/* Real Data card */}
+            {realVideo && (
+              <div className="bg-[#0F0F0F] border border-green-500/20 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Real Data — Live from YouTube</span>
                 </div>
-              ))}
+                <div className="flex gap-4">
+                  {realVideo.thumbnail && (
+                    <img
+                      src={realVideo.thumbnail}
+                      alt={realVideo.title}
+                      className="w-32 h-[72px] object-cover rounded-xl shrink-0 border border-white/[0.06]"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white leading-snug mb-1 line-clamp-2">{realVideo.title}</p>
+                    <p className="text-xs text-[#666] mb-3">{realVideo.channelTitle}</p>
+                    <div className="flex flex-wrap gap-3">
+                      <span className="flex items-center gap-1 text-xs text-[#888]">
+                        <Eye className="w-3 h-3 text-blue-400" />
+                        {Number(realVideo.viewCount).toLocaleString()}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-[#888]">
+                        <ThumbsUp className="w-3 h-3 text-green-400" />
+                        {Number(realVideo.likeCount).toLocaleString()}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-[#888]">
+                        <MessageCircle className="w-3 h-3 text-amber-400" />
+                        {Number(realVideo.commentCount).toLocaleString()}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-[#888]">
+                        <Clock className="w-3 h-3 text-purple-400" />
+                        {realVideo.duration}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-[#888]">
+                        <Calendar className="w-3 h-3 text-[#555]" />
+                        {new Date(realVideo.publishedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Stats row — 8 stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <StatCard label="Retention Score" value={`${data.overallRetentionScore}%`} color={data.overallRetentionScore >= 60 ? '#22c55e' : data.overallRetentionScore >= 40 ? '#f59e0b' : '#ef4444'} />
+              <StatCard label="Avg View Duration" value={data.avgViewDuration} color="#3b82f6" />
+              <StatCard label="Attention Level" value={data.attentionPrediction.charAt(0).toUpperCase() + data.attentionPrediction.slice(1)} color={attentionColor} />
+              <StatCard label="Drop-off Points" value={String(data.dropOffPoints.length)} color="#f59e0b" />
+              <StatCard label="Hook Strength" value={`${data.hookStrength}%`} color={data.hookStrength >= 70 ? '#22c55e' : data.hookStrength >= 50 ? '#f59e0b' : '#ef4444'} />
+              <StatCard label="Mid-Video Engagement" value={`${data.midVideoEngagement}%`} color="#8b5cf6" />
+              <StatCard label="End Screen CTR" value={`${data.endScreenCTR}%`} color="#06b6d4" />
+              <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-4 text-center col-span-2 sm:col-span-4 md:col-span-1 flex flex-col items-center justify-center gap-1">
+                <p className="text-[10px] text-[#555]">Best Clip Moment</p>
+                <div className="flex items-center gap-1.5">
+                  <Scissors className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                  <p className="text-sm font-black text-pink-400">{data.bestClipMoment}</p>
+                </div>
+              </div>
             </div>
 
             {/* Retention curve */}

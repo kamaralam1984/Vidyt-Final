@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Hook text is required.' }, { status: 400 });
   }
 
-  const prompt = `You are a YouTube hook expert who has studied thousands of viral video openings. Analyze this hook ruthlessly.
+  const prompt = `You are a YouTube hook expert who has studied thousands of viral video openings and deeply understands viewer psychology, pattern interrupts, and attention mechanics. Analyze this hook with surgical precision.
 
 Video Title: ${videoTitle || 'Not provided'}
 Hook (first 30 seconds script): ${hookText.slice(0, 600)}
@@ -28,6 +28,8 @@ Target Audience: ${targetAudience || 'General YouTube viewers'}
 Return a JSON object with EXACTLY this structure:
 {
   "hookScore": <number 0-100>,
+  "hookType": "<one of: Question Hook|Shocking Statement|Story Hook|Controversy Hook|How-To Hook|Social Proof Hook|Challenge Hook|Curiosity Gap Hook>",
+  "hookFormula": "<name the formula this hook uses, e.g. 'Problem-Agitate-Solution', 'Curiosity Gap', 'Social Proof + Stakes', 'Pattern Interrupt + Payoff', 'Bold Claim + Proof', 'Relatability + Twist'>",
   "scores": {
     "pacing": <number 0-100>,
     "energy": <number 0-100>,
@@ -49,6 +51,18 @@ Return a JSON object with EXACTLY this structure:
     "Alternative opening line 2",
     "Alternative opening line 3"
   ],
+  "retentionBySecond": [
+    { "second": 0, "retention": 100 },
+    { "second": 5, "retention": <number, predicted % of viewers still watching at 5s> },
+    { "second": 10, "retention": <number> },
+    { "second": 15, "retention": <number> },
+    { "second": 20, "retention": <number> },
+    { "second": 30, "retention": <number> }
+  ],
+  "viralComparisons": [
+    { "creator": "<real YouTuber name>", "example": "<brief description of their hook style or specific video type>", "whyItWorks": "<1 sentence on the psychological mechanism>" },
+    { "creator": "<real YouTuber name>", "example": "<brief description>", "whyItWorks": "<1 sentence>" }
+  ],
   "retentionRisk": "high|medium|low",
   "improvements": [
     "Specific improvement 1",
@@ -57,9 +71,9 @@ Return a JSON object with EXACTLY this structure:
   ]
 }
 
-Be brutally honest. 80% of creators lose viewers in the first 15 seconds because of a weak hook.`;
+Be brutally honest. 80% of creators lose viewers in the first 15 seconds. A hook that scores below 60 will cost the algorithm ranking. retentionBySecond must be realistic — the sharpest drop is usually between 0-10s.`;
 
-  const result = await routeAI({ prompt, maxTokens: 1200, temperature: 0.7 });
+  const result = await routeAI({ prompt, maxTokens: 1400, temperature: 0.7 });
   if (!result.text) return NextResponse.json({ error: 'AI analysis failed. Please retry.' }, { status: 500 });
 
   try {

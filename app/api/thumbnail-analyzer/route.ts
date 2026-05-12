@@ -5,66 +5,93 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromRequest } from '@/lib/auth';
 import { routeAI } from '@/lib/ai-router';
 
+const NICHE_BENCHMARKS: Record<string, string> = {
+  finance: '4–6%', business: '4–6%', investing: '4–6%',
+  gaming: '3–5%', games: '3–5%',
+  tech: '4–7%', technology: '4–7%', review: '4–7%',
+  education: '2–4%', tutorial: '2–4%', howto: '2–4%',
+  fitness: '3–5%', health: '3–5%',
+  cooking: '2–4%', food: '2–4%',
+  entertainment: '4–8%', comedy: '4–8%',
+  default: '3–6%',
+};
+
+function getNicheBenchmark(niche: string): string {
+  if (!niche) return NICHE_BENCHMARKS.default;
+  const key = niche.toLowerCase();
+  for (const [k, v] of Object.entries(NICHE_BENCHMARKS)) {
+    if (key.includes(k)) return v;
+  }
+  return NICHE_BENCHMARKS.default;
+}
+
 export async function POST(request: NextRequest) {
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let body: { thumbnailDescription?: string; videoTitle?: string; niche?: string };
+  let body: { thumbnailDescription?: string; videoTitle?: string; niche?: string; imageUrl?: string };
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { thumbnailDescription, videoTitle, niche } = body;
-  if (!thumbnailDescription?.trim() && !videoTitle?.trim()) {
-    return NextResponse.json({ error: 'Provide a thumbnail description or video title.' }, { status: 400 });
+  const { thumbnailDescription, videoTitle, niche, imageUrl } = body;
+  if (!thumbnailDescription?.trim() && !videoTitle?.trim() && !imageUrl?.trim()) {
+    return NextResponse.json({ error: 'Provide a thumbnail URL, description, or video title.' }, { status: 400 });
   }
 
-  const prompt = `You are a world-class YouTube thumbnail CTR expert. Analyze this thumbnail and predict its performance.
+  const nicheBenchmark = `${getNicheBenchmark(niche || '')} for ${niche || 'General'} niche`;
+
+  const prompt = `You are a world-class YouTube thumbnail CTR expert who has analyzed 100,000+ thumbnails.
 
 Video Title: ${videoTitle || 'Not provided'}
-Thumbnail Description: ${thumbnailDescription || 'Not provided'}
+Thumbnail Description/URL: ${imageUrl || thumbnailDescription || 'Not provided'}
 Niche: ${niche || 'General YouTube'}
+Niche CTR Benchmark: ${nicheBenchmark}
 
-Return a JSON object with EXACTLY this structure:
+Analyze this thumbnail and return a JSON object with EXACTLY this structure:
 {
   "overallScore": <number 0-100>,
-  "ctrPrediction": "<e.g. 4.2%>",
+  "ctrPrediction": "<e.g. 5.2%>",
+  "nicheBenchmark": "${nicheBenchmark}",
+  "titleThumbnailSynergy": <number 0-100, how well thumbnail matches the video title>,
   "scores": {
     "readability": <number 0-100>,
     "emotionalImpact": <number 0-100>,
     "colorContrast": <number 0-100>,
     "clutterScore": <number 0-100>,
-    "curiosityGap": <number 0-100>
+    "curiosityGap": <number 0-100>,
+    "faceVisibility": <number 0-100, 0 if no face>,
+    "textToImageRatio": <number 0-100>,
+    "brandConsistency": <number 0-100>
   },
   "issues": [
-    { "area": "Text Readability|Color Contrast|Emotional Impact|Clutter|Face/Expression|Curiosity Gap", "severity": "high|medium|low", "description": "specific issue" }
+    { "area": "Text Readability|Color Contrast|Emotional Impact|Clutter|Face/Expression|Curiosity Gap|Brand Consistency", "severity": "high|medium|low", "description": "specific issue with actionable detail" }
   ],
   "strengths": [
-    "specific strength 1",
-    "specific strength 2"
+    "specific strength with detail"
   ],
   "suggestions": [
-    "Specific actionable improvement 1",
-    "Specific actionable improvement 2",
-    "Specific actionable improvement 3"
+    "Specific high-impact improvement 1",
+    "Specific high-impact improvement 2",
+    "Specific high-impact improvement 3"
   ],
   "improvedVersionIdeas": [
-    "Thumbnail concept idea 1 — describe colors, text, face expression, layout",
-    "Thumbnail concept idea 2"
+    "Concept 1: describe exact colors, text overlay, face expression, background, layout",
+    "Concept 2: alternative approach"
   ],
-  "competitorBenchmark": "How this thumbnail compares to top performers in this niche"
+  "competitorBenchmark": "How this thumbnail compares to top 10% of performers in ${niche || 'this'} niche"
 }
 
-Be honest. Most thumbnails have 2-4 fixable issues. Focus on CTR-boosting changes.`;
+Be specific and honest. Reference the niche CTR benchmark in your analysis.`;
 
-  const result = await routeAI({ prompt, maxTokens: 1000, temperature: 0.6 });
+  const result = await routeAI({ prompt, maxTokens: 1200, temperature: 0.6 });
   if (!result.text) return NextResponse.json({ error: 'AI analysis failed. Please retry.' }, { status: 500 });
 
   try {
     const jsonMatch = result.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON');
     const data = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
-    return NextResponse.json({ data, provider: result.provider });
+    return NextResponse.json({ data: { ...data, imageUrl: imageUrl || null }, provider: result.provider });
   } catch {
     return NextResponse.json({ error: 'Failed to parse AI response. Please retry.' }, { status: 500 });
   }
