@@ -747,6 +747,20 @@ export default function Dashboard() {
                   </button>
                 </motion.div>
 
+                {/* Score cards — section header */}
+                <motion.div variants={itemVariants} className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                      <span className="w-2 h-4 rounded-full bg-red-500 inline-block" />
+                      Video Performance Breakdown
+                    </h2>
+                    <p className="text-xs text-[#666] mt-1">Fix these weak areas before publishing — each metric directly impacts your views and CTR.</p>
+                  </div>
+                  <Link href="/dashboard/fix-my-video" className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white border border-[#FF0000]/30 bg-[#FF0000]/10 hover:bg-[#FF0000]/20 transition-all">
+                    <Zap className="w-3.5 h-3.5 text-[#FF0000]" /> Fix My Video
+                  </Link>
+                </motion.div>
+
                 {/* Score cards */}
                 <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                   {allowedSystems['viral_score'] !== false && (
@@ -754,8 +768,11 @@ export default function Dashboard() {
                       style={{ background: 'rgba(12,12,12,0.98)' }}>
                       <div className="absolute top-0 left-0 right-0 h-[1px]"
                         style={{ background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.5), transparent)' }} />
+                      <div className="px-6 pt-5 pb-1 flex items-center justify-between">
+                        <p className="text-[11px] text-[#555]">Higher score = more likely to go viral before you upload.</p>
+                      </div>
                       {lazyLoading.predict ? (
-                        <div className="h-[300px] flex flex-col items-center justify-center gap-4">
+                        <div className="h-[280px] flex flex-col items-center justify-center gap-4">
                           <div className="w-20 h-20 rounded-full border-4 border-red-500/20 border-t-red-500 animate-spin" />
                           <p className="text-white font-bold animate-pulse text-sm">Calculating Viral Probability...</p>
                         </div>
@@ -767,9 +784,9 @@ export default function Dashboard() {
                   {allowedSystems['score_cards'] !== false && (
                     <div className="space-y-3">
                       {[
-                        { key: 'hook', title: 'Hook Score', score: analysis.hookScore, color: 'blue' as const },
-                        { key: 'thumbnail', title: 'Thumbnail Score', score: analysis.thumbnailScore, color: 'purple' as const },
-                        { key: 'title', title: 'Title Score', score: analysis.titleScore, color: 'green' as const },
+                        { key: 'hook', title: 'Hook Score', score: analysis.hookScore, color: 'blue' as const, why: 'First 30s decides if viewers stay or bounce.', action: 'Rewrite Hook', href: '/ai/hook-generator' },
+                        { key: 'thumbnail', title: 'Thumbnail Score', score: analysis.thumbnailScore, color: 'purple' as const, why: 'Thumbnail drives 70% of your click-through rate.', action: 'Fix Thumbnail', href: '/ai/thumbnail-generator' },
+                        { key: 'title', title: 'Title Score', score: analysis.titleScore, color: 'green' as const, why: 'Title + thumbnail = your entire first impression.', action: 'Optimize Title', href: '/dashboard/youtube-seo?tab=titles' },
                       ].map((card, i) => (
                         <motion.div key={card.title}
                           initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
@@ -787,7 +804,15 @@ export default function Dashboard() {
                               <Loader2 className="w-5 h-5 text-white/20 animate-spin" />
                             </div>
                           ) : (
-                            <ScoreCard title={card.title} score={card.score} color={card.color} />
+                            <>
+                              <ScoreCard title={card.title} score={card.score} color={card.color} />
+                              <div className="px-4 pb-3 flex items-center justify-between border-t border-white/[0.04] pt-2">
+                                <p className="text-[10px] text-[#555] leading-tight">{card.why}</p>
+                                <Link href={card.href} className="text-[10px] font-semibold text-[#FF0000] hover:text-[#FF4444] flex items-center gap-0.5 shrink-0 ml-2 whitespace-nowrap">
+                                  {card.action} <ChevronRight className="w-3 h-3" />
+                                </Link>
+                              </div>
+                            </>
                           )}
                         </motion.div>
                       ))}

@@ -174,6 +174,7 @@ export default function Sidebar({ isOpen, onToggle, topOffset = 0 }: SidebarProp
 
   const aiStudioItems = [
     { id: 'viral_intelligence', icon: Sparkles, label: 'Viral Intelligence', href: '/dashboard/viral-intelligence' },
+    { id: 'fix_my_video', icon: Zap, label: 'Fix My Video AI', href: '/dashboard/fix-my-video' },
     { id: 'script_generator', icon: FileText, label: 'Script Generator', href: '/ai/script-generator' },
     { id: 'ai_coach', icon: Zap, label: 'AI Growth Coach', href: '/ai/script-generator?mode=coach' },
     { id: 'thumbnail_generator', icon: Image, label: 'AI Thumbnail Maker', href: '/ai/thumbnail-generator' },
