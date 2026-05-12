@@ -651,6 +651,123 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       </section>
 
+      {/* Social Proof Section */}
+      <section className="py-24 px-6 bg-[#181818]">
+        <div className="max-w-7xl mx-auto">
+          {/* Stats row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+            {[
+              { value: '50,000+', label: 'Creators Growing', color: '#FF0000' },
+              { value: '4.2M+', label: 'Videos Analyzed', color: '#8b5cf6' },
+              { value: '3.8×', label: 'Avg CTR Increase', color: '#22c55e' },
+              { value: '91%', label: 'Publish Confidence', color: '#f59e0b' },
+            ].map((stat) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6 text-center"
+              >
+                <p className="text-3xl font-black mb-1" style={{ color: stat.color }}>{stat.value}</p>
+                <p className="text-xs text-[#666]">{stat.label}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Section header */}
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold text-[#FF0000] uppercase tracking-widest mb-3">Creator Results</p>
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
+              Real Creators. Real Growth.
+            </h2>
+            <p className="text-[#666] max-w-2xl mx-auto">
+              VidYT users upload with confidence — knowing their title, thumbnail, and hook are optimized before they hit publish.
+            </p>
+          </div>
+
+          {/* Testimonials */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-16">
+            {[
+              {
+                quote: "I went from 2% CTR to 7.4% in 3 weeks. VidYT told me exactly what was wrong with my thumbnails.",
+                name: "Marcus T.",
+                handle: "@marcustech",
+                channel: "Tech Reviews · 180K subs",
+                result: "+5.4% CTR",
+                color: '#FF0000',
+              },
+              {
+                quote: "The viral prediction score is scary accurate. Every video I scored above 75 got over 100K views.",
+                name: "Priya S.",
+                handle: "@priyafinance",
+                channel: "Personal Finance · 420K subs",
+                result: "100K+ per video",
+                color: '#22c55e',
+              },
+              {
+                quote: "Hook Analyzer alone saved my channel. My average view duration went from 2:10 to 6:45 in a month.",
+                name: "Jordan L.",
+                handle: "@jordanlfit",
+                channel: "Fitness · 95K subs",
+                result: "3× view duration",
+                color: '#8b5cf6',
+              },
+            ].map((t) => (
+              <motion.div
+                key={t.name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-6 flex flex-col"
+              >
+                <p className="text-sm text-[#AAAAAA] leading-relaxed mb-4 flex-1">&ldquo;{t.quote}&rdquo;</p>
+                <div className="flex items-center justify-between gap-3 pt-4 border-t border-white/[0.06]">
+                  <div>
+                    <p className="text-sm font-bold text-white">{t.name}</p>
+                    <p className="text-xs text-[#555]">{t.channel}</p>
+                  </div>
+                  <span className="text-xs font-black px-3 py-1 rounded-full" style={{ background: `${t.color}20`, color: t.color, border: `1px solid ${t.color}30` }}>
+                    {t.result}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Before / After */}
+          <div className="bg-[#0F0F0F] border border-white/[0.06] rounded-2xl p-8">
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-black text-white mb-2">Before vs After VidYT</h3>
+              <p className="text-sm text-[#666]">Average results across active creators in their first 30 days</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { metric: 'Click-Through Rate', before: '2.1%', after: '6.8%', icon: '🎯' },
+                { metric: 'Avg View Duration', before: '1:52', after: '5:34', icon: '⏱️' },
+                { metric: 'Viral Score', before: '34/100', after: '76/100', icon: '🚀' },
+              ].map((item) => (
+                <div key={item.metric} className="bg-[#181818] rounded-xl p-5 text-center">
+                  <p className="text-2xl mb-2">{item.icon}</p>
+                  <p className="text-xs text-[#555] mb-3">{item.metric}</p>
+                  <div className="flex items-center justify-center gap-4">
+                    <div>
+                      <p className="text-lg font-black text-[#555] line-through">{item.before}</p>
+                      <p className="text-[10px] text-[#444]">Before</p>
+                    </div>
+                    <span className="text-[#333]">→</span>
+                    <div>
+                      <p className="text-lg font-black text-[#FF0000]">{item.after}</p>
+                      <p className="text-[10px] text-[#666]">After</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Coaching Section */}
       <section id="coaching" className="py-24 px-6 bg-[#181818]">
         <div className="max-w-7xl mx-auto">
