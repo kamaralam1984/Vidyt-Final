@@ -143,11 +143,15 @@ Be realistic based on the video stats and content type. If views are high relati
   if (!result.text) return NextResponse.json({ error: 'AI analysis failed. Please retry.' }, { status: 500 });
 
   try {
+    console.log('[retention-ai] raw text length:', result.text?.length, '| first 200:', result.text?.slice(0, 200));
     const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON');
-    const analysis = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
+    if (!jsonMatch) throw new Error('No JSON found in response');
+    const cleaned = jsonMatch[0].replace(/,\s*([}\]])/g, '$1');
+    const analysis = JSON.parse(cleaned);
+    console.log('[retention-ai] parsed ok, keys:', Object.keys(analysis || {}));
     return NextResponse.json({ realVideoData, analysis, provider: result.provider });
-  } catch {
+  } catch (e: any) {
+    console.error('[retention-ai] parse error:', e?.message, '| text snippet:', result.text?.slice(0, 300));
     return NextResponse.json({ error: 'Failed to parse AI response. Please retry.' }, { status: 500 });
   }
 }
