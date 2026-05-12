@@ -160,6 +160,9 @@ export default function RetentionAIPage() {
         analysis.dropOffPoints = analysis.dropOffPoints || [];
         analysis.boringSegments = analysis.boringSegments || [];
         analysis.fixes = analysis.fixes || [];
+        analysis.attentionPrediction = analysis.attentionPrediction || 'medium';
+        analysis.bestClipMoment = analysis.bestClipMoment || 'N/A';
+        analysis.avgViewDuration = analysis.avgViewDuration || 'N/A';
       }
       setData(analysis);
       setRealVideo(res.data.realVideoData || null);
@@ -315,7 +318,7 @@ export default function RetentionAIPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <StatCard label="Retention Score" value={`${data.overallRetentionScore}%`} color={data.overallRetentionScore >= 60 ? '#22c55e' : data.overallRetentionScore >= 40 ? '#f59e0b' : '#ef4444'} />
               <StatCard label="Avg View Duration" value={data.avgViewDuration} color="#3b82f6" />
-              <StatCard label="Attention Level" value={data.attentionPrediction.charAt(0).toUpperCase() + data.attentionPrediction.slice(1)} color={attentionColor} />
+              <StatCard label="Attention Level" value={data.attentionPrediction ? data.attentionPrediction.charAt(0).toUpperCase() + data.attentionPrediction.slice(1) : 'N/A'} color={attentionColor} />
               <StatCard label="Drop-off Points" value={String(data.dropOffPoints.length)} color="#f59e0b" />
               <StatCard label="Hook Strength" value={`${data.hookStrength}%`} color={data.hookStrength >= 70 ? '#22c55e' : data.hookStrength >= 50 ? '#f59e0b' : '#ef4444'} />
               <StatCard label="Mid-Video Engagement" value={`${data.midVideoEngagement}%`} color="#8b5cf6" />
