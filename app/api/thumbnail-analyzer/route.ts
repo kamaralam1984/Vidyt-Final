@@ -84,15 +84,18 @@ Analyze this thumbnail and return a JSON object with EXACTLY this structure:
 
 Be specific and honest. Reference the niche CTR benchmark in your analysis.`;
 
-  const result = await routeAI({ prompt, maxTokens: 1200, temperature: 0.6 });
+  const result = await routeAI({ prompt, maxTokens: 1800, temperature: 0.5 });
   if (!result.text) return NextResponse.json({ error: 'AI analysis failed. Please retry.' }, { status: 500 });
 
   try {
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    const stripped = result.text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON');
     const data = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Non-object response');
     return NextResponse.json({ data: { ...data, imageUrl: imageUrl || null }, provider: result.provider });
-  } catch {
+  } catch (e: any) {
+    console.error('[thumbnail-analyzer] parse error:', e?.message, '| snippet:', result.text?.slice(0, 300));
     return NextResponse.json({ error: 'Failed to parse AI response. Please retry.' }, { status: 500 });
   }
 }

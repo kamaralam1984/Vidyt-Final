@@ -73,15 +73,18 @@ Return a JSON object with EXACTLY this structure:
 
 Be brutally honest. 80% of creators lose viewers in the first 15 seconds. A hook that scores below 60 will cost the algorithm ranking. retentionBySecond must be realistic — the sharpest drop is usually between 0-10s.`;
 
-  const result = await routeAI({ prompt, maxTokens: 1400, temperature: 0.7 });
+  const result = await routeAI({ prompt, maxTokens: 2000, temperature: 0.5 });
   if (!result.text) return NextResponse.json({ error: 'AI analysis failed. Please retry.' }, { status: 500 });
 
   try {
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    const stripped = result.text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON');
     const data = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, '$1'));
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Non-object response');
     return NextResponse.json({ data, provider: result.provider });
-  } catch {
+  } catch (e: any) {
+    console.error('[hook-analyzer] parse error:', e?.message, '| snippet:', result.text?.slice(0, 300));
     return NextResponse.json({ error: 'Failed to parse AI response. Please retry.' }, { status: 500 });
   }
 }
