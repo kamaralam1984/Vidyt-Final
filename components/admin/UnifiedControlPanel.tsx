@@ -82,8 +82,19 @@ export default function UnifiedControlPanel() {
   const [savingMaster, setSavingMaster] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
-  const [activeTab, setActiveTab] = useState<'platforms' | 'site'>('platforms');
+  const [activeTab, setActiveTab] = useState<'plans' | 'platforms' | 'site'>('plans');
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+  const [isSavingNewPlan, setIsSavingNewPlan] = useState(false);
+  const defaultNewPlan = (): Omit<Plan, '_id' | 'isActive'> => ({
+    planId: '', name: '', description: '', label: '',
+    priceMonthly: 0, priceYearly: 0, role: 'user',
+    features: [],
+    limits: { analysesLimit: -1, analysesPeriod: 'month', titleSuggestions: -1, hashtagCount: -1, competitorsTracked: -1 },
+    limitsDisplay: { videos: '', analyses: '', storage: '', support: '' },
+    featureFlags: { daily_ideas: false, ai_coach: false, keyword_research: false, script_writer: false, title_generator: false, channel_audit_tool: false, ai_shorts_clipping: false, ai_thumbnail_maker: false, optimize: false, advancedAiViralPrediction: false, realTimeTrendAnalysis: false, bestPostingTimePredictions: false, competitorAnalysis: false, emailSupport: false, priorityProcessing: false, teamCollaboration: false, whiteLabelReports: false, customAiModelTraining: false, dedicatedAccountManager: false, prioritySupport24x7: false, advancedAnalyticsDashboard: false, customIntegrations: false },
+  });
+  const [newPlanForm, setNewPlanForm] = useState<ReturnType<typeof defaultNewPlan>>(defaultNewPlan());
 
   // Site controls state
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -178,6 +189,28 @@ export default function UnifiedControlPanel() {
     } catch (err: any) { setError(err.response?.data?.error || err.message); }
   };
 
+  const handleCreatePlan = async () => {
+    if (!newPlanForm.planId.trim() || !newPlanForm.name.trim()) {
+      setError('Plan ID and Name are required.');
+      return;
+    }
+    setIsSavingNewPlan(true);
+    setError(null);
+    try {
+      const res = await axios.post('/api/admin/plans', {
+        ...newPlanForm,
+        billingPeriod: 'monthly',
+      }, { headers: getAuthHeaders() });
+      if (res.data.success) {
+        showSuccess(`Plan "${newPlanForm.name}" created`);
+        setIsCreatingPlan(false);
+        setNewPlanForm(defaultNewPlan());
+        fetchAllData();
+      } else setError(res.data.error);
+    } catch (err: any) { setError(err.response?.data?.error || err.message); }
+    finally { setIsSavingNewPlan(false); }
+  };
+
   const handleSavePlan = async () => {
     if (!editingPlan) return;
     setIsSavingPlan(true);
@@ -235,6 +268,7 @@ export default function UnifiedControlPanel() {
   };
 
   const tabs = [
+    { id: 'plans' as const, label: 'Plans', icon: Crown },
     { id: 'platforms' as const, label: 'Platforms', icon: Shield },
     { id: 'site' as const, label: 'Site Controls', icon: Settings },
   ];
@@ -312,6 +346,73 @@ export default function UnifiedControlPanel() {
       </div>
 
       {/* ══════ PLANS TAB ══════ */}
+      {activeTab === 'plans' && (
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <button onClick={() => { setNewPlanForm(defaultNewPlan()); setIsCreatingPlan(true); }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#FF0000] hover:bg-[#cc0000] text-white rounded-lg text-xs font-bold transition">
+              <Plus className="w-3.5 h-3.5" /> New Plan
+            </button>
+          </div>
+
+          {plans.length === 0 && (
+            <div className="text-center py-12 text-[#444] text-sm">No plans found. Create one to get started.</div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {plans.map(plan => {
+              const PIcon = planIcons[plan.planId] || Sparkles;
+              return (
+                <div key={plan._id || plan.planId} className={`bg-[#111] border rounded-xl p-4 flex flex-col gap-3 ${plan.isActive ? 'border-[#1f1f1f]' : 'border-[#1a1a1a] opacity-60'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <PIcon className="w-4 h-4 text-[#FF0000]" />
+                      <span className="text-sm font-bold text-white">{plan.name}</span>
+                      {plan.label && <span className="text-[9px] bg-[#1a1a1a] text-[#666] px-1.5 py-0.5 rounded">{plan.label}</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setEditingPlan(plan)}
+                        className="p-1.5 hover:bg-[#1a1a1a] rounded-lg transition text-[#555] hover:text-white">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="relative cursor-pointer" onClick={() => handleTogglePlanActive(plan)}>
+                        <div className={`w-9 h-5 rounded-full transition ${plan.isActive ? 'bg-green-500' : 'bg-[#333]'}`} />
+                        <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${plan.isActive ? 'translate-x-4' : ''}`} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-bold">{plan.role}</span>
+                    <span className="text-[10px] text-[#555]">₹{plan.priceMonthly}/mo</span>
+                    {plan.priceYearly ? <span className="text-[10px] text-[#555]">· ₹{plan.priceYearly}/yr</span> : null}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                    <div className="bg-[#0a0a0a] rounded-lg p-2">
+                      <p className="text-[#444] uppercase tracking-wider font-bold mb-0.5">Analyses</p>
+                      <p className="text-white font-mono">{plan.limits?.analysesLimit === -1 ? '∞' : plan.limits?.analysesLimit}/{plan.limits?.analysesPeriod || 'mo'}</p>
+                    </div>
+                    <div className="bg-[#0a0a0a] rounded-lg p-2">
+                      <p className="text-[#444] uppercase tracking-wider font-bold mb-0.5">Titles</p>
+                      <p className="text-white font-mono">{plan.limits?.titleSuggestions === -1 ? '∞' : plan.limits?.titleSuggestions}</p>
+                    </div>
+                    <div className="bg-[#0a0a0a] rounded-lg p-2">
+                      <p className="text-[#444] uppercase tracking-wider font-bold mb-0.5">Hashtags</p>
+                      <p className="text-white font-mono">{plan.limits?.hashtagCount === -1 ? '∞' : plan.limits?.hashtagCount}</p>
+                    </div>
+                    <div className="bg-[#0a0a0a] rounded-lg p-2">
+                      <p className="text-[#444] uppercase tracking-wider font-bold mb-0.5">Competitors</p>
+                      <p className="text-white font-mono">{plan.limits?.competitorsTracked === -1 ? '∞' : plan.limits?.competitorsTracked}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ══════ PLATFORMS TAB ══════ */}
       {activeTab === 'platforms' && (
         <div className="space-y-3">
@@ -514,6 +615,182 @@ export default function UnifiedControlPanel() {
               {savingSite ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Save Site Settings
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════ NEW PLAN MODAL ══════ */}
+      {isCreatingPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-2xl w-full max-w-4xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#1a1a1a]">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-green-400" /> Create New Plan
+                </h2>
+                <p className="text-[10px] text-[#555] mt-0.5">Set pricing, limits, and feature flags</p>
+              </div>
+              <button onClick={() => setIsCreatingPlan(false)} className="p-2 hover:bg-[#1a1a1a] rounded-lg transition text-[#555] hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Basic Info */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-[#555] uppercase tracking-wider">Basic Information</h3>
+                <div>
+                  <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Plan ID <span className="text-red-400">*</span></label>
+                  <input type="text" value={newPlanForm.planId}
+                    onChange={e => setNewPlanForm({ ...newPlanForm, planId: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                    placeholder="e.g. starter, pro, enterprise"
+                    className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-green-500/50 transition" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Plan Name <span className="text-red-400">*</span></label>
+                  <input type="text" value={newPlanForm.name}
+                    onChange={e => setNewPlanForm({ ...newPlanForm, name: e.target.value })}
+                    placeholder="e.g. Starter Plan"
+                    className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-green-500/50 transition" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Display Label</label>
+                  <input type="text" value={newPlanForm.label || ''}
+                    onChange={e => setNewPlanForm({ ...newPlanForm, label: e.target.value })}
+                    placeholder="e.g. Most Popular"
+                    className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-green-500/50 transition" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Description</label>
+                  <textarea value={newPlanForm.description || ''}
+                    onChange={e => setNewPlanForm({ ...newPlanForm, description: e.target.value })}
+                    placeholder="Short description for pricing page"
+                    className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none focus:border-green-500/50 transition h-16 resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Monthly (₹)</label>
+                    <input type="number" value={newPlanForm.priceMonthly}
+                      onChange={e => setNewPlanForm({ ...newPlanForm, priceMonthly: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Yearly (₹)</label>
+                    <input type="number" value={newPlanForm.priceYearly || 0}
+                      onChange={e => setNewPlanForm({ ...newPlanForm, priceYearly: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[#555] uppercase tracking-wider font-bold mb-1">Role</label>
+                  <select value={newPlanForm.role}
+                    onChange={e => setNewPlanForm({ ...newPlanForm, role: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition">
+                    {['user', 'starter', 'pro', 'enterprise', 'admin', 'super-admin', 'owner'].map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Limits */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-[#555] uppercase tracking-wider">Usage Limits</h3>
+                <p className="text-[10px] text-[#444] bg-blue-500/5 border border-blue-500/10 rounded-lg p-2">-1 = unlimited. Display labels appear on pricing cards.</p>
+
+                {[
+                  { label: 'Analyses Limit', numKey: 'analysesLimit', dispKey: 'analyses', placeholder: 'e.g. 500/mo' },
+                  { label: 'Title Suggestions', numKey: 'titleSuggestions', dispKey: 'videos', placeholder: 'e.g. 200/mo' },
+                  { label: 'Hashtag Count', numKey: 'hashtagCount', dispKey: null, placeholder: null },
+                  { label: 'Competitors Tracked', numKey: 'competitorsTracked', dispKey: null, placeholder: null },
+                ].map(f => (
+                  <div key={f.numKey} className={`grid gap-2 ${f.dispKey ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    <div>
+                      <label className="block text-[10px] text-[#555] font-bold mb-1">{f.label}</label>
+                      <input type="number" value={(newPlanForm.limits as any)[f.numKey]}
+                        onChange={e => setNewPlanForm({ ...newPlanForm, limits: { ...newPlanForm.limits, [f.numKey]: parseInt(e.target.value) } })}
+                        className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" />
+                    </div>
+                    {f.dispKey && (
+                      <div>
+                        <label className="block text-[10px] text-[#555] font-bold mb-1">Display</label>
+                        <input type="text" value={(newPlanForm.limitsDisplay as any)?.[f.dispKey] || ''}
+                          onChange={e => setNewPlanForm({ ...newPlanForm, limitsDisplay: { ...newPlanForm.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, [f.dispKey!]: e.target.value } })}
+                          placeholder={f.placeholder || ''}
+                          className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                <div>
+                  <label className="block text-[10px] text-[#555] font-bold mb-1">Analyses Period</label>
+                  <select value={newPlanForm.limits.analysesPeriod}
+                    onChange={e => setNewPlanForm({ ...newPlanForm, limits: { ...newPlanForm.limits, analysesPeriod: e.target.value as 'day' | 'month' } })}
+                    className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition">
+                    <option value="day">Per Day</option>
+                    <option value="month">Per Month</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-[#555] font-bold mb-1">Display Storage</label>
+                    <input type="text" value={newPlanForm.limitsDisplay?.storage || ''}
+                      onChange={e => setNewPlanForm({ ...newPlanForm, limitsDisplay: { ...newPlanForm.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, storage: e.target.value } })}
+                      placeholder="e.g. 10GB"
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#555] font-bold mb-1">Display Support</label>
+                    <input type="text" value={newPlanForm.limitsDisplay?.support || ''}
+                      onChange={e => setNewPlanForm({ ...newPlanForm, limitsDisplay: { ...newPlanForm.limitsDisplay || { videos: '', analyses: '', storage: '', support: '' }, support: e.target.value } })}
+                      placeholder="e.g. Priority"
+                      className="w-full px-3 py-2 bg-[#111] border border-[#252525] rounded-lg text-white text-sm focus:outline-none transition" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Flags */}
+            <div className="mb-6">
+              <h3 className="text-xs font-bold text-[#555] uppercase tracking-wider mb-3">Feature Flags</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: 'AI Studio', flags: ['daily_ideas', 'ai_coach', 'keyword_research', 'script_writer', 'title_generator', 'channel_audit_tool', 'ai_shorts_clipping', 'ai_thumbnail_maker', 'optimize'] },
+                  { label: 'Growth & Analytics', flags: ['advancedAiViralPrediction', 'realTimeTrendAnalysis', 'bestPostingTimePredictions', 'competitorAnalysis', 'advancedAnalyticsDashboard'] },
+                  { label: 'Support & Enterprise', flags: ['emailSupport', 'prioritySupport24x7', 'priorityProcessing', 'teamCollaboration', 'whiteLabelReports', 'customAiModelTraining', 'dedicatedAccountManager', 'customIntegrations'] },
+                ].map(group => (
+                  <div key={group.label} className="bg-[#111] border border-[#1a1a1a] rounded-xl p-3">
+                    <p className="text-[9px] text-[#444] uppercase tracking-wider font-bold mb-2">{group.label}</p>
+                    <div className="space-y-0.5">
+                      {group.flags.map(flag => (
+                        <label key={flag} className="flex items-center justify-between cursor-pointer p-1.5 rounded hover:bg-[#0a0a0a] transition">
+                          <span className="text-[11px] text-[#888]">{humanize(flag)}</span>
+                          <div className="relative" onClick={e => { e.preventDefault(); setNewPlanForm(prev => ({ ...prev, featureFlags: { ...prev.featureFlags, [flag]: !prev.featureFlags[flag as keyof PlanFeatureFlags] } })); }}>
+                            <div className={`w-8 h-4 rounded-full transition ${newPlanForm.featureFlags[flag as keyof PlanFeatureFlags] ? 'bg-blue-500' : 'bg-[#333]'}`} />
+                            <div className={`absolute left-0.5 top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${newPlanForm.featureFlags[flag as keyof PlanFeatureFlags] ? 'translate-x-4' : ''}`} />
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-[#1a1a1a]">
+              <button onClick={() => setIsCreatingPlan(false)}
+                className="px-5 py-2 rounded-lg text-xs font-bold text-[#666] hover:text-white hover:bg-[#1a1a1a] transition">
+                Cancel
+              </button>
+              <button onClick={handleCreatePlan} disabled={isSavingNewPlan}
+                className="flex items-center gap-1.5 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold transition disabled:opacity-50">
+                {isSavingNewPlan ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Create Plan
+              </button>
+            </div>
           </div>
         </div>
       )}
