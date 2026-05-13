@@ -62,6 +62,11 @@ export const FEATURE_LIMITS_REGISTRY: FeatureLimitDef[] = [
   { key: 'competitorsTracked', label: 'Competitors Tracked', group: 'core', defaultValue: 3, defaultPeriod: 'lifetime', legacyKey: 'competitorsTracked', featureGate: 'competitorAnalysis' },
 
   // ── AI Studio — gated by the matching boolean feature ─────────────────
+  { key: 'retention_ai', label: 'Retention AI Analyses', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'month' },
+  { key: 'hook_analyzer', label: 'Hook Analyses', group: 'ai_studio', defaultValue: 10, defaultPeriod: 'month' },
+  { key: 'thumbnail_analyzer', label: 'Thumbnail Analyses', group: 'ai_studio', defaultValue: 10, defaultPeriod: 'month', featureGate: 'ai_thumbnail_maker' },
+  { key: 'competitor_spy', label: 'Competitor Spy Analyses', group: 'ai_studio', defaultValue: 3, defaultPeriod: 'month', featureGate: 'competitorAnalysis' },
+  { key: 'content_workflow', label: 'Content Workflow Plans', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'month' },
   { key: 'daily_ideas', label: 'Daily Ideas Generations', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day', featureGate: 'daily_ideas' },
   { key: 'ai_coach', label: 'AI Coach Sessions', group: 'ai_studio', defaultValue: 3, defaultPeriod: 'day', featureGate: 'ai_coach' },
   { key: 'keyword_research', label: 'Keyword Research Queries', group: 'ai_studio', defaultValue: 10, defaultPeriod: 'day', featureGate: 'keyword_research' },
@@ -74,6 +79,7 @@ export const FEATURE_LIMITS_REGISTRY: FeatureLimitDef[] = [
   { key: 'ultraAiEngine', label: 'Ultra AI Engine', group: 'ai_studio', defaultValue: 5, defaultPeriod: 'day', featureGate: 'never' },
 
   // ── Analytics — gated by the matching boolean feature ─────────────────
+  { key: 'youtube_growth', label: 'YouTube Growth Reports', group: 'analytics', defaultValue: 5, defaultPeriod: 'month' },
   { key: 'viralPrediction', label: 'Viral Predictions', group: 'analytics', defaultValue: 5, defaultPeriod: 'day', featureGate: 'advancedAiViralPrediction' },
   { key: 'trendAnalysis', label: 'Trend Analysis Reports', group: 'analytics', defaultValue: 3, defaultPeriod: 'day', featureGate: 'realTimeTrendAnalysis' },
   { key: 'postingTimePrediction', label: 'Posting Time Predictions', group: 'analytics', defaultValue: 10, defaultPeriod: 'day', featureGate: 'bestPostingTimePredictions' },
@@ -136,7 +142,12 @@ export const SIDEBAR_LIMIT_MAP: Record<string, string> = {
   thumbnail_generator: 'ai_thumbnail_maker',
   hook_generator: 'titleSuggestions',
   shorts_creator: 'ai_shorts_clipping',
-  // dashboard, youtube_growth → no quota; render as label-only rows.
+  retention_ai: 'retention_ai',
+  hook_analyzer: 'hook_analyzer',
+  thumbnail_analyzer: 'thumbnail_analyzer',
+  competitor_spy: 'competitor_spy',
+  content_workflow: 'content_workflow',
+  youtube_growth: 'youtube_growth',
 };
 
 export function getFeaturesByGroup(group: FeatureGroupId): FeatureLimitDef[] {
