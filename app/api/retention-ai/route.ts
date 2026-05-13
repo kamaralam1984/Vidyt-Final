@@ -139,19 +139,22 @@ Analyze this video and predict viewer retention behavior. Return a JSON object w
 
 Be realistic based on the video stats and content type. If views are high relative to subscribers, retention is likely good.`;
 
-  const result = await routeAI({ prompt, maxTokens: 1200, temperature: 0.6 });
+  const result = await routeAI({ prompt, maxTokens: 2000, temperature: 0.5 });
   if (!result.text) return NextResponse.json({ error: 'AI analysis failed. Please retry.' }, { status: 500 });
 
   try {
-    console.log('[retention-ai] raw text length:', result.text?.length, '| first 200:', result.text?.slice(0, 200));
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    // Strip markdown code fences if present
+    const stripped = result.text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON found in response');
     const cleaned = jsonMatch[0].replace(/,\s*([}\]])/g, '$1');
     const analysis = JSON.parse(cleaned);
-    console.log('[retention-ai] parsed ok, keys:', Object.keys(analysis || {}));
+    if (!analysis || typeof analysis !== 'object' || Array.isArray(analysis)) {
+      throw new Error('AI returned non-object response');
+    }
     return NextResponse.json({ realVideoData, analysis, provider: result.provider });
   } catch (e: any) {
-    console.error('[retention-ai] parse error:', e?.message, '| text snippet:', result.text?.slice(0, 300));
+    console.error('[retention-ai] parse error:', e?.message, '| text snippet:', result.text?.slice(0, 400));
     return NextResponse.json({ error: 'Failed to parse AI response. Please retry.' }, { status: 500 });
   }
 }
