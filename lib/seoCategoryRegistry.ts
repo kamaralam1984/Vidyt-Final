@@ -32,10 +32,11 @@ export interface SeoCategory {
 /** Per-category daily creation cap. Owner-locked at 3. */
 export const PER_CATEGORY_DAILY = 3;
 
-/** Global daily creation cap. Bumped to 200 — quality gate (qualityScorer
- *  ≥ MIN_AUTO_CREATE_QUALITY) still rejects thin pages, so the ceiling is
- *  bandwidth, not quality. 200/day → ~73k pages/year compounding. */
-export const GLOBAL_DAILY_CAP = 200;
+/** Global daily creation cap. Reverted 200 → 50 after GSC showed 2,034 pages
+ *  stuck in "Discovered - currently not indexed" — Google's crawl budget
+ *  was exhausted by volume. Pair with raised MIN_AUTO_CREATE_QUALITY (80)
+ *  in generate-seo-pages route. Earn trust first, scale later. */
+export const GLOBAL_DAILY_CAP = 50;
 
 /**
  * Active categories. Add/remove freely — rotation engine adapts.
