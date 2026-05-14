@@ -106,7 +106,7 @@ Bold text "${text}" in massive font, center-focused, with red glow effect.
 Background: dramatic ${visual_elements} scene, slightly blurred for depth.
 Color scheme: high contrast red, yellow, black, white.
 Effects: light flares, subtle motion blur, depth shadows, gradient overlay.
-Style: MrBeast-style high impact, viral YouTube thumbnail, professional photography quality.
+Style: high-impact viral YouTube thumbnail, professional photography quality.
 Emotion: ${emotion}, niche: ${niche}`;
 }
 

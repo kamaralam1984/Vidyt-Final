@@ -80,7 +80,7 @@ const FEATURED_TOOLS = [
     title: 'AI Thumbnail Generator',
     tagline: 'Film-poster quality thumbnails in seconds',
     bullets: [
-      '8 art styles — Cinematic, MrBeast, Anime, Neon & more',
+      '8 art styles — Cinematic, High Impact, Anime, Neon & more',
       'Upload your photo; AI adds 3D VFX text & backgrounds',
       'Optimized contrast & faces for maximum click attraction',
     ],

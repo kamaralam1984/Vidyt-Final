@@ -85,7 +85,7 @@ function pickStrings(localeLang?: string) {
 
 const STYLES = [
   { id: 'cinematic',  label: 'Cinematic Film Poster', desc: 'Hollywood movie poster quality', color: 'from-red-600 to-orange-600' },
-  { id: 'mrbeast',   label: 'MrBeast Style',          desc: 'Bold, colorful, expressive',    color: 'from-yellow-500 to-red-500' },
+  { id: 'highimpact', label: 'High Impact',            desc: 'Bold, colorful, expressive',    color: 'from-yellow-500 to-red-500' },
   { id: 'realistic',  label: 'Photo Realistic',        desc: 'Hyper-realistic photography',   color: 'from-blue-600 to-cyan-600' },
   { id: 'anime',      label: 'Anime / Manga',          desc: 'Japanese anime art style',      color: 'from-pink-500 to-purple-600' },
   { id: '3d',         label: '3D Render',              desc: 'Pixar/3D cartoon style',        color: 'from-emerald-500 to-teal-600' },
@@ -108,7 +108,7 @@ function getStyleSuffix(style: string): string {
     neon:     'neon cyberpunk style, dark background, glowing neon lights, futuristic, purple and cyan',
     minimal:  'clean minimal design, simple modern layout, lots of whitespace, elegant typography',
     vintage:  'retro vintage style, film grain, warm colors, 70s-80s aesthetic',
-    mrbeast:  'MrBeast YouTube style, extremely bold text, exaggerated expression, ultra colorful, high energy',
+    highimpact: 'high-impact YouTube style, extremely bold text, exaggerated expression, ultra colorful, high energy',
     realistic:'hyper-realistic photography, 8k, professional photo, studio lighting, ultra detailed',
     cinematic:'cinematic film poster, dramatic lighting, Hollywood quality, epic composition, volumetric light',
   };
@@ -505,7 +505,7 @@ export default function ThumbnailGenerator() {
                     <div className="grid grid-cols-3 gap-1.5">
                       {([
                         { id: 'youtube',   label: 'YouTube',   preview: '🔴' },
-                        { id: 'mrbeast',   label: 'MrBeast',   preview: '🟡' },
+                        { id: 'highimpact', label: 'High Impact', preview: '🟡' },
                         { id: 'neon',      label: 'Neon',      preview: '💜' },
                         { id: 'breaking',  label: 'Breaking',  preview: '📺' },
                         { id: 'minimal',   label: 'Minimal',   preview: '⬜' },

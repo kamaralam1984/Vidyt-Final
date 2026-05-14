@@ -196,7 +196,7 @@ export default function CompetitorSpyPage() {
                   value={channelName}
                   onChange={e => setChannelName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleAnalyze()}
-                  placeholder="e.g. MrBeast, MKBHD, Graham Stephan..."
+                  placeholder="e.g. any top creator in your niche..."
                   className="w-full bg-[#181818] border border-white/[0.06] rounded-xl px-4 py-3 text-white text-sm placeholder-[#444] focus:outline-none focus:border-purple-500/40 transition-colors"
                 />
               </div>

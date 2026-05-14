@@ -5,6 +5,12 @@
 
 import nodemailer from 'nodemailer';
 import { getApiConfig } from '@/lib/apiConfig';
+import {
+  isSuppressed,
+  getUnsubscribeFooterHtml,
+  getUnsubscribeFooterText,
+  getUnsubscribeHeaders,
+} from '@/lib/unsubscribe';
 
 /** Base URL for absolute logo in emails. Set NEXT_PUBLIC_APP_URL in production. */
 function getEmailBaseUrl(): string {
@@ -53,9 +59,52 @@ function getTransporter() {
   return transporter;
 }
 
-/** Central send: Resend if key set, else SMTP. */
-async function sendMail(options: { to: string; subject: string; html: string; text?: string; from?: string }): Promise<boolean> {
+/**
+ * Central send: Resend if key set, else SMTP.
+ *
+ * If `marketingTo` is set, the message is treated as marketing/promotional:
+ *   - Recipient is checked against the EmailSuppression list (suppressed →
+ *     no-op + return true so the caller's accounting stays consistent).
+ *   - An unsubscribe footer is appended to the HTML body (just before
+ *     </body> when present) and to the plaintext body.
+ *   - One-click List-Unsubscribe headers (RFC 8058) are added so Gmail/Yahoo
+ *     accept the message as a compliant bulk sender.
+ *
+ * Transactional mail (password reset, OTP, payment receipt) MUST omit
+ * `marketingTo` — those messages are exempt from CAN-SPAM unsubscribe rules
+ * and should always be delivered.
+ */
+async function sendMail(options: {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  from?: string;
+  marketingTo?: string;
+}): Promise<boolean> {
   try {
+    let html = options.html;
+    let text = options.text;
+    const headers: Record<string, string> = {};
+
+    if (options.marketingTo) {
+      const recipient = options.marketingTo.trim().toLowerCase();
+      if (await isSuppressed(recipient)) {
+        console.log('⏭️  Skipping marketing email — recipient unsubscribed:', recipient);
+        return true;
+      }
+      const footerHtml = getUnsubscribeFooterHtml(recipient);
+      const footerText = getUnsubscribeFooterText(recipient);
+      // Inject footer just before </body> if present, else append.
+      if (/<\/body\s*>/i.test(html)) {
+        html = html.replace(/<\/body\s*>/i, `${footerHtml}</body>`);
+      } else {
+        html = `${html}${footerHtml}`;
+      }
+      text = `${text || ''}${footerText}`;
+      Object.assign(headers, getUnsubscribeHeaders(recipient));
+    }
+
     const config = await getApiConfig();
     const emailFrom = options.from || process.env.EMAIL_FROM || `"Vid YT" <${emailConfig.auth.user}>`;
 
@@ -68,8 +117,9 @@ async function sendMail(options: { to: string; subject: string; html: string; te
           from: emailFrom,
           to: options.to,
           subject: options.subject,
-          html: options.html,
-          ...(options.text ? { text: options.text } : {}),
+          html,
+          ...(text ? { text } : {}),
+          ...(Object.keys(headers).length ? { headers } : {}),
         });
         if (!error) {
           console.log('✅ Email sent via Resend:', options.to);
@@ -92,8 +142,9 @@ async function sendMail(options: { to: string; subject: string; html: string; te
       from: emailFrom,
       to: options.to,
       subject: options.subject,
-      html: options.html,
-      text: options.text,
+      html,
+      text,
+      ...(Object.keys(headers).length ? { headers } : {}),
     });
     console.log('✅ Email sent via SMTP:', options.to);
     return true;
@@ -438,7 +489,7 @@ export async function sendBroadcastNotificationEmail(
   try {
     const htmlMessage = message.replace(/\n/g, '<br>');
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT · Notification</p></div><div class="content"><p>Hello ${userName || 'User'},</p><div>${htmlMessage}</div></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
-    const ok = await sendMail({ to: email, subject: subject || 'Notification from Vid YT', html, text: `Hello ${userName || 'User'},\n\n${message}` });
+    const ok = await sendMail({ to: email, subject: subject || 'Notification from Vid YT', html, text: `Hello ${userName || 'User'},\n\n${message}`, marketingTo: email });
     if (!ok && process.env.NODE_ENV === 'development') return true;
     return ok;
   } catch (error) {
@@ -496,7 +547,7 @@ export async function sendUsageAlertEmail(
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
 
-    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nUpgrade here: ${upgradeUrl}` });
+    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nUpgrade here: ${upgradeUrl}`, marketingTo: email });
   } catch (error) {
     console.error('❌ Usage email error:', error);
     return false;
@@ -520,7 +571,7 @@ export async function sendExpiryAlertEmail(
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
 
-    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nRenew/Upgrade here: ${upgradeUrl}` });
+    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nRenew/Upgrade here: ${upgradeUrl}`, marketingTo: email });
   } catch (error) {
     console.error('❌ Expiry email error:', error);
     return false;
@@ -543,7 +594,7 @@ export async function sendUpsellEmail(
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:#0F0F0F;color:white;padding:20px;text-align:center}.content{background:#f9f9f9;padding:30px}.button{display:inline-block;padding:12px 30px;background:#FF0000;color:white;text-decoration:none;border-radius:5px;margin:20px 0;font-weight:bold;}.footer{text-align:center;margin-top:20px;color:#666;font-size:12px}</style></head><body><div class="container"><div class="header">${getEmailLogoHtml()}<p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Vid YT</p></div><div class="content"><h2>${subject}</h2><p>Hello ${userName || 'User'},</p><p>${bodyText}</p><div style="text-align:center;"><a href="${upgradeUrl}" class="button">${lang.btnUpgrade}</a></div></div><div class="footer"><p>© ${new Date().getFullYear()} Vid YT</p></div></div></body></html>`;
 
-    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nUpgrade here: ${upgradeUrl}` });
+    return await sendMail({ to: email, subject: `${subject} - Vid YT`, html, text: `${subject}\n\n${bodyText}\n\nUpgrade here: ${upgradeUrl}`, marketingTo: email });
   } catch (error) {
     console.error('❌ Upsell email error:', error);
     return false;
@@ -601,6 +652,7 @@ h1{font-size:22px;margin:0 0 8px;color:#111}
       subject: 'Welcome to Vid YT — Your YouTube Growth Journey Starts Now! 🚀',
       html,
       text: `Welcome${userName ? `, ${userName}` : ''}!\n\nVid YT is the ultimate YouTube growth platform.\n\nOur Features:\n- AI Video Analyzer\n- Channel Audit & Analytics\n- Smart Tag & Hashtag Generator\n- AI Script & Title Generator\n- Competitor Tracking\n- Schedule & Auto-Post\n- Shorts & Clip Creator\n\nExplore now: ${baseUrl}/ai\n\n© Vid YT`,
+      marketingTo: email,
     });
   } catch (error) {
     console.error('❌ Welcome email error:', error);
@@ -694,6 +746,7 @@ ${dripIndex < 4 ? '<p style="font-size:13px;color:#999;margin-top:20px">More tip
       subject: `${drip.subject} - Vid YT`,
       html,
       text: `${drip.heading}\n\nHi ${userName || 'there'},\n\n${drip.body}\n\n${drip.cta}: ${fullCtaUrl}\n\n© Vid YT`,
+      marketingTo: email,
     });
   } catch (error) {
     console.error('❌ Drip email error:', error);
@@ -769,6 +822,7 @@ h1{font-size:20px;margin:0 0 8px}
       subject: `Unlock ${upgrade.next} Features — Special Offer Inside! 🚀 - Vid YT`,
       html,
       text: `Ready for ${upgrade.next}?\n\nYou're on the ${currentPlan} plan. Upgrade to ${upgrade.next} for:\n${upgrade.features.map((f) => `- ${f}`).join('\n')}\n\nUpgrade: ${baseUrl}/pricing\n\n© Vid YT`,
+      marketingTo: email,
     });
   } catch (error) {
     console.error('❌ Upgrade suggestion email error:', error);
@@ -922,7 +976,7 @@ export async function sendLimitReachedMarketingEmail(
 
     const text = `${headline}\n\n${sub}\n\n${bullets.map((b) => `${b.e} ${b.t}`).join('\n')}\n\n${cta}: ${upgradeUrl}\n\n${testimonial}\n\n${guarantee}\n\n${ps}`;
 
-    return await sendMail({ to: email, subject, html, text });
+    return await sendMail({ to: email, subject, html, text, marketingTo: email });
   } catch (error) {
     console.error('❌ Limit-reached marketing email error:', error);
     return false;

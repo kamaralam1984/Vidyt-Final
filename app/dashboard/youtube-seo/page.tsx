@@ -909,7 +909,7 @@ function YouTubeLiveSEOContent() {
         // Use thumbnail-from-image API with uploaded photos for film poster style
         const styles = [
           { emotion: 'shock', niche: 'news', label: 'Cinematic Poster' },
-          { emotion: 'curiosity', niche: 'entertainment', label: 'MrBeast Composite' },
+          { emotion: 'curiosity', niche: 'entertainment', label: 'High Impact Composite' },
           { emotion: 'hype', niche: 'gaming', label: 'Neon VFX Poster' },
         ];
         const results = await Promise.allSettled(
@@ -946,7 +946,7 @@ function YouTubeLiveSEOContent() {
         // Use regular thumbnail generator (no photos)
         const styles = [
           { emotion: 'shock', niche: 'news', label: 'Breaking News Style' },
-          { emotion: 'curiosity', niche: 'entertainment', label: 'MrBeast Style' },
+          { emotion: 'curiosity', niche: 'entertainment', label: 'High Impact Style' },
           { emotion: 'hype', niche: 'gaming', label: 'Dynamic Neon Style' },
         ];
         const results = await Promise.allSettled(
@@ -2271,7 +2271,7 @@ function YouTubeLiveSEOContent() {
                     <p className="text-xs text-[#666] mb-3">
                       {thumbPhotos.length > 0
                         ? `${thumbPhotos.length} photo${thumbPhotos.length > 1 ? 's' : ''} uploaded — will generate cinematic film poster thumbnails with your photos mixed in.`
-                        : '3 different styles: Breaking News, MrBeast, Dynamic Neon — each optimized for high CTR.'}
+                        : '3 different styles: Breaking News, High Impact, Dynamic Neon — each optimized for high CTR.'}
                     </p>
 
                     {/* Loading State */}

@@ -150,54 +150,14 @@ async function resolveShareUrlToWatchUrl(url: string): Promise<string> {
 }
 
 /**
- * Try to scrape Facebook page for basic metadata (fallback method)
+ * Page scraping has been removed. Meta Platform Terms prohibit unauthorized
+ * automated collection of public Facebook content. Legitimate metadata should
+ * come from the official oEmbed endpoint or the Graph API with a valid token.
  */
-async function scrapeFacebookPage(url: string): Promise<Partial<FacebookMetadata>> {
-  try {
-    console.log('Trying to scrape Facebook page for metadata...');
-    const response = await axios.get(url, {
-      timeout: 15000,
-      maxRedirects: 5,
-      validateStatus: (status) => status < 500,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-    });
-
-    if (response.status !== 200) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-    
-    // Try to extract title from og:title meta tag
-    const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i);
-    const title = ogTitleMatch ? ogTitleMatch[1] : 'Facebook Video';
-
-    // Try to extract description from og:description
-    const ogDescMatch = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i);
-    const description = ogDescMatch ? ogDescMatch[1] : '';
-
-    // Try to extract thumbnail from og:image
-    const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
-    const thumbnailUrl = ogImageMatch ? ogImageMatch[1] : '';
-
-    console.log('Successfully scraped metadata:', { title, thumbnailUrl: thumbnailUrl ? 'Found' : 'Not found' });
-
-    return {
-      title,
-      description,
-      thumbnailUrl,
-      duration: 0,
-      views: 0,
-      hashtags: extractHashtags(description),
-    };
-  } catch (error: any) {
-    console.log('Scraping failed:', error.message);
-    throw error;
-  }
+async function scrapeFacebookPage(_url: string): Promise<Partial<FacebookMetadata>> {
+  throw new Error(
+    'Facebook page scraping is disabled per Meta Platform Terms. Use a public oEmbed URL or connect a Graph API access token instead.'
+  );
 }
 
 /**

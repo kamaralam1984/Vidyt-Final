@@ -5,6 +5,10 @@ import { getUserFromRequest } from '@/lib/auth';
 import dbConnect from '@/lib/mongodb';
 import FoundEmail from '@/models/FoundEmail';
 
+// The email-finder feature has been removed for compliance.
+// GET / POST are disabled. DELETE remains available so the admin can purge
+// previously harvested data from the database.
+
 async function assertSuperAdmin(req: NextRequest) {
   const user = await getUserFromRequest(req);
   if (!user) throw new Error('Unauthorized');
@@ -12,95 +16,20 @@ async function assertSuperAdmin(req: NextRequest) {
   if (role !== 'super-admin' && role !== 'superadmin') throw new Error('Forbidden');
 }
 
-// GET /api/admin/super/bulk-email/found-emails
-// query: page, limit, platform, keyword, search
-export async function GET(req: NextRequest) {
-  try {
-    await assertSuperAdmin(req);
-    await dbConnect();
+const DEPRECATION_NOTICE = {
+  error: 'Feature removed',
+  reason: 'Storing scraped third-party emails violates GDPR, CAN-SPAM, and platform ToS. Existing records can still be deleted via DELETE.',
+};
 
-    const { searchParams } = new URL(req.url);
-    const page = Math.max(1, Number(searchParams.get('page') || 1));
-    const limit = Math.min(100, Math.max(10, Number(searchParams.get('limit') || 50)));
-    const platform = searchParams.get('platform') || '';
-    const keyword = searchParams.get('keyword') || '';
-    const search = searchParams.get('search') || '';
-
-    const filter: Record<string, any> = {};
-    if (platform) filter.platform = platform;
-    if (keyword) filter.keyword = { $regex: keyword, $options: 'i' };
-    if (search) {
-      filter.$or = [
-        { email: { $regex: search, $options: 'i' } },
-        { name: { $regex: search, $options: 'i' } },
-      ];
-    }
-
-    const [emails, total] = await Promise.all([
-      FoundEmail.find(filter).sort({ savedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-      FoundEmail.countDocuments(filter),
-    ]);
-
-    return NextResponse.json({ emails, total, page, pages: Math.ceil(total / limit) });
-  } catch (err: any) {
-    const status = err.message === 'Unauthorized' ? 401 : err.message === 'Forbidden' ? 403 : 500;
-    return NextResponse.json({ error: err.message }, { status });
-  }
+export async function GET() {
+  return NextResponse.json(DEPRECATION_NOTICE, { status: 410 });
 }
 
-// POST /api/admin/super/bulk-email/found-emails
-// body: { emails: FinderResult[], keyword: string }
-export async function POST(req: NextRequest) {
-  try {
-    await assertSuperAdmin(req);
-    await dbConnect();
-
-    const { emails, keyword = '' } = await req.json();
-    if (!Array.isArray(emails) || emails.length === 0) {
-      return NextResponse.json({ error: 'emails array required' }, { status: 400 });
-    }
-
-    let saved = 0;
-    let skipped = 0;
-
-    for (const item of emails) {
-      if (!item.email) { skipped++; continue; }
-      try {
-        await FoundEmail.updateOne(
-          { email: item.email.toLowerCase() },
-          {
-            $set: {
-              name: item.name || '',
-              platform: item.platform || 'youtube',
-              profileUrl: item.profileUrl || null,
-              followers: item.followers ?? null,
-              website: item.website || null,
-              address: item.address || null,
-              phone: item.phone || null,
-              rating: item.rating ?? null,
-              category: item.category || null,
-              country: item.country || null,
-              keyword: keyword.trim(),
-              savedAt: new Date(),
-            },
-          },
-          { upsert: true }
-        );
-        saved++;
-      } catch {
-        skipped++;
-      }
-    }
-
-    return NextResponse.json({ saved, skipped });
-  } catch (err: any) {
-    const status = err.message === 'Unauthorized' ? 401 : err.message === 'Forbidden' ? 403 : 500;
-    return NextResponse.json({ error: err.message }, { status });
-  }
+export async function POST() {
+  return NextResponse.json(DEPRECATION_NOTICE, { status: 410 });
 }
 
-// DELETE /api/admin/super/bulk-email/found-emails
-// query: id (single) or body: { ids: string[] } (bulk) or query: all=true
+// Kept so the admin can clean up any data that was previously collected.
 export async function DELETE(req: NextRequest) {
   try {
     await assertSuperAdmin(req);

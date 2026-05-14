@@ -287,7 +287,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
           verification accepts any visible heading with the app name. */}
       <section className="px-6 pb-0 pt-8 bg-[#0F0F0F]">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">The Creator OS Built to Beat vidIQ</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">The Creator OS Built to Beat Generic SEO Tools</h2>
           <p className="text-[#AAAAAA] text-lg leading-relaxed">
             VidYT is the AI growth engine serious YouTube creators use to predict viral potential,
             optimize thumbnails and hooks, discover trending topics, and outperform competitors —
@@ -568,7 +568,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
         </div>
       </section>
 
-      {/* VidYT vs vidIQ Comparison */}
+      {/* VidYT vs Old SEO Tools Comparison */}
       <section className="py-24 px-6 bg-[#0F0F0F]">
         <div className="max-w-5xl mx-auto">
           <motion.div initial={{ opacity: 1, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-14">
@@ -576,23 +576,23 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               Why Switch
             </span>
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              VidYT vs vidIQ — <span className="text-[#FF0000]">No Contest</span>
+              VidYT vs Old SEO Tools — <span className="text-[#FF0000]">No Contest</span>
             </h2>
             <p className="text-xl text-[#AAAAAA] max-w-2xl mx-auto">
-              vidIQ shows you what happened. VidYT tells you what to do next.
+              Old SEO tools show you what happened. VidYT tells you what to do next.
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* vidIQ column */}
+            {/* Old SEO Tools column */}
             <motion.div initial={{ opacity: 1, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
               className="bg-[#181818] border border-[#2a2a2a] rounded-2xl p-8">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-[#2a2a2a] flex items-center justify-center">
-                  <span className="text-[#666] font-bold text-sm">viQ</span>
+                  <span className="text-[#666] font-bold text-sm">SEO</span>
                 </div>
                 <div>
-                  <h3 className="text-white font-bold">vidIQ</h3>
+                  <h3 className="text-white font-bold">Old SEO Tools</h3>
                   <p className="text-xs text-[#666]">What you&apos;re used to</p>
                 </div>
               </div>
@@ -1099,7 +1099,7 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
                 avatar: 'SK',
                 color: '#FFD700',
                 subs: '56K subscribers',
-                text: 'As a gaming creator, finding trending keywords fast is everything. VidYT\'s keyword intelligence tool is 10x faster than TubeBuddy and actually tells me WHY a keyword works.',
+                text: 'As a gaming creator, finding trending keywords fast is everything. VidYT\'s keyword intelligence tool is way faster than the old SEO tools I used and actually tells me WHY a keyword works.',
                 stars: 5,
               },
               {
