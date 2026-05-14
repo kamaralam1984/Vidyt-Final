@@ -21,7 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const publicPages = [
     '/about', '/contact', '/faq', '/compare', '/blog', '/trending', '/hashtags',
-    '/posting-time', '/facebook-audit', '/viral-optimizer', '/download', '/get-app',
+    '/posting-time', '/facebook-audit', '/viral-optimizer',
     '/help', '/changelog', '/status', '/tools/youtube-growth',
   ].map(path => ({
     url: `${BASE_URL}${path}`,

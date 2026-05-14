@@ -8,6 +8,8 @@ const PRIVATE_PATHS = [
   '/onboarding', '/subscription', '/settings', '/calendar', '/analytics',
   '/videos', '/upgrade', '/preview', '/unauthorized', '/maintenance',
   '/data-requests', '/*?token=', '/*?redirect=',
+  // Excluded during Play Store launch prep — pages still serve content but should not be indexed.
+  '/download', '/get-app', '/vidyt-app.apk',
 ];
 
 export default function robots(): MetadataRoute.Robots {
@@ -18,7 +20,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: [
           '/', '/k/', '/tools/', '/blog/', '/pricing', '/about', '/contact', '/faq',
           '/compare', '/trending', '/hashtags', '/posting-time', '/facebook-audit',
-          '/viral-optimizer', '/thumbnail-generator', '/download', '/get-app',
+          '/viral-optimizer', '/thumbnail-generator',
           '/help', '/changelog', '/status', '/support',
           '/privacy-policy', '/terms', '/cookie-policy', '/refund-policy', '/security',
         ],

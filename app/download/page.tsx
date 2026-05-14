@@ -6,8 +6,9 @@ import DownloadClient from './DownloadClient';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Download App | Vid YT',
-  description: 'Download the VidYT Android app and grow your YouTube channel with AI-powered tools on the go.',
+  title: 'VidYT App — Coming Soon to Google Play Store',
+  description: 'Our Android app is coming soon to Google Play. Use the full VidYT AI toolkit on the web today.',
+  robots: { index: false, follow: false },
 };
 
 export default function DownloadPage() {
