@@ -22,7 +22,7 @@ export default function robots(): MetadataRoute.Robots {
           '/compare', '/trending', '/hashtags', '/posting-time', '/facebook-audit',
           '/viral-optimizer', '/thumbnail-generator',
           '/help', '/changelog', '/status', '/support',
-          '/privacy-policy', '/terms', '/cookie-policy', '/refund-policy', '/security',
+          '/privacy-policy', '/terms', '/cookie-policy', '/refund-policy', '/security', '/dmca',
         ],
         disallow: PRIVATE_PATHS,
       },

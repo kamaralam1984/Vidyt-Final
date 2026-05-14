@@ -19,6 +19,14 @@ function setStoredConsent(value: string): void {
   } catch {
     // If storage is blocked, do not crash UI.
   }
+  // Notify listeners (RetargetingPixels, GA gate) within the same tab.
+  // The native `storage` event only fires on *other* tabs, so we need a
+  // custom event for the tab that just made the choice.
+  try {
+    window.dispatchEvent(new CustomEvent('cookieConsentChanged'));
+  } catch {
+    /* CustomEvent unsupported in very old browsers — ignore */
+  }
 }
 
 export default function CookieConsent() {

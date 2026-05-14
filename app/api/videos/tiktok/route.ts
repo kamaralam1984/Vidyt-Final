@@ -8,6 +8,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { checkLimit, getLimitExceededResponse } from '@/lib/limitChecker';
 import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { extractTikTokMetadata } from '@/services/tiktok';
+import { isUnofficialScrapingAllowed, scrapingDisabledResponse } from '@/lib/policyGate';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
 import { analyzeTitle } from '@/services/titleOptimizer';
 import { predictViralPotential } from '@/services/ai/viralPredictor';
@@ -18,6 +19,9 @@ import Analysis from '@/models/Analysis';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isUnofficialScrapingAllowed()) {
+      return scrapingDisabledResponse('tiktok');
+    }
     await connectDB();
 
     // Get authenticated user

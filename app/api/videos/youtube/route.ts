@@ -9,9 +9,13 @@ import { getUserFromRequest } from '@/lib/auth';
 import { checkAnalysisLimit } from '@/lib/usageCheck';
 import { extractYouTubeMetadata } from '@/services/youtube';
 import Analysis from '@/models/Analysis';
+import { isUnofficialScrapingAllowed, scrapingDisabledResponse } from '@/lib/policyGate';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isUnofficialScrapingAllowed()) {
+      return scrapingDisabledResponse('youtube');
+    }
     await connectDB();
     const authUser = await getUserFromRequest(request);
 

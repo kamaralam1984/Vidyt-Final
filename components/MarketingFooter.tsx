@@ -42,6 +42,7 @@ export default function MarketingFooter() {
               <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
               <li><Link href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link></li>
               <li><Link href="/cookie-policy" className="hover:text-white transition-colors">Cookie Policy</Link></li>
+              <li><Link href="/dmca" className="hover:text-white transition-colors">DMCA / Copyright</Link></li>
             </ul>
           </div>
         </div>

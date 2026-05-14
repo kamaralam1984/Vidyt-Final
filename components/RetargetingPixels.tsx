@@ -1,25 +1,90 @@
 'use client';
 
 import Script from 'next/script';
+import { useEffect, useState } from 'react';
 
 /**
- * Retargeting Pixels — fires on every page load so every visitor
- * is added to custom audiences on Facebook, Google Ads, and TikTok.
+ * Retargeting Pixels — Meta, Google Ads, TikTok.
+ *
+ * Compliance rules:
+ *  1. No hardcoded fallback IDs (sending tracking events to an unrelated
+ *     account would violate Meta / Google Ads policy).
+ *  2. Pixels only fire when the user has explicitly accepted marketing
+ *     cookies via the consent banner — required by GDPR Art. 7, ePrivacy
+ *     Directive, and Google Consent Mode v2 for EEA traffic.
+ *  3. Pixels do not load on auth / admin / dashboard / settings paths —
+ *     sensitive flows must not be tracked, per Meta's pixel policy.
  *
  * Set these env vars to activate each pixel:
- *   NEXT_PUBLIC_META_PIXEL_ID    — Facebook / Instagram pixel ID
+ *   NEXT_PUBLIC_META_PIXEL_ID    — Meta (Facebook / Instagram) pixel ID
  *   NEXT_PUBLIC_GOOGLE_ADS_ID    — Google Ads conversion ID (AW-XXXXXXXXXX)
  *   NEXT_PUBLIC_TIKTOK_PIXEL_ID  — TikTok pixel ID
  */
 
-const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '957730893901659';
-const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || 'AW-17845449983';
+const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
 const TIKTOK_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID;
 
+const EXCLUDED_PATH_PREFIXES = [
+  '/auth',
+  '/login',
+  '/register',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/onboarding',
+  '/dashboard',
+  '/admin',
+  '/settings',
+  '/upgrade',
+  '/preview',
+  '/unauthorized',
+  '/maintenance',
+];
+
+function readMarketingConsent(): boolean {
+  try {
+    const raw = window.localStorage.getItem('cookieConsent');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return parsed?.marketing === true;
+  } catch {
+    return false;
+  }
+}
+
+function isExcludedPath(pathname: string): boolean {
+  return EXCLUDED_PATH_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'));
+}
+
 export default function RetargetingPixels() {
+  const [allow, setAllow] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isExcludedPath(window.location.pathname)) {
+      setAllow(false);
+      return;
+    }
+    setAllow(readMarketingConsent());
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'cookieConsent') setAllow(readMarketingConsent());
+    };
+    const onConsent = () => setAllow(readMarketingConsent());
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('cookieConsentChanged', onConsent as EventListener);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('cookieConsentChanged', onConsent as EventListener);
+    };
+  }, []);
+
+  if (!allow) return null;
+
   return (
     <>
-      {/* ── Meta (Facebook + Instagram) Pixel ─────────────────────── */}
       {META_PIXEL_ID && (
         <>
           <Script id="meta-pixel" strategy="afterInteractive">
@@ -36,7 +101,6 @@ export default function RetargetingPixels() {
               fbq('track', 'PageView');
             `}
           </Script>
-          {/* noscript fallback for browsers with JS disabled */}
           <noscript>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -50,7 +114,6 @@ export default function RetargetingPixels() {
         </>
       )}
 
-      {/* ── Google Ads Remarketing ─────────────────────────────────── */}
       {GOOGLE_ADS_ID && (
         <>
           <Script
@@ -68,7 +131,6 @@ export default function RetargetingPixels() {
         </>
       )}
 
-      {/* ── TikTok Pixel ──────────────────────────────────────────── */}
       {TIKTOK_PIXEL_ID && (
         <Script id="tiktok-pixel" strategy="afterInteractive">
           {`

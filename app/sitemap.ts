@@ -32,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const legal = [
     '/privacy-policy', '/terms', '/cookie-policy', '/refund-policy',
-    '/data-requests', '/security',
+    '/data-requests', '/security', '/dmca',
   ].map(path => ({
     url: `${BASE_URL}${path}`,
     lastModified: now,

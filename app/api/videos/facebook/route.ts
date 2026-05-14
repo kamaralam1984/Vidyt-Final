@@ -8,6 +8,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { checkLimit, getLimitExceededResponse } from '@/lib/limitChecker';
 import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { extractFacebookMetadata } from '@/services/facebook';
+import { isUnofficialScrapingAllowed, scrapingDisabledResponse } from '@/lib/policyGate';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
 import { analyzeThumbnailReal } from '@/services/ai/thumbnailAnalysis';
 import { analyzeTitle } from '@/services/titleOptimizer';
@@ -21,6 +22,9 @@ import Analysis from '@/models/Analysis';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isUnofficialScrapingAllowed()) {
+      return scrapingDisabledResponse('facebook');
+    }
     // Connect to database first
     try {
       await connectDB();

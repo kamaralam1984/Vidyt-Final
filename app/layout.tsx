@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import dynamic from "next/dynamic";
-import Script from "next/script";
 
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
@@ -23,6 +22,7 @@ const CountrySelectPopup = dynamic(() => import("@/components/CountrySelectPopup
 const MobileAppDownloadBar = dynamic(() => import("@/components/MobileAppDownloadBar"), { ssr: false });
 const SiteAnnouncementBanner = dynamic(() => import("@/components/SiteAnnouncementBanner"), { ssr: false });
 const RetargetingPixels = dynamic(() => import("@/components/RetargetingPixels"), { ssr: false });
+const ConsentScripts = dynamic(() => import("@/components/ConsentScripts"), { ssr: false });
 
 export const viewport: Viewport = {
   themeColor: "#0F0F0F",
@@ -263,38 +263,10 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-inter antialiased" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-        {/* Google Analytics 4 — afterInteractive so it never blocks FCP */}
-        {process.env.NEXT_PUBLIC_GA_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
-              strategy="lazyOnload"
-            />
-            <Script id="ga4-init" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}', {
-                  page_path: window.location.pathname,
-                  send_page_view: true,
-                  cookie_flags: 'SameSite=None;Secure'
-                });
-              `}
-            </Script>
-          </>
-        )}
-        {/* Retargeting Pixels — Facebook, Google Ads, TikTok */}
+        {/* Analytics + AdSense — consent-gated; AdSense restricted to public content pages */}
+        <ConsentScripts />
+        {/* Retargeting Pixels — consent-gated; skipped on auth/admin/dashboard paths */}
         <RetargetingPixels />
-        {/* Google AdSense — lazyOnload so it never blocks LCP/TBT */}
-        {process.env.NEXT_PUBLIC_ADSENSE_ID && (
-          <Script
-            id="adsense-init"
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_ID}`}
-            strategy="lazyOnload"
-            crossOrigin="anonymous"
-          />
-        )}
         {maintenanceLock ? (
           <div
             style={{

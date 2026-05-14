@@ -8,6 +8,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { checkLimit, getLimitExceededResponse } from '@/lib/limitChecker';
 import { getTitleSuggestionsCount, getHashtagCount } from '@/lib/planLimits';
 import { extractInstagramMetadata } from '@/services/instagram';
+import { isUnofficialScrapingAllowed, scrapingDisabledResponse } from '@/lib/policyGate';
 import { analyzeThumbnail } from '@/services/thumbnailAnalyzer';
 import { analyzeThumbnailReal } from '@/services/ai/thumbnailAnalysis';
 import { analyzeVideoHookReal } from '@/services/ai/videoAnalysis';
@@ -21,6 +22,9 @@ import Analysis from '@/models/Analysis';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isUnofficialScrapingAllowed()) {
+      return scrapingDisabledResponse('instagram');
+    }
     // Connect to database first
     try {
       await connectDB();
