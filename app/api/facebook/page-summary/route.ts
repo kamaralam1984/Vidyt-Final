@@ -36,25 +36,22 @@ function pageNameFromSlug(slug: string, isProfile: boolean): string {
     .join(' ');
 }
 
-/** Fetch og:title and og:description from page HTML (best-effort; Facebook may block or require login). */
-async function fetchPageMeta(pageUrl: string): Promise<{ title?: string; description?: string }> {
-  try {
-    const res = await fetch(pageUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-      signal: AbortSignal.timeout(8000),
-    });
-    const html = await res.text();
-    const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]*)"/i) || html.match(/<meta\s+content="([^"]*)"\s+property="og:title"/i);
-    const descMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]*)"/i) || html.match(/<meta\s+content="([^"]*)"\s+property="og:description"/i);
-    return {
-      title: titleMatch?.[1]?.trim() || undefined,
-      description: descMatch?.[1]?.trim() || undefined,
-    };
-  } catch {
-    return {};
-  }
+/**
+ * Page metadata fetch — REMOVED for Meta Platform Terms compliance.
+ *
+ * Previously this scraped facebook.com HTML with a spoofed User-Agent to
+ * extract og:title / og:description. That violates Meta Platform Terms and
+ * carries Spamhaus / Google Postmaster blacklist risk — the same class of
+ * issue closed by faf1df9 for /api/facebook/page/videos and
+ * services/facebook.ts.
+ *
+ * The audit now relies on the URL slug + AI alone. Real channel-level data
+ * (followers, post count, real og:title/description) should come from the
+ * Meta Graph API after the user connects their Facebook page via OAuth —
+ * that path is compliance-safe and is the recommended follow-up.
+ */
+async function fetchPageMeta(_pageUrl: string): Promise<{ title?: string; description?: string }> {
+  return {};
 }
 
 const FALLBACK_GROWTH_ACTIONS: { where: string; action: string; reason: string }[] = [
@@ -227,9 +224,14 @@ export async function GET(request: NextRequest) {
     isProfile: parsed.isProfile,
     followersCount: 0,
     postsCount: 0,
-    pageDescription: meta.description || '',
+    pageDescription: '',
     pageKami,
-    settingKami: settingKami.length ? settingKami : ['Page link save ho gaya. Facebook Graph API set karein to followers, posts count aur detailed audit milega.'],
+    settingKami: settingKami.length
+      ? settingKami
+      : [
+          'Page link save ho gaya — analysis is now based on the page name + AI only.',
+          'Real-time followers, post count, og:description aur detailed audit ke liye Meta Graph API connect karein (Settings → Connections → Facebook).',
+        ],
     homepageKeywords,
     growthActions,
     recommendedKeywords,

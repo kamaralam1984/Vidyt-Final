@@ -117,6 +117,7 @@ function Panel({ title, icon: Icon, iconColor = 'text-[#FF0000]', children, defa
 }
 
 function UltraEngineContent() {
+  const [channelUrl, setChannelUrl] = useState('');
   const [topic, setTopic] = useState('');
   const [niche, setNiche] = useState('');
   const [platform, setPlatform] = useState<Platform>('youtube');
@@ -126,6 +127,14 @@ function UltraEngineContent() {
   const [result, setResult] = useState<UltraResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scriptTab, setScriptTab] = useState<'short' | 'long'>('short');
+
+  // YouTube channel URL must match one of these forms:
+  //   https://youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxx
+  //   https://youtube.com/@handle
+  //   https://youtube.com/c/CustomURL
+  //   https://youtube.com/user/Username
+  const isValidChannelUrl = (u: string): boolean =>
+    /^https?:\/\/(www\.)?youtube\.com\/(channel\/UC[\w-]{22}|@[\w.\-]+|c\/[\w.\-]+|user\/[\w.\-]+)\/?$/i.test(u.trim());
   const resultRef = useRef<HTMLDivElement>(null);
 
   // Fire-and-forget tracking call
@@ -146,12 +155,21 @@ function UltraEngineContent() {
   };
 
   const generate = async () => {
+    if (!channelUrl.trim()) {
+      setError('YouTube channel URL is required. Paste your channel link to continue.');
+      return;
+    }
+    if (!isValidChannelUrl(channelUrl)) {
+      setError('Invalid YouTube channel URL. Use one of:  youtube.com/@handle, youtube.com/channel/UC…, youtube.com/c/…, youtube.com/user/…');
+      return;
+    }
     if (!topic.trim()) return;
     setLoading(true);
     setError(null);
     setResult(null);
     try {
       const res = await axios.post('/api/viral/ultra-intelligence', {
+        channelUrl: channelUrl.trim(),
         topic: topic.trim(),
         niche: niche.trim() || topic.trim(),
         platform,
@@ -200,7 +218,6 @@ function UltraEngineContent() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">Ultra AI Engine</h1>
-                <p className="text-xs text-[#AAAAAA]">Multi-source viral content intelligence — OpenAI → Gemini → AI prediction fallback</p>
               </div>
             </div>
           </motion.div>
@@ -210,6 +227,26 @@ function UltraEngineContent() {
             <h2 className="text-white font-semibold mb-4 flex items-center gap-2">
               <Cpu className="w-4 h-4 text-[#FF0000]" /> Configure Content Strategy
             </h2>
+
+            {/* YouTube Channel URL — REQUIRED. Strategy is generated only for the
+                channel pasted here; without it the API rejects the request. */}
+            <div className="mb-4">
+              <label className="block text-xs text-[#AAAAAA] mb-1">YouTube Channel URL *</label>
+              <input
+                value={channelUrl}
+                onChange={e => setChannelUrl(e.target.value)}
+                placeholder="https://youtube.com/@yourchannel  or  https://youtube.com/channel/UCxxxxxxxx"
+                className={`w-full px-4 py-2.5 bg-[#0F0F0F] border rounded-lg text-white placeholder-[#555] focus:ring-2 focus:ring-[#FF0000] focus:border-transparent text-sm ${
+                  channelUrl && !isValidChannelUrl(channelUrl) ? 'border-[#FF0000]' : 'border-[#333]'
+                }`}
+              />
+              {channelUrl && !isValidChannelUrl(channelUrl) && (
+                <p className="text-xs text-[#FF6B6B] mt-1">
+                  Paste a full channel URL — handle (@…), /channel/UC…, /c/… or /user/… formats.
+                </p>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
               <div className="lg:col-span-2">
                 <label className="block text-xs text-[#AAAAAA] mb-1">Topic / Keyword *</label>
@@ -259,8 +296,8 @@ function UltraEngineContent() {
               </div>
               <button
                 onClick={generate}
-                disabled={loading || !topic.trim()}
-                className="ml-auto flex items-center gap-3 px-8 py-3 bg-gradient-to-r from-[#FF0000] to-[#FF4500] hover:from-[#CC0000] hover:to-[#CC3400] disabled:opacity-50 text-white rounded-xl font-bold transition shadow-lg shadow-[#FF0000]/25 group"
+                disabled={loading || !topic.trim() || !channelUrl.trim() || !isValidChannelUrl(channelUrl)}
+                className="ml-auto flex items-center gap-3 px-8 py-3 bg-gradient-to-r from-[#FF0000] to-[#FF4500] hover:from-[#CC0000] hover:to-[#CC3400] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold transition shadow-lg shadow-[#FF0000]/25 group"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5 group-hover:scale-110 transition" />}
                 {loading ? 'Generating...' : 'Generate Strategy'}

@@ -11,16 +11,79 @@ import Video from '@/models/Video';
 import Analysis from '@/models/Analysis';
 import User from '@/models/User';
 import { routeAI } from '@/lib/ai-router';
+import { routeGetChannel, YouTubeChannelInfo } from '@/lib/youtube-router';
 
 // ─────────────────────────────────────
 // Types
 // ─────────────────────────────────────
 interface UltraRequest {
+  channelUrl?: string;
   topic?: string;
   niche?: string;
   platform?: 'youtube' | 'facebook' | 'instagram' | 'tiktok' | 'shorts';
   region?: string;
   language?: string;
+}
+
+// ─────────────────────────────────────
+// Channel URL → channel info (official YouTube Data API v3 only)
+// ─────────────────────────────────────
+const CHANNEL_URL_RE = /^https?:\/\/(www\.)?youtube\.com\/(channel\/(UC[\w-]{22})|@([\w.\-]+)|c\/([\w.\-]+)|user\/([\w.\-]+))\/?$/i;
+
+async function resolveChannelFromUrl(url: string): Promise<YouTubeChannelInfo | null> {
+  const m = url.trim().match(CHANNEL_URL_RE);
+  if (!m) return null;
+  const [, , , directId, handle, custom, username] = m;
+
+  // Form 1: /channel/UCxxx — direct ID, use existing router
+  if (directId) {
+    const { channel } = await routeGetChannel(directId);
+    return channel;
+  }
+
+  // Forms 2-4: need YouTube Data API v3 to resolve. Compliance-safe (official API only).
+  const { getApiConfig } = await import('@/lib/apiConfig');
+  const config = await getApiConfig();
+  const apiKey = config.youtubeDataApiKey;
+  if (!apiKey?.trim()) return null;
+
+  let endpoint = '';
+  if (handle) {
+    endpoint = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${encodeURIComponent('@' + handle)}&key=${apiKey}`;
+  } else if (username) {
+    endpoint = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forUsername=${encodeURIComponent(username)}&key=${apiKey}`;
+  } else if (custom) {
+    // No direct lookup for /c/CustomURL — fall back to search.
+    endpoint = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(custom)}&maxResults=1&key=${apiKey}`;
+  }
+  if (!endpoint) return null;
+
+  try {
+    const res = await fetch(endpoint);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const item = data.items?.[0];
+    if (!item) return null;
+
+    // /c/ search result has channelId nested — resolve through router for stats
+    if (custom && item.id?.channelId) {
+      const { channel } = await routeGetChannel(item.id.channelId);
+      return channel;
+    }
+
+    return {
+      id: item.id,
+      title: item.snippet?.title || '',
+      description: item.snippet?.description || '',
+      customUrl: item.snippet?.customUrl || '',
+      thumbnail: item.snippet?.thumbnails?.default?.url || '',
+      subscriberCount: parseInt(item.statistics?.subscriberCount || '0', 10) || 0,
+      videoCount: parseInt(item.statistics?.videoCount || '0', 10) || 0,
+      viewCount: parseInt(item.statistics?.viewCount || '0', 10) || 0,
+    } as YouTubeChannelInfo;
+  } catch {
+    return null;
+  }
 }
 
 function safeParseJson(text: string): Record<string, unknown> {
@@ -146,8 +209,32 @@ function buildFallbackOutput(topic: string, platform: string, region: string, ye
 // ─────────────────────────────────────
 // Main AI prompt
 // ─────────────────────────────────────
-function buildMasterPrompt(topic: string, platform: string, region: string, language: string, year: number): string {
+function buildMasterPrompt(
+  topic: string,
+  platform: string,
+  region: string,
+  language: string,
+  year: number,
+  channel: YouTubeChannelInfo,
+): string {
+  const channelBlock = `
+THE STRATEGY MUST BE TAILORED TO THIS SPECIFIC YOUTUBE CHANNEL:
+- Channel Name: "${channel.title}"
+- Channel Description: "${(channel.description || '').slice(0, 400)}"
+- Subscribers: ${channel.subscriberCount.toLocaleString()}
+- Total Videos: ${channel.videoCount}
+- Total Views: ${channel.viewCount.toLocaleString()}
+- Custom URL / Handle: ${channel.customUrl || 'n/a'}
+
+Calibrate suggestions to this channel's existing audience, niche, scale, and tone.
+Sub-bracket guidance:
+- < 10k subs    → entry-tier hooks, foundational SEO keywords, broad-reach hashtags
+- 10k–100k subs → mid-tier authority hooks, niche-specific long-tails, community-style CTAs
+- 100k–1M subs  → high-CTR shock/curiosity hooks, brand-relevant keywords, retention-focused scripts
+- 1M+ subs      → format-innovating hooks, brand-protective titles, premium thumbnail composition
+`;
   return `You are VidYT Ultra AI Engine — the most advanced viral content intelligence system.
+${channelBlock}
 
 Generate a COMPLETE viral content strategy for:
 - Topic: "${topic}"
@@ -210,6 +297,39 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as UltraRequest;
+
+    // ── 0. YouTube channel URL is REQUIRED ───────────────────────────────────
+    // No URL → no result. We refuse to generate a generic strategy because the
+    // value of this tool is channel-tailored output. Once the URL is resolved
+    // via the official YouTube Data API v3, every downstream suggestion is
+    // calibrated to that channel's niche, size, and tone.
+    const channelUrl = (body.channelUrl || '').trim();
+    if (!channelUrl) {
+      return NextResponse.json(
+        { error: 'YouTube channel URL is required. Paste your channel link to continue.' },
+        { status: 400 },
+      );
+    }
+    if (!CHANNEL_URL_RE.test(channelUrl)) {
+      return NextResponse.json(
+        {
+          error:
+            'Invalid YouTube channel URL. Use: youtube.com/@handle, youtube.com/channel/UC…, youtube.com/c/… or youtube.com/user/…',
+        },
+        { status: 400 },
+      );
+    }
+    const channel = await resolveChannelFromUrl(channelUrl);
+    if (!channel) {
+      return NextResponse.json(
+        {
+          error:
+            'Could not fetch this YouTube channel. It may be private, deleted, or our YouTube API key is unavailable. Try a different URL or contact support.',
+        },
+        { status: 422 },
+      );
+    }
+
     const topic = (body.topic || '').trim() || 'viral content';
     const niche = (body.niche || '').trim() || topic;
     const platform = body.platform || 'youtube';
@@ -243,11 +363,11 @@ export async function POST(request: NextRequest) {
     let secondaryApiStatus: 'used' | 'fallback' = 'fallback';
     let fallbackMode: 'yes' | 'no' = 'yes';
     let aiJson: Record<string, unknown> = {};
-    const prompt = buildMasterPrompt(topic, platform, region, language, year);
+    const prompt = buildMasterPrompt(topic, platform, region, language, year, channel);
     const ai = await routeAI({
       prompt,
       timeoutMs: 15000,
-      cacheKey: `ultra-intel:${platform}:${topic}:${region}:${language}`.toLowerCase(),
+      cacheKey: `ultra-intel:${channel.id}:${platform}:${topic}:${region}:${language}`.toLowerCase(),
       cacheTtlSec: 180,
       fallbackText: '{}',
     });
@@ -355,6 +475,13 @@ export async function POST(request: NextRequest) {
         language,
         generated_at: new Date().toISOString(),
         trend_api: trendApiStatus,
+        channel: {
+          id: channel.id,
+          title: channel.title,
+          customUrl: channel.customUrl,
+          subscriberCount: channel.subscriberCount,
+          videoCount: channel.videoCount,
+        },
       },
     };
 
