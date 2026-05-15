@@ -237,9 +237,12 @@ export default function HomeClient({ initialPlans, initialUserPlanId, features }
               </span>
             </div>
             <h1 className="text-3xl sm:text-5xl md:text-8xl font-bold text-white mt-0 mb-4 md:mb-6 leading-tight">
-              The AI Co-Pilot That Helps You{' '}
+              Turn Every Upload Into a{' '}
               <span className="text-[#FF0000] bg-gradient-to-r from-[#FF0000] to-[#CC0000] bg-clip-text text-transparent">
-                Get More Views
+                Top-Performer
+              </span>
+              <span className="block text-xl sm:text-2xl md:text-4xl font-semibold text-[#CCCCCC] mt-2 md:mt-4">
+                AI Decodes Your Next Viral Hit.
               </span>
             </h1>
             <p className="text-base sm:text-xl md:text-2xl text-[#AAAAAA] mb-3 max-w-3xl mx-auto px-2">

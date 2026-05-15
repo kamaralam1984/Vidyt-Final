@@ -260,8 +260,8 @@ const TRANSLATIONS: TranslationTable = {
     'navbar.pricing': 'Pricing',
     'navbar.signIn': 'Sign In',
     'navbar.getStarted': 'Get Started Free',
-    'hero.title.main': 'The AI Co-Pilot That Helps You',
-    'hero.title.highlight': 'Get More Views',
+    'hero.title.main': 'Turn Every Upload Into a',
+    'hero.title.highlight': 'Top-Performer',
     'hero.subtitle':
       'Predict viral potential before you publish. Optimize titles, thumbnails & hooks. Discover trending topics. Everything serious creators need to grow faster on YouTube.',
     'hero.cta.primary': 'Analyze My Channel Free',
