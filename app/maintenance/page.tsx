@@ -1,7 +1,7 @@
 // Rendered when SiteSettings.maintenanceMode is on for everyone except super-admin.
 // The middleware rewrites the URL to /maintenance, so all paths land here.
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Vidyt — Scheduled Maintenance',
