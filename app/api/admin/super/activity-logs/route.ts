@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdminAccess } from '@/lib/adminAuth';
 import connectDB from '@/lib/mongodb';
-import AbuseLog from '@/models/AbuseLog';
+import { AbuseLog } from '@/models/AbuseLog';
 import AuditAlert from '@/models/AuditAlert';
 import ControlLog from '@/models/ControlLog';
 import DeletionLog from '@/models/DeletionLog';
